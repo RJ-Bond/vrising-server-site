@@ -483,6 +483,51 @@
           </div>
         </div>
 
+        <!-- Event banner -->
+        <div class="s-card">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(120,0,20,.18);border:1px solid rgba(200,0,40,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            </div>
+            <div><h2>Баннер события</h2><p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Отображается на главной странице над новостями</p></div>
+          </div>
+          <div class="s-field">
+            <label class="s-label">Активен</label>
+            <div class="s-field-row">
+              <select id="setting-event_active" class="dark-input" style="width:auto;">
+                <option value="0">Выключен</option>
+                <option value="1">Включён</option>
+              </select>
+              <button class="s-save-btn" onclick="saveSetting('event_active')">Сохранить</button>
+            </div>
+          </div>
+          <div class="s-field">
+            <label class="s-label">Заголовок</label>
+            <div class="s-field-row">
+              <input id="setting-event_title" type="text" class="dark-input" placeholder="Сезон 3 начался!">
+              <button class="s-save-btn" onclick="saveSetting('event_title')">Сохранить</button>
+            </div>
+          </div>
+          <div class="s-field">
+            <label class="s-label">Текст</label>
+            <div class="s-field-row">
+              <input id="setting-event_text" type="text" class="dark-input" placeholder="Описание события или анонс">
+              <button class="s-save-btn" onclick="saveSetting('event_text')">Сохранить</button>
+            </div>
+          </div>
+          <div class="s-field">
+            <label class="s-label">Цвет</label>
+            <div class="s-field-row">
+              <select id="setting-event_color" class="dark-input" style="width:auto;">
+                <option value="crimson">Красный</option>
+                <option value="purple">Фиолетовый</option>
+                <option value="gold">Золотой</option>
+              </select>
+              <button class="s-save-btn" onclick="saveSetting('event_color')">Сохранить</button>
+            </div>
+          </div>
+        </div>
+
         <!-- HTTPS / SSL -->
         <div class="s-card">
           <div class="s-card-head">
@@ -822,7 +867,7 @@ async function loadSettings() {
   const settings = await res.json();
   const map = {};
   settings.forEach(s => { map[s.key] = s.value; });
-  ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2'].forEach(key => {
+  ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color'].forEach(key => {
     const el = document.getElementById(`setting-${key}`);
     if (el && map[key] !== undefined) el.value = map[key];
   });

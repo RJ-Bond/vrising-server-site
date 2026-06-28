@@ -638,6 +638,87 @@
       #drawer-close { display:block !important; }
     }
 
+    /* ── Hero particles ── */
+    .particle {
+      position:absolute; border-radius:50%; pointer-events:none;
+      animation:particle-fall linear infinite;
+      will-change:transform,opacity;
+    }
+    @keyframes particle-fall {
+      0%   { transform:translateY(-10px) scale(1); opacity:0; }
+      10%  { opacity:1; }
+      90%  { opacity:.6; }
+      100% { transform:translateY(110vh) scale(.4) rotate(180deg); opacity:0; }
+    }
+
+    /* ── Status bar ── */
+    .status-bar {
+      background:rgba(10,2,18,0.82); border-top:1px solid rgba(110,0,20,0.25);
+      border-bottom:1px solid rgba(110,0,20,0.2); backdrop-filter:blur(12px);
+    }
+    .status-bar-inner {
+      max-width:1280px; margin:0 auto; padding:.55rem 1.25rem;
+      display:flex; align-items:center; gap:0; flex-wrap:wrap;
+    }
+    .sb-item {
+      display:flex; align-items:center; gap:.45rem;
+      padding:.2rem 1.1rem; border-right:1px solid rgba(110,0,20,0.2);
+      font-size:.72rem; color:var(--muted); white-space:nowrap;
+    }
+    .sb-item:first-child { padding-left:0; }
+    .sb-item:last-child  { border-right:none; }
+    .sb-val { font-family:'Oswald',sans-serif; font-size:.85rem; font-weight:500;
+      font-variant-numeric:tabular-nums; color:var(--text); }
+    .sb-icon { font-size:.9rem; line-height:1; }
+
+    /* ── Event banner ── */
+    .event-banner {
+      border-radius:.875rem; padding:1rem 1.25rem;
+      margin-bottom:1rem; position:relative; overflow:hidden;
+      display:flex; align-items:center; gap:1rem;
+      backdrop-filter:blur(16px); border:1px solid;
+      animation:fade-up .4s ease both;
+    }
+    .event-banner::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    }
+    .event-banner-icon { font-size:1.6rem; flex-shrink:0; line-height:1; }
+    .event-banner-body { flex:1; min-width:0; }
+    .event-banner-title {
+      font-family:'Cinzel',serif; font-size:.82rem; font-weight:700;
+      letter-spacing:.06em; margin-bottom:.25rem;
+    }
+    .event-banner-text { font-size:.78rem; color:var(--muted); line-height:1.45; }
+
+    /* ── Rules section ── */
+    .rules-section {
+      margin-top:1.35rem; border-radius:.875rem; overflow:hidden;
+      background:rgba(10,3,16,0.82); border:1px solid rgba(110,0,150,0.22);
+      backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .rules-header {
+      padding:.8rem 1.25rem; border-bottom:1px solid rgba(110,0,20,0.15);
+      display:flex; align-items:center; gap:.6rem;
+    }
+    .rules-grid {
+      display:grid; grid-template-columns:1fr 1fr; gap:0;
+    }
+    .rule-item {
+      display:flex; align-items:flex-start; gap:.75rem;
+      padding:.75rem 1.25rem; border-bottom:1px solid rgba(110,0,20,0.1);
+      transition:background .2s;
+    }
+    .rule-item:nth-child(odd) { border-right:1px solid rgba(110,0,20,0.1); }
+    .rule-item:nth-last-child(-n+2) { border-bottom:none; }
+    .rule-item:hover { background:rgba(110,0,20,0.06); }
+    .rule-icon {
+      width:30px; height:30px; border-radius:.45rem; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center; font-size:1rem;
+      background:rgba(110,0,20,0.18); border:1px solid rgba(180,0,30,0.2);
+    }
+    .rule-text { font-size:.76rem; color:#ccc8da; line-height:1.45; padding-top:.15rem; }
+
     /* ── Blood Vial ── */
     .vial-fill { will-change:transform; }
 
@@ -807,6 +888,31 @@
   </div>
 </section>
 
+<!-- ══ STATUS BAR ═══════════════════════════════════════════════════════════ -->
+<div class="status-bar">
+  <div class="status-bar-inner">
+    <div class="sb-item">
+      <span class="sb-icon">🩸</span>
+      <span style="color:var(--muted);">Онлайн</span>
+      <span class="sb-val" id="sb-online">—</span>
+    </div>
+    <div class="sb-item">
+      <span class="sb-icon">⬆</span>
+      <span style="color:var(--muted);">Аптайм 24ч</span>
+      <span class="sb-val" id="sb-uptime">—</span>
+    </div>
+    <div class="sb-item">
+      <span class="sb-icon">⚔</span>
+      <span style="color:var(--muted);">До вайпа</span>
+      <span class="sb-val" id="sb-wipe">—</span>
+    </div>
+    <div class="sb-item" id="sb-news-wrap" style="flex:1;cursor:pointer;overflow:hidden;" onclick="document.getElementById('news-section').scrollIntoView({behavior:'smooth'})">
+      <span class="sb-icon">📰</span>
+      <span id="sb-news-title" style="color:var(--muted);font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;"></span>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MAIN ══════════════════════════════════════════════════════════════════ -->
 <div class="main-grid" style="max-width:1280px;margin:2rem auto;padding:0 1.25rem;display:flex;gap:1.25rem;align-items:flex-start;">
 
@@ -893,19 +999,50 @@
       <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;">— Новости —</h2>
       <div id="tag-filters" style="display:flex;gap:.4rem;flex-wrap:wrap;"></div>
     </div>
+    <!-- Event banner (shown if event_active=1) -->
+    <div id="event-banner" style="display:none;"></div>
+
     <div id="featured-wrap" style="display:none;margin-bottom:1.1rem;"></div>
     <div id="news-list" style="display:grid;gap:.75rem;grid-template-columns:1fr;"></div>
     <div id="news-pagination" style="display:flex;justify-content:center;gap:.5rem;margin-top:1.25rem;"></div>
 
-    <!-- ── Info cards (fills empty space below news) ── -->
-    <div class="info-grid">
-      <div class="info-card">
-        <div class="ic-title">⚔ Правила сервера</div>
-        <div class="ic-rule">Уважай других игроков</div>
-        <div class="ic-rule">Запрещены читы и эксплойты</div>
-        <div class="ic-rule">PvE зоны защищены от гриферства</div>
-        <div class="ic-rule">Помогай новичкам — мы команда</div>
+    <!-- ── Rules section ── -->
+    <div class="rules-section">
+      <div class="rules-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="gothic" style="font-size:.68rem;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;">Правила сервера</span>
       </div>
+      <div class="rules-grid">
+        <div class="rule-item">
+          <div class="rule-icon">🤝</div>
+          <div class="rule-text">Уважай других игроков и сохраняй дружескую атмосферу</div>
+        </div>
+        <div class="rule-item">
+          <div class="rule-icon">🚫</div>
+          <div class="rule-text">Запрещены читы, эксплойты и любые программы-читы</div>
+        </div>
+        <div class="rule-item">
+          <div class="rule-icon">🛡</div>
+          <div class="rule-text">PvE зоны защищены — гриферство в них запрещено</div>
+        </div>
+        <div class="rule-item">
+          <div class="rule-icon">⚔</div>
+          <div class="rule-text">PvP только в отведённых зонах и по взаимному согласию</div>
+        </div>
+        <div class="rule-item">
+          <div class="rule-icon">🌱</div>
+          <div class="rule-text">Помогай новичкам — каждый когда-то начинал с нуля</div>
+        </div>
+        <div class="rule-item">
+          <div class="rule-icon">💬</div>
+          <div class="rule-text">Спорные ситуации решай через чат или с администратором</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Info cards ── -->
+    <div class="info-grid">
+      <div style="display:none;"></div>
       <div class="info-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(14,3,7,0.82);border-color:rgba(190,0,35,0.2);">
         <div style="font-size:2rem;line-height:1;margin-bottom:.45rem;filter:drop-shadow(0 0 12px rgba(220,0,40,0.5));">🌕</div>
         <div class="ic-title" style="margin-bottom:.4rem;">Кровавое полнолуние</div>
@@ -1141,6 +1278,26 @@ const API = '/api';
   }
 })();
 
+// ── Hero particles ─────────────────────────────────────────────────────────
+(() => {
+  const hero = document.querySelector('.hero');
+  if (!hero) return;
+  const colors = [
+    'rgba(200,0,42,VAL)', 'rgba(140,0,200,VAL)', 'rgba(220,60,80,VAL)',
+    'rgba(100,0,160,VAL)', 'rgba(180,20,60,VAL)',
+  ];
+  for (let i = 0; i < 22; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const sz   = Math.random() * 3.5 + 1.5;
+    const col  = colors[Math.floor(Math.random() * colors.length)].replace('VAL', (Math.random() * 0.5 + 0.25).toFixed(2));
+    const dur  = Math.random() * 12 + 8;
+    const del  = Math.random() * 10;
+    p.style.cssText = `width:${sz}px;height:${sz}px;left:${Math.random()*100}%;top:-10px;background:${col};box-shadow:0 0 ${sz*2}px ${col};animation-duration:${dur}s;animation-delay:${del}s;`;
+    hero.appendChild(p);
+  }
+})();
+
 // ── Nav ────────────────────────────────────────────────────────────────────
 function getToken() { return localStorage.getItem('token'); }
 function getUser()  { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } }
@@ -1217,6 +1374,9 @@ async function loadLatestNews() {
     dateEl.textContent = fmtDate(n.created_at);
     card.onclick = (e) => { e.preventDefault(); openNews(n.slug); };
     wrap.style.display = '';
+    // Status bar news title
+    const sbNews = document.getElementById('sb-news-title');
+    if (sbNews) sbNews.textContent = n.title;
   } catch {}
 }
 
@@ -1453,6 +1613,11 @@ async function loadStats() {
     if (el24) el24.textContent = fmt(s.uptime_24h);
     if (el7d)  el7d.textContent = fmt(s.uptime_7d);
     if (elpk)  elpk.textContent = s.peak_7d ?? '—';
+    const sbUp = document.getElementById('sb-uptime');
+    if (sbUp && s.uptime_24h !== null) {
+      sbUp.textContent = s.uptime_24h + '%';
+      sbUp.style.color = s.uptime_24h >= 95 ? '#86efac' : s.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
+    }
 
     // colour uptime
     [['stat-uptime24', s.uptime_24h], ['stat-uptime7d', s.uptime_7d]].forEach(([id, v]) => {
@@ -1507,6 +1672,17 @@ async function loadStats() {
 
 // ── Server status change detection ─────────────────────────────────────────
 let _prevOnline1 = null, _prevOnline2 = null;
+window._sb_online1 = 0; window._sb_online2 = 0;
+window._sb_max1 = 0;    window._sb_max2 = 0;
+
+function _updateStatusBarOnline() {
+  const el = document.getElementById('sb-online');
+  if (!el) return;
+  const total = (window._sb_online1 || 0) + (window._sb_online2 || 0);
+  const maxT  = (window._sb_max1 || 0) + (window._sb_max2 || 0);
+  el.textContent = maxT > 0 ? `${total} / ${maxT}` : `${total}`;
+  el.style.color = total > 0 ? '#86efac' : 'var(--muted)';
+}
 
 async function loadStatus() {
   try {
@@ -1517,6 +1693,10 @@ async function loadStatus() {
       <span style="color:var(--text);margin:0 .6rem;font-size:.78rem;font-weight:500;">${esc(d.name)}</span>
       <span style="color:var(--muted);font-size:.75rem;">${d.players} / ${d.max_players} игроков</span>`;
     updateHunters(d.players_list || []);
+    // Update status bar online count
+    window._sb_online1 = d.online ? d.players : 0;
+    window._sb_max1    = d.max_players || 0;
+    _updateStatusBarOnline();
     if (_prevOnline1 !== null && _prevOnline1 !== d.online) {
       d.online
         ? showToast(`${d.name} вернулся онлайн!`, 'success')
@@ -1541,6 +1721,9 @@ async function loadStatus2() {
     section.style.display = 'block';
     // server2 title stays as static "— Сервер 2 —"
     renderServerBlock(d, '2');
+    window._sb_online2 = d.online ? d.players : 0;
+    window._sb_max2    = d.max_players || 0;
+    _updateStatusBarOnline();
     if (_prevOnline2 !== null && _prevOnline2 !== d.online) {
       d.online
         ? showToast(`${d.name} вернулся онлайн!`, 'success')
@@ -1886,6 +2069,42 @@ async function loadSiteSettings() {
         if (typeEl2) typeEl2.textContent = WIPE_TYPE_LABELS[d.wipe_type2 || 'full'] || '';
         updateWipeTimer2();
         setInterval(updateWipeTimer2, 60000);
+      }
+    }
+
+    // Status bar — wipe countdown
+    const sbWipe = document.getElementById('sb-wipe');
+    if (sbWipe && wipeDateStr) {
+      const wipeD = new Date(wipeDateStr);
+      if (!isNaN(wipeD)) {
+        const diff = wipeD - Date.now();
+        if (diff > 0) {
+          const days = Math.floor(diff / 86400000);
+          const hrs  = Math.floor((diff % 86400000) / 3600000);
+          sbWipe.textContent = days > 0 ? `${days}д ${hrs}ч` : `${hrs}ч`;
+        } else { sbWipe.textContent = 'Вайп!'; }
+      }
+    }
+
+    // Event banner
+    if (d.event_active === '1' && d.event_title) {
+      const banner = document.getElementById('event-banner');
+      if (banner) {
+        const colorMap = {
+          crimson: { bg:'rgba(120,0,20,0.25)', border:'rgba(200,0,40,0.4)', top:'rgba(200,0,40,0.6)', text:'#f0c0c8', icon:'🩸' },
+          purple:  { bg:'rgba(60,0,120,0.25)', border:'rgba(130,0,220,0.4)', top:'rgba(130,0,220,0.6)', text:'#d8b8f8', icon:'🌙' },
+          gold:    { bg:'rgba(80,50,0,0.25)',  border:'rgba(200,155,0,0.4)', top:'rgba(200,155,0,0.6)', text:'#f8dca0', icon:'⚔' },
+        };
+        const c = colorMap[d.event_color] || colorMap.crimson;
+        banner.style.display = '';
+        banner.innerHTML = `<div class="event-banner" style="background:${c.bg};border-color:${c.border};">
+          <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,${c.top},transparent);"></div>
+          <div class="event-banner-icon">${c.icon}</div>
+          <div class="event-banner-body">
+            <div class="event-banner-title" style="color:${c.text};">${esc(d.event_title)}</div>
+            ${d.event_text ? `<div class="event-banner-text">${esc(d.event_text)}</div>` : ''}
+          </div>
+        </div>`;
       }
     }
   } catch {}
