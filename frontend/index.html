@@ -610,7 +610,7 @@
       </a>
       <a href="#news-section" class="nav-link-item" onclick="document.getElementById('news-section').scrollIntoView({behavior:'smooth'});return false;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        <span>Летопись</span>
+        <span>Новости</span>
       </a>
       <a id="nav-profile-link" href="/profile.html" class="nav-link-item hidden">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -647,7 +647,7 @@
   <!-- ── CENTER: News ── -->
   <main id="news-section" style="flex:1;min-width:0;min-height:55vh;">
     <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1.1rem;">
-      <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;">— Летопись —</h2>
+      <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;">— Новости —</h2>
       <div id="tag-filters" style="display:flex;gap:.4rem;flex-wrap:wrap;"></div>
     </div>
     <div id="featured-wrap" style="display:none;margin-bottom:1.1rem;"></div>
@@ -689,7 +689,10 @@
 
     <!-- Server 2 (shown only when enabled) -->
     <div id="server2-section" style="display:none;">
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:1rem 0;"></div>
+      <div style="position:relative;text-align:center;margin:1.25rem 0;">
+        <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.55),transparent);position:absolute;top:50%;left:0;right:0;"></div>
+        <span class="gothic" style="position:relative;background:var(--panel);padding:0 .65rem;font-size:.6rem;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;">Сервер 2</span>
+      </div>
       <div id="left-status2" style="margin-bottom:1rem;"></div>
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
       <div id="left-circles2" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;text-align:center;"></div>
@@ -734,7 +737,7 @@
         Steam
       </a>
     </div>
-    <span style="font-size:.68rem;color:var(--muted);">© 2026 Just-Skill.Ru</span>
+    <span id="footer-copy" style="font-size:.68rem;color:var(--muted);">© 2026 Just-Skill.Ru · <span id="footer-version" style="opacity:.7;">Версия: —</span></span>
   </div>
 </footer>
 
@@ -1062,8 +1065,7 @@ async function loadFeatured() {
         <div class="featured-body">
           <div class="featured-badge">★ Главное</div>
           <h2 class="gothic" style="font-size:1.3rem;font-weight:700;color:#d4c4e0;line-height:1.3;margin-bottom:.5rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.title)}</h2>
-          <p style="font-size:.82rem;color:rgba(200,190,215,0.78);line-height:1.55;margin-bottom:.85rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.summary)}</p>
-          <div style="display:flex;align-items:center;gap:.5rem;">
+          <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.85rem;">
             ${avatarEl}
             <div style="display:flex;flex-direction:column;gap:.12rem;">
               <div style="display:flex;align-items:center;gap:.35rem;">
@@ -1130,8 +1132,7 @@ async function loadNews(page = 1) {
       ${thumbImg}
       <div style="padding:.75rem 1rem;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;">
         <div style="display:flex;align-items:center;gap:.55rem;margin-bottom:.5rem;">${authorAvatar}<div style="display:flex;flex-direction:column;gap:.2rem;"><div style="display:flex;align-items:center;gap:.35rem;"><span style="font-size:.82rem;color:#d4c4e0;font-weight:600;">${authorName}</span>${adminBadge}</div><span style="font-size:.63rem;color:var(--muted);">${fmtDate(n.created_at)}</span></div></div>
-        <h3 class="gothic" style="font-size:1rem;font-weight:600;color:#d4c4e0;line-height:1.35;margin-bottom:.35rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.title)}</h3>
-        <p style="font-size:.78rem;color:var(--muted);line-height:1.5;margin-bottom:.4rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.summary)}</p>
+        <h3 class="gothic" style="font-size:1rem;font-weight:600;color:#d4c4e0;line-height:1.35;margin-bottom:.45rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.title)}</h3>
         ${tagsHtml ? `<div style="margin-top:.1rem;">${tagsHtml}</div>` : ''}
       </div>
     </div>`;
@@ -1240,6 +1241,14 @@ async function loadSiteSettings() {
   } catch {}
 }
 
+async function loadVersion() {
+  try {
+    const d = await fetch(`${API}/version`).then(r => r.json());
+    const el = document.getElementById('footer-version');
+    if (el) el.textContent = `Версия: ${d.version || 'dev'}`;
+  } catch {}
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────
 // Stagger panel entrance animations
 document.querySelectorAll('.g-panel').forEach((p, i) => {
@@ -1247,6 +1256,7 @@ document.querySelectorAll('.g-panel').forEach((p, i) => {
 });
 
 loadSiteSettings();
+loadVersion();
 loadStatus();
 loadStatus2();
 loadHistory();

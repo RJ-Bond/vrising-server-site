@@ -118,6 +118,16 @@ app.add_middleware(
 )
 
 
+# ─── Version ────────────────────────────────────────────────────────────────
+
+@app.get("/api/version")
+async def get_version():
+    version_file = Path("/app/VERSION")
+    if version_file.exists():
+        return {"version": version_file.read_text().strip()}
+    return {"version": None}
+
+
 # ─── Setup ──────────────────────────────────────────────────────────────────
 
 @app.get("/api/setup/status")

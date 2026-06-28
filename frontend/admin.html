@@ -158,6 +158,24 @@
       background: rgba(150,0,28,0.18) !important;
     }
     .ql-snow .ql-formats { margin-right: .75rem !important; }
+
+    /* ── Settings redesign ── */
+    .s-row { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
+    .s-card { background:var(--card); border:1px solid var(--border); border-radius:1rem; padding:1.5rem; box-shadow:0 0 30px rgba(0,0,0,.5),inset 0 0 20px rgba(80,0,120,.03); }
+    .s-card-head { display:flex; align-items:flex-start; gap:.75rem; padding-bottom:1.2rem; margin-bottom:1.2rem; border-bottom:1px solid rgba(150,0,28,.2); }
+    .s-icon { width:2.2rem; height:2.2rem; border-radius:.5rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .s-card-head h2 { font-family:'Cinzel',serif; font-size:.8rem; letter-spacing:.12em; color:var(--gold); text-transform:uppercase; margin:0; line-height:1.4; }
+    .s-field { margin-bottom:1.1rem; }
+    .s-field:last-child { margin-bottom:0; }
+    .s-field-row { display:flex; gap:.5rem; margin-top:.3rem; }
+    .s-desc { font-size:.7rem; color:var(--muted); margin-top:.35rem; line-height:1.45; }
+    .s-save-btn { background:rgba(100,0,20,.3); border:1px solid rgba(150,0,28,.4); color:var(--text); border-radius:.45rem; padding:.55rem .9rem; font-size:.78rem; font-weight:600; cursor:pointer; white-space:nowrap; transition:all .2s; flex-shrink:0; font-family:'Inter',sans-serif; }
+    .s-save-btn:hover { background:rgba(140,0,28,.4); border-color:var(--accent); box-shadow:0 0 10px rgba(181,0,42,.2); }
+    .s-status-badge { padding:.2rem .55rem; border-radius:9999px; font-size:.62rem; font-weight:700; letter-spacing:.06em; }
+    .s-status-http { background:rgba(60,60,60,.3); border:1px solid rgba(100,100,100,.35); color:var(--muted); }
+    .s-status-https { background:rgba(0,70,15,.3); border:1px solid rgba(0,160,35,.4); color:#86efac; }
+    .https-cmd { background:rgba(0,0,0,.55); border:1px solid rgba(0,100,40,.3); border-radius:.5rem; padding:.7rem 1rem; font-family:'Courier New',monospace; font-size:.8rem; color:#86efac; word-break:break-all; line-height:1.55; user-select:all; margin-top:.4rem; }
+    @media(max-width:960px) { .s-row { grid-template-columns:1fr; } }
   </style>
 </head>
 <body>
@@ -265,127 +283,211 @@
 
     <!-- SETTINGS -->
     <div id="section-settings" class="hidden">
-      <h1 class="section-title mb-6">Настройки сайта</h1>
 
-      <div class="glass-card rounded-xl p-6 mb-5" style="max-width:38rem;">
-        <h2 class="gothic" style="font-size:.8rem;letter-spacing:.15em;color:var(--gold);margin-bottom:1.5rem;text-transform:uppercase;">— Подключение к серверу —</h2>
-        <div class="space-y-5">
-          <div>
-            <label>IP адрес сервера</label>
-            <div style="display:flex;gap:.5rem;">
-              <input id="setting-server_ip" type="text" class="dark-input" placeholder="127.0.0.1" style="flex:1;" />
-              <button onclick="saveSetting('server_ip')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
-            </div>
-            <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">IP-адрес V Rising сервера для отображения статуса на главной</p>
-          </div>
-          <div>
-            <label>Порт запроса статуса (UDP)</label>
-            <div style="display:flex;gap:.5rem;">
-              <input id="setting-server_port" type="number" min="1" max="65535" class="dark-input" placeholder="27016" style="flex:1;" />
-              <button onclick="saveSetting('server_port')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
-            </div>
-            <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">Обычно GamePort + 1 (если игровой порт 27015 → ставь 27016)</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="glass-card rounded-xl p-6" style="max-width:38rem;">
-        <h2 class="gothic" style="font-size:.8rem;letter-spacing:.15em;color:var(--gold);margin-bottom:1.5rem;text-transform:uppercase;">— Отображение —</h2>
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.75rem;">
         <div>
-          <label>Отображаемое название сервера</label>
-          <div style="display:flex;gap:.5rem;">
-            <input id="setting-server_name" type="text" class="dark-input" placeholder="[RU] My Server | PvE" style="flex:1;" />
-            <button onclick="saveSetting('server_name')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
-          </div>
-          <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">Заполните — всегда показывается это. Пустое — берётся из игры (A2S)</p>
+          <h1 class="section-title" style="margin-bottom:.3rem;">Настройки</h1>
+          <p style="font-size:.78rem;color:var(--muted);">Управление серверами, оформлением и безопасностью</p>
+        </div>
+        <div id="settings-saved" style="display:none;align-items:center;gap:.45rem;padding:.4rem .95rem;background:rgba(0,70,15,.25);border:1px solid rgba(0,160,35,.4);color:#86efac;border-radius:9999px;font-size:.78rem;font-weight:600;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          Сохранено
         </div>
       </div>
 
-      <div class="glass-card rounded-xl p-6 mb-5 mt-5" style="max-width:38rem;">
-        <h2 class="gothic" style="font-size:.8rem;letter-spacing:.15em;color:var(--gold);margin-bottom:1.5rem;text-transform:uppercase;">— Второй сервер (опционально) —</h2>
-        <div class="space-y-5">
-          <div>
-            <label>Название второго сервера</label>
-            <div style="display:flex;gap:.5rem;">
-              <input id="setting-server2_name" type="text" class="dark-input" placeholder="Server 2" style="flex:1;" />
-              <button onclick="saveSetting('server2_name')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
+      <!-- Row 1: Servers -->
+      <div class="s-row" style="margin-bottom:1.25rem;">
+
+        <!-- Server 1 -->
+        <div class="s-card">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(150,0,28,.18);border:1px solid rgba(180,0,40,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e05575" stroke-width="1.8"><rect x="2" y="3" width="20" height="5" rx="1.5"/><rect x="2" y="10" width="20" height="5" rx="1.5"/><rect x="2" y="17" width="20" height="5" rx="1.5"/><circle cx="17.5" cy="5.5" r="1" fill="#e05575"/><circle cx="17.5" cy="12.5" r="1" fill="#e05575"/><circle cx="17.5" cy="19.5" r="1" fill="#e05575"/></svg>
+            </div>
+            <div>
+              <h2>Сервер 1</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Основной игровой сервер</p>
             </div>
           </div>
-          <div>
-            <label>IP адрес второго сервера</label>
-            <div style="display:flex;gap:.5rem;">
-              <input id="setting-server2_ip" type="text" class="dark-input" placeholder="Оставьте пустым — сервер не отображается" style="flex:1;" />
-              <button onclick="saveSetting('server2_ip')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
+          <div class="s-field">
+            <label>IP адрес</label>
+            <div class="s-field-row">
+              <input id="setting-server_ip" type="text" class="dark-input" placeholder="127.0.0.1">
+              <button class="s-save-btn" onclick="saveSetting('server_ip')">Сохранить</button>
             </div>
-            <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">Пустое поле — блок второго сервера скрыт на сайте</p>
+            <p class="s-desc">IP-адрес для мониторинга статуса на главной странице</p>
           </div>
-          <div>
-            <label>Порт второго сервера (UDP)</label>
-            <div style="display:flex;gap:.5rem;">
-              <input id="setting-server2_port" type="number" min="1" max="65535" class="dark-input" placeholder="27016" style="flex:1;" />
-              <button onclick="saveSetting('server2_port')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
+          <div class="s-field">
+            <label>Query-порт (UDP)</label>
+            <div class="s-field-row">
+              <input id="setting-server_port" type="number" min="1" max="65535" class="dark-input" placeholder="27016">
+              <button class="s-save-btn" onclick="saveSetting('server_port')">Сохранить</button>
             </div>
+            <p class="s-desc">Обычно GamePort + 1 (игровой 27015 → query 27016)</p>
+          </div>
+          <div class="s-field">
+            <label>Отображаемое название</label>
+            <div class="s-field-row">
+              <input id="setting-server_name" type="text" class="dark-input" placeholder="[RU] My Server | PvE">
+              <button class="s-save-btn" onclick="saveSetting('server_name')">Сохранить</button>
+            </div>
+            <p class="s-desc">Пустое — берётся из игры (A2S)</p>
           </div>
         </div>
+
+        <!-- Server 2 -->
+        <div class="s-card">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(80,0,160,.18);border:1px solid rgba(110,0,200,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9955ee" stroke-width="1.8"><rect x="2" y="3" width="20" height="5" rx="1.5"/><rect x="2" y="10" width="20" height="5" rx="1.5"/><rect x="2" y="17" width="20" height="5" rx="1.5"/><circle cx="17.5" cy="5.5" r="1" fill="#9955ee"/><circle cx="17.5" cy="12.5" r="1" fill="#9955ee"/><circle cx="17.5" cy="19.5" r="1" fill="#9955ee"/></svg>
+            </div>
+            <div>
+              <h2>Сервер 2</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Опциональный второй сервер</p>
+            </div>
+          </div>
+          <div class="s-field">
+            <label>Название</label>
+            <div class="s-field-row">
+              <input id="setting-server2_name" type="text" class="dark-input" placeholder="Server 2">
+              <button class="s-save-btn" onclick="saveSetting('server2_name')">Сохранить</button>
+            </div>
+          </div>
+          <div class="s-field">
+            <label>IP адрес</label>
+            <div class="s-field-row">
+              <input id="setting-server2_ip" type="text" class="dark-input" placeholder="Пустое — блок скрыт на сайте">
+              <button class="s-save-btn" onclick="saveSetting('server2_ip')">Сохранить</button>
+            </div>
+            <p class="s-desc">Оставьте пустым — блок второго сервера скрыт на главной</p>
+          </div>
+          <div class="s-field">
+            <label>Query-порт (UDP)</label>
+            <div class="s-field-row">
+              <input id="setting-server2_port" type="number" min="1" max="65535" class="dark-input" placeholder="27016">
+              <button class="s-save-btn" onclick="saveSetting('server2_port')">Сохранить</button>
+            </div>
+            <p class="s-desc">Обычно GamePort + 1 (27015 → 27016)</p>
+          </div>
+        </div>
+
       </div>
 
-      <div class="glass-card rounded-xl p-6 mb-5" style="max-width:38rem;">
-        <h2 class="gothic" style="font-size:.8rem;letter-spacing:.15em;color:var(--gold);margin-bottom:1.5rem;text-transform:uppercase;">— Внешний вид —</h2>
-        <div class="space-y-5">
-          <div>
+      <!-- Row 2: Appearance + HTTPS -->
+      <div class="s-row">
+
+        <!-- Appearance -->
+        <div class="s-card">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(150,100,0,.18);border:1px solid rgba(200,150,0,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9a04a" stroke-width="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/><circle cx="7.5" cy="10.5" r=".5" fill="#c9a04a"/><circle cx="12" cy="7.5" r=".5" fill="#c9a04a"/><circle cx="16.5" cy="10.5" r=".5" fill="#c9a04a"/></svg>
+            </div>
+            <div>
+              <h2>Внешний вид</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Оформление и брендинг сайта</p>
+            </div>
+          </div>
+
+          <div class="s-field">
             <label>Название сайта</label>
-            <div style="display:flex;gap:.5rem;">
-              <input id="setting-site_title" type="text" class="dark-input" placeholder="V RISING" style="flex:1;" />
-              <button onclick="saveSetting('site_title')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
+            <div class="s-field-row">
+              <input id="setting-site_title" type="text" class="dark-input" placeholder="V RISING">
+              <button class="s-save-btn" onclick="saveSetting('site_title')">Сохранить</button>
             </div>
-          </div>
-          <div>
-            <label>Логотип сайта</label>
-            <div style="display:flex;gap:.5rem;margin-bottom:.5rem;">
-              <input id="setting-site_logo_url" type="text" class="dark-input" placeholder="https://example.com/logo.png или загрузите файл ниже" style="flex:1;" oninput="previewLogo(this.value)" />
-              <button onclick="saveSetting('site_logo_url')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
-            </div>
-            <div style="display:flex;align-items:center;gap:.75rem;">
-              <label for="logo-file-input" style="display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem .9rem;border-radius:.5rem;border:1px solid rgba(120,0,24,0.4);background:rgba(8,0,16,0.8);color:var(--muted);font-size:.8rem;transition:border-color .2s,color .2s;margin:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,0.4)';this.style.color='var(--muted)'">
-                📁 Загрузить с компьютера
-              </label>
-              <input id="logo-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/svg+xml,image/webp,image/x-icon" style="display:none;" onchange="uploadLogoFile(this)" />
-              <span id="logo-upload-status" style="font-size:.78rem;color:var(--muted);"></span>
-            </div>
-            <div id="logo-preview" style="margin-top:.75rem;display:none;">
-              <img id="logo-preview-img" src="" alt="Logo preview" style="max-height:3rem;max-width:14rem;object-fit:contain;border-radius:.4rem;border:1px solid rgba(150,0,28,0.3);padding:.3rem .6rem;background:rgba(8,0,16,0.6);" />
-            </div>
-          </div>
-          <div>
-            <label>Фоновое изображение</label>
-            <div style="display:flex;gap:.5rem;margin-bottom:.5rem;">
-              <input id="setting-bg_image_url" type="text" class="dark-input" placeholder="https://example.com/bg.jpg или загрузите файл ниже" style="flex:1;" />
-              <button onclick="saveSetting('bg_image_url')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
-            </div>
-            <div style="display:flex;align-items:center;gap:.75rem;">
-              <label for="bg-file-input" style="display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem .9rem;border-radius:.5rem;border:1px solid rgba(120,0,24,0.4);background:rgba(8,0,16,0.8);color:var(--muted);font-size:.8rem;transition:border-color .2s,color .2s;margin:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,0.4)';this.style.color='var(--muted)'">
-                📁 Загрузить с компьютера
-              </label>
-              <input id="bg-file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none;" onchange="uploadBgFile(this)" />
-              <span id="bg-upload-status" style="font-size:.78rem;color:var(--muted);"></span>
-            </div>
-            <p style="font-size:.72rem;color:var(--muted);margin-top:.5rem;">JPG/PNG/WEBP — накрывается тёмным оверлеем, сохраняя читаемость текста. Оставьте пустым — стандартный фон</p>
           </div>
 
-          <div>
-            <label style="display:flex;align-items:center;gap:.5rem;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.01.043.027.056a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+          <div class="s-field">
+            <label>Логотип сайта</label>
+            <div class="s-field-row" style="margin-bottom:.5rem;">
+              <input id="setting-site_logo_url" type="text" class="dark-input" placeholder="https://example.com/logo.png" oninput="previewLogo(this.value)">
+              <button class="s-save-btn" onclick="saveSetting('site_logo_url')">Сохранить</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:.6rem;">
+              <label for="logo-file-input" style="display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;padding:.4rem .8rem;border-radius:.4rem;border:1px solid rgba(120,0,24,.4);background:rgba(8,0,16,.8);color:var(--muted);font-size:.76rem;transition:border-color .2s,color .2s;margin:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,.4)';this.style.color='var(--muted)'">📁 Загрузить</label>
+              <input id="logo-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/svg+xml,image/webp,image/x-icon" style="display:none;" onchange="uploadLogoFile(this)">
+              <span id="logo-upload-status" style="font-size:.76rem;color:var(--muted);"></span>
+            </div>
+            <div id="logo-preview" style="margin-top:.6rem;display:none;">
+              <img id="logo-preview-img" src="" alt="Logo" style="max-height:2.5rem;max-width:12rem;object-fit:contain;border-radius:.4rem;border:1px solid rgba(150,0,28,.3);padding:.3rem .6rem;background:rgba(8,0,16,.6);">
+            </div>
+          </div>
+
+          <div class="s-field">
+            <label>Фоновое изображение</label>
+            <div class="s-field-row" style="margin-bottom:.5rem;">
+              <input id="setting-bg_image_url" type="text" class="dark-input" placeholder="https://example.com/bg.jpg">
+              <button class="s-save-btn" onclick="saveSetting('bg_image_url')">Сохранить</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:.6rem;">
+              <label for="bg-file-input" style="display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;padding:.4rem .8rem;border-radius:.4rem;border:1px solid rgba(120,0,24,.4);background:rgba(8,0,16,.8);color:var(--muted);font-size:.76rem;transition:border-color .2s,color .2s;margin:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,.4)';this.style.color='var(--muted)'">📁 Загрузить</label>
+              <input id="bg-file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none;" onchange="uploadBgFile(this)">
+              <span id="bg-upload-status" style="font-size:.76rem;color:var(--muted);"></span>
+            </div>
+            <p class="s-desc">JPG/PNG/WEBP — накрывается тёмным оверлеем. Оставьте пустым — стандартный фон</p>
+          </div>
+
+          <div class="s-field">
+            <label style="display:flex;align-items:center;gap:.4rem;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.01.043.027.056a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
               Ссылка на Discord
             </label>
-            <div style="display:flex;gap:.5rem;">
-              <input id="setting-discord_url" type="url" class="dark-input" placeholder="https://discord.gg/invite" style="flex:1;" />
-              <button onclick="saveSetting('discord_url')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
+            <div class="s-field-row">
+              <input id="setting-discord_url" type="url" class="dark-input" placeholder="https://discord.gg/invite">
+              <button class="s-save-btn" onclick="saveSetting('discord_url')">Сохранить</button>
             </div>
           </div>
         </div>
+
+        <!-- HTTPS / SSL -->
+        <div class="s-card">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(0,80,30,.18);border:1px solid rgba(0,150,60,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div style="flex:1;">
+              <div style="display:flex;align-items:center;gap:.55rem;">
+                <h2>HTTPS / SSL</h2>
+                <span id="https-badge" class="s-status-badge s-status-http">HTTP</span>
+              </div>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Let's Encrypt — бесплатный TLS сертификат</p>
+            </div>
+          </div>
+
+          <div class="s-field">
+            <label>Домен</label>
+            <div class="s-field-row">
+              <input id="setting-https_domain" type="text" class="dark-input" placeholder="vrising.example.com" oninput="updateHttpsCmd()">
+              <button class="s-save-btn" onclick="saveSetting('https_domain');updateHttpsCmd()">Сохранить</button>
+            </div>
+            <p class="s-desc">A-запись домена должна указывать на IP этого сервера</p>
+          </div>
+
+          <div class="s-field">
+            <label>Email для уведомлений</label>
+            <div class="s-field-row">
+              <input id="setting-https_email" type="email" class="dark-input" placeholder="admin@example.com" oninput="updateHttpsCmd()">
+              <button class="s-save-btn" onclick="saveSetting('https_email');updateHttpsCmd()">Сохранить</button>
+            </div>
+            <p class="s-desc">Let's Encrypt отправит уведомление при истечении сертификата</p>
+          </div>
+
+          <div class="s-field">
+            <label>Команда активации</label>
+            <div class="https-cmd" id="https-cmd-display">sudo bash /opt/vrising-site/enable-https.sh <span id="https-cmd-args" style="opacity:.38;">ваш-домен.ru admin@example.com</span></div>
+            <button onclick="copyHttpsCmd()" id="copy-https-btn" style="margin-top:.55rem;display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .9rem;background:rgba(0,80,30,.18);border:1px solid rgba(0,150,60,.35);color:#4ade80;border-radius:.45rem;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s;" onmouseover="this.style.background='rgba(0,100,40,.28)'" onmouseout="this.style.background='rgba(0,80,30,.18)'">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              <span id="copy-https-label">Скопировать</span>
+            </button>
+          </div>
+
+          <div style="background:rgba(120,80,0,.12);border:1px solid rgba(200,150,0,.2);border-radius:.6rem;padding:.7rem .9rem;">
+            <p style="font-size:.73rem;color:rgba(200,165,70,.85);line-height:1.6;"><strong style="color:#c9a04a;">Инструкция:</strong> Укажите домен и email, скопируйте команду и выполните её в SSH на сервере от имени root. Certbot получит сертификат и настроит автообновление.</p>
+          </div>
+        </div>
+
       </div>
 
-      <p id="settings-msg" class="success-box hidden mt-4" style="max-width:38rem;">✔ Сохранено!</p>
     </div>
 
     <!-- USERS -->
@@ -583,8 +685,8 @@ async function submitEditor() {
   const thumb   = document.getElementById('editor-news-thumb').value.trim();
   const tags    = document.getElementById('editor-news-tags').value.trim();
 
-  if (!title || !summary) {
-    errEl.textContent = 'Заголовок и краткое описание обязательны';
+  if (!title) {
+    errEl.textContent = 'Заполните заголовок новости';
     errEl.classList.remove('hidden');
     btn.disabled = false; btn.textContent = 'Сохранить'; return;
   }
@@ -612,11 +714,16 @@ async function loadSettings() {
   const settings = await res.json();
   const map = {};
   settings.forEach(s => { map[s.key] = s.value; });
-  ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_logo_url','discord_url','bg_image_url'].forEach(key => {
+  ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_logo_url','discord_url','bg_image_url','https_domain','https_email'].forEach(key => {
     const el = document.getElementById(`setting-${key}`);
     if (el && map[key] !== undefined) el.value = map[key];
   });
   if (map['site_logo_url']) previewLogo(map['site_logo_url']);
+  updateHttpsCmd();
+  const badge = document.getElementById('https-badge');
+  if (badge && map['https_domain']?.trim()) {
+    badge.textContent = 'HTTPS'; badge.className = 's-status-badge s-status-https';
+  }
 }
 
 function previewLogo(url) {
@@ -665,14 +772,17 @@ async function uploadBgFile(input) {
 }
 
 async function saveSetting(key) {
-  const value = document.getElementById(`setting-${key}`).value;
+  const value = document.getElementById(`setting-${key}`)?.value ?? '';
   const res = await fetch(`${API}/admin/settings/${key}`, {
     method: 'PUT', headers: authH(), body: JSON.stringify({ value }),
   });
   if (res.ok) {
-    const msg = document.getElementById('settings-msg');
-    msg.classList.remove('hidden');
-    setTimeout(() => msg.classList.add('hidden'), 2000);
+    const badge = document.getElementById('settings-saved');
+    if (badge) { badge.style.display = 'inline-flex'; setTimeout(() => { badge.style.display = 'none'; }, 2500); }
+    if (key === 'https_domain') {
+      const hb = document.getElementById('https-badge');
+      if (hb) { hb.textContent = value.trim() ? 'HTTPS' : 'HTTP'; hb.className = 's-status-badge ' + (value.trim() ? 's-status-https' : 's-status-http'); }
+    }
   } else alert('Ошибка сохранения');
 }
 
@@ -726,6 +836,33 @@ async function toggleActive(userId) {
 
 function handleAuth(res) {
   if (res.status === 401 || res.status === 403) logout();
+}
+
+// ─── HTTPS helpers ────────────────────────────────────────────────────────
+function updateHttpsCmd() {
+  const domain = (document.getElementById('setting-https_domain')?.value || '').trim();
+  const email  = (document.getElementById('setting-https_email')?.value  || '').trim();
+  const argsEl = document.getElementById('https-cmd-args');
+  if (!argsEl) return;
+  if (domain && email) {
+    argsEl.textContent = `${domain} ${email}`;
+    argsEl.style.opacity = '1';
+  } else {
+    argsEl.textContent = `${domain || 'ваш-домен.ru'} ${email || 'admin@example.com'}`;
+    argsEl.style.opacity = '.38';
+  }
+}
+
+async function copyHttpsCmd() {
+  const domain = (document.getElementById('setting-https_domain')?.value || '').trim();
+  const email  = (document.getElementById('setting-https_email')?.value  || '').trim();
+  if (!domain || !email) { alert('Заполните домен и email перед копированием'); return; }
+  const cmd = `sudo bash /opt/vrising-site/enable-https.sh ${domain} ${email}`;
+  try {
+    await navigator.clipboard.writeText(cmd);
+    const lbl = document.getElementById('copy-https-label');
+    if (lbl) { lbl.textContent = 'Скопировано!'; setTimeout(() => { lbl.textContent = 'Скопировать'; }, 2000); }
+  } catch { alert('Не удалось скопировать: ' + cmd); }
 }
 
 loadAdminNews(1);

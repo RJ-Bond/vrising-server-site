@@ -50,7 +50,7 @@ class TokenOut(BaseModel):
 
 class NewsCreate(BaseModel):
     title: str
-    summary: str
+    summary: str = ''
     content: str
     thumbnail_url: Optional[str] = None
     tags: Optional[str] = None

@@ -63,10 +63,15 @@ fi
 copy_project_files() {
   mkdir -p "$INSTALL_DIR"/{backend,frontend,nginx}
 
-  for f in docker-compose.yml Dockerfile requirements.txt; do
+  # Записываем текущий git-хеш в VERSION
+  _ver=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "dev")
+  echo "$_ver" > "$SCRIPT_DIR/VERSION"
+
+  for f in docker-compose.yml Dockerfile requirements.txt VERSION enable-https.sh; do
     [[ -f "$SCRIPT_DIR/$f" ]] || die "Файл не найден: $SCRIPT_DIR/$f"
     cp "$SCRIPT_DIR/$f" "$INSTALL_DIR/$f"
   done
+  chmod +x "$INSTALL_DIR/enable-https.sh"
 
   for f in main.py models.py database.py auth.py monitor.py schemas.py __init__.py; do
     [[ -f "$SCRIPT_DIR/backend/$f" ]] || die "Файл не найден: $SCRIPT_DIR/backend/$f"
@@ -80,6 +85,7 @@ copy_project_files() {
 
   [[ -f "$SCRIPT_DIR/nginx/nginx.conf" ]] || die "Файл не найден: $SCRIPT_DIR/nginx/nginx.conf"
   cp "$SCRIPT_DIR/nginx/nginx.conf" "$INSTALL_DIR/nginx/nginx.conf"
+  [[ -f "$SCRIPT_DIR/nginx/nginx-ssl.conf" ]] && cp "$SCRIPT_DIR/nginx/nginx-ssl.conf" "$INSTALL_DIR/nginx/nginx-ssl.conf"
 
   ok "Файлы проекта скопированы."
 }
