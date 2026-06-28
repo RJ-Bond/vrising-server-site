@@ -720,6 +720,20 @@ function handleAuth(res) {
 }
 
 loadAdminNews(1);
+
+// ── Deep-link: /admin.html?edit=slug ──────────────────────────────────────
+(async () => {
+  const slug = new URLSearchParams(window.location.search).get('edit');
+  if (!slug) return;
+  try {
+    const res = await fetch(`${API}/news/${slug}`);
+    if (!res.ok) return;
+    const news = await res.json();
+    openEditor(news);
+    // clean URL so refreshing doesn't re-open editor
+    history.replaceState(null, '', '/admin.html');
+  } catch {}
+})();
 </script>
 </body>
 </html>
