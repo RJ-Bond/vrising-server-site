@@ -100,3 +100,12 @@ class Setting(Base):
     key = Column(String(64), unique=True, nullable=False, index=True)
     value = Column(String(512), nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+    id = Column(Integer, primary_key=True, index=True)
+    admin_username = Column(String(64), nullable=False)
+    action = Column(String(128), nullable=False)
+    detail = Column(String(512), nullable=True, default="")
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

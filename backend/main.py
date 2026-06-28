@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, text
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog
 from .auth import (
     verify_password,
     get_password_hash,
@@ -63,6 +63,10 @@ def slugify(text: str) -> str:
     text = re.sub(r"[\s_-]+", "-", text)
     text = re.sub(r"^-+|-+$", "", text)
     return text[:200]
+
+
+async def log_audit(db: AsyncSession, admin: User, action: str, detail: str = "") -> None:
+    db.add(AuditLog(admin_username=admin.username, action=action, detail=detail[:512]))
 
 
 async def _seed_defaults(db: AsyncSession):
@@ -726,6 +730,7 @@ async def create_news(
         published=body.published,
     )
     db.add(news)
+    await log_audit(db, current_user, "news.create", news.title)
     await db.commit()
     await db.refresh(news)
     result = await db.execute(select(News).where(News.id == news.id))
@@ -737,7 +742,7 @@ async def update_news(
     news_id: int,
     body: NewsUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_admin_user),
+    admin_u: User = Depends(get_admin_user),
 ):
     result = await db.execute(select(News).where(News.id == news_id))
     news = result.scalar_one_or_none()
@@ -756,6 +761,7 @@ async def update_news(
     if body.published is not None:
         news.published = body.published
     news.updated_at = datetime.utcnow()
+    await log_audit(db, admin_u, "news.update", news.title)
     await db.commit()
     await db.refresh(news)
     result2 = await db.execute(select(News).where(News.id == news.id))
@@ -766,13 +772,14 @@ async def update_news(
 async def delete_news(
     news_id: int,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_admin_user),
+    admin_u: User = Depends(get_admin_user),
 ):
     result = await db.execute(select(News).where(News.id == news_id))
     news = result.scalar_one_or_none()
     if news is None:
         raise HTTPException(status_code=404, detail="News not found")
     await db.delete(news)
+    await log_audit(db, admin_u, "news.delete", str(news_id))
     await db.commit()
 
 
@@ -870,6 +877,7 @@ async def change_role(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     user.role = role
+    await log_audit(db, current_user, "user.role", f"{user.username} → {role}")
     await db.commit()
     return {"ok": True}
 
@@ -887,6 +895,7 @@ async def toggle_active(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     user.is_active = not user.is_active
+    await log_audit(db, current_user, "user.toggle", user.username)
     await db.commit()
     return {"ok": True, "is_active": user.is_active}
 
@@ -904,6 +913,7 @@ async def delete_user(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     await db.delete(user)
+    await log_audit(db, current_user, "user.delete", user.username)
     await db.commit()
 
 
@@ -1081,3 +1091,138 @@ async def site_update(_: User = Depends(get_admin_user)):
 
     return StreamingResponse(stream(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+# ─── Dashboard stats ─────────────────────────────────────────────────────────
+
+@app.get("/api/admin/stats")
+async def admin_stats(
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    user_count    = (await db.execute(select(func.count(User.id)))).scalar_one()
+    news_count    = (await db.execute(select(func.count(News.id)))).scalar_one()
+    comment_count = (await db.execute(select(func.count(Comment.id)))).scalar_one()
+    file_count    = sum(1 for f in UPLOAD_DIR.iterdir() if f.is_file())
+    recent_comments = (await db.execute(
+        select(Comment, News.title.label("ntitle"), News.slug.label("nslug"),
+               User.username.label("uname"))
+        .join(News, Comment.news_id == News.id)
+        .outerjoin(User, Comment.author_id == User.id)
+        .order_by(Comment.created_at.desc()).limit(5)
+    )).all()
+    return {
+        "user_count": user_count, "news_count": news_count,
+        "comment_count": comment_count, "file_count": file_count,
+        "recent_comments": [
+            {"id": r.Comment.id, "content": r.Comment.content[:120],
+             "news_title": r.ntitle, "news_slug": r.nslug,
+             "author": r.uname or "Аноним",
+             "created_at": r.Comment.created_at.isoformat()}
+            for r in recent_comments
+        ],
+    }
+
+
+# ─── Comments moderation ─────────────────────────────────────────────────────
+
+@app.get("/api/admin/comments")
+async def list_all_comments(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    total = (await db.execute(select(func.count(Comment.id)))).scalar_one()
+    rows = (await db.execute(
+        select(Comment, News.title.label("ntitle"), News.slug.label("nslug"),
+               User.username.label("uname"))
+        .join(News, Comment.news_id == News.id)
+        .outerjoin(User, Comment.author_id == User.id)
+        .order_by(Comment.created_at.desc())
+        .offset((page - 1) * per_page).limit(per_page)
+    )).all()
+    return {
+        "total": total,
+        "items": [
+            {"id": r.Comment.id, "content": r.Comment.content,
+             "news_title": r.ntitle, "news_slug": r.nslug,
+             "author": r.uname or "Аноним",
+             "created_at": r.Comment.created_at.isoformat()}
+            for r in rows
+        ],
+    }
+
+
+# ─── File manager ────────────────────────────────────────────────────────────
+
+@app.get("/api/admin/uploads")
+async def list_uploads(_: User = Depends(get_admin_user)):
+    files = []
+    if UPLOAD_DIR.exists():
+        for f in sorted(UPLOAD_DIR.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+            if f.is_file():
+                st = f.stat()
+                files.append({
+                    "filename": f.name,
+                    "url": f"/api/uploads/{f.name}",
+                    "size": st.st_size,
+                    "created_at": datetime.fromtimestamp(st.st_mtime).isoformat(),
+                })
+    return files
+
+
+@app.delete("/api/admin/uploads/{filename}", status_code=204)
+async def delete_upload(filename: str, _: User = Depends(get_admin_user)):
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(400, "Invalid filename")
+    path = UPLOAD_DIR / filename
+    if not path.exists() or not path.is_file():
+        raise HTTPException(404, "File not found")
+    path.unlink()
+
+
+# ─── Settings import ─────────────────────────────────────────────────────────
+
+@app.post("/api/admin/settings/import")
+async def import_settings(
+    body: dict,
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    count = 0
+    for key, value in body.items():
+        r = await db.execute(select(Setting).where(Setting.key == key))
+        s = r.scalar_one_or_none()
+        if s:
+            s.value = str(value)
+            s.updated_at = datetime.utcnow()
+        else:
+            db.add(Setting(key=key, value=str(value)))
+        count += 1
+    await db.commit()
+    return {"imported": count}
+
+
+# ─── Audit log ───────────────────────────────────────────────────────────────
+
+@app.get("/api/admin/audit-log")
+async def get_audit_log(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    total = (await db.execute(select(func.count(AuditLog.id)))).scalar_one()
+    rows = (await db.execute(
+        select(AuditLog).order_by(AuditLog.created_at.desc())
+        .offset((page - 1) * per_page).limit(per_page)
+    )).scalars().all()
+    return {
+        "total": total,
+        "items": [
+            {"id": r.id, "admin": r.admin_username, "action": r.action,
+             "detail": r.detail, "created_at": r.created_at.isoformat()}
+            for r in rows
+        ],
+    }

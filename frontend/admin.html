@@ -200,17 +200,49 @@
   <!-- SIDEBAR -->
   <aside style="width:12rem;flex-shrink:0;">
     <div class="glass-card rounded-xl overflow-hidden">
-      <button id="btn-news"     onclick="showSection('news')"     class="sidebar-btn active">📰 Новости</button>
-      <button id="btn-settings" onclick="showSection('settings')" class="sidebar-btn">⚙ Настройки</button>
-      <button id="btn-users"    onclick="showSection('users')"    class="sidebar-btn">👥 Пользователи</button>
+      <button id="btn-dashboard" onclick="showSection('dashboard')" class="sidebar-btn active">📊 Дашборд</button>
+      <button id="btn-news"      onclick="showSection('news')"      class="sidebar-btn">📰 Новости</button>
+      <button id="btn-settings"  onclick="showSection('settings')"  class="sidebar-btn">⚙ Настройки</button>
+      <button id="btn-users"     onclick="showSection('users')"     class="sidebar-btn">👥 Пользователи</button>
+      <button id="btn-comments"  onclick="showSection('comments')"  class="sidebar-btn">💬 Комментарии</button>
+      <button id="btn-players"   onclick="showSection('players')"   class="sidebar-btn">🎮 Игроки</button>
+      <button id="btn-files"     onclick="showSection('files')"     class="sidebar-btn">📁 Файлы</button>
+      <button id="btn-log"       onclick="showSection('log')"       class="sidebar-btn">📋 Лог</button>
     </div>
   </aside>
 
   <!-- CONTENT -->
   <main style="flex:1;min-width:0;">
 
+    <!-- DASHBOARD -->
+    <div id="section-dashboard">
+      <h1 class="section-title mb-5">Дашборд</h1>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;">
+        <div class="glass-card rounded-xl p-4 text-center">
+          <div id="dash-users" style="font-size:2rem;font-family:'Cinzel',serif;color:var(--gold);">—</div>
+          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Пользователи</div>
+        </div>
+        <div class="glass-card rounded-xl p-4 text-center">
+          <div id="dash-news" style="font-size:2rem;font-family:'Cinzel',serif;color:var(--gold);">—</div>
+          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Новости</div>
+        </div>
+        <div class="glass-card rounded-xl p-4 text-center">
+          <div id="dash-comments" style="font-size:2rem;font-family:'Cinzel',serif;color:var(--gold);">—</div>
+          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Комментарии</div>
+        </div>
+        <div class="glass-card rounded-xl p-4 text-center">
+          <div id="dash-files" style="font-size:2rem;font-family:'Cinzel',serif;color:var(--gold);">—</div>
+          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Файлы</div>
+        </div>
+      </div>
+      <div class="glass-card rounded-xl p-4">
+        <h2 class="gothic mb-4" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Последние комментарии</h2>
+        <div id="dash-recent-comments"></div>
+      </div>
+    </div>
+
     <!-- NEWS LIST -->
-    <div id="section-news">
+    <div id="section-news" class="hidden">
       <div class="flex items-center justify-between mb-5">
         <h1 class="section-title">Управление новостями</h1>
         <button onclick="openEditor(null)" class="btn-primary">+ Добавить</button>
@@ -273,6 +305,7 @@
           </div>
           <div id="editor-error" class="error-box hidden" style="flex:1;margin:0 1rem;"></div>
           <div class="flex gap-3">
+            <button onclick="previewNews()" class="btn-ghost">👁 Превью</button>
             <button onclick="submitEditor()" class="btn-primary">Сохранить</button>
             <button onclick="closeEditor()" class="btn-ghost">Отмена</button>
           </div>
@@ -289,9 +322,20 @@
           <h1 class="section-title" style="margin-bottom:.3rem;">Настройки</h1>
           <p style="font-size:.78rem;color:var(--muted);">Управление серверами, оформлением и безопасностью</p>
         </div>
-        <div id="settings-saved" style="display:none;align-items:center;gap:.45rem;padding:.4rem .95rem;background:rgba(0,70,15,.25);border:1px solid rgba(0,160,35,.4);color:#86efac;border-radius:9999px;font-size:.78rem;font-weight:600;">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-          Сохранено
+        <div style="display:flex;align-items:center;gap:.6rem;">
+          <button onclick="exportSettings()" class="btn-ghost" style="font-size:.75rem;display:inline-flex;align-items:center;gap:.35rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Экспорт
+          </button>
+          <label style="display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;padding:.4rem .8rem;border-radius:.4rem;border:1px solid rgba(120,0,24,.4);background:rgba(8,0,16,.8);color:var(--muted);font-size:.75rem;font-weight:600;transition:border-color .2s,color .2s;margin:0;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,.4)';this.style.color='var(--muted)'">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Импорт
+            <input type="file" accept=".json,application/json" style="display:none;" onchange="importSettings(this)">
+          </label>
+          <div id="settings-saved" style="display:none;align-items:center;gap:.45rem;padding:.4rem .95rem;background:rgba(0,70,15,.25);border:1px solid rgba(0,160,35,.4);color:#86efac;border-radius:9999px;font-size:.78rem;font-weight:600;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            Сохранено
+          </div>
         </div>
       </div>
 
@@ -679,6 +723,68 @@
       </div>
     </div>
 
+    <!-- COMMENTS -->
+    <div id="section-comments" class="hidden">
+      <div class="flex items-center justify-between mb-5">
+        <h1 class="section-title">Комментарии</h1>
+        <span id="comments-total" style="font-size:.78rem;color:var(--muted);"></span>
+      </div>
+      <div class="glass-card rounded-xl overflow-hidden">
+        <table>
+          <thead><tr><th>Автор</th><th>Новость</th><th>Комментарий</th><th>Дата</th><th></th></tr></thead>
+          <tbody id="comments-table-body"></tbody>
+        </table>
+      </div>
+      <div id="comments-pagination" class="flex gap-2 mt-4"></div>
+    </div>
+
+    <!-- PLAYERS -->
+    <div id="section-players" class="hidden">
+      <div class="flex items-center justify-between mb-5">
+        <h1 class="section-title">Игроки</h1>
+        <div style="display:flex;gap:.5rem;align-items:center;">
+          <select id="players-server" onchange="loadAdminPlayers()" class="dark-input" style="width:auto;padding:.4rem .7rem;font-size:.8rem;">
+            <option value="1">Сервер 1</option>
+            <option value="2">Сервер 2</option>
+          </select>
+          <select id="players-period" onchange="loadAdminPlayers()" class="dark-input" style="width:auto;padding:.4rem .7rem;font-size:.8rem;">
+            <option value="all">Всё время</option>
+            <option value="week">Неделя</option>
+          </select>
+        </div>
+      </div>
+      <div class="glass-card rounded-xl overflow-hidden">
+        <table>
+          <thead><tr><th>#</th><th>Имя игрока</th><th>Время в игре</th><th>Последний раз онлайн</th></tr></thead>
+          <tbody id="players-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- FILES -->
+    <div id="section-files" class="hidden">
+      <div class="flex items-center justify-between mb-5">
+        <h1 class="section-title">Файлы</h1>
+        <span id="files-count" style="font-size:.78rem;color:var(--muted);"></span>
+      </div>
+      <div id="files-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1rem;"></div>
+    </div>
+
+    <!-- LOG -->
+    <div id="section-log" class="hidden">
+      <div class="flex items-center justify-between mb-5">
+        <h1 class="section-title">Лог действий</h1>
+        <span id="log-total" style="font-size:.78rem;color:var(--muted);"></span>
+      </div>
+      <div class="glass-card rounded-xl overflow-hidden">
+        <table>
+          <thead><tr><th>Время</th><th>Администратор</th><th>Действие</th><th>Детали</th></tr></thead>
+          <tbody id="log-table-body"></tbody>
+        </table>
+      </div>
+      <div id="log-pagination" class="flex gap-2 mt-4"></div>
+    </div>
+
   </main>
 </div>
 
@@ -702,7 +808,7 @@ function logout()  { localStorage.removeItem('token'); localStorage.removeItem('
 
 // ─── Sections ─────────────────────────────────────────────────────────────
 function showSection(name) {
-  ['news','editor','settings','users'].forEach(s => {
+  ['dashboard','news','editor','settings','users','comments','players','files','log'].forEach(s => {
     document.getElementById(`section-${s}`).classList.toggle('hidden', s !== name);
     const btn = document.getElementById(`btn-${s}`);
     if (btn) btn.className = 'sidebar-btn' + (s === name ? ' active' : '');
@@ -711,6 +817,11 @@ function showSection(name) {
   if (name === 'settings') { loadSettings(); loadRules(); }
   if (name === 'users')    loadUsers();
   if (name === 'news')     loadAdminNews(adminNewsPage);
+  if (name === 'dashboard')  loadDashboard();
+  if (name === 'comments')   loadAdminComments(1);
+  if (name === 'players')    loadAdminPlayers();
+  if (name === 'files')      loadAdminFiles();
+  if (name === 'log')        loadAuditLog(1);
 }
 
 // ─── News list ────────────────────────────────────────────────────────────
@@ -765,7 +876,7 @@ function showConfirm({ title, text, icon = '🗑', okLabel = 'Удалить', o
 function closeConfirm() {
   document.getElementById('confirm-modal').style.display = 'none';
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeConfirm(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeConfirm(); closePreview(); } });
 
 async function deleteNews(id) {
   showConfirm({
@@ -1169,6 +1280,231 @@ async function saveRules() {
   } else { alert('Ошибка сохранения'); }
 }
 
+// ─── Dashboard ────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const res = await fetch(`${API}/admin/stats`, { headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const d = await res.json();
+    document.getElementById('dash-users').textContent    = d.user_count;
+    document.getElementById('dash-news').textContent     = d.news_count;
+    document.getElementById('dash-comments').textContent = d.comment_count;
+    document.getElementById('dash-files').textContent    = d.file_count;
+    const rc = document.getElementById('dash-recent-comments');
+    if (!d.recent_comments.length) {
+      rc.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Комментариев пока нет.</p>`;
+      return;
+    }
+    rc.innerHTML = d.recent_comments.map(c => `
+      <div style="padding:.55rem 0;border-bottom:1px solid rgba(150,0,28,.1);display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap;">
+        <span style="font-size:.7rem;font-weight:600;color:#c9a04a;white-space:nowrap;">${esc(c.author)}</span>
+        <span style="font-size:.7rem;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.content)}</span>
+        <a href="/news/${esc(c.news_slug)}" target="_blank" style="font-size:.65rem;color:var(--muted);white-space:nowrap;text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">${esc(c.news_title)}</a>
+        <button onclick="deleteAdminComment(${c.id})" style="background:none;border:none;color:rgba(200,0,30,.45);cursor:pointer;font-size:.8rem;padding:0 .2rem;flex-shrink:0;" onmouseover="this.style.color='rgba(240,0,40,.9)'" onmouseout="this.style.color='rgba(200,0,30,.45)'">✕</button>
+      </div>`).join('');
+  } catch { }
+}
+
+// ─── Comments moderation ──────────────────────────────────────────────────
+let _commentsPage = 1;
+
+async function loadAdminComments(page = 1) {
+  _commentsPage = page;
+  try {
+    const res = await fetch(`${API}/admin/comments?page=${page}&per_page=20`, { headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const d = await res.json();
+    document.getElementById('comments-total').textContent = `Всего: ${d.total}`;
+    const tbody = document.getElementById('comments-table-body');
+    if (!d.items.length) {
+      tbody.innerHTML = `<tr><td colspan="5" style="color:var(--muted);text-align:center;">Комментариев нет.</td></tr>`;
+    } else {
+      tbody.innerHTML = d.items.map(c => `
+        <tr>
+          <td style="font-weight:600;white-space:nowrap;">${esc(c.author)}</td>
+          <td style="color:var(--muted);font-size:.78rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.news_title)}</td>
+          <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.content)}</td>
+          <td style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${new Date(c.created_at).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+          <td><button class="btn-danger" onclick="deleteAdminComment(${c.id})">Удалить</button></td>
+        </tr>`).join('');
+    }
+    const pages = Math.ceil(d.total / 20) || 1;
+    const pag = document.getElementById('comments-pagination');
+    pag.innerHTML = '';
+    for (let i = 1; i <= pages; i++) {
+      const b = document.createElement('button');
+      b.className = 'pagination-btn' + (i === page ? ' active' : '');
+      b.textContent = i; b.onclick = () => loadAdminComments(i);
+      pag.appendChild(b);
+    }
+  } catch { }
+}
+
+async function deleteAdminComment(id) {
+  showConfirm({
+    title: 'Удалить комментарий?',
+    text: 'Комментарий будет удалён без возможности восстановления.',
+    onOk: async () => {
+      await fetch(`${API}/comments/${id}`, { method: 'DELETE', headers: authH() });
+      loadAdminComments(_commentsPage);
+    },
+  });
+}
+
+// ─── Players ──────────────────────────────────────────────────────────────
+async function loadAdminPlayers() {
+  const server = document.getElementById('players-server')?.value || '1';
+  const period = document.getElementById('players-period')?.value || 'all';
+  try {
+    const res = await fetch(`${API}/leaderboard?server=${server}&period=${period}`);
+    if (!res.ok) return;
+    const items = await res.json();
+    const tbody = document.getElementById('players-table-body');
+    if (!items.length) {
+      tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);text-align:center;">Нет данных.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = items.map((p, i) => `
+      <tr>
+        <td style="color:var(--muted);">${i + 1}</td>
+        <td style="font-weight:600;">${esc(p.player_name)}</td>
+        <td style="color:var(--muted);">${Math.floor((p.total_seconds || 0) / 3600)}ч ${Math.floor(((p.total_seconds || 0) % 3600) / 60)}м</td>
+        <td style="color:var(--muted);font-size:.78rem;">${p.last_seen ? new Date(p.last_seen).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
+      </tr>`).join('');
+  } catch { }
+}
+
+// ─── File manager ─────────────────────────────────────────────────────────
+async function loadAdminFiles() {
+  try {
+    const res = await fetch(`${API}/admin/uploads`, { headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const files = await res.json();
+    document.getElementById('files-count').textContent = `Файлов: ${files.length}`;
+    const grid = document.getElementById('files-grid');
+    if (!files.length) {
+      grid.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Загруженных файлов нет.</p>`;
+      return;
+    }
+    const fmtSize = b => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(1) + ' MB';
+    const isImg = n => /\.(jpe?g|png|gif|webp|svg|ico)$/i.test(n);
+    grid.innerHTML = files.map(f => `
+      <div class="glass-card rounded-xl overflow-hidden" style="display:flex;flex-direction:column;">
+        <div style="height:90px;background:rgba(8,0,16,.7);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;" onclick="window.open('${esc(f.url)}','_blank')">
+          ${isImg(f.filename)
+            ? `<img src="${esc(f.url)}" alt="" style="width:100%;height:100%;object-fit:cover;">`
+            : `<span style="font-size:2rem;">📄</span>`}
+        </div>
+        <div style="padding:.5rem .6rem;flex:1;display:flex;flex-direction:column;gap:.25rem;">
+          <p style="font-size:.68rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(f.filename)}">${esc(f.filename)}</p>
+          <p style="font-size:.62rem;color:var(--muted);">${fmtSize(f.size)}</p>
+          <div style="display:flex;gap:.35rem;margin-top:.2rem;">
+            <button onclick="navigator.clipboard.writeText(window.location.origin+'${esc(f.url)}');this.textContent='✔';setTimeout(()=>this.textContent='Скопировать',1500)" style="flex:1;background:none;border:1px solid rgba(110,0,150,.25);color:var(--muted);border-radius:.35rem;padding:.25rem .4rem;font-size:.6rem;cursor:pointer;">Скопировать</button>
+            <button onclick="deleteUploadedFile('${esc(f.filename)}')" style="background:none;border:1px solid rgba(200,0,30,.25);color:rgba(248,113,113,.7);border-radius:.35rem;padding:.25rem .5rem;font-size:.7rem;cursor:pointer;" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(248,113,113,.7)'">✕</button>
+          </div>
+        </div>
+      </div>`).join('');
+  } catch { }
+}
+
+async function deleteUploadedFile(filename) {
+  showConfirm({
+    title: 'Удалить файл?',
+    text: `Файл «${filename}» будет удалён. Ссылки на него перестанут работать.`,
+    onOk: async () => {
+      await fetch(`${API}/admin/uploads/${encodeURIComponent(filename)}`, { method: 'DELETE', headers: authH() });
+      loadAdminFiles();
+    },
+  });
+}
+
+// ─── Audit log ────────────────────────────────────────────────────────────
+let _logPage = 1;
+
+async function loadAuditLog(page = 1) {
+  _logPage = page;
+  try {
+    const res = await fetch(`${API}/admin/audit-log?page=${page}&per_page=50`, { headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const d = await res.json();
+    document.getElementById('log-total').textContent = `Всего записей: ${d.total}`;
+    const tbody = document.getElementById('log-table-body');
+    if (!d.items.length) {
+      tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);text-align:center;">Лог пуст.</td></tr>`;
+    } else {
+      tbody.innerHTML = d.items.map(r => `
+        <tr>
+          <td style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${new Date(r.created_at).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+          <td style="font-weight:600;white-space:nowrap;">${esc(r.admin)}</td>
+          <td><code style="font-size:.75rem;background:rgba(40,0,60,.4);padding:.15rem .45rem;border-radius:.3rem;color:#c4b5fd;">${esc(r.action)}</code></td>
+          <td style="color:var(--muted);font-size:.78rem;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.detail || '')}</td>
+        </tr>`).join('');
+    }
+    const pages = Math.ceil(d.total / 50) || 1;
+    const pag = document.getElementById('log-pagination');
+    pag.innerHTML = '';
+    for (let i = 1; i <= pages; i++) {
+      const b = document.createElement('button');
+      b.className = 'pagination-btn' + (i === page ? ' active' : '');
+      b.textContent = i; b.onclick = () => loadAuditLog(i);
+      pag.appendChild(b);
+    }
+  } catch { }
+}
+
+// ─── News preview ─────────────────────────────────────────────────────────
+function previewNews() {
+  const title   = document.getElementById('editor-news-title').value.trim() || 'Без заголовка';
+  const summary = document.getElementById('editor-news-summary').value.trim();
+  const thumb   = document.getElementById('editor-news-thumb').value.trim();
+  const content = quill ? quill.root.innerHTML : '';
+  const modal   = document.getElementById('preview-modal');
+  document.getElementById('preview-title').textContent    = title;
+  document.getElementById('preview-summary').textContent  = summary;
+  const img = document.getElementById('preview-thumb');
+  if (thumb) { img.src = thumb; img.style.display = ''; } else { img.style.display = 'none'; }
+  document.getElementById('preview-content').innerHTML = content;
+  modal.style.display = 'flex';
+}
+
+function closePreview() {
+  document.getElementById('preview-modal').style.display = 'none';
+}
+
+// ─── Settings export / import ─────────────────────────────────────────────
+async function exportSettings() {
+  try {
+    const res = await fetch(`${API}/admin/settings`, { headers: authH() });
+    if (!res.ok) return;
+    const arr = await res.json();
+    const obj = Object.fromEntries(arr.map(s => [s.key, s.value]));
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `vrising-settings-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch (err) { alert('Ошибка экспорта: ' + err.message); }
+}
+
+async function importSettings(input) {
+  const file = input.files[0]; if (!file) return;
+  try {
+    const text = await file.text();
+    const obj  = JSON.parse(text);
+    if (typeof obj !== 'object' || Array.isArray(obj)) throw new Error('Неверный формат файла');
+    const res = await fetch(`${API}/admin/settings/import`, {
+      method: 'POST', headers: authH(), body: JSON.stringify(obj),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+    const d = await res.json();
+    const badge = document.getElementById('settings-saved');
+    if (badge) { badge.style.display = 'inline-flex'; setTimeout(() => { badge.style.display = 'none'; }, 2500); }
+    loadSettings(); loadRules();
+  } catch (err) { alert('Ошибка импорта: ' + err.message); }
+  input.value = '';
+}
+
 // ─── Wipe history ─────────────────────────────────────────────────────────
 const WIPE_LABELS = { full: 'Полный', map: 'Карта', progress: 'Прогресс' };
 const WIPE_COLORS = { full: '#f87171', map: '#fbbf24', progress: '#34d399' };
@@ -1234,7 +1570,7 @@ async function deleteWipe(id) {
   loadWipeHistory();
 }
 
-loadAdminNews(1);
+showSection('dashboard');
 loadWipeHistory().then(() => {
   // update server select labels after names are known
   fetch(`${API}/admin/settings`, { headers: authH() }).then(r => r.json()).then(settings => {
@@ -1260,6 +1596,23 @@ loadWipeHistory().then(() => {
   } catch {}
 })();
 </script>
+
+<!-- Preview modal -->
+<div id="preview-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:flex-start;justify-content:center;overflow-y:auto;padding:2rem 1rem;">
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(5px);" onclick="closePreview()"></div>
+  <div style="position:relative;background:rgba(10,2,20,.97);border:1px solid rgba(180,0,35,.35);border-radius:1rem;max-width:760px;width:100%;box-shadow:0 8px 48px rgba(0,0,0,.8);margin:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid rgba(150,0,28,.2);">
+      <span style="font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Превью новости</span>
+      <button onclick="closePreview()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;padding:.2rem;">✕</button>
+    </div>
+    <div style="padding:2rem;">
+      <img id="preview-thumb" src="" alt="" style="width:100%;max-height:260px;object-fit:cover;border-radius:.65rem;margin-bottom:1.25rem;">
+      <h1 id="preview-title" style="font-family:'Cinzel',serif;font-size:1.5rem;color:#e0c8d8;margin-bottom:.6rem;line-height:1.3;"></h1>
+      <p id="preview-summary" style="color:var(--muted);font-size:.9rem;margin-bottom:1.5rem;line-height:1.6;border-left:2px solid rgba(181,0,42,.5);padding-left:.85rem;"></p>
+      <div id="preview-content" class="ql-editor" style="padding:0;min-height:0;pointer-events:none;"></div>
+    </div>
+  </div>
+</div>
 
 <!-- Confirm modal -->
 <div id="confirm-modal" style="display:none;position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;">
