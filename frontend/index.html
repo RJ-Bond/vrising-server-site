@@ -1741,6 +1741,12 @@ async function loadStatus2() {
       return;
     }
     section.style.display = 'block';
+    // Show server 2 section in status bar
+    ['sb-s2sep','sb-s2name','sb-s2online-row'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.style.display = '';
+    });
+    const sw2 = document.getElementById('sb-s2wipe-row');
+    if (sw2) sw2.style.display = 'flex';
     // server2 title stays as static "— Сервер 2 —"
     renderServerBlock(d, '2');
     window._sb_online2 = d.online ? d.players : 0;
@@ -2072,13 +2078,6 @@ async function loadSiteSettings() {
     const sbS2 = document.getElementById('sb-s2name');
     if (sbS2) sbS2.textContent = srvName2;
 
-    // Show server 2 section if configured
-    if ((d.server2_ip || '').trim()) {
-      ['sb-s2sep','sb-s2name','sb-s2online-row','sb-s2wipe-row'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = id === 'sb-s2wipe-row' ? 'flex' : '';
-      });
-    }
 
     const wipeDateStr = (d.wipe_date || '').trim();
     if (wipeDateStr) {
