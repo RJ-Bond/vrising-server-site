@@ -658,11 +658,31 @@ async function loadAdminNews(page = 1) {
   }
 }
 
+function showConfirm({ title, text, icon = '🗑', okLabel = 'Удалить', onOk }) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-text').textContent  = text;
+  document.getElementById('confirm-icon').textContent  = icon;
+  document.getElementById('confirm-ok').textContent    = okLabel;
+  document.getElementById('confirm-ok').onclick = () => { closeConfirm(); onOk(); };
+  const m = document.getElementById('confirm-modal');
+  m.style.display = 'flex';
+  requestAnimationFrame(() => { m.style.opacity = '1'; });
+}
+function closeConfirm() {
+  document.getElementById('confirm-modal').style.display = 'none';
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeConfirm(); });
+
 async function deleteNews(id) {
-  if (!confirm('Удалить новость?')) return;
-  const res = await fetch(`${API}/admin/news/${id}`, { method: 'DELETE', headers: authH() });
-  if (res.ok || res.status === 204) loadAdminNews(adminNewsPage);
-  else alert('Ошибка удаления');
+  showConfirm({
+    title: 'Удалить новость?',
+    text:  'Новость и все её комментарии будут удалены безвозвратно.',
+    onOk:  async () => {
+      const res = await fetch(`${API}/admin/news/${id}`, { method: 'DELETE', headers: authH() });
+      if (res.ok || res.status === 204) loadAdminNews(adminNewsPage);
+      else alert('Ошибка удаления');
+    },
+  });
 }
 
 // ─── Editor ───────────────────────────────────────────────────────────────
@@ -1051,5 +1071,19 @@ loadWipeHistory().then(() => {
   } catch {}
 })();
 </script>
+
+<!-- Confirm modal -->
+<div id="confirm-modal" style="display:none;position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;">
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);" onclick="closeConfirm()"></div>
+  <div style="position:relative;background:rgba(14,5,22,0.97);border:1px solid rgba(180,0,35,0.4);border-radius:1rem;padding:2rem 2rem 1.5rem;max-width:380px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.7),0 0 32px rgba(180,0,35,0.15);text-align:center;">
+    <div style="font-size:2rem;margin-bottom:.75rem;" id="confirm-icon">🗑</div>
+    <h3 style="font-family:'Cinzel',serif;font-size:.95rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;margin-bottom:.55rem;" id="confirm-title">Подтверждение</h3>
+    <p style="font-size:.82rem;color:#9488a8;line-height:1.5;margin-bottom:1.5rem;" id="confirm-text"></p>
+    <div style="display:flex;gap:.65rem;justify-content:center;">
+      <button onclick="closeConfirm()" style="background:rgba(40,10,60,0.6);border:1px solid rgba(110,0,150,0.3);border-radius:.55rem;padding:.5rem 1.2rem;color:#9488a8;font-size:.8rem;cursor:pointer;transition:all .2s;" onmouseover="this.style.color='#e2d8f0'" onmouseout="this.style.color='#9488a8'">Отмена</button>
+      <button id="confirm-ok" style="background:linear-gradient(135deg,#7a0015,#b8001e);border:none;border-radius:.55rem;padding:.5rem 1.4rem;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;box-shadow:0 0 16px rgba(180,0,30,0.45);transition:all .2s;" onmouseover="this.style.boxShadow='0 0 28px rgba(210,0,40,0.7)'" onmouseout="this.style.boxShadow='0 0 16px rgba(180,0,30,0.45)'">Удалить</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
