@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Index
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -36,6 +36,22 @@ class News(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     author = relationship("User", backref="news_posts", lazy="selectin")
+    comments = relationship("Comment", back_populates="news", cascade="all, delete-orphan", lazy="noload")
+
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    news_id = Column(Integer, ForeignKey("news.id", ondelete="CASCADE"), nullable=False)
+    author_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    author = relationship("User", lazy="selectin")
+    news = relationship("News", back_populates="comments")
+
+    __table_args__ = (Index("ix_comments_news_id", "news_id"),)
 
 
 class Setting(Base):

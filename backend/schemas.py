@@ -103,6 +103,29 @@ class NewsListOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class CommentCreate(BaseModel):
+    content: str
+
+    @field_validator("content")
+    @classmethod
+    def content_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Comment cannot be empty")
+        if len(v) > 2000:
+            raise ValueError("Comment too long (max 2000 chars)")
+        return v
+
+
+class CommentOut(BaseModel):
+    id: int
+    content: str
+    created_at: datetime
+    author: Optional[UserOut] = None
+
+    model_config = {"from_attributes": True}
+
+
 class SettingUpdate(BaseModel):
     value: str
 

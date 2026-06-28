@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, text
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting
+from .models import Base, User, News, Setting, Comment
 from .auth import (
     verify_password,
     get_password_hash,
@@ -40,6 +40,8 @@ from .schemas import (
     SettingOut,
     SetupComplete,
     ChatRequest,
+    CommentCreate,
+    CommentOut,
 )
 
 OVERSEER_PROMPT = """Ты — Тёмный Управляющий Замком, древний вампирский дух, хранитель этого сервера V Rising.
@@ -71,6 +73,7 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="server2_name", value=""),
         Setting(key="server2_ip", value=""),
         Setting(key="server2_port", value="27016"),
+        Setting(key="discord_server_id", value=""),
     ]
     for s in default_settings:
         existing = await db.execute(select(Setting).where(Setting.key == s.key))
@@ -437,6 +440,56 @@ async def get_news(slug: str, db: AsyncSession = Depends(get_db)):
     return NewsOut.model_validate(news)
 
 
+# ─── Comments ────────────────────────────────────────────────────────────────
+
+@app.get("/api/news/{slug}/comments", response_model=list[CommentOut])
+async def get_comments(slug: str, db: AsyncSession = Depends(get_db)):
+    news_res = await db.execute(select(News.id).where(News.slug == slug, News.published == True))
+    news_id = news_res.scalar_one_or_none()
+    if news_id is None:
+        raise HTTPException(status_code=404, detail="News not found")
+    result = await db.execute(
+        select(Comment).where(Comment.news_id == news_id).order_by(Comment.created_at.asc())
+    )
+    return [CommentOut.model_validate(c) for c in result.scalars().all()]
+
+
+@app.post("/api/news/{slug}/comments", response_model=CommentOut, status_code=201)
+async def add_comment(
+    slug: str,
+    body: CommentCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    news_res = await db.execute(select(News.id).where(News.slug == slug, News.published == True))
+    news_id = news_res.scalar_one_or_none()
+    if news_id is None:
+        raise HTTPException(status_code=404, detail="News not found")
+    comment = Comment(news_id=news_id, author_id=current_user.id, content=body.content)
+    db.add(comment)
+    await db.commit()
+    await db.refresh(comment)
+    # eager load author
+    await db.refresh(comment, ["author"])
+    return CommentOut.model_validate(comment)
+
+
+@app.delete("/api/comments/{comment_id}", status_code=204)
+async def delete_comment(
+    comment_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Comment).where(Comment.id == comment_id))
+    comment = result.scalar_one_or_none()
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    if current_user.role != "admin" and comment.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    await db.delete(comment)
+    await db.commit()
+
+
 # ─── News (admin) ────────────────────────────────────────────────────────────
 
 @app.get("/api/admin/news", response_model=PaginatedNews)
@@ -570,7 +623,7 @@ async def serve_upload(filename: str):
 
 @app.get("/api/settings/public")
 async def get_public_settings(db: AsyncSession = Depends(get_db)):
-    keys = ["site_title", "site_logo_url", "discord_url", "bg_image_url", "server_ip", "server_port"]
+    keys = ["site_title", "site_logo_url", "discord_url", "discord_server_id", "bg_image_url", "server_ip", "server_port"]
     result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
     settings = result.scalars().all()
     return {s.key: s.value for s in settings}
