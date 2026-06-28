@@ -1,0 +1,363 @@
+import os
+import math
+import re
+from contextlib import asynccontextmanager
+from datetime import datetime
+
+from fastapi import FastAPI, Depends, HTTPException, status, Query
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, delete
+
+from .database import engine, get_db
+from .models import Base, User, News, Setting
+from .auth import (
+    verify_password,
+    get_password_hash,
+    create_access_token,
+    get_current_user,
+    get_admin_user,
+)
+from .schemas import (
+    UserRegister,
+    UserLogin,
+    UserOut,
+    TokenOut,
+    NewsCreate,
+    NewsUpdate,
+    NewsOut,
+    NewsListOut,
+    PaginatedNews,
+    SettingUpdate,
+    SettingOut,
+)
+from .monitor import get_server_status
+
+
+def slugify(text: str) -> str:
+    text = text.lower().strip()
+    text = re.sub(r"[^\w\s-]", "", text)
+    text = re.sub(r"[\s_-]+", "-", text)
+    text = re.sub(r"^-+|-+$", "", text)
+    return text[:200]
+
+
+async def _seed_defaults(db: AsyncSession):
+    result = await db.execute(select(User).where(User.username == "admin"))
+    if result.scalar_one_or_none() is None:
+        admin = User(
+            username="admin",
+            email="admin@vrising.local",
+            hashed_password=get_password_hash("supersecretpassword"),
+            role="admin",
+        )
+        db.add(admin)
+        await db.flush()
+
+        default_settings = [
+            Setting(key="server_ip", value=os.getenv("VRISING_SERVER_IP", "127.0.0.1")),
+            Setting(key="server_port", value=os.getenv("VRISING_SERVER_PORT", "27016")),
+            Setting(key="server_name", value="V Rising Server"),
+        ]
+        for s in default_settings:
+            result2 = await db.execute(select(Setting).where(Setting.key == s.key))
+            if result2.scalar_one_or_none() is None:
+                db.add(s)
+
+        welcome_news = News(
+            title="Добро пожаловать на наш сервер!",
+            slug="dobro-pozhalovat-na-nash-server",
+            summary="Мы рады приветствовать вас на официальном сайте нашего сервера V Rising.",
+            content="Мы рады приветствовать вас на официальном сайте нашего сервера V Rising.\n\nЗдесь вы найдёте последние новости, обновления сервера и многое другое.\n\nПриятной игры!",
+            thumbnail_url=None,
+            author_id=admin.id,
+            published=True,
+        )
+        db.add(welcome_news)
+        await db.commit()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    async with AsyncSession(engine, expire_on_commit=False) as db:
+        await _seed_defaults(db)
+    yield
+
+
+app = FastAPI(title="V Rising Server Site", version="1.0.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# ─── Auth ───────────────────────────────────────────────────────────────────
+
+@app.post("/api/auth/register", response_model=TokenOut, status_code=201)
+async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(
+        (User.username == body.username) | (User.email == body.email)
+    ))
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Username or email already taken")
+    user = User(
+        username=body.username,
+        email=body.email,
+        hashed_password=get_password_hash(body.password),
+        role="user",
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+    token = create_access_token({"sub": str(user.id)})
+    return TokenOut(access_token=token, user=UserOut.model_validate(user))
+
+
+@app.post("/api/auth/login", response_model=TokenOut)
+async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).where(User.username == body.username))
+    user = result.scalar_one_or_none()
+    if user is None or not verify_password(body.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account is disabled")
+    token = create_access_token({"sub": str(user.id)})
+    return TokenOut(access_token=token, user=UserOut.model_validate(user))
+
+
+@app.get("/api/auth/me", response_model=UserOut)
+async def me(current_user: User = Depends(get_current_user)):
+    return UserOut.model_validate(current_user)
+
+
+# ─── Monitor ────────────────────────────────────────────────────────────────
+
+@app.get("/api/monitor/status")
+async def server_status(db: AsyncSession = Depends(get_db)):
+    ip_row = await db.execute(select(Setting).where(Setting.key == "server_ip"))
+    port_row = await db.execute(select(Setting).where(Setting.key == "server_port"))
+    ip_setting = ip_row.scalar_one_or_none()
+    port_setting = port_row.scalar_one_or_none()
+    ip = ip_setting.value if ip_setting else "127.0.0.1"
+    port = int(port_setting.value) if port_setting else 27016
+    return await get_server_status(ip, port)
+
+
+# ─── News (public) ──────────────────────────────────────────────────────────
+
+@app.get("/api/news", response_model=PaginatedNews)
+async def list_news(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(5, ge=1, le=50),
+    db: AsyncSession = Depends(get_db),
+):
+    total_result = await db.execute(
+        select(func.count()).select_from(News).where(News.published == True)
+    )
+    total = total_result.scalar_one()
+    pages = max(1, math.ceil(total / per_page))
+    offset = (page - 1) * per_page
+    result = await db.execute(
+        select(News)
+        .where(News.published == True)
+        .order_by(News.created_at.desc())
+        .offset(offset)
+        .limit(per_page)
+    )
+    items = result.scalars().all()
+    return PaginatedNews(
+        items=[NewsListOut.model_validate(n) for n in items],
+        total=total,
+        page=page,
+        pages=pages,
+    )
+
+
+@app.get("/api/news/{slug}", response_model=NewsOut)
+async def get_news(slug: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(News).where(News.slug == slug, News.published == True))
+    news = result.scalar_one_or_none()
+    if news is None:
+        raise HTTPException(status_code=404, detail="News not found")
+    return NewsOut.model_validate(news)
+
+
+# ─── News (admin) ────────────────────────────────────────────────────────────
+
+@app.get("/api/admin/news", response_model=PaginatedNews)
+async def admin_list_news(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    total_result = await db.execute(select(func.count()).select_from(News))
+    total = total_result.scalar_one()
+    pages = max(1, math.ceil(total / per_page))
+    offset = (page - 1) * per_page
+    result = await db.execute(
+        select(News).order_by(News.created_at.desc()).offset(offset).limit(per_page)
+    )
+    items = result.scalars().all()
+    return PaginatedNews(
+        items=[NewsListOut.model_validate(n) for n in items],
+        total=total,
+        page=page,
+        pages=pages,
+    )
+
+
+@app.post("/api/admin/news", response_model=NewsOut, status_code=201)
+async def create_news(
+    body: NewsCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_admin_user),
+):
+    base_slug = slugify(body.title)
+    slug = base_slug
+    counter = 1
+    while True:
+        existing = await db.execute(select(News).where(News.slug == slug))
+        if existing.scalar_one_or_none() is None:
+            break
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+    news = News(
+        title=body.title,
+        slug=slug,
+        summary=body.summary,
+        content=body.content,
+        thumbnail_url=body.thumbnail_url,
+        author_id=current_user.id,
+        published=body.published,
+    )
+    db.add(news)
+    await db.commit()
+    await db.refresh(news)
+    result = await db.execute(select(News).where(News.id == news.id))
+    return NewsOut.model_validate(result.scalar_one())
+
+
+@app.put("/api/admin/news/{news_id}", response_model=NewsOut)
+async def update_news(
+    news_id: int,
+    body: NewsUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(select(News).where(News.id == news_id))
+    news = result.scalar_one_or_none()
+    if news is None:
+        raise HTTPException(status_code=404, detail="News not found")
+    if body.title is not None:
+        news.title = body.title
+    if body.summary is not None:
+        news.summary = body.summary
+    if body.content is not None:
+        news.content = body.content
+    if body.thumbnail_url is not None:
+        news.thumbnail_url = body.thumbnail_url
+    if body.published is not None:
+        news.published = body.published
+    news.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(news)
+    result2 = await db.execute(select(News).where(News.id == news.id))
+    return NewsOut.model_validate(result2.scalar_one())
+
+
+@app.delete("/api/admin/news/{news_id}", status_code=204)
+async def delete_news(
+    news_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(select(News).where(News.id == news_id))
+    news = result.scalar_one_or_none()
+    if news is None:
+        raise HTTPException(status_code=404, detail="News not found")
+    await db.delete(news)
+    await db.commit()
+
+
+# ─── Settings (admin) ────────────────────────────────────────────────────────
+
+@app.get("/api/admin/settings", response_model=list[SettingOut])
+async def get_settings(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(select(Setting))
+    return [SettingOut.model_validate(s) for s in result.scalars().all()]
+
+
+@app.put("/api/admin/settings/{key}", response_model=SettingOut)
+async def update_setting(
+    key: str,
+    body: SettingUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(select(Setting).where(Setting.key == key))
+    setting = result.scalar_one_or_none()
+    if setting is None:
+        setting = Setting(key=key, value=body.value)
+        db.add(setting)
+    else:
+        setting.value = body.value
+        setting.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(setting)
+    return SettingOut.model_validate(setting)
+
+
+# ─── Users (admin) ───────────────────────────────────────────────────────────
+
+@app.get("/api/admin/users", response_model=list[UserOut])
+async def list_users(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(select(User).order_by(User.created_at.desc()))
+    return [UserOut.model_validate(u) for u in result.scalars().all()]
+
+
+@app.put("/api/admin/users/{user_id}/role")
+async def change_role(
+    user_id: int,
+    role: str = Query(..., regex="^(user|admin)$"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_admin_user),
+):
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot change own role")
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.role = role
+    await db.commit()
+    return {"ok": True}
+
+
+@app.put("/api/admin/users/{user_id}/toggle-active")
+async def toggle_active(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_admin_user),
+):
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot deactivate yourself")
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_active = not user.is_active
+    await db.commit()
+    return {"ok": True, "is_active": user.is_active}

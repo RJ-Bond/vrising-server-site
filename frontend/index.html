@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V Rising — Сервер</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #0e0b14; }
+    .gothic { font-family: 'Georgia', serif; }
+    .card-hover { transition: transform .2s, box-shadow .2s; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(176,0,32,.3); }
+    #modal-backdrop { display:none; }
+    #modal-backdrop.open { display:flex; }
+  </style>
+</head>
+<body class="min-h-screen text-gray-100">
+
+<!-- NAV -->
+<nav class="bg-gray-900 border-b border-red-900 sticky top-0 z-40">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+    <a href="/" class="gothic text-2xl font-bold text-red-500 tracking-widest">⚔ V RISING</a>
+    <div class="flex items-center gap-4">
+      <span id="nav-username" class="text-gray-400 text-sm hidden"></span>
+      <a id="nav-admin-link" href="/admin.html" class="hidden text-red-400 hover:text-red-300 text-sm font-semibold">Панель Админа</a>
+      <a id="nav-login" href="/login.html" class="text-sm bg-red-700 hover:bg-red-600 px-3 py-1.5 rounded transition">Войти</a>
+      <button id="nav-logout" class="hidden text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded transition">Выйти</button>
+    </div>
+  </div>
+</nav>
+
+<main class="max-w-6xl mx-auto px-4 py-10">
+
+  <!-- SERVER STATUS -->
+  <section class="mb-12">
+    <h2 class="gothic text-3xl font-bold text-red-400 mb-6 tracking-wide">Статус сервера</h2>
+    <div id="status-card" class="bg-gray-900 border border-gray-700 rounded-xl p-6 grid grid-cols-2 md:grid-cols-4 gap-6 animate-pulse">
+      <div class="col-span-2 md:col-span-4 h-6 bg-gray-700 rounded"></div>
+      <div class="h-10 bg-gray-700 rounded"></div>
+      <div class="h-10 bg-gray-700 rounded"></div>
+      <div class="h-10 bg-gray-700 rounded"></div>
+      <div class="h-10 bg-gray-700 rounded"></div>
+    </div>
+  </section>
+
+  <!-- NEWS -->
+  <section>
+    <h2 class="gothic text-3xl font-bold text-red-400 mb-6 tracking-wide">Новости</h2>
+    <div id="news-list" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3"></div>
+    <div id="news-pagination" class="flex justify-center gap-2 mt-8"></div>
+  </section>
+
+</main>
+
+<!-- NEWS MODAL -->
+<div id="modal-backdrop" class="fixed inset-0 bg-black/80 z-50 items-center justify-center p-4">
+  <div class="bg-gray-900 border border-red-900 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6 relative">
+    <button onclick="closeModal()" class="absolute top-3 right-4 text-gray-400 hover:text-white text-2xl">&times;</button>
+    <h3 id="modal-title" class="gothic text-2xl font-bold text-red-300 mb-2"></h3>
+    <p id="modal-date" class="text-gray-500 text-xs mb-4"></p>
+    <div id="modal-content" class="text-gray-200 leading-relaxed whitespace-pre-wrap"></div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+let currentPage = 1;
+
+// ─── Auth state ───────────────────────────────────────────────────────────
+function getToken() { return localStorage.getItem('token'); }
+function getUser() { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } }
+
+function initNav() {
+  const user = getUser();
+  const token = getToken();
+  if (user && token) {
+    document.getElementById('nav-username').textContent = user.username;
+    document.getElementById('nav-username').classList.remove('hidden');
+    document.getElementById('nav-login').classList.add('hidden');
+    document.getElementById('nav-logout').classList.remove('hidden');
+    if (user.role === 'admin') {
+      document.getElementById('nav-admin-link').classList.remove('hidden');
+    }
+  }
+}
+
+document.getElementById('nav-logout').addEventListener('click', () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.location.reload();
+});
+
+// ─── Server status ────────────────────────────────────────────────────────
+async function loadStatus() {
+  try {
+    const res = await fetch(`${API}/monitor/status`);
+    const data = await res.json();
+    const online = data.online;
+    const badgeColor = online ? 'bg-green-700 text-green-200' : 'bg-red-900 text-red-300';
+    const badgeText = online ? '● ОНЛАЙН' : '● ОФЛАЙН';
+    document.getElementById('status-card').innerHTML = `
+      <div class="col-span-2 md:col-span-4 flex items-center gap-3">
+        <span class="gothic text-xl font-bold text-white">${data.name || 'V Rising Server'}</span>
+        <span class="text-xs font-bold px-2 py-1 rounded-full ${badgeColor}">${badgeText}</span>
+      </div>
+      <div class="flex flex-col">
+        <span class="text-gray-400 text-xs uppercase tracking-wider mb-1">Игроков</span>
+        <span class="text-2xl font-bold text-red-300">${data.players} <span class="text-gray-500 text-base">/ ${data.max_players}</span></span>
+      </div>
+      <div class="flex flex-col">
+        <span class="text-gray-400 text-xs uppercase tracking-wider mb-1">Карта</span>
+        <span class="text-lg font-semibold">${data.map || '—'}</span>
+      </div>
+      <div class="flex flex-col">
+        <span class="text-gray-400 text-xs uppercase tracking-wider mb-1">Версия</span>
+        <span class="text-lg font-semibold">${data.version || '—'}</span>
+      </div>
+      <div class="flex flex-col">
+        <span class="text-gray-400 text-xs uppercase tracking-wider mb-1">VAC</span>
+        <span class="text-lg font-semibold">${data.vac ? '✔ Защищён' : '✘ Нет'}</span>
+      </div>
+    `;
+  } catch {
+    document.getElementById('status-card').innerHTML = `<p class="col-span-4 text-gray-500">Не удалось получить статус сервера.</p>`;
+  }
+}
+
+// ─── News ─────────────────────────────────────────────────────────────────
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString('ru-RU', { day:'2-digit', month:'long', year:'numeric' });
+}
+
+async function loadNews(page = 1) {
+  currentPage = page;
+  const res = await fetch(`${API}/news?page=${page}&per_page=6`);
+  const data = await res.json();
+
+  const list = document.getElementById('news-list');
+  list.innerHTML = '';
+  if (data.items.length === 0) {
+    list.innerHTML = '<p class="text-gray-500 col-span-3">Новостей пока нет.</p>';
+    return;
+  }
+  data.items.forEach(n => {
+    const thumb = n.thumbnail_url
+      ? `<img src="${n.thumbnail_url}" alt="" class="w-full h-36 object-cover rounded-t-xl">`
+      : `<div class="w-full h-36 bg-gradient-to-br from-red-900 to-gray-900 rounded-t-xl flex items-center justify-center"><span class="text-red-500 text-3xl">⚔</span></div>`;
+    list.innerHTML += `
+      <div class="card-hover bg-gray-900 border border-gray-700 rounded-xl overflow-hidden cursor-pointer" onclick="openNews('${n.slug}')">
+        ${thumb}
+        <div class="p-4">
+          <p class="text-gray-500 text-xs mb-1">${formatDate(n.created_at)} · ${n.author.username}</p>
+          <h3 class="gothic text-lg font-bold text-red-300 mb-2 line-clamp-2">${n.title}</h3>
+          <p class="text-gray-400 text-sm line-clamp-3">${n.summary}</p>
+        </div>
+      </div>`;
+  });
+
+  const pag = document.getElementById('news-pagination');
+  pag.innerHTML = '';
+  for (let i = 1; i <= data.pages; i++) {
+    const active = i === page ? 'bg-red-700 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700';
+    pag.innerHTML += `<button onclick="loadNews(${i})" class="px-3 py-1.5 rounded text-sm ${active}">${i}</button>`;
+  }
+}
+
+async function openNews(slug) {
+  try {
+    const res = await fetch(`${API}/news/${slug}`);
+    if (!res.ok) throw new Error();
+    const n = await res.json();
+    document.getElementById('modal-title').textContent = n.title;
+    document.getElementById('modal-date').textContent = `${formatDate(n.created_at)} · ${n.author.username}`;
+    document.getElementById('modal-content').textContent = n.content;
+    document.getElementById('modal-backdrop').classList.add('open');
+  } catch {
+    alert('Не удалось загрузить новость.');
+  }
+}
+
+function closeModal() {
+  document.getElementById('modal-backdrop').classList.remove('open');
+}
+
+document.getElementById('modal-backdrop').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// ─── Init ─────────────────────────────────────────────────────────────────
+initNav();
+loadStatus();
+setInterval(loadStatus, 30000);
+loadNews(1);
+</script>
+</body>
+</html>

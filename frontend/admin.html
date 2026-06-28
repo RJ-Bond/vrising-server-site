@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V Rising — Панель администратора</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #0e0b14; }
+    .gothic { font-family: 'Georgia', serif; }
+    .tab-active { background: #7f1d1d; color: #fca5a5; }
+    #news-modal-backdrop { display:none; }
+    #news-modal-backdrop.open { display:flex; }
+  </style>
+</head>
+<body class="min-h-screen text-gray-100">
+
+<!-- NAV -->
+<nav class="bg-gray-900 border-b border-red-900 sticky top-0 z-40">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <a href="/" class="gothic text-xl font-bold text-red-500 tracking-widest">⚔ V RISING</a>
+      <span class="text-gray-600">|</span>
+      <span class="text-gray-300 text-sm font-semibold">Панель администратора</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span id="nav-username" class="text-gray-400 text-sm"></span>
+      <button onclick="logout()" class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded transition">Выйти</button>
+    </div>
+  </div>
+</nav>
+
+<div class="max-w-7xl mx-auto px-4 py-8 flex gap-6">
+
+  <!-- SIDEBAR -->
+  <aside class="w-48 flex-shrink-0">
+    <nav class="bg-gray-900 rounded-xl border border-gray-700 overflow-hidden">
+      <button onclick="showSection('news')" id="btn-news"
+        class="tab-active w-full text-left px-4 py-3 text-sm font-semibold transition hover:bg-red-900/40">
+        📰 Новости
+      </button>
+      <button onclick="showSection('settings')" id="btn-settings"
+        class="w-full text-left px-4 py-3 text-sm font-semibold text-gray-400 transition hover:bg-gray-800">
+        ⚙ Настройки
+      </button>
+      <button onclick="showSection('users')" id="btn-users"
+        class="w-full text-left px-4 py-3 text-sm font-semibold text-gray-400 transition hover:bg-gray-800">
+        👥 Пользователи
+      </button>
+    </nav>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 min-w-0">
+
+    <!-- NEWS SECTION -->
+    <div id="section-news">
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="gothic text-2xl font-bold text-red-400">Управление новостями</h1>
+        <button onclick="openNewsModal(null)"
+          class="bg-red-700 hover:bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
+          + Добавить новость
+        </button>
+      </div>
+      <div id="admin-news-list" class="space-y-3"></div>
+      <div id="admin-news-pagination" class="flex gap-2 mt-6"></div>
+    </div>
+
+    <!-- SETTINGS SECTION -->
+    <div id="section-settings" class="hidden">
+      <h1 class="gothic text-2xl font-bold text-red-400 mb-6">Настройки сервера</h1>
+      <div id="settings-form" class="bg-gray-900 border border-gray-700 rounded-xl p-6 space-y-4 max-w-lg">
+        <p class="text-gray-400 text-sm">Загрузка...</p>
+      </div>
+    </div>
+
+    <!-- USERS SECTION -->
+    <div id="section-users" class="hidden">
+      <h1 class="gothic text-2xl font-bold text-red-400 mb-6">Пользователи</h1>
+      <div id="users-table" class="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
+        <p class="p-6 text-gray-400 text-sm">Загрузка...</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- NEWS MODAL -->
+<div id="news-modal-backdrop" class="fixed inset-0 bg-black/80 z-50 items-start justify-center p-4 overflow-y-auto">
+  <div class="bg-gray-900 border border-red-900 rounded-xl w-full max-w-2xl my-8 p-6 relative">
+    <button onclick="closeNewsModal()" class="absolute top-3 right-4 text-gray-400 hover:text-white text-2xl">&times;</button>
+    <h2 id="modal-title-label" class="gothic text-xl font-bold text-red-300 mb-5"></h2>
+    <form id="news-form" onsubmit="submitNewsForm(event)" class="space-y-4">
+      <input type="hidden" id="news-id" />
+      <div>
+        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Заголовок *</label>
+        <input id="news-title" type="text" required
+          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+      </div>
+      <div>
+        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Краткое описание *</label>
+        <input id="news-summary" type="text" required
+          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+      </div>
+      <div>
+        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">URL миниатюры</label>
+        <input id="news-thumb" type="url"
+          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+      </div>
+      <div>
+        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Текст новости *</label>
+        <textarea id="news-content" rows="8" required
+          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600 resize-y"></textarea>
+      </div>
+      <div class="flex items-center gap-2">
+        <input id="news-published" type="checkbox" checked class="w-4 h-4 accent-red-600" />
+        <label for="news-published" class="text-sm text-gray-300">Опубликовано</label>
+      </div>
+      <div id="modal-error" class="hidden text-red-400 text-sm bg-red-900/30 rounded-lg px-3 py-2"></div>
+      <div class="flex gap-3 pt-2">
+        <button type="submit" id="modal-submit-btn"
+          class="flex-1 bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-lg transition">
+          Сохранить
+        </button>
+        <button type="button" onclick="closeNewsModal()"
+          class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2.5 rounded-lg transition">
+          Отмена
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+let adminNewsPage = 1;
+
+function getToken() { return localStorage.getItem('token'); }
+function authHeaders() { return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' }; }
+
+function logout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.location.href = '/login.html';
+}
+
+// ─── Guard ────────────────────────────────────────────────────────────────
+(function guard() {
+  const token = getToken();
+  const user = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
+  if (!token || !user || user.role !== 'admin') {
+    window.location.href = '/login.html';
+  } else {
+    document.getElementById('nav-username').textContent = user.username;
+  }
+})();
+
+// ─── Sections ─────────────────────────────────────────────────────────────
+function showSection(name) {
+  ['news', 'settings', 'users'].forEach(s => {
+    document.getElementById(`section-${s}`).classList.toggle('hidden', s !== name);
+    const btn = document.getElementById(`btn-${s}`);
+    btn.className = s === name
+      ? 'tab-active w-full text-left px-4 py-3 text-sm font-semibold transition hover:bg-red-900/40'
+      : 'w-full text-left px-4 py-3 text-sm font-semibold text-gray-400 transition hover:bg-gray-800';
+  });
+  if (name === 'settings') loadSettings();
+  if (name === 'users') loadUsers();
+  if (name === 'news') loadAdminNews(adminNewsPage);
+}
+
+// ─── News ─────────────────────────────────────────────────────────────────
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+async function loadAdminNews(page = 1) {
+  adminNewsPage = page;
+  const res = await fetch(`${API}/admin/news?page=${page}&per_page=10`, { headers: authHeaders() });
+  if (!res.ok) { handleAuthError(res); return; }
+  const data = await res.json();
+  const list = document.getElementById('admin-news-list');
+  list.innerHTML = '';
+  if (data.items.length === 0) {
+    list.innerHTML = '<p class="text-gray-500">Новостей нет.</p>';
+    return;
+  }
+  data.items.forEach(n => {
+    const badge = n.published
+      ? '<span class="text-xs bg-green-900 text-green-300 px-2 py-0.5 rounded-full">Опубл.</span>'
+      : '<span class="text-xs bg-gray-700 text-gray-400 px-2 py-0.5 rounded-full">Черновик</span>';
+    list.innerHTML += `
+      <div class="bg-gray-900 border border-gray-700 rounded-xl p-4 flex items-start justify-between gap-4">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            ${badge}
+            <span class="text-gray-500 text-xs">${formatDate(n.created_at)}</span>
+          </div>
+          <p class="text-white font-semibold truncate">${n.title}</p>
+          <p class="text-gray-400 text-sm mt-1 line-clamp-1">${n.summary}</p>
+        </div>
+        <div class="flex gap-2 flex-shrink-0">
+          <button onclick='openNewsModal(${JSON.stringify(n)})'
+            class="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg transition">Ред.</button>
+          <button onclick="deleteNews(${n.id})"
+            class="text-xs bg-red-900 hover:bg-red-800 text-red-300 px-3 py-1.5 rounded-lg transition">Удалить</button>
+        </div>
+      </div>`;
+  });
+
+  const pag = document.getElementById('admin-news-pagination');
+  pag.innerHTML = '';
+  for (let i = 1; i <= data.pages; i++) {
+    const active = i === page ? 'bg-red-700 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700';
+    pag.innerHTML += `<button onclick="loadAdminNews(${i})" class="px-3 py-1.5 rounded text-sm ${active}">${i}</button>`;
+  }
+}
+
+function openNewsModal(news) {
+  document.getElementById('modal-error').classList.add('hidden');
+  if (news) {
+    document.getElementById('modal-title-label').textContent = 'Редактировать новость';
+    document.getElementById('news-id').value = news.id;
+    document.getElementById('news-title').value = news.title;
+    document.getElementById('news-summary').value = news.summary;
+    document.getElementById('news-thumb').value = news.thumbnail_url || '';
+    document.getElementById('news-content').value = news.content || '';
+    document.getElementById('news-published').checked = news.published;
+  } else {
+    document.getElementById('modal-title-label').textContent = 'Новая новость';
+    document.getElementById('news-id').value = '';
+    document.getElementById('news-form').reset();
+    document.getElementById('news-published').checked = true;
+  }
+  document.getElementById('news-modal-backdrop').classList.add('open');
+}
+
+function closeNewsModal() {
+  document.getElementById('news-modal-backdrop').classList.remove('open');
+}
+
+async function submitNewsForm(e) {
+  e.preventDefault();
+  document.getElementById('modal-error').classList.add('hidden');
+  const btn = document.getElementById('modal-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Сохранение...';
+  const id = document.getElementById('news-id').value;
+  const payload = {
+    title: document.getElementById('news-title').value,
+    summary: document.getElementById('news-summary').value,
+    content: document.getElementById('news-content').value,
+    thumbnail_url: document.getElementById('news-thumb').value || null,
+    published: document.getElementById('news-published').checked,
+  };
+  try {
+    const url = id ? `${API}/admin/news/${id}` : `${API}/admin/news`;
+    const method = id ? 'PUT' : 'POST';
+    const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(payload) });
+    if (!res.ok) {
+      const data = await res.json();
+      const el = document.getElementById('modal-error');
+      el.textContent = data.detail || 'Ошибка сохранения';
+      el.classList.remove('hidden');
+      return;
+    }
+    closeNewsModal();
+    loadAdminNews(adminNewsPage);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Сохранить';
+  }
+}
+
+async function deleteNews(id) {
+  if (!confirm('Удалить эту новость?')) return;
+  const res = await fetch(`${API}/admin/news/${id}`, { method: 'DELETE', headers: authHeaders() });
+  if (res.ok || res.status === 204) {
+    loadAdminNews(adminNewsPage);
+  } else {
+    alert('Ошибка удаления');
+  }
+}
+
+// ─── Settings ─────────────────────────────────────────────────────────────
+async function loadSettings() {
+  const res = await fetch(`${API}/admin/settings`, { headers: authHeaders() });
+  if (!res.ok) { handleAuthError(res); return; }
+  const settings = await res.json();
+  const form = document.getElementById('settings-form');
+  form.innerHTML = '';
+  settings.forEach(s => {
+    form.innerHTML += `
+      <div>
+        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">${s.key}</label>
+        <div class="flex gap-2">
+          <input id="setting-${s.key}" type="text" value="${s.value}"
+            class="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+          <button onclick="saveSetting('${s.key}')"
+            class="bg-red-700 hover:bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
+            Сохранить
+          </button>
+        </div>
+      </div>`;
+  });
+  form.innerHTML += '<p id="settings-msg" class="text-green-400 text-sm hidden">Сохранено!</p>';
+}
+
+async function saveSetting(key) {
+  const value = document.getElementById(`setting-${key}`).value;
+  const res = await fetch(`${API}/admin/settings/${key}`, {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify({ value }),
+  });
+  if (res.ok) {
+    const msg = document.getElementById('settings-msg');
+    msg.classList.remove('hidden');
+    setTimeout(() => msg.classList.add('hidden'), 2000);
+  } else {
+    alert('Ошибка сохранения настройки');
+  }
+}
+
+// ─── Users ────────────────────────────────────────────────────────────────
+async function loadUsers() {
+  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
+  const res = await fetch(`${API}/admin/users`, { headers: authHeaders() });
+  if (!res.ok) { handleAuthError(res); return; }
+  const users = await res.json();
+  const table = document.getElementById('users-table');
+  if (users.length === 0) {
+    table.innerHTML = '<p class="p-6 text-gray-400">Пользователей нет.</p>';
+    return;
+  }
+  table.innerHTML = `
+    <table class="w-full text-sm">
+      <thead class="bg-gray-800 text-gray-400 uppercase text-xs">
+        <tr>
+          <th class="px-4 py-3 text-left">ID</th>
+          <th class="px-4 py-3 text-left">Имя</th>
+          <th class="px-4 py-3 text-left">Email</th>
+          <th class="px-4 py-3 text-left">Роль</th>
+          <th class="px-4 py-3 text-left">Активен</th>
+          <th class="px-4 py-3 text-left">Дата</th>
+          <th class="px-4 py-3 text-left">Действия</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-800">
+        ${users.map(u => {
+          const isSelf = u.id === currentUser?.id;
+          const roleColor = u.role === 'admin' ? 'text-red-400' : 'text-gray-300';
+          const activeColor = u.is_active ? 'text-green-400' : 'text-red-400';
+          const actions = isSelf ? '<span class="text-gray-600 text-xs">— (вы)</span>' : `
+            <button onclick="toggleRole(${u.id}, '${u.role}')" class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded mr-1 transition">
+              ${u.role === 'admin' ? 'Снять admin' : 'Сделать admin'}
+            </button>
+            <button onclick="toggleActive(${u.id})" class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded transition">
+              ${u.is_active ? 'Заблок.' : 'Разблок.'}
+            </button>`;
+          return `<tr class="hover:bg-gray-800/40 transition">
+            <td class="px-4 py-3 text-gray-500">${u.id}</td>
+            <td class="px-4 py-3 font-semibold">${u.username}</td>
+            <td class="px-4 py-3 text-gray-400">${u.email}</td>
+            <td class="px-4 py-3 ${roleColor} font-semibold">${u.role}</td>
+            <td class="px-4 py-3 ${activeColor}">${u.is_active ? 'Да' : 'Нет'}</td>
+            <td class="px-4 py-3 text-gray-500">${new Date(u.created_at).toLocaleDateString('ru-RU')}</td>
+            <td class="px-4 py-3">${actions}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function toggleRole(userId, currentRole) {
+  const newRole = currentRole === 'admin' ? 'user' : 'admin';
+  if (!confirm(`Изменить роль на "${newRole}"?`)) return;
+  const res = await fetch(`${API}/admin/users/${userId}/role?role=${newRole}`, {
+    method: 'PUT', headers: authHeaders(),
+  });
+  if (res.ok) loadUsers(); else alert('Ошибка изменения роли');
+}
+
+async function toggleActive(userId) {
+  const res = await fetch(`${API}/admin/users/${userId}/toggle-active`, {
+    method: 'PUT', headers: authHeaders(),
+  });
+  if (res.ok) loadUsers(); else alert('Ошибка изменения статуса');
+}
+
+function handleAuthError(res) {
+  if (res.status === 401 || res.status === 403) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login.html';
+  }
+}
+
+document.getElementById('news-modal-backdrop').addEventListener('click', function(e) {
+  if (e.target === this) closeNewsModal();
+});
+
+// Initial load
+loadAdminNews(1);
+</script>
+</body>
+</html>
