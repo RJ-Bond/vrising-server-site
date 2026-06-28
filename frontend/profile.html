@@ -139,6 +139,27 @@
     </div>
   </div>
 
+  <!-- Change password card -->
+  <div class="g-card" style="padding:1.5rem;margin-bottom:1.25rem;">
+    <h2 class="gothic" style="font-size:.7rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1.1rem;">— Сменить пароль —</h2>
+    <div style="display:flex;flex-direction:column;gap:.65rem;">
+      <input id="pw-old" type="password" placeholder="Текущий пароль" autocomplete="current-password"
+        style="background:rgba(8,0,14,0.7);border:1px solid rgba(110,0,20,0.35);border-radius:.55rem;padding:.55rem .85rem;color:var(--text);font-size:.85rem;outline:none;width:100%;transition:border-color .2s;"
+        onfocus="this.style.borderColor='rgba(180,0,35,0.6)'" onblur="this.style.borderColor='rgba(110,0,20,0.35)'">
+      <input id="pw-new" type="password" placeholder="Новый пароль (мин. 6 символов)" autocomplete="new-password"
+        style="background:rgba(8,0,14,0.7);border:1px solid rgba(110,0,20,0.35);border-radius:.55rem;padding:.55rem .85rem;color:var(--text);font-size:.85rem;outline:none;width:100%;transition:border-color .2s;"
+        onfocus="this.style.borderColor='rgba(180,0,35,0.6)'" onblur="this.style.borderColor='rgba(110,0,20,0.35)'">
+      <input id="pw-confirm" type="password" placeholder="Повторите новый пароль" autocomplete="new-password"
+        style="background:rgba(8,0,14,0.7);border:1px solid rgba(110,0,20,0.35);border-radius:.55rem;padding:.55rem .85rem;color:var(--text);font-size:.85rem;outline:none;width:100%;transition:border-color .2s;"
+        onfocus="this.style.borderColor='rgba(180,0,35,0.6)'" onblur="this.style.borderColor='rgba(110,0,20,0.35)'"
+        onkeydown="if(event.key==='Enter')changePassword()">
+      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+        <button onclick="changePassword()" class="btn-sm">Сменить пароль</button>
+        <span id="pw-msg" style="font-size:.78rem;display:none;"></span>
+      </div>
+    </div>
+  </div>
+
   <!-- Actions card -->
   <div class="g-card" style="padding:1.5rem;">
     <h2 class="gothic" style="font-size:.7rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Действия —</h2>
@@ -204,6 +225,38 @@ async function uploadAvatar(input) {
     setAvatarEl(avatar_url, (getUser()?.username || '?').charAt(0).toUpperCase());
   } catch { alert('Ошибка загрузки аватара'); }
   finally { spinner.style.display = 'none'; input.value = ''; }
+}
+
+async function changePassword() {
+  const old     = document.getElementById('pw-old').value;
+  const newPw   = document.getElementById('pw-new').value;
+  const confirm = document.getElementById('pw-confirm').value;
+  const msg     = document.getElementById('pw-msg');
+
+  const show = (text, ok) => {
+    msg.textContent = text;
+    msg.style.color = ok ? '#4ade80' : '#f87171';
+    msg.style.display = '';
+    if (ok) setTimeout(() => { msg.style.display = 'none'; }, 3500);
+  };
+
+  if (!old || !newPw || !confirm) return show('Заполните все поля', false);
+  if (newPw !== confirm)           return show('Пароли не совпадают', false);
+  if (newPw.length < 6)           return show('Минимум 6 символов', false);
+
+  try {
+    const res = await fetch(`${API}/auth/change-password`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ old_password: old, new_password: newPw }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return show(data.detail || 'Ошибка', false);
+    show('Пароль успешно изменён', true);
+    document.getElementById('pw-old').value = '';
+    document.getElementById('pw-new').value = '';
+    document.getElementById('pw-confirm').value = '';
+  } catch { show('Ошибка соединения', false); }
 }
 
 async function loadProfile() {

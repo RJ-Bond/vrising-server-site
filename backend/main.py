@@ -252,6 +252,27 @@ async def me(current_user: User = Depends(get_current_user)):
     return UserOut.model_validate(current_user)
 
 
+@app.post("/api/auth/change-password")
+async def change_password(
+    body: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    old = (body.get("old_password") or "").strip()
+    new = (body.get("new_password") or "").strip()
+    if not old or not new:
+        raise HTTPException(400, "Заполните все поля")
+    if len(new) < 6:
+        raise HTTPException(400, "Новый пароль: минимум 6 символов")
+    if not verify_password(old, current_user.hashed_password):
+        raise HTTPException(400, "Неверный текущий пароль")
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one()
+    user.hashed_password = get_password_hash(new)
+    await db.commit()
+    return {"ok": True}
+
+
 @app.post("/api/auth/avatar")
 async def upload_avatar(
     file: UploadFile = File(...),
