@@ -351,6 +351,22 @@
             </div>
           </div>
           <div>
+            <label>Фоновое изображение</label>
+            <div style="display:flex;gap:.5rem;margin-bottom:.5rem;">
+              <input id="setting-bg_image_url" type="text" class="dark-input" placeholder="https://example.com/bg.jpg или загрузите файл ниже" style="flex:1;" />
+              <button onclick="saveSetting('bg_image_url')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:.75rem;">
+              <label for="bg-file-input" style="display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem .9rem;border-radius:.5rem;border:1px solid rgba(120,0,24,0.4);background:rgba(8,0,16,0.8);color:var(--muted);font-size:.8rem;transition:border-color .2s,color .2s;margin:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,0.4)';this.style.color='var(--muted)'">
+                📁 Загрузить с компьютера
+              </label>
+              <input id="bg-file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none;" onchange="uploadBgFile(this)" />
+              <span id="bg-upload-status" style="font-size:.78rem;color:var(--muted);"></span>
+            </div>
+            <p style="font-size:.72rem;color:var(--muted);margin-top:.5rem;">JPG/PNG/WEBP — накрывается тёмным оверлеем, сохраняя читаемость текста. Оставьте пустым — стандартный фон</p>
+          </div>
+
+          <div>
             <label style="display:flex;align-items:center;gap:.5rem;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.01.043.027.056a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
               Ссылка на Discord
@@ -577,7 +593,7 @@ async function loadSettings() {
   const settings = await res.json();
   const map = {};
   settings.forEach(s => { map[s.key] = s.value; });
-  ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_logo_url','discord_url'].forEach(key => {
+  ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_logo_url','discord_url','bg_image_url'].forEach(key => {
     const el = document.getElementById(`setting-${key}`);
     if (el && map[key] !== undefined) el.value = map[key];
   });
@@ -605,6 +621,25 @@ async function uploadLogoFile(input) {
     document.getElementById('setting-site_logo_url').value = data.url;
     previewLogo(data.url);
     statusEl.textContent = '✔ Загружено'; statusEl.style.color = '#86efac';
+    setTimeout(() => { statusEl.textContent = ''; }, 3000);
+  } catch (err) { statusEl.textContent = '✘ ' + err.message; statusEl.style.color = '#fca5a5'; }
+  input.value = '';
+}
+
+async function uploadBgFile(input) {
+  const file = input.files[0]; if (!file) return;
+  const statusEl = document.getElementById('bg-upload-status');
+  statusEl.textContent = 'Загрузка...'; statusEl.style.color = 'var(--muted)';
+  const fd = new FormData(); fd.append('file', file);
+  try {
+    const res = await fetch(`${API}/admin/upload`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${getToken()}` }, body: fd,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки');
+    document.getElementById('setting-bg_image_url').value = data.url;
+    await saveSetting('bg_image_url');
+    statusEl.textContent = '✔ Загружено и сохранено'; statusEl.style.color = '#86efac';
     setTimeout(() => { statusEl.textContent = ''; }, 3000);
   } catch (err) { statusEl.textContent = '✘ ' + err.message; statusEl.style.color = '#fca5a5'; }
   input.value = '';

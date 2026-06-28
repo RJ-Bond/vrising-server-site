@@ -67,6 +67,7 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="site_title", value="V RISING"),
         Setting(key="site_logo_url", value=""),
         Setting(key="discord_url", value=""),
+        Setting(key="bg_image_url", value=""),
         Setting(key="server2_name", value=""),
         Setting(key="server2_ip", value=""),
         Setting(key="server2_port", value="27016"),
@@ -451,7 +452,7 @@ async def serve_upload(filename: str):
 
 @app.get("/api/settings/public")
 async def get_public_settings(db: AsyncSession = Depends(get_db)):
-    keys = ["site_title", "site_logo_url", "discord_url"]
+    keys = ["site_title", "site_logo_url", "discord_url", "bg_image_url"]
     result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
     settings = result.scalars().all()
     return {s.key: s.value for s in settings}

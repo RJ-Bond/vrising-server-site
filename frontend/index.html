@@ -733,9 +733,21 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 async function loadSiteSettings() {
   try {
     const d = await fetch(`${API}/settings/public`).then(r => r.json());
-    const title  = (d.site_title || '').trim() || 'V RISING';
-    const logo   = (d.site_logo_url || '').trim();
+    const title   = (d.site_title || '').trim() || 'V RISING';
+    const logo    = (d.site_logo_url || '').trim();
     const discord = (d.discord_url || '').trim();
+    const bg      = (d.bg_image_url || '').trim();
+    if (bg) {
+      document.body.style.backgroundImage = [
+        'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
+        'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
+        'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
+        `url('${bg}')`,
+      ].join(',');
+      document.body.style.backgroundSize = 'auto,auto,auto,cover';
+      document.body.style.backgroundPosition = 'center,center,center,center';
+      document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
+    }
 
     document.getElementById('hero-title').textContent = title;
     document.title = title + ' — Замок';
