@@ -796,11 +796,45 @@
     <h3 class="gothic" style="font-size:.68rem;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-bottom:.6rem;">Игроки онлайн</h3>
     <div id="players-list" style="font-size:.77rem;display:flex;flex-direction:column;gap:0;max-height:180px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(110,0,20,0.4) transparent;"></div>
 
+    <!-- Latency + stats -->
+    <div id="monitor-stats" style="display:none;margin-top:.6rem;">
+      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.6rem;"></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;text-align:center;margin-bottom:.5rem;">
+        <div>
+          <div id="stat-uptime24" style="font-size:.88rem;font-weight:700;font-family:'Cinzel',serif;color:#ecd8e0;">—</div>
+          <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Аптайм 24ч</div>
+        </div>
+        <div>
+          <div id="stat-uptime7d" style="font-size:.88rem;font-weight:700;font-family:'Cinzel',serif;color:#ecd8e0;">—</div>
+          <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Аптайм 7д</div>
+        </div>
+        <div>
+          <div id="stat-peak7d" style="font-size:.88rem;font-weight:700;font-family:'Cinzel',serif;color:#ecd8e0;">—</div>
+          <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Пик 7д</div>
+        </div>
+      </div>
+      <!-- Latency -->
+      <div id="stat-latency-row" style="display:none;margin-bottom:.5rem;" class="stat-row">
+        <span class="stat-row-k">Задержка (A2S)</span>
+        <span id="stat-latency" class="stat-row-v">—</span>
+      </div>
+      <!-- Heatmap -->
+      <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem;">Активность по часам (7д)</div>
+      <div id="heatmap" style="display:flex;gap:2px;align-items:flex-end;height:28px;"></div>
+      <div style="display:flex;justify-content:space-between;margin-top:.2rem;">
+        <span style="font-size:.52rem;color:var(--muted);">00</span>
+        <span style="font-size:.52rem;color:var(--muted);">06</span>
+        <span style="font-size:.52rem;color:var(--muted);">12</span>
+        <span style="font-size:.52rem;color:var(--muted);">18</span>
+        <span style="font-size:.52rem;color:var(--muted);">23</span>
+      </div>
+    </div>
+
     <!-- History sparkline -->
     <div id="sparkline-wrap" style="display:none;margin-top:.75rem;">
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.65rem;"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;">
-        <h3 class="gothic" style="font-size:.65rem;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;">История онлайна</h3>
+        <h3 class="gothic" style="font-size:.65rem;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;">История онлайна · 7д</h3>
         <span id="sparkline-hint" style="font-size:.6rem;color:var(--muted);"></span>
       </div>
       <div class="sparkline-wrap" id="sparkline"></div>
@@ -1064,10 +1098,16 @@ function renderServerBlock(d, sfx) {
   }
 
   const infoEl = document.getElementById('left-info' + sfx);
-  if (infoEl) infoEl.innerHTML =
-    row('Карта', d.map || '—') +
-    row('Версия', d.version || '—') +
-    row('VAC', d.vac ? '✔ Защищён' : '✘ Нет');
+  if (infoEl) {
+    const latencyStr = d.latency_ms != null
+      ? `<span style="color:${d.latency_ms < 80 ? '#86efac' : d.latency_ms < 200 ? '#fbbf24' : '#f87171'}">${d.latency_ms} мс</span>`
+      : '—';
+    infoEl.innerHTML =
+      row('Карта', d.map || '—') +
+      row('Версия', d.version || '—') +
+      row('VAC', d.vac ? '✔ Защищён' : '✘ Нет') +
+      `<div class="stat-row"><span class="stat-row-k">Задержка</span><span class="stat-row-v">${latencyStr}</span></div>`;
+  }
 
   renderPlayerList(d.players_list || [], 'players-list' + sfx);
   return { lbl, cls, name: d.name, players: d.players, max_players: d.max_players };
@@ -1147,8 +1187,43 @@ function renderSparkline(history) {
 
 async function loadHistory() {
   try {
-    const d = await fetch(`${API}/monitor/history`).then(r => r.json());
+    const d = await fetch(`${API}/monitor/snapshots?server=1`).then(r => r.json());
     renderSparkline(d);
+  } catch {}
+}
+
+async function loadStats() {
+  try {
+    const s = await fetch(`${API}/monitor/stats?server=1`).then(r => r.json());
+    const fmt = v => v === null ? '—' : `${v}%`;
+    const el24 = document.getElementById('stat-uptime24');
+    const el7d  = document.getElementById('stat-uptime7d');
+    const elpk  = document.getElementById('stat-peak7d');
+    if (el24) el24.textContent = fmt(s.uptime_24h);
+    if (el7d)  el7d.textContent = fmt(s.uptime_7d);
+    if (elpk)  elpk.textContent = s.peak_7d ?? '—';
+
+    // colour uptime
+    [['stat-uptime24', s.uptime_24h], ['stat-uptime7d', s.uptime_7d]].forEach(([id, v]) => {
+      const el = document.getElementById(id);
+      if (!el || v === null) return;
+      el.style.color = v >= 95 ? '#86efac' : v >= 80 ? '#fbbf24' : '#f87171';
+    });
+
+    // heatmap
+    const hm = document.getElementById('heatmap');
+    if (hm && s.heatmap?.length === 24) {
+      const maxV = Math.max(...s.heatmap, 1);
+      hm.innerHTML = s.heatmap.map((v, h) => {
+        const pct = v / maxV;
+        const alpha = 0.08 + pct * 0.88;
+        const title = `${String(h).padStart(2,'0')}:00 — ср. ${v} игр.`;
+        return `<div title="${title}" style="flex:1;height:${Math.max(3, Math.round(pct * 26))}px;background:rgba(180,0,30,${alpha.toFixed(2)});border-radius:2px;align-self:flex-end;cursor:default;transition:opacity .2s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'"></div>`;
+      }).join('');
+    }
+
+    const statsWrap = document.getElementById('monitor-stats');
+    if (statsWrap) statsWrap.style.display = '';
   } catch {}
 }
 
@@ -1674,8 +1749,10 @@ loadVersion();
 loadStatus();
 loadStatus2();
 loadHistory();
+loadStats();
 setInterval(() => { loadStatus(); loadStatus2(); }, 30000);
 setInterval(loadHistory, 300000);
+setInterval(loadStats, 300000);
 loadFeatured();
 loadNews(1);
 loadTags();

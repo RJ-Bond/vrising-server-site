@@ -119,16 +119,19 @@ async def get_server_status(ip: str, port: int) -> dict:
     if entry and entry["data"] is not None and (now - entry["timestamp"]) < CACHE_TTL:
         return entry["data"]
 
+    t0 = time.monotonic()
     result = await query_server(ip, port)
+    latency_ms = int((time.monotonic() - t0) * 1000)
+
     if result is None:
         status = {
             "online": False, "name": "Unknown", "players": 0,
             "max_players": 0, "version": "N/A", "map": "N/A",
-            "vac": False, "players_list": [],
+            "vac": False, "players_list": [], "latency_ms": None,
         }
     else:
         players_list = await query_players(ip, port)
-        status = {**result, "players_list": players_list}
+        status = {**result, "players_list": players_list, "latency_ms": latency_ms}
 
     _cache[key] = {"data": status, "timestamp": now}
 

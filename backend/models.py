@@ -39,6 +39,21 @@ class News(Base):
     comments = relationship("Comment", back_populates="news", cascade="all, delete-orphan", lazy="noload")
 
 
+class ServerSnapshot(Base):
+    __tablename__ = "server_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    server_num = Column(Integer, nullable=False, default=1)
+    recorded_at = Column(DateTime, nullable=False)
+    online = Column(Boolean, nullable=False, default=False)
+    players = Column(Integer, nullable=False, default=0)
+    max_players = Column(Integer, nullable=False, default=0)
+    latency_ms = Column(Integer, nullable=True)
+    map_name = Column(String(128), nullable=True)
+
+    __table_args__ = (Index("ix_snapshots_server_time", "server_num", "recorded_at"),)
+
+
 class PlayerRecord(Base):
     __tablename__ = "player_records"
 

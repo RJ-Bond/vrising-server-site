@@ -4,6 +4,7 @@ import re
 import json
 import uuid
 import shutil
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
@@ -18,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, text
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot
 from .auth import (
     verify_password,
     get_password_hash,
@@ -359,6 +360,39 @@ async def _track_players(db: AsyncSession, players: list, server_num: int):
     await db.commit()
 
 
+_last_snapshot: dict[int, float] = {}
+SNAPSHOT_INTERVAL = 300  # 5 minutes
+
+
+async def _save_snapshot(db: AsyncSession, data: dict, server_num: int):
+    now_ts = time.time()
+    if now_ts - _last_snapshot.get(server_num, 0) < SNAPSHOT_INTERVAL:
+        return
+    _last_snapshot[server_num] = now_ts
+    snap = ServerSnapshot(
+        server_num=server_num,
+        recorded_at=datetime.utcnow(),
+        online=data.get("online", False),
+        players=data.get("players", 0),
+        max_players=data.get("max_players", 0),
+        latency_ms=data.get("latency_ms"),
+        map_name=data.get("map"),
+    )
+    db.add(snap)
+    await db.commit()
+    # prune old snapshots (keep 8 days)
+    cutoff = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+    from datetime import timedelta
+    cutoff -= timedelta(days=8)
+    await db.execute(
+        delete(ServerSnapshot).where(
+            ServerSnapshot.server_num == server_num,
+            ServerSnapshot.recorded_at < cutoff,
+        )
+    )
+    await db.commit()
+
+
 @app.get("/api/monitor/status")
 async def server_status(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -374,6 +408,7 @@ async def server_status(db: AsyncSession = Depends(get_db)):
     elif not data.get("name") or data.get("name") == "Unknown":
         data = {**data, "name": "V Rising Server"}
     await _track_players(db, data.get("players_list", []), 1)
+    await _save_snapshot(db, data, 1)
     return data
 
 
@@ -402,6 +437,57 @@ async def server_history2(db: AsyncSession = Depends(get_db)):
     return get_history(ip, port)
 
 
+@app.get("/api/monitor/snapshots")
+async def get_snapshots(server: int = Query(1), db: AsyncSession = Depends(get_db)):
+    from datetime import timedelta
+    cutoff = datetime.utcnow() - timedelta(days=7)
+    result = await db.execute(
+        select(ServerSnapshot)
+        .where(ServerSnapshot.server_num == server, ServerSnapshot.recorded_at >= cutoff)
+        .order_by(ServerSnapshot.recorded_at.asc())
+    )
+    snaps = result.scalars().all()
+    return [{"ts": int(s.recorded_at.timestamp()), "players": s.players, "online": s.online, "latency_ms": s.latency_ms} for s in snaps]
+
+
+@app.get("/api/monitor/stats")
+async def get_monitor_stats(server: int = Query(1), db: AsyncSession = Depends(get_db)):
+    from datetime import timedelta
+    now = datetime.utcnow()
+    day_ago  = now - timedelta(hours=24)
+    week_ago = now - timedelta(days=7)
+
+    res_week = await db.execute(
+        select(ServerSnapshot)
+        .where(ServerSnapshot.server_num == server, ServerSnapshot.recorded_at >= week_ago)
+    )
+    snaps_week = res_week.scalars().all()
+
+    res_day = [s for s in snaps_week if s.recorded_at >= day_ago]
+
+    def uptime_pct(snaps):
+        if not snaps:
+            return None
+        return round(sum(1 for s in snaps if s.online) / len(snaps) * 100, 1)
+
+    peak_7d = max((s.players for s in snaps_week), default=0)
+    peak_24h = max((s.players for s in res_day), default=0)
+
+    # hourly heatmap: avg players per hour-of-day over last 7 days
+    buckets: dict[int, list[int]] = {h: [] for h in range(24)}
+    for s in snaps_week:
+        buckets[s.recorded_at.hour].append(s.players)
+    heatmap = [round(sum(v) / len(v), 1) if v else 0 for _, v in sorted(buckets.items())]
+
+    return {
+        "uptime_24h": uptime_pct(res_day),
+        "uptime_7d":  uptime_pct(snaps_week),
+        "peak_24h":   peak_24h,
+        "peak_7d":    peak_7d,
+        "heatmap":    heatmap,
+    }
+
+
 @app.get("/api/monitor/status2")
 async def server_status2(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -421,6 +507,7 @@ async def server_status2(db: AsyncSession = Depends(get_db)):
     elif not data.get("name") or data.get("name") == "Unknown":
         data = {**data, "name": "Server 2"}
     await _track_players(db, data.get("players_list", []), 2)
+    await _save_snapshot(db, data, 2)
     return {"enabled": True, **data}
 
 
