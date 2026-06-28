@@ -17,9 +17,132 @@ die()  { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="/opt/vrising-site"
 ADMIN_PASS="supersecretpassword"
+REPO="RJ-Bond/vrising-server-site"
+BRANCH="master"
+
+# ─── Функция копирования файлов проекта ──────────────────────────────────
+copy_project_files() {
+  mkdir -p "$INSTALL_DIR"/{backend,frontend,nginx}
+
+  for f in docker-compose.yml Dockerfile requirements.txt; do
+    [[ -f "$SCRIPT_DIR/$f" ]] || die "Файл не найден: $SCRIPT_DIR/$f"
+    cp "$SCRIPT_DIR/$f" "$INSTALL_DIR/$f"
+  done
+
+  for f in main.py models.py database.py auth.py monitor.py schemas.py __init__.py; do
+    [[ -f "$SCRIPT_DIR/backend/$f" ]] || die "Файл не найден: $SCRIPT_DIR/backend/$f"
+    cp "$SCRIPT_DIR/backend/$f" "$INSTALL_DIR/backend/$f"
+  done
+
+  for f in index.html login.html admin.html; do
+    [[ -f "$SCRIPT_DIR/frontend/$f" ]] || die "Файл не найден: $SCRIPT_DIR/frontend/$f"
+    cp "$SCRIPT_DIR/frontend/$f" "$INSTALL_DIR/frontend/$f"
+  done
+
+  [[ -f "$SCRIPT_DIR/nginx/nginx.conf" ]] || die "Файл не найден: $SCRIPT_DIR/nginx/nginx.conf"
+  cp "$SCRIPT_DIR/nginx/nginx.conf" "$INSTALL_DIR/nginx/nginx.conf"
+
+  ok "Файлы проекта скопированы."
+}
+
+# ─── Функция запуска / пересборки контейнеров ────────────────────────────
+start_containers() {
+  log "Сборка и запуск контейнеров..."
+  docker compose -f "$INSTALL_DIR/docker-compose.yml" --env-file "$INSTALL_DIR/.env" up -d --build
+
+  log "Ожидание запуска API (до 60 сек)..."
+  for i in $(seq 1 30); do
+    if curl -sf http://localhost/api/monitor/status &>/dev/null; then
+      break
+    fi
+    sleep 2
+  done
+}
+
+# ════════════════════════════════════════════════════════════════════════════
+# РЕЖИМ ОБНОВЛЕНИЯ — если проект уже установлен
+# ════════════════════════════════════════════════════════════════════════════
+if [[ -d "$INSTALL_DIR" && -f "$INSTALL_DIR/docker-compose.yml" ]]; then
+
+  echo ""
+  echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${CYAN}║           V Rising Site — Проверка обновлений            ║${NC}"
+  echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
+  echo ""
+
+  command -v curl &>/dev/null || die "curl не найден"
+  command -v git  &>/dev/null || die "git не найден"
+
+  if ! git -C "$SCRIPT_DIR" rev-parse --git-dir &>/dev/null; then
+    die "Директория скрипта не является git-репозиторием: $SCRIPT_DIR"
+  fi
+
+  LOCAL_HASH=$(git -C "$SCRIPT_DIR" rev-parse HEAD)
+  LOCAL_SHORT=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD)
+  LOCAL_DATE=$(git -C "$SCRIPT_DIR" log -1 --format="%ci" | cut -d' ' -f1,2 | cut -d':' -f1,2)
+  log "Локальная версия:  ${LOCAL_SHORT} (${LOCAL_DATE})"
+
+  log "Проверка последней версии на GitHub..."
+  REMOTE_JSON=$(curl -sf "https://api.github.com/repos/${REPO}/commits/${BRANCH}" \
+    -H "Accept: application/vnd.github.v3+json" 2>/dev/null) || \
+    die "Не удалось подключиться к GitHub API."
+
+  REMOTE_HASH=$(echo "$REMOTE_JSON" | grep -m1 '"sha"' | head -1 | cut -d'"' -f4)
+  REMOTE_SHORT="${REMOTE_HASH:0:7}"
+  REMOTE_DATE=$(echo "$REMOTE_JSON" | grep -m1 '"date"' | head -1 | cut -d'"' -f4 | cut -d'T' -f1)
+  REMOTE_MSG=$(echo "$REMOTE_JSON"  | grep -m1 '"message"' | head -1 | cut -d'"' -f4 | cut -c1-60)
+  log "Версия на GitHub:  ${REMOTE_SHORT} (${REMOTE_DATE})"
+  echo ""
+
+  if [[ "$LOCAL_HASH" == "$REMOTE_HASH" ]]; then
+    ok "У вас актуальная версия. Обновление не требуется."
+    echo ""
+    exit 0
+  fi
+
+  echo -e "${YELLOW}  Доступно обновление!${NC}"
+  echo ""
+  echo -e "  Установлено:  ${RED}${LOCAL_SHORT}${NC} (${LOCAL_DATE})"
+  echo -e "  Последнее:    ${GREEN}${REMOTE_SHORT}${NC} (${REMOTE_DATE})"
+  echo -e "  Изменение:    ${REMOTE_MSG}"
+  echo ""
+  read -rp "$(echo -e "  ${CYAN}Обновить сейчас? [y/N]:${NC} ")" CONFIRM
+  echo ""
+
+  if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
+    warn "Обновление отменено."
+    echo ""
+    exit 0
+  fi
+
+  log "Получение обновлений с GitHub..."
+  git -C "$SCRIPT_DIR" pull --ff-only origin "$BRANCH"
+  ok "Репозиторий обновлён до $(git -C "$SCRIPT_DIR" rev-parse --short HEAD)."
+
+  copy_project_files
+  start_containers
+
+  echo ""
+  echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
+  echo -e "${GREEN}║               Обновление завершено успешно!              ║${NC}"
+  echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
+  echo ""
+  echo -e "  Версия: ${GREEN}$(git -C "$SCRIPT_DIR" rev-parse --short HEAD)${NC}"
+  echo -e "  Сайт:   ${CYAN}http://$(hostname -I | awk '{print $1}')${NC}"
+  echo ""
+  exit 0
+fi
+
+# ════════════════════════════════════════════════════════════════════════════
+# РЕЖИМ УСТАНОВКИ — первый запуск
+# ════════════════════════════════════════════════════════════════════════════
 SECRET_KEY="$(cat /proc/sys/kernel/random/uuid | tr -d '-' | head -c 40)"
 
-log "=== V Rising Site — Автоустановка ==="
+echo ""
+echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║            V Rising Site — Автоустановка                 ║${NC}"
+echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
+echo ""
 log "Директория установки: $INSTALL_DIR"
 
 # ─── 1. Системные обновления ──────────────────────────────────────────────
@@ -62,12 +185,11 @@ UFW=/usr/sbin/ufw
 "$UFW" --force enable
 ok "Брандмауэр настроен (SSH, HTTP, HTTPS)."
 
-# ─── 5. Структура проекта ────────────────────────────────────────────────
-log "Создание структуры проекта в $INSTALL_DIR..."
-mkdir -p "$INSTALL_DIR"/{backend,frontend,nginx}
-cd "$INSTALL_DIR"
+# ─── 5. Файлы проекта ────────────────────────────────────────────────────
+log "Копирование файлов в $INSTALL_DIR..."
+copy_project_files
 
-# ─── .env ─────────────────────────────────────────────────────────────────
+# ─── .env (создаётся только при первой установке) ─────────────────────────
 cat > "$INSTALL_DIR/.env" <<ENV
 SECRET_KEY=${SECRET_KEY}
 DATABASE_URL=sqlite+aiosqlite:////data/vrising.db
@@ -76,52 +198,8 @@ VRISING_SERVER_PORT=27016
 ENV
 ok ".env создан."
 
-# ─── Копируем файлы из текущей директории скрипта ─────────────────────────
-for f in docker-compose.yml Dockerfile requirements.txt; do
-  if [[ -f "$SCRIPT_DIR/$f" ]]; then
-    cp "$SCRIPT_DIR/$f" "$INSTALL_DIR/$f"
-  else
-    die "Файл не найден: $SCRIPT_DIR/$f"
-  fi
-done
-
-for f in main.py models.py database.py auth.py monitor.py schemas.py __init__.py; do
-  if [[ -f "$SCRIPT_DIR/backend/$f" ]]; then
-    cp "$SCRIPT_DIR/backend/$f" "$INSTALL_DIR/backend/$f"
-  else
-    die "Файл не найден: $SCRIPT_DIR/backend/$f"
-  fi
-done
-
-for f in index.html login.html admin.html; do
-  if [[ -f "$SCRIPT_DIR/frontend/$f" ]]; then
-    cp "$SCRIPT_DIR/frontend/$f" "$INSTALL_DIR/frontend/$f"
-  else
-    die "Файл не найден: $SCRIPT_DIR/frontend/$f"
-  fi
-done
-
-if [[ -f "$SCRIPT_DIR/nginx/nginx.conf" ]]; then
-  cp "$SCRIPT_DIR/nginx/nginx.conf" "$INSTALL_DIR/nginx/nginx.conf"
-else
-  die "Файл не найден: $SCRIPT_DIR/nginx/nginx.conf"
-fi
-
-ok "Файлы проекта скопированы."
-
 # ─── 6. Сборка и запуск ──────────────────────────────────────────────────
-log "Сборка и запуск контейнеров..."
-cd "$INSTALL_DIR"
-docker compose --env-file .env up -d --build
-
-# Ждём старта API
-log "Ожидание запуска API (до 60 сек)..."
-for i in $(seq 1 30); do
-  if curl -sf http://localhost/api/monitor/status &>/dev/null; then
-    break
-  fi
-  sleep 2
-done
+start_containers
 
 # ─── Итог ─────────────────────────────────────────────────────────────────
 SERVER_IP=$(hostname -I | awk '{print $1}')
@@ -137,8 +215,9 @@ echo ""
 echo -e "  Логин администратора:  ${YELLOW}admin${NC}"
 echo -e "  Пароль:                ${YELLOW}${ADMIN_PASS}${NC}"
 echo ""
-echo -e "  Директория:            ${INSTALL_DIR}"
-echo -e "  Управление:            cd ${INSTALL_DIR} && docker compose logs -f"
+echo -e "  Директория:       ${INSTALL_DIR}"
+echo -e "  Обновление:       sudo bash ${SCRIPT_DIR}/install.sh"
+echo -e "  Логи:             docker compose -f ${INSTALL_DIR}/docker-compose.yml logs -f"
 echo ""
 echo -e "${YELLOW}  ВАЖНО: Смените пароль администратора после первого входа!${NC}"
 echo ""
