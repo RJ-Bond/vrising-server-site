@@ -661,7 +661,7 @@
       display:flex; flex-direction:column; gap:0;
     }
     .sb-row {
-      display:flex; align-items:center; gap:0;
+      display:flex; align-items:center; justify-content:center; gap:0;
       border-bottom:1px solid rgba(110,0,20,0.12);
     }
     .sb-row:last-child { border-bottom:none; }
@@ -927,6 +927,11 @@
         <span class="sb-icon">🩸</span>
         <span style="color:var(--muted);">Игрок(ов)</span>
         <span class="sb-val" id="sb-online2">—</span>
+      </div>
+      <div class="sb-item">
+        <span class="sb-icon">⬆</span>
+        <span style="color:var(--muted);">Аптайм 24ч</span>
+        <span class="sb-val" id="sb-uptime2">—</span>
       </div>
       <div class="sb-item" style="border-right:none" id="sb-s2wipe-row">
         <span class="sb-icon">⚔</span>
@@ -1647,6 +1652,11 @@ async function loadStats() {
     if (el24) el24.textContent = fmt(s2.uptime_24h);
     if (el7d)  el7d.textContent = fmt(s2.uptime_7d);
     if (elpk)  elpk.textContent = s2.peak_7d ?? '—';
+    const sbUp2 = document.getElementById('sb-uptime2');
+    if (sbUp2 && s2.uptime_24h !== null) {
+      sbUp2.textContent = s2.uptime_24h + '%';
+      sbUp2.style.color = s2.uptime_24h >= 95 ? '#86efac' : s2.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
+    }
     [['stat-uptime24-s2', s2.uptime_24h], ['stat-uptime7d-s2', s2.uptime_7d]].forEach(([id, v]) => {
       const el = document.getElementById(id);
       if (!el || v === null) return;
