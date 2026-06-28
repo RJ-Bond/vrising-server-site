@@ -53,10 +53,12 @@ fi
 
 # ─── 4. UFW Firewall ──────────────────────────────────────────────────────
 log "Настройка UFW..."
-ufw allow OpenSSH
-ufw allow 80/tcp
-ufw allow 443/tcp
-ufw --force enable
+apt-get install -y -qq ufw
+UFW=/usr/sbin/ufw
+"$UFW" allow OpenSSH
+"$UFW" allow 80/tcp
+"$UFW" allow 443/tcp
+"$UFW" --force enable
 ok "Брандмауэр настроен (SSH, HTTP, HTTPS)."
 
 # ─── 5. Структура проекта ────────────────────────────────────────────────
