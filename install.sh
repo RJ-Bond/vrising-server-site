@@ -17,10 +17,49 @@ die()  { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="/opt/vrising-site"
 ADMIN_PASS="supersecretpassword"
-REPO="RJ-Bond/vrising-server-site"
 BRANCH="master"
 
-# ─── Функция копирования файлов проекта ──────────────────────────────────
+# ════════════════════════════════════════════════════════════════════════════
+# ШАГ 0 — СИНХРОНИЗАЦИЯ С GITHUB (всегда, при любом запуске)
+# ════════════════════════════════════════════════════════════════════════════
+echo ""
+echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
+echo -e "${CYAN}║             V Rising Site — Синхронизация                ║${NC}"
+echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+if ! command -v git &>/dev/null; then
+  warn "git не найден — пропуск синхронизации с GitHub."
+elif ! git -C "$SCRIPT_DIR" rev-parse --git-dir &>/dev/null; then
+  warn "Директория '$SCRIPT_DIR' не является git-репозиторием — пропуск синхронизации."
+else
+  HASH_BEFORE=$(git -C "$SCRIPT_DIR" rev-parse HEAD)
+  SHORT_BEFORE=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD)
+  log "Локальная версия до обновления: ${SHORT_BEFORE}"
+
+  log "Получение последних изменений с GitHub (git pull)..."
+  if git -C "$SCRIPT_DIR" pull --ff-only origin "$BRANCH" 2>&1; then
+    HASH_AFTER=$(git -C "$SCRIPT_DIR" rev-parse HEAD)
+    SHORT_AFTER=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD)
+
+    if [[ "$HASH_BEFORE" == "$HASH_AFTER" ]]; then
+      ok "Файлы актуальны. Версия: ${SHORT_AFTER}"
+    else
+      ok "Файлы обновлены: ${RED}${SHORT_BEFORE}${NC} → ${GREEN}${SHORT_AFTER}${NC}"
+      UPDATED_FILES=$(git -C "$SCRIPT_DIR" diff --name-only "$HASH_BEFORE" "$HASH_AFTER" 2>/dev/null | head -10 | sed 's/^/    /')
+      if [[ -n "$UPDATED_FILES" ]]; then
+        echo -e "${CYAN}  Изменённые файлы:${NC}"
+        echo "$UPDATED_FILES"
+      fi
+    fi
+  else
+    warn "git pull завершился с ошибкой — используем локальные файлы."
+  fi
+  echo ""
+fi
+
+# ─── Вспомогательные функции ─────────────────────────────────────────────
+
 copy_project_files() {
   mkdir -p "$INSTALL_DIR"/{backend,frontend,nginx}
 
@@ -34,7 +73,7 @@ copy_project_files() {
     cp "$SCRIPT_DIR/backend/$f" "$INSTALL_DIR/backend/$f"
   done
 
-  for f in index.html login.html admin.html; do
+  for f in index.html login.html admin.html setup.html; do
     [[ -f "$SCRIPT_DIR/frontend/$f" ]] || die "Файл не найден: $SCRIPT_DIR/frontend/$f"
     cp "$SCRIPT_DIR/frontend/$f" "$INSTALL_DIR/frontend/$f"
   done
@@ -45,7 +84,6 @@ copy_project_files() {
   ok "Файлы проекта скопированы."
 }
 
-# ─── Функция запуска / пересборки контейнеров ────────────────────────────
 start_containers() {
   log "Сборка и запуск контейнеров..."
   docker compose -f "$INSTALL_DIR/docker-compose.yml" --env-file "$INSTALL_DIR/.env" up -d --build
@@ -64,71 +102,26 @@ start_containers() {
 # ════════════════════════════════════════════════════════════════════════════
 if [[ -d "$INSTALL_DIR" && -f "$INSTALL_DIR/docker-compose.yml" ]]; then
 
-  echo ""
   echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
-  echo -e "${CYAN}║           V Rising Site — Проверка обновлений            ║${NC}"
+  echo -e "${CYAN}║           V Rising Site — Обновление                     ║${NC}"
   echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
   echo ""
 
-  command -v curl &>/dev/null || die "curl не найден"
-  command -v git  &>/dev/null || die "git не найден"
-
-  if ! git -C "$SCRIPT_DIR" rev-parse --git-dir &>/dev/null; then
-    die "Директория скрипта не является git-репозиторием: $SCRIPT_DIR"
-  fi
-
-  LOCAL_HASH=$(git -C "$SCRIPT_DIR" rev-parse HEAD)
-  LOCAL_SHORT=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD)
-  LOCAL_DATE=$(git -C "$SCRIPT_DIR" log -1 --format="%ci" | cut -d' ' -f1,2 | cut -d':' -f1,2)
-  log "Локальная версия:  ${LOCAL_SHORT} (${LOCAL_DATE})"
-
-  log "Проверка последней версии на GitHub..."
-  REMOTE_JSON=$(curl -sf "https://api.github.com/repos/${REPO}/commits/${BRANCH}" \
-    -H "Accept: application/vnd.github.v3+json" 2>/dev/null) || \
-    die "Не удалось подключиться к GitHub API."
-
-  REMOTE_HASH=$(echo "$REMOTE_JSON" | grep -m1 '"sha"' | head -1 | cut -d'"' -f4)
-  REMOTE_SHORT="${REMOTE_HASH:0:7}"
-  REMOTE_DATE=$(echo "$REMOTE_JSON" | grep -m1 '"date"' | head -1 | cut -d'"' -f4 | cut -d'T' -f1)
-  REMOTE_MSG=$(echo "$REMOTE_JSON"  | grep -m1 '"message"' | head -1 | cut -d'"' -f4 | cut -c1-60)
-  log "Версия на GitHub:  ${REMOTE_SHORT} (${REMOTE_DATE})"
-  echo ""
-
-  if [[ "$LOCAL_HASH" == "$REMOTE_HASH" ]]; then
-    ok "У вас актуальная версия. Обновление не требуется."
-    echo ""
-    exit 0
-  fi
-
-  echo -e "${YELLOW}  Доступно обновление!${NC}"
-  echo ""
-  echo -e "  Установлено:  ${RED}${LOCAL_SHORT}${NC} (${LOCAL_DATE})"
-  echo -e "  Последнее:    ${GREEN}${REMOTE_SHORT}${NC} (${REMOTE_DATE})"
-  echo -e "  Изменение:    ${REMOTE_MSG}"
-  echo ""
-  read -rp "$(echo -e "  ${CYAN}Обновить сейчас? [y/N]:${NC} ")" CONFIRM
-  echo ""
-
-  if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
-    warn "Обновление отменено."
-    echo ""
-    exit 0
-  fi
-
-  log "Получение обновлений с GitHub..."
-  git -C "$SCRIPT_DIR" pull --ff-only origin "$BRANCH"
-  ok "Репозиторий обновлён до $(git -C "$SCRIPT_DIR" rev-parse --short HEAD)."
-
+  log "Копирование обновлённых файлов в $INSTALL_DIR..."
   copy_project_files
+
   start_containers
 
+  SERVER_IP=$(hostname -I | awk '{print $1}')
+  CURRENT_VERSION=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "n/a")
   echo ""
   echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
   echo -e "${GREEN}║               Обновление завершено успешно!              ║${NC}"
   echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
   echo ""
-  echo -e "  Версия: ${GREEN}$(git -C "$SCRIPT_DIR" rev-parse --short HEAD)${NC}"
-  echo -e "  Сайт:   ${CYAN}http://$(hostname -I | awk '{print $1}')${NC}"
+  echo -e "  Версия:  ${GREEN}${CURRENT_VERSION}${NC}"
+  echo -e "  Сайт:    ${CYAN}http://${SERVER_IP}${NC}"
+  echo -e "  Логи:    docker compose -f ${INSTALL_DIR}/docker-compose.yml logs -f"
   echo ""
   exit 0
 fi
@@ -138,7 +131,6 @@ fi
 # ════════════════════════════════════════════════════════════════════════════
 SECRET_KEY="$(cat /proc/sys/kernel/random/uuid | tr -d '-' | head -c 40)"
 
-echo ""
 echo -e "${CYAN}╔══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${CYAN}║            V Rising Site — Автоустановка                 ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════════════════════════╝${NC}"
@@ -197,14 +189,15 @@ VRISING_SERVER_IP=127.0.0.1
 VRISING_SERVER_PORT=27016
 ANTHROPIC_API_KEY=
 ENV
-warn "Добавьте ANTHROPIC_API_KEY в $INSTALL_DIR/.env для активации чата 'Управляющий замком'."
 ok ".env создан."
+warn "Добавьте ANTHROPIC_API_KEY в $INSTALL_DIR/.env для активации чата 'Управляющий замком'."
 
 # ─── 6. Сборка и запуск ──────────────────────────────────────────────────
 start_containers
 
 # ─── Итог ─────────────────────────────────────────────────────────────────
 SERVER_IP=$(hostname -I | awk '{print $1}')
+CURRENT_VERSION=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "n/a")
 echo ""
 echo -e "${GREEN}╔══════════════════════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}║          V Rising Site — Установка завершена!            ║${NC}"
@@ -214,12 +207,11 @@ echo -e "  Сайт доступен:    ${CYAN}http://${SERVER_IP}${NC}"
 echo -e "  Панель Админа:    ${CYAN}http://${SERVER_IP}/admin.html${NC}"
 echo -e "  API Docs:         ${CYAN}http://${SERVER_IP}/api/docs${NC}"
 echo ""
-echo -e "  Логин администратора:  ${YELLOW}admin${NC}"
-echo -e "  Пароль:                ${YELLOW}${ADMIN_PASS}${NC}"
+echo -e "  Версия:                ${GREEN}${CURRENT_VERSION}${NC}"
+echo -e "  Логин администратора:  ${YELLOW}${ADMIN_PASS}${NC}"
 echo ""
-echo -e "  Директория:       ${INSTALL_DIR}"
-echo -e "  Обновление:       sudo bash ${SCRIPT_DIR}/install.sh"
-echo -e "  Логи:             docker compose -f ${INSTALL_DIR}/docker-compose.yml logs -f"
+echo -e "  Обновление:  sudo bash ${SCRIPT_DIR}/install.sh"
+echo -e "  Логи:        docker compose -f ${INSTALL_DIR}/docker-compose.yml logs -f"
 echo ""
 echo -e "${YELLOW}  ВАЖНО: Смените пароль администратора после первого входа!${NC}"
 echo ""
