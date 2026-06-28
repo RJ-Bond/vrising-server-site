@@ -145,10 +145,45 @@
 
     <!-- SETTINGS -->
     <div id="section-settings" class="hidden">
-      <h1 class="section-title mb-5">Настройки сервера</h1>
-      <div id="settings-form" class="glass-card rounded-xl p-6 space-y-5" style="max-width:32rem;">
-        <p style="color:var(--muted);font-size:.85rem;">Загрузка...</p>
+      <h1 class="section-title mb-6">Настройки сайта</h1>
+
+      <!-- Server connection -->
+      <div class="glass-card rounded-xl p-6 mb-5" style="max-width:38rem;">
+        <h2 class="gothic" style="font-size:.8rem;letter-spacing:.15em;color:var(--gold);margin-bottom:1.5rem;text-transform:uppercase;">— Подключение к серверу —</h2>
+        <div class="space-y-5">
+          <div>
+            <label>IP адрес сервера</label>
+            <div style="display:flex;gap:.5rem;">
+              <input id="setting-server_ip" type="text" class="dark-input" placeholder="127.0.0.1" style="flex:1;" />
+              <button onclick="saveSetting('server_ip')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
+            </div>
+            <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">IP-адрес V Rising сервера для отображения статуса на главной</p>
+          </div>
+          <div>
+            <label>Порт запроса статуса (UDP)</label>
+            <div style="display:flex;gap:.5rem;">
+              <input id="setting-server_port" type="number" min="1" max="65535" class="dark-input" placeholder="27016" style="flex:1;" />
+              <button onclick="saveSetting('server_port')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
+            </div>
+            <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">Обычно GamePort + 1 (если игровой порт 27015 → ставь 27016)</p>
+          </div>
+        </div>
       </div>
+
+      <!-- Display settings -->
+      <div class="glass-card rounded-xl p-6" style="max-width:38rem;">
+        <h2 class="gothic" style="font-size:.8rem;letter-spacing:.15em;color:var(--gold);margin-bottom:1.5rem;text-transform:uppercase;">— Отображение —</h2>
+        <div>
+          <label>Название сервера</label>
+          <div style="display:flex;gap:.5rem;">
+            <input id="setting-server_name" type="text" class="dark-input" placeholder="V Rising Server" style="flex:1;" />
+            <button onclick="saveSetting('server_name')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
+          </div>
+          <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">Резервное название — показывается когда сервер офлайн</p>
+        </div>
+      </div>
+
+      <p id="settings-msg" class="success-box hidden mt-4" style="max-width:38rem;">✔ Сохранено!</p>
     </div>
 
     <!-- USERS -->
@@ -327,21 +362,12 @@ async function loadSettings() {
   const res = await fetch(`${API}/admin/settings`, { headers: authH() });
   if (!res.ok) { handleAuth(res); return; }
   const settings = await res.json();
-  const form = document.getElementById('settings-form');
-  form.innerHTML = '';
-  settings.forEach(s => {
-    const row = document.createElement('div');
-    row.innerHTML = `
-      <label>${s.key}</label>
-      <div style="display:flex;gap:.5rem;">
-        <input id="setting-${s.key}" type="text" value="${s.value}" class="dark-input" style="flex:1;" />
-        <button onclick="saveSetting('${s.key}')" class="btn-primary" style="white-space:nowrap;">Сохранить</button>
-      </div>`;
-    form.appendChild(row);
+  const map = {};
+  settings.forEach(s => { map[s.key] = s.value; });
+  ['server_ip', 'server_port', 'server_name'].forEach(key => {
+    const el = document.getElementById(`setting-${key}`);
+    if (el && map[key] !== undefined) el.value = map[key];
   });
-  const msg = document.createElement('p');
-  msg.id = 'settings-msg'; msg.className = 'success-box hidden'; msg.textContent = 'Сохранено!';
-  form.appendChild(msg);
 }
 
 async function saveSetting(key) {
