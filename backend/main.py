@@ -58,6 +58,8 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="server_ip", value=os.getenv("VRISING_SERVER_IP", "127.0.0.1")),
         Setting(key="server_port", value=os.getenv("VRISING_SERVER_PORT", "27016")),
         Setting(key="server_name", value="V Rising Server"),
+        Setting(key="site_title", value="V RISING"),
+        Setting(key="site_logo_url", value=""),
     ]
     for s in default_settings:
         existing = await db.execute(select(Setting).where(Setting.key == s.key))
@@ -378,6 +380,16 @@ async def delete_news(
         raise HTTPException(status_code=404, detail="News not found")
     await db.delete(news)
     await db.commit()
+
+
+# ─── Settings (public) ───────────────────────────────────────────────────────
+
+@app.get("/api/settings/public")
+async def get_public_settings(db: AsyncSession = Depends(get_db)):
+    keys = ["site_title", "site_logo_url"]
+    result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
+    settings = result.scalars().all()
+    return {s.key: s.value for s in settings}
 
 
 # ─── Settings (admin) ────────────────────────────────────────────────────────

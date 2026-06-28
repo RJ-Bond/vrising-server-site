@@ -183,6 +183,32 @@
         </div>
       </div>
 
+      <!-- Appearance -->
+      <div class="glass-card rounded-xl p-6 mb-5" style="max-width:38rem;">
+        <h2 class="gothic" style="font-size:.8rem;letter-spacing:.15em;color:var(--gold);margin-bottom:1.5rem;text-transform:uppercase;">— Внешний вид —</h2>
+        <div class="space-y-5">
+          <div>
+            <label>Название сайта</label>
+            <div style="display:flex;gap:.5rem;">
+              <input id="setting-site_title" type="text" class="dark-input" placeholder="V RISING" style="flex:1;" />
+              <button onclick="saveSetting('site_title')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
+            </div>
+            <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">Название сервера в шапке и на главной странице</p>
+          </div>
+          <div>
+            <label>URL логотипа</label>
+            <div style="display:flex;gap:.5rem;">
+              <input id="setting-site_logo_url" type="url" class="dark-input" placeholder="https://example.com/logo.png" style="flex:1;" oninput="previewLogo(this.value)" />
+              <button onclick="saveSetting('site_logo_url')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
+            </div>
+            <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">PNG/SVG лого для шапки. Оставьте пустым — будет текстовое название</p>
+            <div id="logo-preview" style="margin-top:.75rem;display:none;">
+              <img id="logo-preview-img" src="" alt="Logo preview" style="max-height:3rem;max-width:14rem;object-fit:contain;border-radius:.4rem;border:1px solid rgba(150,0,28,0.3);padding:.3rem .6rem;background:rgba(8,0,16,0.6);" onerror="this.style.display='none'" onload="this.style.display='block'" />
+            </div>
+          </div>
+        </div>
+      </div>
+
       <p id="settings-msg" class="success-box hidden mt-4" style="max-width:38rem;">✔ Сохранено!</p>
     </div>
 
@@ -364,10 +390,18 @@ async function loadSettings() {
   const settings = await res.json();
   const map = {};
   settings.forEach(s => { map[s.key] = s.value; });
-  ['server_ip', 'server_port', 'server_name'].forEach(key => {
+  ['server_ip', 'server_port', 'server_name', 'site_title', 'site_logo_url'].forEach(key => {
     const el = document.getElementById(`setting-${key}`);
     if (el && map[key] !== undefined) el.value = map[key];
   });
+  if (map['site_logo_url']) previewLogo(map['site_logo_url']);
+}
+
+function previewLogo(url) {
+  const wrap = document.getElementById('logo-preview');
+  const img  = document.getElementById('logo-preview-img');
+  if (url) { img.src = url; wrap.style.display = 'block'; }
+  else { wrap.style.display = 'none'; img.src = ''; }
 }
 
 async function saveSetting(key) {

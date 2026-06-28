@@ -127,7 +127,12 @@
       </div>
       <div>
         <label>Пароль</label>
-        <input name="password" type="password" required autocomplete="new-password" placeholder="Минимум 6 символов" class="dark-input" />
+        <input id="reg-password" name="password" type="password" required autocomplete="new-password" placeholder="Минимум 6 символов" class="dark-input" oninput="checkConfirm()" />
+      </div>
+      <div>
+        <label>Повторите пароль</label>
+        <input id="reg-confirm" name="password_confirm" type="password" required autocomplete="new-password" placeholder="Повторите пароль" class="dark-input" oninput="checkConfirm()" style="transition:border-color .2s,box-shadow .2s;" />
+        <div id="confirm-hint" style="font-size:.72rem;margin-top:.35rem;display:none;"></div>
       </div>
       <div id="register-error" class="error-box hidden"></div>
       <div id="register-success" class="success-box hidden"></div>
@@ -194,16 +199,33 @@ async function submitLogin(e) {
   finally { btn.disabled = false; btn.textContent = 'Войти'; }
 }
 
+function checkConfirm() {
+  const pw  = document.getElementById('reg-password').value;
+  const cfw = document.getElementById('reg-confirm').value;
+  const hint = document.getElementById('confirm-hint');
+  const input = document.getElementById('reg-confirm');
+  if (!cfw) { hint.style.display = 'none'; input.style.borderColor = ''; return; }
+  const match = pw === cfw;
+  hint.style.display = 'block';
+  hint.textContent   = match ? '✔ Пароли совпадают' : '✘ Пароли не совпадают';
+  hint.style.color   = match ? '#86efac' : '#fca5a5';
+  input.style.borderColor = match ? 'rgba(0,180,40,0.5)' : 'rgba(180,0,30,0.6)';
+  input.style.boxShadow   = match ? '0 0 8px rgba(0,180,40,0.2)' : '0 0 8px rgba(180,0,30,0.2)';
+}
+
 async function submitRegister(e) {
   e.preventDefault();
   document.getElementById('register-error').classList.add('hidden');
   document.getElementById('register-success').classList.add('hidden');
+  const pw  = document.getElementById('reg-password').value;
+  const cfw = document.getElementById('reg-confirm').value;
+  if (pw !== cfw) { showError('register-error', 'Пароли не совпадают'); return; }
   const btn = document.getElementById('register-btn');
   btn.disabled = true; btn.textContent = 'Создание...';
   const fd = new FormData(e.target);
   try {
     const { res, data } = await apiPost(`${API}/auth/register`, {
-      username: fd.get('username'), email: fd.get('email'), password: fd.get('password'),
+      username: fd.get('username'), email: fd.get('email'), password: pw,
     });
     if (!res.ok) { showError('register-error', extractError(data, 'Ошибка регистрации')); return; }
     localStorage.setItem('token', data.access_token);
