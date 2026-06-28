@@ -14,6 +14,7 @@ die()  { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 
 [[ $EUID -ne 0 ]] && die "Запустите скрипт от root: sudo bash install.sh"
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="/opt/vrising-site"
 ADMIN_PASS="supersecretpassword"
 SECRET_KEY="$(cat /proc/sys/kernel/random/uuid | tr -d '-' | head -c 40)"
@@ -76,8 +77,6 @@ ENV
 ok ".env создан."
 
 # ─── Копируем файлы из текущей директории скрипта ─────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
 for f in docker-compose.yml Dockerfile requirements.txt; do
   if [[ -f "$SCRIPT_DIR/$f" ]]; then
     cp "$SCRIPT_DIR/$f" "$INSTALL_DIR/$f"
