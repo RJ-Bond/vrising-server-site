@@ -76,14 +76,6 @@
     .castle-wrap { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: min(900px,100%); pointer-events: none; }
     .castle-svg { width: 100%; opacity: 0.22; filter: blur(0.5px); }
 
-    /* Moon */
-    .moon {
-      position: absolute; top: 10%; right: 15%;
-      width: 80px; height: 80px; border-radius: 50%;
-      background: radial-gradient(circle at 40% 40%, #2a1a40, #0d0018);
-      box-shadow: 0 0 30px rgba(123,0,204,0.2), 0 0 80px rgba(80,0,140,0.12);
-      opacity: 0.5;
-    }
     /* Stars */
     .stars { position: absolute; inset: 0; }
     .star { position: absolute; border-radius: 50%; background: rgba(212,196,224,0.6); animation: twinkle 3s ease-in-out infinite alternate; }
@@ -418,7 +410,7 @@
       .hunter-podium { gap: .25rem; }
       .h-name { max-width: 52px; font-size: .65rem; }
       .wipe-block-val { font-size: 1.4rem; }
-      .blood-moon-digit { font-size: 1.3rem; }
+
       .wipe-blocks { gap: .25rem; }
     }
     @media (max-width: 480px) {
@@ -814,12 +806,6 @@
       color:#c8e8d0; letter-spacing:.03em;
       text-shadow:0 0 18px rgba(40,180,80,0.4);
     }
-    .blood-moon-digit {
-      font-family:'Oswald',sans-serif; font-size:1.6rem; font-weight:600;
-      color:#f0dce8; letter-spacing:.03em;
-      text-shadow:0 0 22px rgba(220,0,40,0.75),0 0 50px rgba(160,0,30,0.4);
-    }
-
     /* ── Right panel info rows ── */
     .stat-row { display:flex; justify-content:space-between; align-items:center; padding:.3rem .45rem; border-radius:.35rem; transition:background .15s; }
     .stat-row:hover { background:rgba(120,0,20,0.1); }
@@ -849,7 +835,6 @@
 <!-- ══ HERO ══════════════════════════════════════════════════════════════════ -->
 <section class="hero">
   <div class="hero-bg"></div>
-  <div class="moon"></div>
   <div class="stars" id="stars"></div>
 
   <!-- Castle SVG silhouette -->
@@ -1047,18 +1032,6 @@
     <!-- ── Info cards ── -->
     <div class="info-grid">
       <div style="display:none;"></div>
-      <div class="info-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(14,3,7,0.82);border-color:rgba(190,0,35,0.2);">
-        <div style="font-size:2rem;line-height:1;margin-bottom:.45rem;filter:drop-shadow(0 0 12px rgba(220,0,40,0.5));">🌕</div>
-        <div class="ic-title" style="margin-bottom:.4rem;">Кровавое полнолуние</div>
-        <div class="wipe-blocks" id="blood-moon-timer">
-          <div class="wipe-block"><span class="wipe-block-val blood-moon-digit" id="bm-d">—</span><span class="wipe-block-lbl">дней</span></div>
-          <div class="wipe-sep" style="text-shadow:0 0 12px rgba(200,0,40,0.5);">:</div>
-          <div class="wipe-block"><span class="wipe-block-val blood-moon-digit" id="bm-h">—</span><span class="wipe-block-lbl">часов</span></div>
-          <div class="wipe-sep" style="text-shadow:0 0 12px rgba(200,0,40,0.5);">:</div>
-          <div class="wipe-block"><span class="wipe-block-val blood-moon-digit" id="bm-m">—</span><span class="wipe-block-lbl">минут</span></div>
-        </div>
-        <p style="font-size:.63rem;color:var(--muted);margin-top:.3rem;">до следующего полнолуния</p>
-      </div>
       <div id="wipe-card" class="info-card" style="display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(3,14,8,0.82);border-color:rgba(0,160,60,0.2);">
         <div style="font-size:2rem;line-height:1;margin-bottom:.45rem;filter:drop-shadow(0 0 12px rgba(40,200,80,0.45));">🗡️</div>
         <div id="wipe-card-title" class="ic-title" style="margin-bottom:.2rem;color:#7ecf9a;">Вайп · Сервер 1</div>
@@ -2263,36 +2236,6 @@ async function loadWipeHistory() {
   } catch {}
 }
 
-// ── Blood moon countdown ────────────────────────────────────────────────────
-function getNextFullMoon() {
-  const KNOWN_FULL = new Date('2025-01-13T22:27:00Z').getTime();
-  const CYCLE_MS = 29.530588853 * 24 * 60 * 60 * 1000;
-  const now = Date.now();
-  const elapsed = now - KNOWN_FULL;
-  const cyclesSince = Math.floor(elapsed / CYCLE_MS);
-  let next = KNOWN_FULL + (cyclesSince + 1) * CYCLE_MS;
-  if (next <= now) next += CYCLE_MS;
-  return new Date(next);
-}
-
-function updateBloodMoonTimer() {
-  const dEl = document.getElementById('bm-d');
-  const hEl = document.getElementById('bm-h');
-  const mEl = document.getElementById('bm-m');
-  if (!dEl) return;
-  const diff = getNextFullMoon().getTime() - Date.now();
-  if (diff <= 0) {
-    dEl.textContent = '0'; hEl.textContent = '00'; mEl.textContent = '00';
-    return;
-  }
-  const d = Math.floor(diff / 86400000);
-  const h = Math.floor((diff % 86400000) / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  dEl.textContent = d;
-  hEl.textContent = String(h).padStart(2, '0');
-  mEl.textContent = String(m).padStart(2, '0');
-}
-
 // ── Init ───────────────────────────────────────────────────────────────────
 // Stagger panel entrance animations
 document.querySelectorAll('.g-panel').forEach((p, i) => {
@@ -2314,8 +2257,6 @@ loadFeatured();
 loadLatestNews();
 loadNews(1);
 loadTags();
-updateBloodMoonTimer();
-setInterval(updateBloodMoonTimer, 60000);
 loadWipeHistory();
 </script>
 </body>
