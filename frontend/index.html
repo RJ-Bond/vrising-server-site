@@ -879,11 +879,6 @@
           <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Пик 7д</div>
         </div>
       </div>
-      <!-- Latency -->
-      <div id="stat-latency-row" style="display:none;margin-bottom:.5rem;" class="stat-row">
-        <span class="stat-row-k">Задержка (A2S)</span>
-        <span id="stat-latency" class="stat-row-v">—</span>
-      </div>
       <!-- Heatmap -->
       <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem;">Активность по часам (7д)</div>
       <div id="heatmap" style="display:flex;gap:2px;align-items:flex-end;height:28px;"></div>
@@ -1178,14 +1173,6 @@ function renderServerBlock(d, sfx) {
     animateVials(circEl);
   }
 
-  const infoEl = document.getElementById('left-info' + sfx);
-  if (infoEl) {
-    const latencyStr = d.latency_ms != null
-      ? `<span style="color:${d.latency_ms < 80 ? '#86efac' : d.latency_ms < 200 ? '#fbbf24' : '#f87171'}">${d.latency_ms} мс</span>`
-      : '—';
-    infoEl.innerHTML =
-      `<div class="stat-row"><span class="stat-row-k">Задержка</span><span class="stat-row-v">${latencyStr}</span></div>`;
-  }
 
   renderPlayerList(d.players_list || [], 'players-list' + sfx);
   return { lbl, cls, name: d.name, players: d.players, max_players: d.max_players };
