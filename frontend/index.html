@@ -665,11 +665,19 @@
       padding:.2rem 1.1rem; border-right:1px solid rgba(110,0,20,0.2);
       font-size:.72rem; color:var(--muted); white-space:nowrap;
     }
-    .sb-item:first-child { padding-left:0; }
-    .sb-item:last-child  { border-right:none; }
     .sb-val { font-family:'Oswald',sans-serif; font-size:.85rem; font-weight:500;
       font-variant-numeric:tabular-nums; color:var(--text); }
     .sb-icon { font-size:.9rem; line-height:1; }
+    .sb-srv-tag {
+      font-family:'Cinzel',serif; font-size:.56rem; font-weight:700;
+      letter-spacing:.1em; color:rgba(200,165,255,.55); text-transform:uppercase;
+      padding:.1rem .7rem .1rem .15rem; border-right:1px solid rgba(110,0,20,0.2);
+      white-space:nowrap; align-self:center;
+    }
+    .sb-srv-sep {
+      width:1px; align-self:stretch; margin:0 .3rem;
+      background:rgba(180,0,40,0.28);
+    }
 
     /* ── Event banner ── */
     .event-banner {
@@ -891,24 +899,35 @@
 <!-- ══ STATUS BAR ═══════════════════════════════════════════════════════════ -->
 <div class="status-bar">
   <div class="status-bar-inner">
+    <!-- Server 1 -->
+    <span class="sb-srv-tag" id="sb-s1name">Сервер 1</span>
     <div class="sb-item">
       <span class="sb-icon">🩸</span>
-      <span style="color:var(--muted);">Онлайн</span>
-      <span class="sb-val" id="sb-online">—</span>
+      <span style="color:var(--muted);">Игрок(ов)</span>
+      <span class="sb-val" id="sb-online1">—</span>
     </div>
     <div class="sb-item">
       <span class="sb-icon">⬆</span>
       <span style="color:var(--muted);">Аптайм 24ч</span>
-      <span class="sb-val" id="sb-uptime">—</span>
+      <span class="sb-val" id="sb-uptime1">—</span>
     </div>
-    <div class="sb-item">
+    <div class="sb-item" id="sb-s1-wipe-row">
       <span class="sb-icon">⚔</span>
       <span style="color:var(--muted);">До вайпа</span>
-      <span class="sb-val" id="sb-wipe">—</span>
+      <span class="sb-val" id="sb-wipe1">—</span>
     </div>
-    <div class="sb-item" id="sb-news-wrap" style="flex:1;cursor:pointer;overflow:hidden;" onclick="document.getElementById('news-section').scrollIntoView({behavior:'smooth'})">
-      <span class="sb-icon">📰</span>
-      <span id="sb-news-title" style="color:var(--muted);font-size:.72rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:260px;"></span>
+    <!-- Server 2 (shown by JS when server2_ip is configured) -->
+    <div class="sb-srv-sep" id="sb-s2sep" style="display:none"></div>
+    <span class="sb-srv-tag" id="sb-s2name" style="display:none">Сервер 2</span>
+    <div class="sb-item" id="sb-s2online-row" style="display:none">
+      <span class="sb-icon">🩸</span>
+      <span style="color:var(--muted);">Игрок(ов)</span>
+      <span class="sb-val" id="sb-online2">—</span>
+    </div>
+    <div class="sb-item" id="sb-s2wipe-row" style="display:none;border-right:none">
+      <span class="sb-icon">⚔</span>
+      <span style="color:var(--muted);">До вайпа</span>
+      <span class="sb-val" id="sb-wipe2">—</span>
     </div>
   </div>
 </div>
@@ -1374,9 +1393,6 @@ async function loadLatestNews() {
     dateEl.textContent = fmtDate(n.created_at);
     card.onclick = (e) => { e.preventDefault(); openNews(n.slug); };
     wrap.style.display = '';
-    // Status bar news title
-    const sbNews = document.getElementById('sb-news-title');
-    if (sbNews) sbNews.textContent = n.title;
   } catch {}
 }
 
@@ -1613,7 +1629,7 @@ async function loadStats() {
     if (el24) el24.textContent = fmt(s.uptime_24h);
     if (el7d)  el7d.textContent = fmt(s.uptime_7d);
     if (elpk)  elpk.textContent = s.peak_7d ?? '—';
-    const sbUp = document.getElementById('sb-uptime');
+    const sbUp = document.getElementById('sb-uptime1');
     if (sbUp && s.uptime_24h !== null) {
       sbUp.textContent = s.uptime_24h + '%';
       sbUp.style.color = s.uptime_24h >= 95 ? '#86efac' : s.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
@@ -1676,12 +1692,18 @@ window._sb_online1 = 0; window._sb_online2 = 0;
 window._sb_max1 = 0;    window._sb_max2 = 0;
 
 function _updateStatusBarOnline() {
-  const el = document.getElementById('sb-online');
-  if (!el) return;
-  const total = (window._sb_online1 || 0) + (window._sb_online2 || 0);
-  const maxT  = (window._sb_max1 || 0) + (window._sb_max2 || 0);
-  el.textContent = maxT > 0 ? `${total} / ${maxT}` : `${total}`;
-  el.style.color = total > 0 ? '#86efac' : 'var(--muted)';
+  const el1 = document.getElementById('sb-online1');
+  if (el1) {
+    const n = window._sb_online1 || 0, m = window._sb_max1 || 0;
+    el1.textContent = m > 0 ? `${n} / ${m}` : (n > 0 ? `${n}` : '—');
+    el1.style.color = n > 0 ? '#86efac' : 'var(--muted)';
+  }
+  const el2 = document.getElementById('sb-online2');
+  if (el2) {
+    const n = window._sb_online2 || 0, m = window._sb_max2 || 0;
+    el2.textContent = m > 0 ? `${n} / ${m}` : (n > 0 ? `${n}` : '—');
+    el2.style.color = n > 0 ? '#86efac' : 'var(--muted)';
+  }
 }
 
 async function loadStatus() {
@@ -2044,6 +2066,20 @@ async function loadSiteSettings() {
     window._srvName  = srvName;
     window._srvName2 = srvName2;
 
+    // Status bar server names
+    const sbS1 = document.getElementById('sb-s1name');
+    if (sbS1) sbS1.textContent = srvName;
+    const sbS2 = document.getElementById('sb-s2name');
+    if (sbS2) sbS2.textContent = srvName2;
+
+    // Show server 2 section if configured
+    if ((d.server2_ip || '').trim()) {
+      ['sb-s2sep','sb-s2name','sb-s2online-row','sb-s2wipe-row'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = id === 'sb-s2wipe-row' ? 'flex' : '';
+      });
+    }
+
     const wipeDateStr = (d.wipe_date || '').trim();
     if (wipeDateStr) {
       const parsed = new Date(wipeDateStr);
@@ -2072,17 +2108,31 @@ async function loadSiteSettings() {
       }
     }
 
-    // Status bar — wipe countdown
-    const sbWipe = document.getElementById('sb-wipe');
-    if (sbWipe && wipeDateStr) {
+    // Status bar — wipe countdown server 1
+    const sbWipe1 = document.getElementById('sb-wipe1');
+    if (sbWipe1 && wipeDateStr) {
       const wipeD = new Date(wipeDateStr);
       if (!isNaN(wipeD)) {
         const diff = wipeD - Date.now();
         if (diff > 0) {
           const days = Math.floor(diff / 86400000);
           const hrs  = Math.floor((diff % 86400000) / 3600000);
-          sbWipe.textContent = days > 0 ? `${days}д ${hrs}ч` : `${hrs}ч`;
-        } else { sbWipe.textContent = 'Вайп!'; }
+          sbWipe1.textContent = days > 0 ? `${days}д ${hrs}ч` : `${hrs}ч`;
+        } else { sbWipe1.textContent = 'Вайп!'; }
+      }
+    }
+
+    // Status bar — wipe countdown server 2
+    const sbWipe2 = document.getElementById('sb-wipe2');
+    if (sbWipe2 && wipeDateStr2) {
+      const wipeD2 = new Date(wipeDateStr2);
+      if (!isNaN(wipeD2)) {
+        const diff2 = wipeD2 - Date.now();
+        if (diff2 > 0) {
+          const days2 = Math.floor(diff2 / 86400000);
+          const hrs2  = Math.floor((diff2 % 86400000) / 3600000);
+          sbWipe2.textContent = days2 > 0 ? `${days2}д ${hrs2}ч` : `${hrs2}ч`;
+        } else { sbWipe2.textContent = 'Вайп!'; }
       }
     }
 
