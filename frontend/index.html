@@ -225,9 +225,26 @@
     .modal-box {
       background:rgba(12,2,20,0.98); border:1px solid rgba(130,0,25,0.45);
       box-shadow:0 0 60px rgba(0,0,0,0.8), 0 0 30px rgba(100,0,20,0.15);
-      border-radius:1rem; max-width:640px; width:100%; max-height:82vh;
+      border-radius:1rem; max-width:700px; width:100%; max-height:88vh;
       overflow-y:auto; padding:1.75rem; position:relative;
     }
+    /* Rich content styles */
+    .rich-content { font-size:.9rem; line-height:1.75; color:var(--text); }
+    .rich-content h1,.rich-content h2,.rich-content h3 { font-family:'Cinzel',serif; color:#c9a04a; margin:1.2rem 0 .5rem; }
+    .rich-content h1 { font-size:1.4rem; }
+    .rich-content h2 { font-size:1.15rem; }
+    .rich-content h3 { font-size:1rem; }
+    .rich-content p { margin-bottom:.65rem; }
+    .rich-content ul,.rich-content ol { padding-left:1.5rem; margin-bottom:.65rem; }
+    .rich-content li { margin-bottom:.25rem; }
+    .rich-content blockquote { border-left:3px solid rgba(181,0,42,0.6); color:#9a7aaa; padding-left:1rem; margin:.75rem 0; font-style:italic; }
+    .rich-content code { background:rgba(40,0,60,0.5); border-radius:.3rem; padding:.1rem .4rem; color:#c9a04a; font-size:.85rem; }
+    .rich-content pre { background:rgba(40,0,60,0.5); border-radius:.5rem; padding:.75rem 1rem; overflow-x:auto; margin-bottom:.65rem; }
+    .rich-content pre code { background:none; padding:0; }
+    .rich-content a { color:#b5002a; text-decoration:underline; }
+    .rich-content img { max-width:100%; border-radius:.5rem; margin:.5rem 0; display:block; }
+    .rich-content strong { color:#d4c4e0; font-weight:700; }
+    .rich-content em { color:#b8a0cc; }
 
     /* ── Buttons ── */
     .btn-sm { background:linear-gradient(135deg,#6a001a,#a00022); border:none; border-radius:.4rem; padding:.4rem .9rem; color:#fff; font-size:.75rem; font-weight:700; cursor:pointer; box-shadow:0 0 12px rgba(160,0,34,0.3); transition:all .2s; }
@@ -412,7 +429,7 @@
     <p id="modal-date" style="font-size:.7rem;color:var(--muted);margin-bottom:.4rem;"></p>
     <h3 id="modal-title" class="gothic" style="font-size:1.2rem;font-weight:700;color:#d4c4e0;margin-bottom:.75rem;"></h3>
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(180,0,30,0.5),transparent);margin-bottom:1rem;"></div>
-    <div id="modal-content" style="font-size:.875rem;line-height:1.7;color:var(--text);white-space:pre-wrap;"></div>
+    <div id="modal-content" class="rich-content"></div>
   </div>
 </div>
 
@@ -596,7 +613,7 @@ async function openNews(slug) {
     const n = await fetch(`${API}/news/${slug}`).then(r => r.json());
     document.getElementById('modal-title').textContent = n.title;
     document.getElementById('modal-date').textContent = `${fmtDate(n.created_at)} · ${n.author.username}`;
-    document.getElementById('modal-content').textContent = n.content;
+    document.getElementById('modal-content').innerHTML = n.content || '';
     document.getElementById('modal-bg').classList.add('open');
     document.body.style.overflow = 'hidden';
   } catch { alert('Не удалось загрузить новость.'); }

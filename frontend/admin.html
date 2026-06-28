@@ -6,6 +6,7 @@
   <title>V Rising — Администратор</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
@@ -82,13 +83,6 @@
     .badge-draft { background: rgba(60,60,60,0.3); border: 1px solid rgba(100,100,100,0.4); color: var(--muted); font-size: .65rem; padding: .15rem .5rem; border-radius: 9999px; }
     .error-box { background: rgba(140,0,20,0.25); border: 1px solid rgba(180,0,30,0.5); color: #fca5a5; border-radius: .5rem; padding: .55rem .85rem; font-size: .82rem; }
     .success-box { background: rgba(0,70,15,0.25); border: 1px solid rgba(0,160,35,0.4); color: #86efac; border-radius: .5rem; padding: .55rem .85rem; font-size: .82rem; }
-    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 50; align-items: flex-start; justify-content: center; padding: 1.5rem; overflow-y: auto; backdrop-filter: blur(4px); }
-    .modal-bg.open { display: flex; }
-    .modal-box {
-      background: rgba(12,2,22,0.98); border: 1px solid rgba(150,0,28,0.45);
-      box-shadow: 0 0 60px rgba(0,0,0,0.8), 0 0 25px rgba(100,0,20,0.15);
-      border-radius: 1rem; width: 100%; max-width: 640px; padding: 2rem; position: relative; margin: auto;
-    }
     table { width: 100%; border-collapse: collapse; font-size: .82rem; }
     th { background: rgba(14,3,24,0.8); color: var(--muted); text-transform: uppercase; font-size: .65rem; letter-spacing: .1em; padding: .75rem 1rem; text-align: left; border-bottom: 1px solid rgba(150,0,28,0.2); }
     td { padding: .65rem 1rem; border-bottom: 1px solid rgba(150,0,28,0.1); color: var(--text); }
@@ -99,6 +93,71 @@
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: rgba(8,0,16,0.5); }
     ::-webkit-scrollbar-thumb { background: rgba(150,0,28,0.5); border-radius: 3px; }
+
+    /* ── Quill dark theme ── */
+    .ql-toolbar.ql-snow {
+      background: rgba(8,0,16,0.95) !important;
+      border: 1px solid rgba(150,0,28,0.4) !important;
+      border-bottom: 1px solid rgba(150,0,28,0.2) !important;
+      border-radius: .75rem .75rem 0 0;
+      padding: .6rem .75rem;
+    }
+    .ql-container.ql-snow {
+      background: rgba(8,0,16,0.75) !important;
+      border: 1px solid rgba(150,0,28,0.4) !important;
+      border-top: none !important;
+      border-radius: 0 0 .75rem .75rem;
+      font-family: 'Exo 2', system-ui, sans-serif !important;
+      font-size: .92rem !important;
+      color: #e0c8d8 !important;
+    }
+    .ql-editor { color: #e0c8d8 !important; min-height: 380px; line-height: 1.7; padding: 1.25rem 1.5rem; }
+    .ql-editor.ql-blank::before { color: #4a2d55 !important; font-style: normal !important; }
+    .ql-toolbar .ql-stroke { stroke: #7a5d8a !important; transition: stroke .15s; }
+    .ql-toolbar .ql-fill { fill: #7a5d8a !important; transition: fill .15s; }
+    .ql-toolbar button:hover .ql-stroke, .ql-toolbar button.ql-active .ql-stroke,
+    .ql-toolbar .ql-picker-label:hover .ql-stroke { stroke: #e0c8d8 !important; }
+    .ql-toolbar button:hover .ql-fill, .ql-toolbar button.ql-active .ql-fill,
+    .ql-toolbar .ql-picker-label:hover .ql-fill { fill: #e0c8d8 !important; }
+    .ql-toolbar .ql-picker-label { color: #7a5d8a !important; }
+    .ql-toolbar .ql-picker-label:hover, .ql-toolbar .ql-picker-label.ql-active { color: #e0c8d8 !important; }
+    .ql-toolbar .ql-picker-options {
+      background: rgba(12,2,22,0.98) !important;
+      border: 1px solid rgba(150,0,28,0.4) !important;
+      border-radius: .5rem; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    }
+    .ql-toolbar .ql-picker-item { color: #7a5d8a !important; }
+    .ql-toolbar .ql-picker-item:hover, .ql-toolbar .ql-picker-item.ql-selected { color: #e0c8d8 !important; background: rgba(150,0,28,0.15) !important; }
+    .ql-editor h1, .ql-editor h2, .ql-editor h3 { font-family: 'Cinzel', serif; color: #c9a04a; margin: 1.1rem 0 .5rem; }
+    .ql-editor h1 { font-size: 1.5rem; }
+    .ql-editor h2 { font-size: 1.2rem; }
+    .ql-editor h3 { font-size: 1rem; }
+    .ql-editor p { margin-bottom: .5rem; }
+    .ql-editor blockquote {
+      border-left: 3px solid rgba(181,0,42,0.6); color: #9a7aaa;
+      padding-left: 1rem; margin: .75rem 0; font-style: italic;
+    }
+    .ql-editor code, .ql-editor pre { background: rgba(40,0,60,0.5); border-radius: .35rem; color: #c9a04a; }
+    .ql-editor pre { padding: .75rem 1rem; }
+    .ql-editor a { color: #b5002a; }
+    .ql-editor img { max-width: 100%; border-radius: .5rem; margin: .5rem 0; }
+    .ql-editor ul, .ql-editor ol { padding-left: 1.5rem; }
+    .ql-tooltip {
+      background: rgba(12,2,22,0.98) !important; border: 1px solid rgba(150,0,28,0.4) !important;
+      color: #e0c8d8 !important; box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important;
+      border-radius: .5rem !important;
+    }
+    .ql-tooltip input[type=text] {
+      background: rgba(8,0,16,0.8) !important; border: 1px solid rgba(120,0,24,0.4) !important;
+      color: #e0c8d8 !important; border-radius: .35rem; padding: .3rem .6rem;
+    }
+    .ql-tooltip a.ql-action::after { color: #b5002a !important; }
+    .ql-tooltip a.ql-remove::before { color: #f87171 !important; }
+    .ql-snow.ql-toolbar button { border-radius: .3rem; padding: .2rem .3rem; }
+    .ql-snow.ql-toolbar button:hover, .ql-snow.ql-toolbar button.ql-active {
+      background: rgba(150,0,28,0.18) !important;
+    }
+    .ql-snow .ql-formats { margin-right: .75rem !important; }
   </style>
 </head>
 <body>
@@ -133,21 +192,75 @@
   <!-- CONTENT -->
   <main style="flex:1;min-width:0;">
 
-    <!-- NEWS -->
+    <!-- NEWS LIST -->
     <div id="section-news">
       <div class="flex items-center justify-between mb-5">
         <h1 class="section-title">Управление новостями</h1>
-        <button onclick="openNewsModal(null)" class="btn-primary">+ Добавить</button>
+        <button onclick="openEditor(null)" class="btn-primary">+ Добавить</button>
       </div>
       <div id="admin-news-list" class="space-y-3"></div>
       <div id="admin-news-pagination" class="flex gap-2 mt-5"></div>
+    </div>
+
+    <!-- NEWS EDITOR -->
+    <div id="section-editor" class="hidden">
+      <div class="flex items-center justify-between mb-5">
+        <h1 id="editor-title-label" class="section-title">Новая новость</h1>
+        <div class="flex gap-3">
+          <button onclick="submitEditor()" id="editor-save-btn" class="btn-primary">Сохранить</button>
+          <button onclick="closeEditor()" class="btn-ghost">Отмена</button>
+        </div>
+      </div>
+
+      <input type="hidden" id="editor-news-id" />
+
+      <div class="space-y-4">
+        <!-- Title -->
+        <div class="glass-card rounded-xl p-4">
+          <label>Заголовок *</label>
+          <input id="editor-news-title" type="text" class="dark-input" placeholder="Заголовок новости" />
+        </div>
+
+        <!-- Summary + Thumbnail -->
+        <div class="glass-card rounded-xl p-4" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div>
+            <label>Краткое описание *</label>
+            <input id="editor-news-summary" type="text" class="dark-input" placeholder="Краткий анонс для карточки" />
+          </div>
+          <div>
+            <label>Миниатюра</label>
+            <div style="display:flex;gap:.5rem;">
+              <input id="editor-news-thumb" type="text" class="dark-input" placeholder="URL картинки" style="flex:1;" />
+              <label for="editor-thumb-file" title="Загрузить файл" style="display:inline-flex;align-items:center;justify-content:center;width:2.5rem;flex-shrink:0;cursor:pointer;border-radius:.5rem;border:1px solid rgba(120,0,24,0.4);background:rgba(8,0,16,0.8);color:var(--muted);font-size:1rem;transition:border-color .2s,color .2s;margin:0;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,0.4)';this.style.color='var(--muted)'">📁</label>
+              <input id="editor-thumb-file" type="file" accept="image/*" style="display:none;" onchange="uploadThumb(this)" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Rich editor -->
+        <div>
+          <div id="quill-editor"></div>
+        </div>
+
+        <!-- Footer controls -->
+        <div class="glass-card rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
+          <div class="flex items-center gap-2">
+            <input id="editor-news-published" type="checkbox" checked style="width:1rem;height:1rem;accent-color:var(--accent);" />
+            <label style="margin:0;text-transform:none;font-size:.9rem;color:var(--text);">Опубликовано</label>
+          </div>
+          <div id="editor-error" class="error-box hidden" style="flex:1;margin:0 1rem;"></div>
+          <div class="flex gap-3">
+            <button onclick="submitEditor()" class="btn-primary">Сохранить</button>
+            <button onclick="closeEditor()" class="btn-ghost">Отмена</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- SETTINGS -->
     <div id="section-settings" class="hidden">
       <h1 class="section-title mb-6">Настройки сайта</h1>
 
-      <!-- Server connection -->
       <div class="glass-card rounded-xl p-6 mb-5" style="max-width:38rem;">
         <h2 class="gothic" style="font-size:.8rem;letter-spacing:.15em;color:var(--gold);margin-bottom:1.5rem;text-transform:uppercase;">— Подключение к серверу —</h2>
         <div class="space-y-5">
@@ -170,7 +283,6 @@
         </div>
       </div>
 
-      <!-- Display settings -->
       <div class="glass-card rounded-xl p-6" style="max-width:38rem;">
         <h2 class="gothic" style="font-size:.8rem;letter-spacing:.15em;color:var(--gold);margin-bottom:1.5rem;text-transform:uppercase;">— Отображение —</h2>
         <div>
@@ -183,8 +295,7 @@
         </div>
       </div>
 
-      <!-- Server 2 -->
-      <div class="glass-card rounded-xl p-6 mb-5" style="max-width:38rem;">
+      <div class="glass-card rounded-xl p-6 mb-5 mt-5" style="max-width:38rem;">
         <h2 class="gothic" style="font-size:.8rem;letter-spacing:.15em;color:var(--gold);margin-bottom:1.5rem;text-transform:uppercase;">— Второй сервер (опционально) —</h2>
         <div class="space-y-5">
           <div>
@@ -193,7 +304,6 @@
               <input id="setting-server2_name" type="text" class="dark-input" placeholder="Server 2" style="flex:1;" />
               <button onclick="saveSetting('server2_name')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
             </div>
-            <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">Резервное название, если сервер офлайн</p>
           </div>
           <div>
             <label>IP адрес второго сервера</label>
@@ -213,7 +323,6 @@
         </div>
       </div>
 
-      <!-- Appearance -->
       <div class="glass-card rounded-xl p-6 mb-5" style="max-width:38rem;">
         <h2 class="gothic" style="font-size:.8rem;letter-spacing:.15em;color:var(--gold);margin-bottom:1.5rem;text-transform:uppercase;">— Внешний вид —</h2>
         <div class="space-y-5">
@@ -223,16 +332,13 @@
               <input id="setting-site_title" type="text" class="dark-input" placeholder="V RISING" style="flex:1;" />
               <button onclick="saveSetting('site_title')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
             </div>
-            <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">Название сервера в шапке и на главной странице</p>
           </div>
           <div>
             <label>Логотип сайта</label>
-            <!-- URL input -->
             <div style="display:flex;gap:.5rem;margin-bottom:.5rem;">
               <input id="setting-site_logo_url" type="text" class="dark-input" placeholder="https://example.com/logo.png или загрузите файл ниже" style="flex:1;" oninput="previewLogo(this.value)" />
               <button onclick="saveSetting('site_logo_url')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
             </div>
-            <!-- File upload -->
             <div style="display:flex;align-items:center;gap:.75rem;">
               <label for="logo-file-input" style="display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem .9rem;border-radius:.5rem;border:1px solid rgba(120,0,24,0.4);background:rgba(8,0,16,0.8);color:var(--muted);font-size:.8rem;transition:border-color .2s,color .2s;margin:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,0.4)';this.style.color='var(--muted)'">
                 📁 Загрузить с компьютера
@@ -240,9 +346,8 @@
               <input id="logo-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/svg+xml,image/webp,image/x-icon" style="display:none;" onchange="uploadLogoFile(this)" />
               <span id="logo-upload-status" style="font-size:.78rem;color:var(--muted);"></span>
             </div>
-            <p style="font-size:.72rem;color:var(--muted);margin-top:.5rem;">PNG/SVG/JPG — показывается в шапке. Оставьте пустым — отобразится текстовое название</p>
             <div id="logo-preview" style="margin-top:.75rem;display:none;">
-              <img id="logo-preview-img" src="" alt="Logo preview" style="max-height:3rem;max-width:14rem;object-fit:contain;border-radius:.4rem;border:1px solid rgba(150,0,28,0.3);padding:.3rem .6rem;background:rgba(8,0,16,0.6);" onerror="this.style.display='none'" onload="this.style.display='block'" />
+              <img id="logo-preview-img" src="" alt="Logo preview" style="max-height:3rem;max-width:14rem;object-fit:contain;border-radius:.4rem;border:1px solid rgba(150,0,28,0.3);padding:.3rem .6rem;background:rgba(8,0,16,0.6);" />
             </div>
           </div>
           <div>
@@ -254,7 +359,6 @@
               <input id="setting-discord_url" type="url" class="dark-input" placeholder="https://discord.gg/invite" style="flex:1;" />
               <button onclick="saveSetting('discord_url')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
             </div>
-            <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">Показывается кнопкой в левом меню главной страницы. Оставьте пустым — кнопка не отображается</p>
           </div>
         </div>
       </div>
@@ -273,51 +377,16 @@
   </main>
 </div>
 
-<!-- NEWS MODAL -->
-<div id="news-modal-backdrop" class="modal-bg">
-  <div class="modal-box">
-    <button onclick="closeNewsModal()" style="position:absolute;top:.75rem;right:1rem;font-size:1.5rem;color:var(--muted);background:none;border:none;cursor:pointer;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">&times;</button>
-    <h2 id="modal-title-label" class="gothic text-lg font-bold mb-5" style="color:var(--gold);"></h2>
-    <form id="news-form" onsubmit="submitNewsForm(event)" class="space-y-4">
-      <input type="hidden" id="news-id" />
-      <div>
-        <label>Заголовок *</label>
-        <input id="news-title" type="text" required class="dark-input" />
-      </div>
-      <div>
-        <label>Краткое описание *</label>
-        <input id="news-summary" type="text" required class="dark-input" />
-      </div>
-      <div>
-        <label>URL миниатюры</label>
-        <input id="news-thumb" type="url" class="dark-input" placeholder="https://..." />
-      </div>
-      <div>
-        <label>Текст новости *</label>
-        <textarea id="news-content" rows="7" required class="dark-input"></textarea>
-      </div>
-      <div class="flex items-center gap-2">
-        <input id="news-published" type="checkbox" checked style="width:1rem;height:1rem;accent-color:var(--accent);" />
-        <label style="margin:0;text-transform:none;font-size:.85rem;color:var(--text);">Опубликовано</label>
-      </div>
-      <div id="modal-error" class="error-box hidden"></div>
-      <div class="flex gap-3 pt-1">
-        <button type="submit" id="modal-submit-btn" class="btn-primary" style="flex:1;">Сохранить</button>
-        <button type="button" onclick="closeNewsModal()" class="btn-ghost" style="flex:1;">Отмена</button>
-      </div>
-    </form>
-  </div>
-</div>
-
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 <script>
 const API = '/api';
 let adminNewsPage = 1;
+let quill = null;
+
 function getToken() { return localStorage.getItem('token'); }
 function authH()   { return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' }; }
+function logout()  { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login.html'; }
 
-function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login.html'; }
-
-// ─── Guard ────────────────────────────────────────────────────────────────
 (function() {
   const token = getToken();
   const user = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
@@ -327,16 +396,18 @@ function logout() { localStorage.removeItem('token'); localStorage.removeItem('u
 
 // ─── Sections ─────────────────────────────────────────────────────────────
 function showSection(name) {
-  ['news','settings','users'].forEach(s => {
+  ['news','editor','settings','users'].forEach(s => {
     document.getElementById(`section-${s}`).classList.toggle('hidden', s !== name);
-    document.getElementById(`btn-${s}`).className = 'sidebar-btn' + (s === name ? ' active' : '');
+    const btn = document.getElementById(`btn-${s}`);
+    if (btn) btn.className = 'sidebar-btn' + (s === name ? ' active' : '');
   });
+  if (name === 'editor')   document.getElementById('btn-news').className = 'sidebar-btn active';
   if (name === 'settings') loadSettings();
   if (name === 'users')    loadUsers();
   if (name === 'news')     loadAdminNews(adminNewsPage);
 }
 
-// ─── News ─────────────────────────────────────────────────────────────────
+// ─── News list ────────────────────────────────────────────────────────────
 function fmtDate(iso) { return new Date(iso).toLocaleDateString('ru-RU', { day:'2-digit', month:'short', year:'numeric' }); }
 
 async function loadAdminNews(page = 1) {
@@ -360,7 +431,7 @@ async function loadAdminNews(page = 1) {
         <p style="color:var(--muted);font-size:.8rem;margin-top:.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.summary}</p>
       </div>
       <div style="display:flex;gap:.5rem;flex-shrink:0;">
-        <button class="btn-ghost" onclick='openNewsModal(${JSON.stringify(n)})'>Ред.</button>
+        <button class="btn-ghost" onclick='openEditor(${JSON.stringify(n).replace(/'/g,"&#39;")})'>Ред.</button>
         <button class="btn-danger" onclick="deleteNews(${n.id})">Удалить</button>
       </div>`;
     list.appendChild(el);
@@ -375,62 +446,128 @@ async function loadAdminNews(page = 1) {
   }
 }
 
-function openNewsModal(news) {
-  document.getElementById('modal-error').classList.add('hidden');
-  if (news) {
-    document.getElementById('modal-title-label').textContent = 'Редактировать новость';
-    document.getElementById('news-id').value         = news.id;
-    document.getElementById('news-title').value      = news.title;
-    document.getElementById('news-summary').value    = news.summary;
-    document.getElementById('news-thumb').value      = news.thumbnail_url || '';
-    document.getElementById('news-content').value    = news.content || '';
-    document.getElementById('news-published').checked = news.published;
-  } else {
-    document.getElementById('modal-title-label').textContent = 'Новая новость';
-    document.getElementById('news-id').value = '';
-    document.getElementById('news-form').reset();
-    document.getElementById('news-published').checked = true;
-  }
-  document.getElementById('news-modal-backdrop').classList.add('open');
-  document.body.style.overflow = 'hidden';
+async function deleteNews(id) {
+  if (!confirm('Удалить новость?')) return;
+  const res = await fetch(`${API}/admin/news/${id}`, { method: 'DELETE', headers: authH() });
+  if (res.ok || res.status === 204) loadAdminNews(adminNewsPage);
+  else alert('Ошибка удаления');
 }
 
-function closeNewsModal() {
-  document.getElementById('news-modal-backdrop').classList.remove('open');
-  document.body.style.overflow = '';
+// ─── Editor ───────────────────────────────────────────────────────────────
+function initQuill() {
+  if (quill) return;
+  quill = new Quill('#quill-editor', {
+    theme: 'snow',
+    placeholder: 'Напишите текст новости...',
+    modules: {
+      toolbar: {
+        container: [
+          [{ header: [1, 2, 3, false] }],
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ color: [] }, { background: [] }],
+          ['blockquote', 'code-block'],
+          [{ list: 'ordered' }, { list: 'bullet' }],
+          ['link', 'image'],
+          ['clean'],
+        ],
+        handlers: { image: editorImageHandler },
+      },
+    },
+  });
 }
 
-async function submitNewsForm(e) {
-  e.preventDefault();
-  document.getElementById('modal-error').classList.add('hidden');
-  const btn = document.getElementById('modal-submit-btn');
-  btn.disabled = true; btn.textContent = 'Сохранение...';
-  const id = document.getElementById('news-id').value;
-  const payload = {
-    title:         document.getElementById('news-title').value,
-    summary:       document.getElementById('news-summary').value,
-    content:       document.getElementById('news-content').value,
-    thumbnail_url: document.getElementById('news-thumb').value || null,
-    published:     document.getElementById('news-published').checked,
+async function editorImageHandler() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*'; input.click();
+  input.onchange = async () => {
+    const file = input.files[0]; if (!file) return;
+    const fd = new FormData(); fd.append('file', file);
+    try {
+      const res = await fetch(`${API}/admin/upload`, {
+        method: 'POST', headers: { 'Authorization': `Bearer ${getToken()}` }, body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Ошибка');
+      const range = quill.getSelection(true);
+      quill.insertEmbed(range.index, 'image', data.url);
+      quill.setSelection(range.index + 1);
+    } catch (err) { alert('Ошибка загрузки: ' + err.message); }
   };
+}
+
+async function uploadThumb(input) {
+  const file = input.files[0]; if (!file) return;
+  const fd = new FormData(); fd.append('file', file);
+  try {
+    const res = await fetch(`${API}/admin/upload`, {
+      method: 'POST', headers: { 'Authorization': `Bearer ${getToken()}` }, body: fd,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Ошибка');
+    document.getElementById('editor-news-thumb').value = data.url;
+  } catch (err) { alert('Ошибка загрузки: ' + err.message); }
+  input.value = '';
+}
+
+function openEditor(news) {
+  initQuill();
+  document.getElementById('editor-error').classList.add('hidden');
+  showSection('editor');
+  if (news) {
+    document.getElementById('editor-title-label').textContent = 'Редактировать новость';
+    document.getElementById('editor-news-id').value      = news.id;
+    document.getElementById('editor-news-title').value   = news.title;
+    document.getElementById('editor-news-summary').value = news.summary;
+    document.getElementById('editor-news-thumb').value   = news.thumbnail_url || '';
+    document.getElementById('editor-news-published').checked = news.published;
+    quill.root.innerHTML = news.content || '';
+  } else {
+    document.getElementById('editor-title-label').textContent = 'Новая новость';
+    document.getElementById('editor-news-id').value      = '';
+    document.getElementById('editor-news-title').value   = '';
+    document.getElementById('editor-news-summary').value = '';
+    document.getElementById('editor-news-thumb').value   = '';
+    document.getElementById('editor-news-published').checked = true;
+    quill.setText('');
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function closeEditor() {
+  showSection('news');
+}
+
+async function submitEditor() {
+  const errEl = document.getElementById('editor-error');
+  errEl.classList.add('hidden');
+  const btn = document.getElementById('editor-save-btn');
+  btn.disabled = true; btn.textContent = 'Сохранение...';
+
+  const id      = document.getElementById('editor-news-id').value;
+  const title   = document.getElementById('editor-news-title').value.trim();
+  const summary = document.getElementById('editor-news-summary').value.trim();
+  const content = quill.root.innerHTML;
+  const thumb   = document.getElementById('editor-news-thumb').value.trim();
+
+  if (!title || !summary) {
+    errEl.textContent = 'Заголовок и краткое описание обязательны';
+    errEl.classList.remove('hidden');
+    btn.disabled = false; btn.textContent = 'Сохранить'; return;
+  }
+
+  const payload = { title, summary, content, thumbnail_url: thumb || null,
+                    published: document.getElementById('editor-news-published').checked };
   try {
     const res = await fetch(id ? `${API}/admin/news/${id}` : `${API}/admin/news`, {
       method: id ? 'PUT' : 'POST', headers: authH(), body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const d = await res.json();
-      const el = document.getElementById('modal-error');
-      el.textContent = d.detail || 'Ошибка сохранения'; el.classList.remove('hidden'); return;
+      errEl.textContent = d.detail || 'Ошибка сохранения';
+      errEl.classList.remove('hidden'); return;
     }
-    closeNewsModal(); loadAdminNews(adminNewsPage);
+    closeEditor();
   } finally { btn.disabled = false; btn.textContent = 'Сохранить'; }
-}
-
-async function deleteNews(id) {
-  if (!confirm('Удалить новость?')) return;
-  const res = await fetch(`${API}/admin/news/${id}`, { method: 'DELETE', headers: authH() });
-  if (res.ok || res.status === 204) loadAdminNews(adminNewsPage);
-  else alert('Ошибка удаления');
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
@@ -440,7 +577,7 @@ async function loadSettings() {
   const settings = await res.json();
   const map = {};
   settings.forEach(s => { map[s.key] = s.value; });
-  ['server_ip', 'server_port', 'server_name', 'server2_name', 'server2_ip', 'server2_port', 'site_title', 'site_logo_url', 'discord_url'].forEach(key => {
+  ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_logo_url','discord_url'].forEach(key => {
     const el = document.getElementById(`setting-${key}`);
     if (el && map[key] !== undefined) el.value = map[key];
   });
@@ -455,30 +592,21 @@ function previewLogo(url) {
 }
 
 async function uploadLogoFile(input) {
-  const file = input.files[0];
-  if (!file) return;
+  const file = input.files[0]; if (!file) return;
   const statusEl = document.getElementById('logo-upload-status');
-  statusEl.textContent = 'Загрузка...';
-  statusEl.style.color = 'var(--muted)';
-  const fd = new FormData();
-  fd.append('file', file);
+  statusEl.textContent = 'Загрузка...'; statusEl.style.color = 'var(--muted)';
+  const fd = new FormData(); fd.append('file', file);
   try {
     const res = await fetch(`${API}/admin/upload`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${getToken()}` },
-      body: fd,
+      method: 'POST', headers: { 'Authorization': `Bearer ${getToken()}` }, body: fd,
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки');
     document.getElementById('setting-site_logo_url').value = data.url;
     previewLogo(data.url);
-    statusEl.textContent = '✔ Загружено';
-    statusEl.style.color = '#86efac';
+    statusEl.textContent = '✔ Загружено'; statusEl.style.color = '#86efac';
     setTimeout(() => { statusEl.textContent = ''; }, 3000);
-  } catch (err) {
-    statusEl.textContent = '✘ ' + err.message;
-    statusEl.style.color = '#fca5a5';
-  }
+  } catch (err) { statusEl.textContent = '✘ ' + err.message; statusEl.style.color = '#fca5a5'; }
   input.value = '';
 }
 
@@ -504,9 +632,7 @@ async function loadUsers() {
   if (!users.length) { el.innerHTML = '<p class="p-6" style="color:var(--muted);">Пользователей нет.</p>'; return; }
   el.innerHTML = `
     <table>
-      <thead>
-        <tr><th>ID</th><th>Имя</th><th>Email</th><th>Роль</th><th>Активен</th><th>Дата</th><th>Действия</th></tr>
-      </thead>
+      <thead><tr><th>ID</th><th>Имя</th><th>Email</th><th>Роль</th><th>Активен</th><th>Дата</th><th>Действия</th></tr></thead>
       <tbody>
         ${users.map(u => {
           const isSelf = u.id === currentUser?.id;
@@ -548,7 +674,6 @@ function handleAuth(res) {
   if (res.status === 401 || res.status === 403) logout();
 }
 
-document.getElementById('news-modal-backdrop').addEventListener('click', e => { if (e.target === e.currentTarget) closeNewsModal(); });
 loadAdminNews(1);
 </script>
 </body>
