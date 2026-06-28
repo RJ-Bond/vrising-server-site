@@ -57,7 +57,24 @@
       box-shadow: 0 0 24px rgba(180,0,30,0.3);
       display: flex; align-items: center; justify-content: center;
       font-family: 'Cinzel', serif; font-size: 1.8rem; color: #d4c4e0;
+      overflow: hidden; cursor: pointer; position: relative; flex-shrink: 0;
+      transition: border-color .2s, box-shadow .2s;
     }
+    .avatar-circle:hover { border-color: rgba(230,0,50,0.7); box-shadow: 0 0 32px rgba(210,0,40,0.5); }
+    .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-overlay {
+      position: absolute; inset: 0; background: rgba(0,0,0,0.5);
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity .2s; border-radius: 50%;
+      font-size: .65rem; color: #fff; font-family: 'Inter',sans-serif; letter-spacing: .03em;
+    }
+    .avatar-circle:hover .avatar-overlay { opacity: 1; }
+    .upload-spinner {
+      display: none; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite;
+      position: absolute;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes fade-up { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
     .g-card { animation: fade-up .4s ease both; }
     ::-webkit-scrollbar { width: 5px; }
@@ -84,8 +101,16 @@
 
   <!-- Profile card -->
   <div class="g-card" style="padding:2rem;margin-bottom:1.25rem;">
+    <!-- Hidden file input -->
+    <input type="file" id="avatar-input" accept="image/*" style="display:none;" onchange="uploadAvatar(this)">
+
     <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:1.75rem;">
-      <div class="avatar-circle" id="profile-avatar">?</div>
+      <div class="avatar-circle" id="profile-avatar" onclick="document.getElementById('avatar-input').click()" title="Нажмите для смены аватара">
+        <div class="avatar-overlay">
+          <span>Сменить</span>
+        </div>
+        <div class="upload-spinner" id="avatar-spinner"></div>
+      </div>
       <div>
         <h1 class="gothic" id="profile-name" style="font-size:1.4rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;margin-bottom:.25rem;">—</h1>
         <span id="profile-role-badge" style="font-size:.65rem;padding:.15rem .6rem;border-radius:9999px;border:1px solid rgba(200,0,40,.4);color:#fca5a5;background:rgba(120,0,20,.2);">загрузка...</span>
@@ -141,6 +166,46 @@ function fmtDate(iso) {
 const roleLabels = { admin: 'Администратор', user: 'Игрок' };
 const roleColors = { admin: 'rgba(200,160,74,0.85)', user: 'rgba(180,140,220,0.85)' };
 
+function setAvatarEl(avatarUrl, initial) {
+  const el = document.getElementById('profile-avatar');
+  // keep overlay and spinner, only update the visual content
+  const overlay = el.querySelector('.avatar-overlay');
+  const spinner = el.querySelector('.upload-spinner');
+  // remove old img/text nodes
+  [...el.childNodes].forEach(n => {
+    if (n !== overlay && n !== spinner) n.remove();
+  });
+  if (avatarUrl) {
+    const img = document.createElement('img');
+    img.src = avatarUrl;
+    img.alt = initial;
+    el.insertBefore(img, overlay);
+  } else {
+    el.insertBefore(document.createTextNode(initial), overlay);
+  }
+}
+
+async function uploadAvatar(input) {
+  if (!input.files || !input.files[0]) return;
+  const spinner = document.getElementById('avatar-spinner');
+  spinner.style.display = 'block';
+  const form = new FormData();
+  form.append('file', input.files[0]);
+  try {
+    const res = await fetch(`${API}/auth/avatar`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+      body: form,
+    });
+    if (!res.ok) { const e = await res.json().catch(() => ({})); alert(e.detail || 'Ошибка загрузки'); return; }
+    const { avatar_url } = await res.json();
+    const u = getUser();
+    if (u) { u.avatar_url = avatar_url; localStorage.setItem('user', JSON.stringify(u)); }
+    setAvatarEl(avatar_url, (getUser()?.username || '?').charAt(0).toUpperCase());
+  } catch { alert('Ошибка загрузки аватара'); }
+  finally { spinner.style.display = 'none'; input.value = ''; }
+}
+
 async function loadProfile() {
   const token = getToken();
   if (!token) {
@@ -158,7 +223,7 @@ async function loadProfile() {
     const u = await res.json();
 
     const initial = (u.username || '?').charAt(0).toUpperCase();
-    document.getElementById('profile-avatar').textContent = initial;
+    setAvatarEl(u.avatar_url || '', initial);
     document.getElementById('profile-name').textContent   = u.username;
     document.getElementById('profile-email').textContent  = u.email;
     document.getElementById('profile-role').textContent   = roleLabels[u.role] || u.role;

@@ -17,6 +17,7 @@ class User(Base):
     role = Column(String(16), nullable=False, default="user")
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    avatar_url = Column(String(512), nullable=True)
 
 
 class News(Base):

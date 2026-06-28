@@ -96,6 +96,7 @@ async def lifespan(app: FastAPI):
         # add columns that may be missing in existing DBs (SQLite ALTER TABLE)
         for stmt in [
             "ALTER TABLE news ADD COLUMN tags VARCHAR(256) DEFAULT ''",
+            "ALTER TABLE users ADD COLUMN avatar_url VARCHAR(512) DEFAULT NULL",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -249,6 +250,36 @@ async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
 @app.get("/api/auth/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user)):
     return UserOut.model_validate(current_user)
+
+
+@app.post("/api/auth/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(400, "Only image files are allowed")
+    ext = Path(file.filename).suffix.lower() if file.filename else ".jpg"
+    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+        ext = ".jpg"
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(400, "File too large (max 5 MB)")
+    fname = f"avatar_{current_user.id}_{uuid.uuid4().hex[:10]}{ext}"
+    (UPLOAD_DIR / fname).write_bytes(content)
+    # remove old avatar file
+    old = current_user.avatar_url or ""
+    if old:
+        old_name = old.rsplit("/", 1)[-1]
+        old_path = UPLOAD_DIR / old_name
+        if old_name.startswith("avatar_") and old_path.exists():
+            old_path.unlink(missing_ok=True)
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one()
+    user.avatar_url = f"/api/uploads/{fname}"
+    await db.commit()
+    return {"avatar_url": user.avatar_url}
 
 
 # ─── Monitor ────────────────────────────────────────────────────────────────

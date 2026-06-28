@@ -559,7 +559,7 @@
     <!-- Drawer close (mobile only) -->
     <button onclick="toggleDrawer()" id="drawer-close" style="display:none;position:absolute;top:.75rem;right:.75rem;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1;z-index:2;padding:.25rem;">✕</button>
 
-    <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Навигация —</h2>
+    <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;text-align:center;">— Навигация —</h2>
 
     <nav style="display:flex;flex-direction:column;gap:.35rem;margin-bottom:1.25rem;">
       <a href="/" class="nav-link-item">
@@ -617,7 +617,7 @@
     <span class="corner-bl">✦</span><span class="corner-br">✦</span>
 
     <!-- Server 1 -->
-    <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:1.1rem;">— Хроника сервера —</h2>
+    <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:1.1rem;text-align:center;">— Мониторинг серверов —</h2>
 
     <div id="left-status" style="margin-bottom:1rem;">
       <div style="width:100%;height:3rem;border-radius:.5rem;background:rgba(110,0,20,0.1);animation:pulse 2s ease-in-out infinite;"></div>
@@ -1034,17 +1034,21 @@ async function loadNews(page = 1) {
   }
   data.items.forEach((n, idx) => {
     const thumbImg = n.thumbnail_url
-      ? `<img src="${esc(n.thumbnail_url)}" alt="" style="width:140px;min-height:100px;height:100%;object-fit:cover;flex-shrink:0;">`
-      : `<div style="width:140px;min-height:100px;flex-shrink:0;background:linear-gradient(135deg,rgba(60,0,100,0.4),rgba(90,0,15,0.4));display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:rgba(180,0,30,0.45);">⚔</div>`;
+      ? `<div style="width:140px;flex-shrink:0;overflow:hidden;align-self:stretch;"><img src="${esc(n.thumbnail_url)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;min-height:100px;"></div>`
+      : `<div style="width:140px;flex-shrink:0;min-height:100px;background:linear-gradient(135deg,rgba(60,0,100,0.4),rgba(90,0,15,0.4));display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:rgba(180,0,30,0.45);">⚔</div>`;
     const tagsHtml = (n.tags || '').split(',').map(t => t.trim()).filter(Boolean)
       .map(t => `<span class="news-tag" onclick="event.stopPropagation();setTag('${esc(t)}')">${esc(t)}</span>`).join('');
+    const authorName = esc(n.author.username);
+    const authorAvatar = n.author.avatar_url
+      ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:16px;height:16px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.3);flex-shrink:0;">`
+      : `<span style="width:16px;height:16px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(80,0,150,0.6),rgba(120,0,20,0.4));border:1px solid rgba(190,0,40,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:.52rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
     const card = document.createElement('div');
     card.className = 'news-card';
     card.style.animationDelay = `${idx * 0.06}s`;
-    card.innerHTML = `<div style="display:flex;gap:0;min-height:100px;">
+    card.innerHTML = `<div style="display:flex;gap:0;min-height:100px;align-items:stretch;">
       ${thumbImg}
       <div style="padding:.75rem 1rem;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;">
-        <p style="font-size:.65rem;color:var(--muted);margin-bottom:.35rem;">${fmtDate(n.created_at)} · ${esc(n.author.username)}</p>
+        <p style="font-size:.65rem;color:var(--muted);margin-bottom:.35rem;display:flex;align-items:center;gap:.4rem;">${authorAvatar}<span>${fmtDate(n.created_at)} · ${authorName}</span></p>
         <h3 class="gothic" style="font-size:1rem;font-weight:600;color:#d4c4e0;line-height:1.35;margin-bottom:.35rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.title)}</h3>
         <p style="font-size:.78rem;color:var(--muted);line-height:1.5;margin-bottom:.4rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.summary)}</p>
         ${tagsHtml ? `<div style="margin-top:.1rem;">${tagsHtml}</div>` : ''}
