@@ -342,6 +342,41 @@
       .main-grid { flex-direction: column !important; }
       .side-panel { width: 100% !important; }
     }
+    /* ── Mobile ── */
+    @media (max-width: 768px) {
+      .main-grid { padding: 0 .5rem; gap: .75rem; }
+      .g-panel { padding: .9rem .85rem; }
+      .info-grid { grid-template-columns: 1fr 1fr; gap: .5rem; }
+      .info-card { padding: .75rem .7rem; }
+      .hero { min-height: 20vh; padding: 2rem 1rem 1.5rem; }
+      .hero-title { font-size: clamp(1.3rem, 7vw, 2.2rem); letter-spacing: .1em; }
+      .hero-sub { font-size: .65rem; }
+      .connect-btn { font-size: .72rem; padding: .45rem .9rem; }
+      .copy-ip-btn { font-size: .72rem; padding: .45rem .7rem; }
+      .news-card { flex-direction: column !important; }
+      .news-card > div:first-child { width: 100% !important; height: 110px; }
+      .hunter-podium { gap: .25rem; }
+      .h-name { max-width: 52px; font-size: .65rem; }
+      .wipe-block-val { font-size: 1.4rem; }
+      .blood-moon-digit { font-size: 1.3rem; }
+      .wipe-blocks { gap: .25rem; }
+    }
+    @media (max-width: 480px) {
+      body { font-size: 14px; }
+      .main-grid { padding: 0 .35rem; }
+      .g-panel { padding: .75rem .65rem; }
+      .info-grid { grid-template-columns: 1fr; gap: .45rem; }
+      .nav-link-item span { display: none; }
+      .nav-link-item { justify-content: center; }
+      .discord-btn span { display: none; }
+      .hero-title { font-size: clamp(1.1rem, 8vw, 1.8rem); letter-spacing: .07em; }
+      .hero-connect { flex-wrap: wrap; gap: .4rem; }
+      .wipe-block-val { font-size: 1.2rem; }
+      .h-name { max-width: 44px; font-size: .6rem; }
+      .hunter-podium { gap: .15rem; }
+      .h-drop { font-size: 1.2rem; }
+      .lb-tab { font-size: .6rem; padding: .2rem .4rem; }
+    }
 
     /* ── Fade-up entrance ── */
     @keyframes fade-up {
@@ -924,6 +959,15 @@
           <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Пик 7д</div>
         </div>
       </div>
+      <!-- History sparkline server 2 -->
+      <div id="sparkline-wrap2" style="display:none;margin:.75rem 0 .25rem;">
+        <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.65rem;"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;">
+          <h3 class="gothic" style="font-size:.65rem;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;">История онлайна · 7д</h3>
+          <span id="sparkline-hint2" style="font-size:.6rem;color:var(--muted);"></span>
+        </div>
+        <div class="sparkline-wrap" id="sparkline2"></div>
+      </div>
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
       <h3 class="gothic" style="font-size:.68rem;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-bottom:.6rem;">Игроки онлайн</h3>
       <div id="players-list2" style="font-size:.77rem;display:flex;flex-direction:column;gap:0;max-height:180px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(110,0,20,0.4) transparent;"></div>
@@ -1141,7 +1185,7 @@ function renderPlayerList(players, elId) {
     return `<div class="p-row-c">
       <div class="p-dot" style="background:${dot};box-shadow:0 0 5px ${dot};"></div>
       <span style="font-family:'Philosopher',serif;color:#d0ccd8;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name)}</span>
-      <span style="color:var(--muted);font-size:.7rem;white-space:nowrap;">${fmtDuration(p.duration)}</span>
+      <span style="font-family:'Oswald',sans-serif;font-size:.7rem;font-weight:400;color:rgba(180,160,210,0.7);white-space:nowrap;font-variant-numeric:tabular-nums;">${fmtDuration(p.duration)}</span>
     </div>`;
   }).join('');
 }
@@ -1220,10 +1264,10 @@ function updateHunters(players) {
 }
 
 // ── Sparkline ──────────────────────────────────────────────────────────────
-function renderSparkline(history) {
-  const wrap = document.getElementById('sparkline-wrap');
-  const ct = document.getElementById('sparkline');
-  const hint = document.getElementById('sparkline-hint');
+function renderSparkline(history, sfx = '') {
+  const wrap = document.getElementById('sparkline-wrap' + sfx);
+  const ct = document.getElementById('sparkline' + sfx);
+  const hint = document.getElementById('sparkline-hint' + sfx);
   if (!wrap || !ct) return;
   if (!history || history.length < 2) { wrap.style.display = 'none'; return; }
   wrap.style.display = '';
@@ -1251,6 +1295,13 @@ async function loadHistory() {
   try {
     const d = await fetch(`${API}/monitor/snapshots?server=1`).then(r => r.json());
     renderSparkline(d);
+  } catch {}
+}
+
+async function loadHistory2() {
+  try {
+    const d = await fetch(`${API}/monitor/snapshots?server=2`).then(r => r.json());
+    renderSparkline(d, '2');
   } catch {}
 }
 
@@ -1441,7 +1492,7 @@ async function loadNews(page = 1) {
     card.innerHTML = `<div style="display:flex;gap:0;min-height:100px;align-items:stretch;">
       ${thumbImg}
       <div style="padding:.75rem 1rem;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;">
-        <div style="display:flex;align-items:center;gap:.55rem;margin-bottom:.5rem;">${authorAvatar}<div style="display:flex;flex-direction:column;gap:.2rem;"><div style="display:flex;align-items:center;gap:.35rem;"><span style="font-size:.82rem;color:#d4c4e0;font-weight:600;">${authorName}</span>${adminBadge}</div><span style="font-size:.63rem;color:var(--muted);">${fmtDate(n.created_at)}</span></div></div>
+        <div style="display:flex;align-items:center;gap:.55rem;margin-bottom:.5rem;">${authorAvatar}<div style="display:flex;flex-direction:column;gap:.2rem;"><div style="display:flex;align-items:center;gap:.35rem;"><span style="font-size:.82rem;color:#d4c4e0;font-weight:600;">${authorName}</span>${adminBadge}</div><div style="display:flex;align-items:center;gap:.5rem;"><span style="font-size:.63rem;color:var(--muted);">${fmtDate(n.created_at)}</span>${n.comment_count > 0 ? `<span style="font-size:.6rem;color:var(--muted);display:inline-flex;align-items:center;gap:.2rem;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${n.comment_count}</span>` : ''}</div></div></div>
         <h3 class="gothic" style="font-size:1rem;font-weight:600;color:#d4c4e0;line-height:1.35;margin-bottom:.45rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.title)}</h3>
         ${tagsHtml ? `<div style="margin-top:.1rem;">${tagsHtml}</div>` : ''}
       </div>
@@ -1838,9 +1889,11 @@ loadVersion();
 loadStatus();
 loadStatus2();
 loadHistory();
+loadHistory2();
 loadStats();
 setInterval(() => { loadStatus(); loadStatus2(); }, 30000);
 setInterval(loadHistory, 300000);
+setInterval(loadHistory2, 300000);
 setInterval(loadStats, 300000);
 loadFeatured();
 loadNews(1);

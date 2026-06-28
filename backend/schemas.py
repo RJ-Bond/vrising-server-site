@@ -99,6 +99,7 @@ class NewsListOut(BaseModel):
     published: bool
     created_at: datetime
     author: UserOut
+    comment_count: int = 0
 
     model_config = {"from_attributes": True}
 

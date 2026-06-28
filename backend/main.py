@@ -553,8 +553,22 @@ async def list_news(
         .limit(per_page)
     )
     items = result.scalars().all()
+    news_ids = [n.id for n in items]
+    counts: dict[int, int] = {}
+    if news_ids:
+        cnt_result = await db.execute(
+            select(Comment.news_id, func.count(Comment.id))
+            .where(Comment.news_id.in_(news_ids))
+            .group_by(Comment.news_id)
+        )
+        counts = {row[0]: row[1] for row in cnt_result.all()}
+    out = []
+    for n in items:
+        d = NewsListOut.model_validate(n)
+        d.comment_count = counts.get(n.id, 0)
+        out.append(d)
     return PaginatedNews(
-        items=[NewsListOut.model_validate(n) for n in items],
+        items=out,
         total=total,
         page=page,
         pages=pages,
