@@ -966,13 +966,19 @@ async function loadWipeHistory() {
   const el = document.getElementById('wipe-history-admin');
   if (!el) return;
   try {
-    const wipes = await fetch(`${API}/wipes`).then(r => r.json());
+    const [wipes, settings] = await Promise.all([
+      fetch(`${API}/wipes`).then(r => r.json()),
+      fetch(`${API}/admin/settings`, { headers: authH() }).then(r => r.json()),
+    ]);
+    const smap = Object.fromEntries(settings.map(s => [s.key, s.value]));
+    const srvName  = smap.server_name?.trim()  || 'Сервер 1';
+    const srvName2 = smap.server2_name?.trim() || 'Сервер 2';
     if (!wipes.length) { el.innerHTML = `<p style="color:var(--muted);font-size:.8rem;">Нет записей.</p>`; return; }
     el.innerHTML = wipes.map(w => {
       const dt = new Date(w.wipe_date);
       const label = WIPE_LABELS[w.wipe_type] || w.wipe_type;
       const color = WIPE_COLORS[w.wipe_type] || '#d4c4e0';
-      const srv = w.server_num === 2 ? 'Сервер 2' : 'Сервер 1';
+      const srv = w.server_num === 2 ? srvName2 : srvName;
       const srvColor = w.server_num === 2 ? '#818cf8' : '#4ade80';
       const isPast = dt < new Date();
       return `<div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;background:rgba(14,5,18,0.5);border:1px solid rgba(110,0,20,.18);border-radius:.5rem;opacity:${isPast ? '.75' : '1'};">
@@ -1013,7 +1019,16 @@ async function deleteWipe(id) {
 }
 
 loadAdminNews(1);
-loadWipeHistory();
+loadWipeHistory().then(() => {
+  // update server select labels after names are known
+  fetch(`${API}/admin/settings`, { headers: authH() }).then(r => r.json()).then(settings => {
+    const smap = Object.fromEntries(settings.map(s => [s.key, s.value]));
+    const s1 = document.querySelector('#wf-server option[value="1"]');
+    const s2 = document.querySelector('#wf-server option[value="2"]');
+    if (s1) s1.textContent = smap.server_name?.trim() || 'Сервер 1';
+    if (s2) s2.textContent = smap.server2_name?.trim() || 'Сервер 2';
+  }).catch(() => {});
+});
 
 // ── Deep-link: /admin.html?edit=slug ──────────────────────────────────────
 (async () => {

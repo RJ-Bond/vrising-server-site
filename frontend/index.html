@@ -735,14 +735,14 @@
       </div>
       <div id="wipe-card" class="info-card" style="display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(3,14,8,0.82);border-color:rgba(0,160,60,0.2);">
         <div style="font-size:2rem;line-height:1;margin-bottom:.45rem;filter:drop-shadow(0 0 12px rgba(40,200,80,0.45));">🗡️</div>
-        <div class="ic-title" style="margin-bottom:.2rem;color:#7ecf9a;">Вайп · Сервер 1</div>
+        <div id="wipe-card-title" class="ic-title" style="margin-bottom:.2rem;color:#7ecf9a;">Вайп · Сервер 1</div>
         <div id="wipe-type-label" style="font-size:.6rem;color:rgba(126,207,154,0.6);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.35rem;"></div>
         <div class="wipe-digit" id="wipe-timer">—</div>
         <p id="wipe-date-label" style="font-size:.63rem;color:var(--muted);margin-top:.3rem;"></p>
       </div>
       <div id="wipe-card2" class="info-card" style="display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(3,8,18,0.82);border-color:rgba(60,80,200,0.2);">
         <div style="font-size:2rem;line-height:1;margin-bottom:.45rem;filter:drop-shadow(0 0 12px rgba(80,100,240,0.45));">🗡️</div>
-        <div class="ic-title" style="margin-bottom:.2rem;color:#9aaef0;">Вайп · Сервер 2</div>
+        <div id="wipe-card-title2" class="ic-title" style="margin-bottom:.2rem;color:#9aaef0;">Вайп · Сервер 2</div>
         <div id="wipe-type-label2" style="font-size:.6rem;color:rgba(154,174,240,0.6);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.35rem;"></div>
         <div class="wipe-digit" id="wipe-timer2" style="color:#c8d4f0;text-shadow:0 0 18px rgba(80,100,240,0.35);">—</div>
         <p id="wipe-date-label2" style="font-size:.63rem;color:var(--muted);margin-top:.3rem;"></p>
@@ -1478,6 +1478,15 @@ async function loadSiteSettings() {
       }
     }
 
+    const srvName  = (d.server_name  || '').trim() || 'Сервер 1';
+    const srvName2 = (d.server2_name || '').trim() || 'Сервер 2';
+    const t1 = document.getElementById('wipe-card-title');
+    const t2 = document.getElementById('wipe-card-title2');
+    if (t1) t1.textContent = `Вайп · ${srvName}`;
+    if (t2) t2.textContent = `Вайп · ${srvName2}`;
+    window._srvName  = srvName;
+    window._srvName2 = srvName2;
+
     const wipeDateStr = (d.wipe_date || '').trim();
     if (wipeDateStr) {
       const parsed = new Date(wipeDateStr);
@@ -1552,7 +1561,7 @@ async function loadWipeHistory() {
     list.innerHTML = past.map(w => {
       const dt = new Date(w.wipe_date);
       const label = WIPE_TYPE_LABELS[w.wipe_type] || w.wipe_type;
-      const srv = w.server_num === 2 ? 'Сервер 2' : 'Сервер 1';
+      const srv = w.server_num === 2 ? (window._srvName2 || 'Сервер 2') : (window._srvName || 'Сервер 1');
       const srvColor = w.server_num === 2 ? 'rgba(154,174,240,0.7)' : 'rgba(126,207,154,0.7)';
       return `<div style="display:flex;align-items:center;gap:.5rem;font-size:.7rem;padding:.25rem 0;border-bottom:1px solid rgba(110,0,20,0.1);">
         <span style="color:${srvColor};font-size:.6rem;white-space:nowrap;">${srv}</span>
