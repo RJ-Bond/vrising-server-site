@@ -530,15 +530,11 @@
     <div class="hero-divider" style="position:relative;z-index:1;"></div>
     <div id="hero-status" style="display:none;margin-bottom:.2rem;"></div>
     <div id="hero-status2" style="display:none;"></div>
-    <div id="hero-connect" class="hero-connect" style="display:none;position:relative;z-index:2;">
-      <button class="connect-btn" onclick="handleConnect()">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-        ПОДКЛЮЧИТЬСЯ К СЕРВЕРУ
-      </button>
-      <button class="copy-ip-btn" id="copy-ip-btn" onclick="copyIP()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        <span id="server-ip-text">Копировать IP</span>
-      </button>
+    <div class="hero-connect" style="margin-top:.85rem;position:relative;z-index:2;">
+      <a href="https://store.steampowered.com/app/1604030/V_Rising/" target="_blank" rel="noopener noreferrer" class="connect-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.497 1.009 2.452-.397.957-1.494 1.411-2.455 1.015zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.252 0-2.265-1.014-2.265-2.265z"/></svg>
+        Купить: V Rising
+      </a>
     </div>
   </div>
 
@@ -708,29 +704,6 @@ function getUser()  { try { return JSON.parse(localStorage.getItem('user')); } c
 function doLogout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.reload(); }
 
 let _isAdmin = false;
-let _serverIP = '', _serverPort = '';
-
-function handleConnect() {
-  if (!_serverIP) return;
-  window.location.href = `steam://connect/${_serverIP}:${_serverPort || '9876'}`;
-}
-
-async function copyIP() {
-  if (!_serverIP) return;
-  const text = `${_serverIP}:${_serverPort || '9876'}`;
-  const btn = document.getElementById('copy-ip-btn');
-  const txt = document.getElementById('server-ip-text');
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    const ta = document.createElement('textarea');
-    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
-    document.body.removeChild(ta);
-  }
-  btn.classList.add('copied'); txt.textContent = '✓ Скопировано!';
-  setTimeout(() => { btn.classList.remove('copied'); txt.textContent = text; }, 2200);
-}
 
 function toggleDrawer() {
   const panel = document.querySelector('.left-panel');
@@ -1110,17 +1083,6 @@ async function loadSiteSettings() {
     const discord = (d.discord_url || '').trim();
     const bg      = (d.bg_image_url || '').trim();
 
-    const ip   = (d.server_ip   || '').trim();
-    const port = (d.server_port || '').trim();
-    if (ip) {
-      _serverIP   = ip;
-      _serverPort = port;
-      const connAddr = `${ip}:${port || '9876'}`;
-      const ipTxt = document.getElementById('server-ip-text');
-      if (ipTxt) ipTxt.textContent = connAddr;
-      const heroConn = document.getElementById('hero-connect');
-      if (heroConn) heroConn.style.display = 'flex';
-    }
     if (bg) {
       document.body.style.backgroundImage = [
         'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
