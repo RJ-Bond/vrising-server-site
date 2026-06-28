@@ -1012,8 +1012,8 @@ async function loadNews(page = 1) {
       .map(t => `<span class="news-tag" onclick="event.stopPropagation();setTag('${esc(t)}')">${esc(t)}</span>`).join('');
     const authorName = esc(n.author.username);
     const authorAvatar = n.author.avatar_url
-      ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:26px;height:26px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.3);flex-shrink:0;">`
-      : `<span style="width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(80,0,150,0.6),rgba(120,0,20,0.4));border:1px solid rgba(190,0,40,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:.68rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
+      ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.3);flex-shrink:0;">`
+      : `<span style="width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(80,0,150,0.6),rgba(120,0,20,0.4));border:1px solid rgba(190,0,40,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:1.1rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
     const card = document.createElement('div');
     card.className = 'news-card';
     card.style.animationDelay = `${idx * 0.06}s`;
