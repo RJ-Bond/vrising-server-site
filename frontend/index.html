@@ -326,7 +326,10 @@
       transition:background .2s, border-color .2s, box-shadow .2s;
     }
     .discord-btn:hover { background:rgba(88,101,242,0.22); border-color:rgba(88,101,242,0.5); box-shadow:0 0 14px rgba(88,101,242,0.2); }
-    @media (max-width: 1024px) { .main-grid { flex-direction: column !important; } .side-panel { width: 100% !important; } }
+    @media (max-width: 1024px) {
+      .main-grid { flex-direction: column !important; }
+      .side-panel { width: 100% !important; }
+    }
 
     /* ── Fade-up entrance ── */
     @keyframes fade-up {
@@ -375,13 +378,99 @@
     /* ── Sparkline ── */
     .sparkline-wrap { padding: .25rem 0 .1rem; }
 
-    /* ── Hunter rows ── */
+    /* ── Hunter rows (legacy, kept for server2) ── */
     .hunter-row {
       display: grid; grid-template-columns: 18px 1fr auto;
       align-items: center; gap: .5rem;
       padding: .28rem 0; border-bottom: 1px solid rgba(110,0,20,0.08);
     }
     .hunter-row:last-child { border-bottom: none; }
+
+    /* ── Hero connect area ── */
+    .hero-connect { margin-top:.85rem; display:flex; flex-direction:column; align-items:center; gap:.55rem; }
+    .connect-btn {
+      display:inline-flex; align-items:center; gap:.6rem;
+      padding:.68rem 1.75rem; border-radius:.7rem;
+      background:linear-gradient(135deg,rgba(130,0,28,0.65),rgba(75,0,18,0.55));
+      border:1px solid rgba(210,0,42,0.55);
+      color:#fff; font-family:'Cinzel',serif; font-size:.86rem; font-weight:700;
+      letter-spacing:.1em; text-transform:uppercase; cursor:pointer;
+      box-shadow:0 0 30px rgba(190,0,40,0.5),inset 0 0 22px rgba(130,0,28,0.25);
+      transition:all .25s; backdrop-filter:blur(6px); text-decoration:none;
+    }
+    .connect-btn:hover {
+      box-shadow:0 0 55px rgba(230,0,48,0.75),0 0 22px rgba(200,0,40,0.4),inset 0 0 30px rgba(150,0,32,0.3);
+      border-color:rgba(240,0,55,0.85); transform:translateY(-2px);
+    }
+    .copy-ip-btn {
+      display:inline-flex; align-items:center; gap:.4rem;
+      padding:.27rem .8rem; border-radius:9999px;
+      background:rgba(12,3,20,0.75); border:1px solid rgba(110,0,20,0.35);
+      color:var(--muted); font-size:.71rem; cursor:pointer;
+      transition:all .2s; backdrop-filter:blur(6px);
+    }
+    .copy-ip-btn:hover { border-color:rgba(180,0,35,0.5); color:var(--text); }
+    .copy-ip-btn.copied { border-color:rgba(0,160,35,0.5); color:#4ade80; }
+
+    /* ── Hamburger button ── */
+    .hamburger-btn {
+      display:none; align-items:center; justify-content:center;
+      width:34px; height:34px; cursor:pointer; flex-shrink:0;
+      background:rgba(18,5,28,0.8); border:1px solid rgba(110,0,20,0.35);
+      border-radius:.4rem; transition:border-color .2s;
+    }
+    .hamburger-btn:hover { border-color:rgba(180,0,35,0.5); }
+    .h-bar { display:block; width:15px; height:1.5px; background:var(--text); border-radius:1px; }
+    .h-bar+.h-bar { margin-top:4px; }
+
+    /* ── Drawer overlay ── */
+    #drawer-overlay {
+      display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65);
+      z-index:290; backdrop-filter:blur(4px); cursor:pointer;
+    }
+    #drawer-overlay.open { display:block; }
+
+    /* ── Hunter podium ── */
+    .hunter-podium { display:flex; gap:.35rem; justify-content:space-around; margin-bottom:.6rem; }
+    .hunter-medal { display:flex; flex-direction:column; align-items:center; gap:.25rem; flex:1; min-width:0; }
+    .h-drop { font-size:1.45rem; line-height:1; }
+    .h-drop.gold   { filter:drop-shadow(0 0 8px rgba(215,175,0,0.75)); }
+    .h-drop.silver { filter:drop-shadow(0 0 6px rgba(175,185,205,0.55)); }
+    .h-drop.bronze { filter:drop-shadow(0 0 6px rgba(185,105,30,0.6)); }
+    .h-name { font-family:'Philosopher',serif; font-size:.7rem; color:var(--text); text-align:center; max-width:58px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .h-time { font-size:.58rem; color:var(--muted); }
+    .hunters-rest { overflow:hidden; transition:max-height .3s ease; max-height:0; }
+    .hunters-rest.open { max-height:200px; }
+    .hunters-toggle {
+      display:flex; align-items:center; gap:.3rem; font-size:.63rem; color:var(--muted);
+      cursor:pointer; padding:.18rem 0; background:none; border:none; width:100%;
+      transition:color .15s;
+    }
+    .hunters-toggle:hover { color:var(--text); }
+
+    /* ── Compact player row ── */
+    .p-row-c {
+      display:grid; grid-template-columns:9px 1fr auto;
+      align-items:center; gap:.5rem;
+      padding:.26rem 0; border-bottom:1px solid rgba(110,0,20,0.08);
+    }
+    .p-row-c:last-child { border-bottom:none; }
+    .p-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+    /* ── Mobile ── */
+    @media (max-width:768px) {
+      .hamburger-btn { display:flex; }
+      .left-panel {
+        position:fixed !important; top:0; left:-290px; width:260px !important;
+        height:100vh; z-index:300; overflow-y:auto; padding-top:3.5rem !important;
+        border-radius:0 !important; transition:left .3s ease;
+        background:rgba(10,2,18,0.98) !important;
+      }
+      .left-panel.drawer-open { left:0 !important; }
+      .right-panel { display:none !important; }
+      .main-grid { padding:0 .75rem !important; }
+      #drawer-close { display:block !important; }
+    }
   </style>
 </head>
 <body>
@@ -392,6 +481,9 @@
   <div style="max-width:1280px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.25rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">⚔ V RISING</a>
     <div style="display:flex;align-items:center;gap:.75rem;">
+      <button class="hamburger-btn" onclick="toggleDrawer()" aria-label="Меню">
+        <div><span class="h-bar"></span><span class="h-bar"></span><span class="h-bar"></span></div>
+      </button>
       <span id="nav-username" class="hidden" style="font-size:.8rem;color:var(--muted);"></span>
       <a id="nav-admin" href="/admin.html" class="hidden btn-sm gothic" style="font-size:.7rem;letter-spacing:.05em;text-decoration:none;">Админка</a>
       <a id="nav-login" href="/login.html" class="btn-sm">Войти</a>
@@ -436,8 +528,18 @@
   <div class="hero-content">
     <h1 id="hero-title" class="gothic hero-title" style="position:relative;z-index:1;">V RISING</h1>
     <div class="hero-divider" style="position:relative;z-index:1;"></div>
-    <div id="hero-status" style="display:none;"></div>
+    <div id="hero-status" style="display:none;margin-bottom:.2rem;"></div>
     <div id="hero-status2" style="display:none;"></div>
+    <div id="hero-connect" class="hero-connect" style="display:none;position:relative;z-index:2;">
+      <button class="connect-btn" onclick="handleConnect()">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        ПОДКЛЮЧИТЬСЯ К СЕРВЕРУ
+      </button>
+      <button class="copy-ip-btn" id="copy-ip-btn" onclick="copyIP()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span id="server-ip-text">Копировать IP</span>
+      </button>
+    </div>
   </div>
 
   <!-- Scroll hint -->
@@ -450,9 +552,12 @@
 <div class="main-grid" style="max-width:1280px;margin:2rem auto;padding:0 1.25rem;display:flex;gap:1.25rem;align-items:flex-start;">
 
   <!-- ── LEFT: Navigation ── -->
-  <aside class="side-panel g-panel" style="width:210px;border-radius:.875rem;padding:1.25rem;flex-shrink:0;">
+  <aside class="side-panel left-panel g-panel" style="width:210px;border-radius:.875rem;padding:1.25rem;flex-shrink:0;">
     <span class="corner-tl">✦</span><span class="corner-tr">✦</span>
     <span class="corner-bl">✦</span><span class="corner-br">✦</span>
+
+    <!-- Drawer close (mobile only) -->
+    <button onclick="toggleDrawer()" id="drawer-close" style="display:none;position:absolute;top:.75rem;right:.75rem;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1;z-index:2;padding:.25rem;">✕</button>
 
     <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Навигация —</h2>
 
@@ -507,7 +612,7 @@
   </main>
 
   <!-- ── RIGHT: Server Chronicle ── -->
-  <aside class="side-panel g-panel" style="width:300px;border-radius:.875rem;padding:1.25rem;flex-shrink:0;">
+  <aside class="side-panel right-panel g-panel" style="width:300px;border-radius:.875rem;padding:1.25rem;flex-shrink:0;">
     <span class="corner-tl">✦</span><span class="corner-tr">✦</span>
     <span class="corner-bl">✦</span><span class="corner-br">✦</span>
 
@@ -555,6 +660,9 @@
 
 </div>
 
+<!-- ══ DRAWER OVERLAY ════════════════════════════════════════════════════════ -->
+<div id="drawer-overlay" onclick="toggleDrawer()"></div>
+
 <!-- ══ TOAST ══════════════════════════════════════════════════════════════════ -->
 <div id="toast-container"></div>
 
@@ -599,6 +707,36 @@ function getUser()  { try { return JSON.parse(localStorage.getItem('user')); } c
 function doLogout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.reload(); }
 
 let _isAdmin = false;
+let _serverIP = '', _serverPort = '';
+
+function handleConnect() {
+  if (!_serverIP) return;
+  window.location.href = `steam://connect/${_serverIP}:${_serverPort || '9876'}`;
+}
+
+async function copyIP() {
+  if (!_serverIP) return;
+  const text = `${_serverIP}:${_serverPort || '9876'}`;
+  const btn = document.getElementById('copy-ip-btn');
+  const txt = document.getElementById('server-ip-text');
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  btn.classList.add('copied'); txt.textContent = '✓ Скопировано!';
+  setTimeout(() => { btn.classList.remove('copied'); txt.textContent = text; }, 2200);
+}
+
+function toggleDrawer() {
+  const panel = document.querySelector('.left-panel');
+  const overlay = document.getElementById('drawer-overlay');
+  const isOpen = panel.classList.toggle('drawer-open');
+  overlay.classList.toggle('open', isOpen);
+}
 
 (() => {
   const u = getUser();
@@ -648,12 +786,12 @@ function row(k, v) {
   </div>`;
 }
 
-function bloodCircle(centerText, label, fillPct) {
+function bloodCircle(centerText, label, fillPct, tooltip = '') {
   const r = 28, cx = 36, cy = 36;
   const circ = +(2 * Math.PI * r).toFixed(2);
   const offset = +(circ * (1 - Math.min(100, Math.max(0, fillPct)) / 100)).toFixed(2);
   const uid = Math.random().toString(36).slice(2, 8);
-  return `<div style="display:flex;flex-direction:column;align-items:center;gap:.45rem;">
+  return `<div style="display:flex;flex-direction:column;align-items:center;gap:.45rem;${tooltip ? 'cursor:help;' : ''}" ${tooltip ? `title="${tooltip}"` : ''}>
     <svg width="72" height="72" viewBox="0 0 72 72" style="overflow:visible;">
       <defs>
         <linearGradient id="bg${uid}" x1="0%" y1="100%" x2="0%" y2="0%">
@@ -700,20 +838,12 @@ function renderPlayerList(players, elId) {
   const sorted = [...players].sort((a, b) => b.duration - a.duration);
   el.innerHTML = sorted.map(p => {
     const name = p.name || 'Аноним';
-    const initial = esc(name.trim().charAt(0).toUpperCase() || '?');
     const hue = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 55 + 330;
-    return `<div style="display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:.55rem;padding:.32rem 0;border-bottom:1px solid rgba(110,0,20,0.1);">
-      <div style="width:26px;height:26px;border-radius:50%;
-           background:radial-gradient(circle at 38% 32%, hsl(${hue},72%,22%), hsl(${hue},60%,9%));
-           border:1px solid rgba(190,0,40,0.32);
-           display:flex;align-items:center;justify-content:center;
-           font-size:.68rem;font-weight:700;color:rgba(225,185,205,0.9);
-           font-family:'Cinzel',serif;
-           box-shadow:0 0 6px rgba(180,0,30,0.22);flex-shrink:0;">
-        ${initial}
-      </div>
-      <span style="font-family:'Philosopher',serif;color:#d0ccd8;font-size:.875rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name)}</span>
-      <span style="font-family:'Philosopher',serif;color:var(--muted);font-size:.72rem;white-space:nowrap;">${fmtDuration(p.duration)}</span>
+    const dot = `hsl(${hue},78%,42%)`;
+    return `<div class="p-row-c">
+      <div class="p-dot" style="background:${dot};box-shadow:0 0 5px ${dot};"></div>
+      <span style="font-family:'Philosopher',serif;color:#d0ccd8;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name)}</span>
+      <span style="color:var(--muted);font-size:.7rem;white-space:nowrap;">${fmtDuration(p.duration)}</span>
     </div>`;
   }).join('');
 }
@@ -731,15 +861,14 @@ function renderServerBlock(d, sfx) {
       <span class="${cls}" style="font-size:.6rem;padding:.15rem .6rem;border-radius:9999px;font-weight:700;">${dot} ${badgeTxt}</span>
     </div>
     <div style="font-size:.82rem;color:#d4c4e0;font-weight:600;line-height:1.3;margin-bottom:.45rem;word-break:break-word;">${esc(d.name)}</div>
-    <div class="p-bar"><div class="p-fill" style="width:${pct}%"></div></div>
-    <div style="display:flex;justify-content:space-between;margin-top:.3rem;font-size:.65rem;color:var(--muted);">
-      <span>Игроков: ${d.players}</span><span>Макс: ${d.max_players}</span>
-    </div>`;
+    <div class="p-bar"><div class="p-fill" style="width:${pct}%"></div></div>`;
 
   const circEl = document.getElementById('left-circles' + sfx);
   if (circEl) {
     const fillPct = d.max_players > 0 ? d.players / d.max_players * 100 : 0;
-    circEl.innerHTML = bloodCircle(d.players, 'Онлайн', fillPct) + bloodCircle(pct + '%', 'Заполнен', pct);
+    const tipOnline = `Игроков онлайн: ${d.players} из ${d.max_players}`;
+    const tipFill   = `Заполненность: ${pct}%`;
+    circEl.innerHTML = bloodCircle(d.players, 'Онлайн', fillPct, tipOnline) + bloodCircle(pct + '%', 'Заполнен', pct, tipFill);
     animateBloodCircles(circEl);
   }
 
@@ -760,14 +889,34 @@ function updateHunters(players) {
   if (!wrap || !el) return;
   if (!players || !players.length) { wrap.style.display = 'none'; return; }
   wrap.style.display = '';
-  const sorted = [...players].sort((a, b) => b.duration - a.duration).slice(0, 5);
-  const medals = ['🥇', '🥈', '🥉'];
-  el.innerHTML = sorted.map((p, i) => `
-    <div class="hunter-row">
-      <span style="font-size:.7rem;text-align:center;">${medals[i] || '⚔'}</span>
-      <span style="font-family:'Philosopher',serif;font-size:.8rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.name)}</span>
-      <span style="font-size:.68rem;color:var(--muted);white-space:nowrap;">${fmtDuration(p.duration)}</span>
-    </div>`).join('');
+  const sorted = [...players].sort((a, b) => b.duration - a.duration);
+  const top3 = sorted.slice(0, 3);
+  const rest = sorted.slice(3, 6);
+  const drops = [
+    { cls: 'gold',   icon: '🩸' },
+    { cls: 'silver', icon: '🩸' },
+    { cls: 'bronze', icon: '🩸' },
+  ];
+  const podiumHtml = `<div class="hunter-podium">
+    ${top3.map((p, i) => `
+      <div class="hunter-medal">
+        <span class="h-drop ${drops[i].cls}">${drops[i].icon}</span>
+        <span class="h-name">${esc(p.name)}</span>
+        <span class="h-time">${fmtDuration(p.duration)}</span>
+      </div>`).join('')}
+  </div>`;
+  const restHtml = rest.length ? `
+    <button class="hunters-toggle" onclick="this.nextElementSibling.classList.toggle('open');this.querySelector('em').textContent=this.nextElementSibling.classList.contains('open')?'▲ Скрыть':'▼ Ещё ${rest.length}'">
+      <em>▼ Ещё ${rest.length}</em>
+    </button>
+    <div class="hunters-rest">
+      ${rest.map(p => `<div class="hunter-row">
+        <span style="font-size:.65rem;color:var(--muted);text-align:center;">⚔</span>
+        <span style="font-family:'Philosopher',serif;font-size:.78rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.name)}</span>
+        <span style="font-size:.65rem;color:var(--muted);white-space:nowrap;">${fmtDuration(p.duration)}</span>
+      </div>`).join('')}
+    </div>` : '';
+  el.innerHTML = podiumHtml + restHtml;
 }
 
 // ── Sparkline ──────────────────────────────────────────────────────────────
@@ -956,6 +1105,18 @@ async function loadSiteSettings() {
     const logo    = (d.site_logo_url || '').trim();
     const discord = (d.discord_url || '').trim();
     const bg      = (d.bg_image_url || '').trim();
+
+    const ip   = (d.server_ip   || '').trim();
+    const port = (d.server_port || '').trim();
+    if (ip) {
+      _serverIP   = ip;
+      _serverPort = port;
+      const connAddr = `${ip}:${port || '9876'}`;
+      const ipTxt = document.getElementById('server-ip-text');
+      if (ipTxt) ipTxt.textContent = connAddr;
+      const heroConn = document.getElementById('hero-connect');
+      if (heroConn) heroConn.style.display = 'flex';
+    }
     if (bg) {
       document.body.style.backgroundImage = [
         'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
