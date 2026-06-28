@@ -901,6 +901,29 @@ async def delete_user(
     await db.commit()
 
 
+# ─── Public profile ──────────────────────────────────────────────────────────
+
+@app.get("/api/users/{username}")
+async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(User).where(User.username == username, User.is_active == True)
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    total_result = await db.execute(
+        select(func.sum(PlayerRecord.total_seconds)).where(PlayerRecord.player_name == username)
+    )
+    total_seconds = total_result.scalar_one() or 0
+    return {
+        "username": user.username,
+        "avatar_url": user.avatar_url,
+        "role": user.role,
+        "created_at": user.created_at.isoformat(),
+        "total_seconds": total_seconds,
+    }
+
+
 # ─── Leaderboard ─────────────────────────────────────────────────────────────
 
 @app.get("/api/leaderboard", response_model=list[PlayerRecordOut])

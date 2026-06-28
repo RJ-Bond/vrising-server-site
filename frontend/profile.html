@@ -5,201 +5,321 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>V Rising — Профиль</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
-      --accent: #b5002a; --accent-glow: rgba(181,0,42,0.4);
-      --card: rgba(14,3,24,0.92); --border: rgba(150,0,28,0.3);
-      --text: #c8c5d4; --muted: #8a8098; --gold: #c9a04a;
-      --crimson: #cc0028; --purple: #7b00cc;
+      --bg:      #06000f;
+      --card:    rgba(14,5,22,0.88);
+      --border:  rgba(110,0,150,0.22);
+      --border-r:rgba(180,0,35,0.35);
+      --text:    #e2d8f0;
+      --muted:   #9488a8;
+      --gold:    #c9a94a;
+      --crimson: #c8002a;
+      --purple:  #7c3aed;
     }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: #08000e;
-      background-image:
-        radial-gradient(ellipse at 20% 60%, rgba(80,0,120,0.12) 0%, transparent 55%),
-        radial-gradient(ellipse at 80% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
-      background-attachment: fixed;
-      font-family: 'Inter', system-ui, sans-serif;
-      color: var(--text); min-height: 100vh;
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; }
+    body { background:var(--bg); font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh; }
+    .gothic { font-family:'Cinzel',serif; }
+
+    /* NAV */
+    .glass-nav { background:rgba(8,0,14,0.9); border-bottom:1px solid rgba(110,0,20,0.35); backdrop-filter:blur(14px); position:sticky; top:0; z-index:40; }
+
+    /* COVER */
+    .profile-cover {
+      position:relative; height:160px; overflow:hidden;
+      background:linear-gradient(135deg, rgba(40,0,80,0.9) 0%, rgba(90,0,20,0.85) 50%, rgba(20,0,50,0.9) 100%);
     }
-    .fog { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-    .fog::before {
-      content: ''; position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
-      background: radial-gradient(ellipse at 38% 55%, rgba(90,0,150,0.09) 0%, transparent 55%);
-      animation: fog1 28s ease-in-out infinite alternate;
+    .cover-fog {
+      position:absolute; inset:0; pointer-events:none;
+      background:
+        radial-gradient(ellipse at 20% 60%, rgba(120,0,200,0.25) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 30%, rgba(200,0,40,0.2) 0%, transparent 50%);
+      animation:cover-drift 12s ease-in-out infinite alternate;
     }
-    @keyframes fog1 { to { transform: translate(5%,7%) scale(1.1); } }
-    .gothic { font-family: 'Cinzel', serif; }
-    .glass-nav { background: rgba(8,0,14,0.9); border-bottom: 1px solid rgba(110,0,20,0.35); backdrop-filter: blur(14px); }
-    .g-card {
-      background: rgba(20,10,25,0.65); border: 1px solid rgba(110,0,150,0.18);
-      border-radius: 1rem; backdrop-filter: blur(12px);
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 18px rgba(80,0,120,0.1);
-      position: relative;
+    @keyframes cover-drift { to { transform:translate(3%,4%) scale(1.06); } }
+    .cover-stars { position:absolute; inset:0; pointer-events:none; }
+    .cover-star {
+      position:absolute; border-radius:50%;
+      background:#fff; animation:twinkle 3s ease-in-out infinite alternate;
     }
-    .btn-sm {
-      background: linear-gradient(135deg,#6a001a,#a00022); border: none; border-radius: .55rem;
-      padding: .4rem .9rem; color: #fff; font-size: .75rem; font-weight: 700;
-      cursor: pointer; box-shadow: 0 0 14px rgba(180,0,30,0.45); transition: all .2s;
-      text-decoration: none; display: inline-block;
+    @keyframes twinkle { 0%{opacity:.15} 100%{opacity:.75} }
+    .cover-title {
+      position:absolute; bottom:1rem; left:1.5rem;
+      font-family:'Cinzel',serif; font-size:.6rem; font-weight:700;
+      letter-spacing:.22em; color:rgba(200,170,255,0.55); text-transform:uppercase;
     }
-    .btn-sm:hover { box-shadow: 0 0 26px rgba(210,0,40,0.7); transform: translateY(-1px); }
-    .stat-row { display: flex; justify-content: space-between; align-items: center;
-      padding: .55rem 0; border-bottom: 1px solid rgba(110,0,20,0.12); }
-    .stat-row:last-child { border-bottom: none; }
+    .cover-glow {
+      position:absolute; bottom:0; left:0; right:0; height:2px;
+      background:linear-gradient(90deg,transparent,rgba(200,0,40,0.6),rgba(120,0,200,0.5),transparent);
+    }
+
+    /* AVATAR */
+    .avatar-wrap { position:relative; margin-top:-48px; margin-left:1.5rem; z-index:2; }
     .avatar-circle {
-      width: 72px; height: 72px; border-radius: 50%;
-      background: radial-gradient(circle at 38% 32%, rgba(80,0,150,0.5), rgba(120,0,20,0.4));
-      border: 2px solid rgba(190,0,40,0.4);
-      box-shadow: 0 0 24px rgba(180,0,30,0.3);
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Cinzel', serif; font-size: 1.8rem; color: #d4c4e0;
-      overflow: hidden; cursor: pointer; position: relative; flex-shrink: 0;
-      transition: border-color .2s, box-shadow .2s;
+      width:92px; height:92px; border-radius:50%;
+      background:radial-gradient(circle at 38% 32%, rgba(80,0,150,0.6), rgba(120,0,20,0.5));
+      border:3px solid rgba(14,5,22,1);
+      box-shadow:0 0 0 2px rgba(190,0,40,0.5), 0 0 28px rgba(180,0,30,0.4);
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Cinzel',serif; font-size:2.2rem; color:#d4c4e0;
+      overflow:hidden; cursor:pointer; position:relative; transition:box-shadow .2s;
     }
-    .avatar-circle:hover { border-color: rgba(230,0,50,0.7); box-shadow: 0 0 32px rgba(210,0,40,0.5); }
-    .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+    .avatar-circle:hover { box-shadow:0 0 0 2px rgba(230,0,50,0.7), 0 0 38px rgba(210,0,40,0.6); }
+    .avatar-circle img { width:100%; height:100%; object-fit:cover; }
     .avatar-overlay {
-      position: absolute; inset: 0; background: rgba(0,0,0,0.5);
-      display: flex; align-items: center; justify-content: center;
-      opacity: 0; transition: opacity .2s; border-radius: 50%;
-      font-size: .65rem; color: #fff; font-family: 'Inter',sans-serif; letter-spacing: .03em;
+      position:absolute; inset:0; background:rgba(0,0,0,0.5);
+      display:flex; align-items:center; justify-content:center;
+      opacity:0; transition:opacity .2s; border-radius:50%;
+      font-size:.6rem; color:#fff; letter-spacing:.03em;
     }
-    .avatar-circle:hover .avatar-overlay { opacity: 1; }
+    .avatar-circle:hover .avatar-overlay { opacity:1; }
     .upload-spinner {
-      display: none; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.2);
-      border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite;
-      position: absolute;
+      display:none; width:20px; height:20px; border:2px solid rgba(255,255,255,0.2);
+      border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; position:absolute;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    @keyframes fade-up { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-    .g-card { animation: fade-up .4s ease both; }
-    ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: rgba(8,0,14,0.4); }
-    ::-webkit-scrollbar-thumb { background: rgba(130,0,24,0.5); border-radius: 3px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* RANK */
+    .rank-bar-wrap { height:5px; background:rgba(255,255,255,0.07); border-radius:9999px; overflow:hidden; margin-top:.45rem; }
+    .rank-bar { height:100%; border-radius:9999px; transition:width .8s ease; }
+
+    /* CARD */
+    .g-card {
+      background:rgba(14,5,22,0.82); border:1px solid rgba(110,0,150,0.22);
+      border-radius:.875rem; backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+      position:relative;
+    }
+    .g-card::before {
+      content:''; position:absolute; top:0; left:20%; right:20%; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(200,0,45,0.35),transparent);
+    }
+
+    /* STAT ROW */
+    .stat-row { display:flex; justify-content:space-between; align-items:center;
+      padding:.52rem 0; border-bottom:1px solid rgba(110,0,20,0.1); }
+    .stat-row:last-child { border-bottom:none; }
+    .stat-key { color:var(--muted); font-size:.82rem; }
+    .stat-val { font-size:.85rem; color:var(--text); font-weight:500; }
+
+    /* INPUTS */
+    .field {
+      background:rgba(8,0,14,0.7); border:1px solid rgba(110,0,20,0.35);
+      border-radius:.55rem; padding:.55rem .85rem; color:var(--text);
+      font-size:.85rem; outline:none; width:100%; transition:border-color .2s;
+      font-family:'Inter',sans-serif;
+    }
+    .field:focus { border-color:rgba(180,0,35,0.6); }
+
+    /* BUTTONS */
+    .btn {
+      background:linear-gradient(135deg,#6a001a,#a00022); border:none; border-radius:.55rem;
+      padding:.42rem .95rem; color:#fff; font-size:.75rem; font-weight:700;
+      cursor:pointer; box-shadow:0 0 14px rgba(180,0,30,0.45); transition:all .2s;
+      text-decoration:none; display:inline-flex; align-items:center; gap:.35rem;
+      font-family:'Inter',sans-serif;
+    }
+    .btn:hover { box-shadow:0 0 26px rgba(210,0,40,0.7); transform:translateY(-1px); }
+    .btn-ghost {
+      background:rgba(80,0,15,0.3); border:1px solid rgba(150,0,20,0.35);
+      box-shadow:none; color:var(--muted);
+    }
+    .btn-ghost:hover { background:rgba(100,0,20,0.4); color:var(--text); box-shadow:none; }
+    .btn-share {
+      background:rgba(40,0,80,0.4); border:1px solid rgba(110,0,150,0.4);
+      box-shadow:none; color:rgba(200,170,255,0.8);
+    }
+    .btn-share:hover { background:rgba(60,0,110,0.55); border-color:rgba(150,0,200,0.6); color:#fff; box-shadow:none; }
+
+    @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    .g-card { animation:fade-up .4s ease both; }
+
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
+    ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
   </style>
 </head>
 <body>
-<div class="fog"></div>
 
 <!-- NAV -->
-<nav class="glass-nav sticky top-0 z-40 relative">
-  <div style="max-width:900px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
+<nav class="glass-nav">
+  <div style="max-width:680px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">V RISING</a>
-    <div style="display:flex;align-items:center;gap:.75rem;">
-      <a href="/" class="btn-sm" style="font-size:.72rem;">← Главная</a>
-      <button onclick="doLogout()" class="btn-sm" style="background:rgba(14,3,24,0.9);border:1px solid rgba(110,0,20,0.35);box-shadow:none;font-size:.72rem;">Выйти</button>
+    <div style="display:flex;align-items:center;gap:.6rem;">
+      <a href="/" class="btn btn-ghost" style="font-size:.72rem;">← Главная</a>
+      <button onclick="doLogout()" class="btn btn-ghost" style="font-size:.72rem;">Выйти</button>
     </div>
   </div>
 </nav>
 
-<!-- CONTENT -->
-<div style="max-width:600px;margin:3rem auto;padding:0 1.25rem;">
+<div style="max-width:680px;margin:2rem auto 3rem;padding:0 1rem;">
 
-  <!-- Profile card -->
-  <div class="g-card" style="padding:2rem;margin-bottom:1.25rem;">
-    <!-- Hidden file input -->
-    <input type="file" id="avatar-input" accept="image/*" style="display:none;" onchange="uploadAvatar(this)">
-
-    <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:1.75rem;">
-      <div class="avatar-circle" id="profile-avatar" onclick="document.getElementById('avatar-input').click()" title="Нажмите для смены аватара">
-        <div class="avatar-overlay">
-          <span>Сменить</span>
-        </div>
-        <div class="upload-spinner" id="avatar-spinner"></div>
-      </div>
-      <div>
-        <h1 class="gothic" id="profile-name" style="font-size:1.4rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;margin-bottom:.25rem;">—</h1>
-        <span id="profile-role-badge" style="font-size:.65rem;padding:.15rem .6rem;border-radius:9999px;border:1px solid rgba(200,0,40,.4);color:#fca5a5;background:rgba(120,0,20,.2);">загрузка...</span>
-      </div>
+  <!-- Profile cover + avatar header -->
+  <div class="g-card" style="overflow:hidden;padding:0;margin-bottom:1.1rem;">
+    <div class="profile-cover" id="profile-cover">
+      <div class="cover-fog"></div>
+      <div class="cover-stars" id="cover-stars"></div>
+      <div class="cover-title" id="cover-subtitle">— Профиль игрока —</div>
+      <div class="cover-glow"></div>
     </div>
+    <div style="padding:0 1.5rem 1.5rem;">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+        <div class="avatar-wrap" style="margin-left:0;">
+          <input type="file" id="avatar-input" accept="image/*" style="display:none;" onchange="uploadAvatar(this)">
+          <div class="avatar-circle" id="profile-avatar" onclick="document.getElementById('avatar-input').click()" title="Сменить аватар">
+            <div class="avatar-overlay"><span>Сменить</span></div>
+            <div class="upload-spinner" id="avatar-spinner"></div>
+          </div>
+        </div>
+        <div style="padding-bottom:.35rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+          <a id="share-btn" class="btn btn-share" href="#" onclick="copyProfileLink(event)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Поделиться
+          </a>
+          <a id="admin-link" href="/admin.html" class="btn" style="display:none;font-size:.72rem;">Админка</a>
+        </div>
+      </div>
 
-    <h2 class="gothic" style="font-size:.7rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Данные аккаунта —</h2>
-
-    <div>
-      <div class="stat-row">
-        <span style="color:var(--muted);font-size:.82rem;">Email</span>
-        <span id="profile-email" style="font-size:.85rem;color:#d4c4e0;font-weight:500;">—</span>
-      </div>
-      <div class="stat-row">
-        <span style="color:var(--muted);font-size:.82rem;">Роль</span>
-        <span id="profile-role" style="font-size:.85rem;color:#d4c4e0;font-weight:500;">—</span>
-      </div>
-      <div class="stat-row">
-        <span style="color:var(--muted);font-size:.82rem;">Аккаунт с</span>
-        <span id="profile-since" style="font-size:.85rem;color:#d4c4e0;font-weight:500;">—</span>
-      </div>
-      <div class="stat-row">
-        <span style="color:var(--muted);font-size:.82rem;">Статус</span>
-        <span id="profile-status" style="font-size:.82rem;">—</span>
+      <div style="margin-top:.75rem;">
+        <div style="display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-bottom:.2rem;">
+          <h1 class="gothic" id="profile-name" style="font-size:1.45rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;">—</h1>
+          <span id="profile-role-badge" style="font-size:.6rem;padding:.15rem .6rem;border-radius:9999px;border:1px solid rgba(200,0,40,.4);color:#fca5a5;background:rgba(120,0,20,.2);">загрузка...</span>
+        </div>
+        <!-- Rank -->
+        <div id="rank-wrap" style="display:none;margin-top:.5rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.2rem;">
+            <span id="rank-label" style="font-family:'Oswald',sans-serif;font-size:.85rem;font-weight:500;letter-spacing:.04em;"></span>
+            <span id="rank-time" style="font-size:.62rem;color:var(--muted);font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;"></span>
+          </div>
+          <div class="rank-bar-wrap">
+            <div id="rank-bar" class="rank-bar" style="width:0%;"></div>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:.18rem;">
+            <span id="rank-cur-label" style="font-size:.52rem;color:var(--muted);"></span>
+            <span id="rank-next-label" style="font-size:.52rem;color:var(--muted);"></span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Change password card -->
-  <div class="g-card" style="padding:1.5rem;margin-bottom:1.25rem;">
-    <h2 class="gothic" style="font-size:.7rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1.1rem;">— Сменить пароль —</h2>
-    <div style="display:flex;flex-direction:column;gap:.65rem;">
-      <input id="pw-old" type="password" placeholder="Текущий пароль" autocomplete="current-password"
-        style="background:rgba(8,0,14,0.7);border:1px solid rgba(110,0,20,0.35);border-radius:.55rem;padding:.55rem .85rem;color:var(--text);font-size:.85rem;outline:none;width:100%;transition:border-color .2s;"
-        onfocus="this.style.borderColor='rgba(180,0,35,0.6)'" onblur="this.style.borderColor='rgba(110,0,20,0.35)'">
-      <input id="pw-new" type="password" placeholder="Новый пароль (мин. 6 символов)" autocomplete="new-password"
-        style="background:rgba(8,0,14,0.7);border:1px solid rgba(110,0,20,0.35);border-radius:.55rem;padding:.55rem .85rem;color:var(--text);font-size:.85rem;outline:none;width:100%;transition:border-color .2s;"
-        onfocus="this.style.borderColor='rgba(180,0,35,0.6)'" onblur="this.style.borderColor='rgba(110,0,20,0.35)'">
-      <input id="pw-confirm" type="password" placeholder="Повторите новый пароль" autocomplete="new-password"
-        style="background:rgba(8,0,14,0.7);border:1px solid rgba(110,0,20,0.35);border-radius:.55rem;padding:.55rem .85rem;color:var(--text);font-size:.85rem;outline:none;width:100%;transition:border-color .2s;"
-        onfocus="this.style.borderColor='rgba(180,0,35,0.6)'" onblur="this.style.borderColor='rgba(110,0,20,0.35)'"
+  <!-- Account info -->
+  <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Данные аккаунта —</h2>
+    <div class="stat-row">
+      <span class="stat-key">Email</span>
+      <span id="profile-email" class="stat-val">—</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-key">Роль</span>
+      <span id="profile-role" class="stat-val">—</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-key">На сервере с</span>
+      <span id="profile-since" class="stat-val" style="font-family:'Oswald',sans-serif;font-weight:400;">—</span>
+    </div>
+    <div class="stat-row">
+      <span class="stat-key">Статус</span>
+      <span id="profile-status" class="stat-val">—</span>
+    </div>
+  </div>
+
+  <!-- Change password -->
+  <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Сменить пароль —</h2>
+    <div style="display:flex;flex-direction:column;gap:.6rem;">
+      <input id="pw-old"     class="field" type="password" placeholder="Текущий пароль"              autocomplete="current-password">
+      <input id="pw-new"     class="field" type="password" placeholder="Новый пароль (мин. 6 символов)" autocomplete="new-password">
+      <input id="pw-confirm" class="field" type="password" placeholder="Повторите новый пароль"      autocomplete="new-password"
         onkeydown="if(event.key==='Enter')changePassword()">
       <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
-        <button onclick="changePassword()" class="btn-sm">Сменить пароль</button>
+        <button onclick="changePassword()" class="btn">Сменить пароль</button>
         <span id="pw-msg" style="font-size:.78rem;display:none;"></span>
       </div>
     </div>
   </div>
 
-  <!-- Actions card -->
-  <div class="g-card" style="padding:1.5rem;">
-    <h2 class="gothic" style="font-size:.7rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Действия —</h2>
-    <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
-      <a href="/" class="btn-sm">← На главную</a>
-      <a id="admin-link" href="/admin.html" class="btn-sm" style="display:none;">Панель администратора</a>
-      <button onclick="doLogout()" class="btn-sm" style="background:rgba(80,0,15,0.4);border:1px solid rgba(150,0,20,0.4);box-shadow:none;">Выйти</button>
+  <!-- Actions -->
+  <div class="g-card" style="padding:1.4rem 1.5rem;">
+    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Действия —</h2>
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+      <a href="/" class="btn btn-ghost">← На главную</a>
+      <button onclick="doLogout()" class="btn btn-ghost">Выйти</button>
     </div>
   </div>
 
-  <p id="profile-error" style="display:none;text-align:center;color:var(--muted);margin-top:1.5rem;font-size:.85rem;">Нет доступа. <a href="/login.html" style="color:var(--accent);">Войдите</a> в аккаунт.</p>
+  <p id="profile-error" style="display:none;text-align:center;color:var(--muted);margin-top:1.5rem;font-size:.85rem;">
+    Нет доступа. <a href="/login.html" style="color:var(--crimson);">Войдите</a> в аккаунт.
+  </p>
 </div>
 
 <script>
 const API = '/api';
 
+const RANKS = [
+  { label:'⚰ Смертный',    min:0,      max:18000,  color:'#9488a8', next:'Охотник' },
+  { label:'⚔ Охотник',     min:18000,  max:90000,  color:'#c8a84a', next:'Лорд крови' },
+  { label:'🩸 Лорд крови', min:90000,  max:360000, color:'#e05070', next:'Повелитель' },
+  { label:'☠ Повелитель',  min:360000, max:Infinity,color:'#b46ef0', next:null },
+];
+
 function getToken() { return localStorage.getItem('token'); }
 function getUser()  { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } }
 function doLogout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login.html'; }
-
-function fmtDate(iso) {
-  return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
+function fmtDate(iso) { return new Date(iso).toLocaleDateString('ru-RU',{day:'2-digit',month:'long',year:'numeric'}); }
+function fmtSec(s) {
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
+  return h > 0 ? `${h}ч ${m}м` : `${m}м`;
 }
 
-const roleLabels = { admin: 'Админ', user: 'Игрок' };
-const roleColors = { admin: 'rgba(200,160,74,0.85)', user: 'rgba(180,140,220,0.85)' };
+function buildCoverStars() {
+  const ct = document.getElementById('cover-stars');
+  if (!ct) return;
+  for (let i = 0; i < 40; i++) {
+    const s = document.createElement('div');
+    s.className = 'cover-star';
+    const sz = Math.random() * 1.8 + .6;
+    s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;animation-delay:${Math.random()*4}s;animation-duration:${2+Math.random()*3}s;`;
+    ct.appendChild(s);
+  }
+}
 
-function setAvatarEl(avatarUrl, initial) {
+function renderRank(totalSeconds) {
+  const wrap = document.getElementById('rank-wrap');
+  if (!wrap) return;
+  const rank = RANKS.slice().reverse().find(r => totalSeconds >= r.min) || RANKS[0];
+  const idx  = RANKS.indexOf(rank);
+  const bar  = document.getElementById('rank-bar');
+  const pct  = rank.max === Infinity ? 100 : Math.min(100, Math.round((totalSeconds - rank.min) / (rank.max - rank.min) * 100));
+
+  document.getElementById('rank-label').textContent = rank.label;
+  document.getElementById('rank-label').style.color  = rank.color;
+  document.getElementById('rank-time').textContent  = fmtSec(totalSeconds) + ' на серверах';
+  bar.style.background = `linear-gradient(90deg, ${rank.color}88, ${rank.color})`;
+  bar.style.boxShadow  = `0 0 8px ${rank.color}66`;
+  setTimeout(() => { bar.style.width = pct + '%'; }, 80);
+
+  const curLbl  = document.getElementById('rank-cur-label');
+  const nextLbl = document.getElementById('rank-next-label');
+  curLbl.textContent  = rank.label.split(' ').slice(1).join(' ');
+  if (rank.next) {
+    nextLbl.textContent = rank.next + ' → ' + fmtSec(rank.max - totalSeconds);
+  } else {
+    nextLbl.textContent = 'Максимальный ранг';
+  }
+  wrap.style.display = '';
+}
+
+function setAvatarEl(url, initial) {
   const el = document.getElementById('profile-avatar');
-  // keep overlay and spinner, only update the visual content
   const overlay = el.querySelector('.avatar-overlay');
   const spinner = el.querySelector('.upload-spinner');
-  // remove old img/text nodes
-  [...el.childNodes].forEach(n => {
-    if (n !== overlay && n !== spinner) n.remove();
-  });
-  if (avatarUrl) {
-    const img = document.createElement('img');
-    img.src = avatarUrl;
-    img.alt = initial;
+  [...el.childNodes].forEach(n => { if (n !== overlay && n !== spinner) n.remove(); });
+  if (url) {
+    const img = document.createElement('img'); img.src = url; img.alt = initial;
     el.insertBefore(img, overlay);
   } else {
     el.insertBefore(document.createTextNode(initial), overlay);
@@ -207,22 +327,20 @@ function setAvatarEl(avatarUrl, initial) {
 }
 
 async function uploadAvatar(input) {
-  if (!input.files || !input.files[0]) return;
+  if (!input.files?.[0]) return;
   const spinner = document.getElementById('avatar-spinner');
   spinner.style.display = 'block';
   const form = new FormData();
   form.append('file', input.files[0]);
   try {
     const res = await fetch(`${API}/auth/avatar`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${getToken()}` },
-      body: form,
+      method:'POST', headers:{'Authorization':`Bearer ${getToken()}`}, body:form,
     });
-    if (!res.ok) { const e = await res.json().catch(() => ({})); alert(e.detail || 'Ошибка загрузки'); return; }
+    if (!res.ok) { const e = await res.json().catch(()=>({})); alert(e.detail||'Ошибка загрузки'); return; }
     const { avatar_url } = await res.json();
     const u = getUser();
     if (u) { u.avatar_url = avatar_url; localStorage.setItem('user', JSON.stringify(u)); }
-    setAvatarEl(avatar_url, (getUser()?.username || '?').charAt(0).toUpperCase());
+    setAvatarEl(avatar_url, (getUser()?.username||'?').charAt(0).toUpperCase());
   } catch { alert('Ошибка загрузки аватара'); }
   finally { spinner.style.display = 'none'; input.value = ''; }
 }
@@ -232,71 +350,72 @@ async function changePassword() {
   const newPw   = document.getElementById('pw-new').value;
   const confirm = document.getElementById('pw-confirm').value;
   const msg     = document.getElementById('pw-msg');
-
   const show = (text, ok) => {
-    msg.textContent = text;
-    msg.style.color = ok ? '#4ade80' : '#f87171';
-    msg.style.display = '';
+    msg.textContent = text; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = '';
     if (ok) setTimeout(() => { msg.style.display = 'none'; }, 3500);
   };
-
-  if (!old || !newPw || !confirm) return show('Заполните все поля', false);
-  if (newPw !== confirm)           return show('Пароли не совпадают', false);
-  if (newPw.length < 6)           return show('Минимум 6 символов', false);
-
+  if (!old||!newPw||!confirm) return show('Заполните все поля', false);
+  if (newPw !== confirm)       return show('Пароли не совпадают', false);
+  if (newPw.length < 6)        return show('Минимум 6 символов', false);
   try {
     const res = await fetch(`${API}/auth/change-password`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ old_password: old, new_password: newPw }),
+      method:'POST',
+      headers:{'Authorization':`Bearer ${getToken()}`,'Content-Type':'application/json'},
+      body:JSON.stringify({old_password:old, new_password:newPw}),
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) return show(data.detail || 'Ошибка', false);
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok) return show(data.detail||'Ошибка', false);
     show('Пароль успешно изменён', true);
-    document.getElementById('pw-old').value = '';
-    document.getElementById('pw-new').value = '';
-    document.getElementById('pw-confirm').value = '';
+    ['pw-old','pw-new','pw-confirm'].forEach(id => document.getElementById(id).value = '');
   } catch { show('Ошибка соединения', false); }
 }
 
+function copyProfileLink(e) {
+  e.preventDefault();
+  const u = getUser();
+  if (!u) return;
+  const url = `${location.origin}/user.html?u=${encodeURIComponent(u.username)}`;
+  navigator.clipboard?.writeText(url).then(() => {
+    const btn = document.getElementById('share-btn');
+    btn.textContent = '✔ Скопировано';
+    setTimeout(() => { btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Поделиться`; }, 2000);
+  }).catch(() => { prompt('Ссылка на профиль:', url); });
+}
+
 async function loadProfile() {
+  buildCoverStars();
   const token = getToken();
-  if (!token) {
-    document.getElementById('profile-error').style.display = '';
-    return;
-  }
+  if (!token) { document.getElementById('profile-error').style.display = ''; return; }
   try {
-    const res = await fetch(`${API}/auth/me`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (!res.ok) {
-      document.getElementById('profile-error').style.display = '';
-      return;
-    }
+    const res = await fetch(`${API}/auth/me`, { headers:{'Authorization':`Bearer ${token}`} });
+    if (!res.ok) { document.getElementById('profile-error').style.display = ''; return; }
     const u = await res.json();
 
-    const initial = (u.username || '?').charAt(0).toUpperCase();
-    setAvatarEl(u.avatar_url || '', initial);
-    document.getElementById('profile-name').textContent   = u.username;
-    document.getElementById('profile-email').textContent  = u.email;
-    document.getElementById('profile-role').textContent   = roleLabels[u.role] || u.role;
-    document.getElementById('profile-since').textContent  = fmtDate(u.created_at);
+    setAvatarEl(u.avatar_url||'', (u.username||'?').charAt(0).toUpperCase());
+    document.getElementById('profile-name').textContent  = u.username;
+    document.getElementById('profile-email').textContent = u.email;
+    document.getElementById('profile-role').textContent  = u.role === 'admin' ? 'Администратор' : 'Игрок';
+    document.getElementById('profile-since').textContent = fmtDate(u.created_at);
 
     const statusEl = document.getElementById('profile-status');
-    statusEl.textContent   = u.is_active ? '✔ Активен' : '✘ Заблокирован';
-    statusEl.style.color   = u.is_active ? '#4ade80' : '#f87171';
+    statusEl.textContent = u.is_active ? '✔ Активен' : '✘ Заблокирован';
+    statusEl.style.color = u.is_active ? '#4ade80' : '#f87171';
 
     const badgeEl = document.getElementById('profile-role-badge');
-    badgeEl.textContent = roleLabels[u.role] || u.role;
-    badgeEl.style.color = u.role === 'admin' ? '#fcd34d' : '#c4b5fd';
+    badgeEl.textContent = u.role === 'admin' ? 'Админ' : 'Игрок';
+    badgeEl.style.color       = u.role === 'admin' ? '#fcd34d' : '#c4b5fd';
     badgeEl.style.borderColor = u.role === 'admin' ? 'rgba(200,160,74,0.5)' : 'rgba(120,80,200,0.4)';
     badgeEl.style.background  = u.role === 'admin' ? 'rgba(140,100,0,0.2)' : 'rgba(80,40,140,0.2)';
 
-    if (u.role === 'admin') {
-      document.getElementById('admin-link').style.display = '';
-    }
+    if (u.role === 'admin') document.getElementById('admin-link').style.display = '';
 
-    // Update logo from site settings
+    // Load playtime for rank
+    try {
+      const pub = await fetch(`${API}/users/${encodeURIComponent(u.username)}`).then(r => r.json());
+      renderRank(pub.total_seconds || 0);
+    } catch { renderRank(0); }
+
+    // Site settings
     try {
       const s = await fetch(`${API}/settings/public`).then(r => r.json());
       const logo = document.getElementById('nav-logo');
@@ -305,11 +424,10 @@ async function loadProfile() {
       } else {
         logo.textContent = s.site_title || 'V RISING';
       }
-      document.title = (s.site_title || 'V RISING') + ' — Профиль';
+      document.title = (s.site_title||'V RISING') + ' — Профиль';
+      document.getElementById('cover-subtitle').textContent = '— ' + (s.site_title||'V Rising') + ' · Профиль игрока —';
     } catch {}
-  } catch {
-    document.getElementById('profile-error').style.display = '';
-  }
+  } catch { document.getElementById('profile-error').style.display = ''; }
 }
 
 loadProfile();

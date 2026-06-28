@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V Rising — Профиль</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg:#06000f; --card:rgba(14,5,22,0.88); --border:rgba(110,0,150,0.22);
+      --text:#e2d8f0; --muted:#9488a8; --gold:#c9a94a; --crimson:#c8002a;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);font-family:'Inter',system-ui,sans-serif;color:var(--text);min-height:100vh;}
+    .gothic{font-family:'Cinzel',serif;}
+    .glass-nav{background:rgba(8,0,14,0.9);border-bottom:1px solid rgba(110,0,20,0.35);backdrop-filter:blur(14px);position:sticky;top:0;z-index:40;}
+    .profile-cover{
+      position:relative;height:160px;overflow:hidden;
+      background:linear-gradient(135deg,rgba(40,0,80,0.9),rgba(90,0,20,0.85),rgba(20,0,50,0.9));
+    }
+    .cover-fog{
+      position:absolute;inset:0;pointer-events:none;
+      background:radial-gradient(ellipse at 20% 60%,rgba(120,0,200,0.25) 0%,transparent 55%),
+                 radial-gradient(ellipse at 80% 30%,rgba(200,0,40,0.2) 0%,transparent 50%);
+      animation:cover-drift 12s ease-in-out infinite alternate;
+    }
+    @keyframes cover-drift{to{transform:translate(3%,4%) scale(1.06);}}
+    .cover-stars{position:absolute;inset:0;pointer-events:none;}
+    .cover-star{position:absolute;border-radius:50%;background:#fff;animation:twinkle 3s ease-in-out infinite alternate;}
+    @keyframes twinkle{0%{opacity:.15}100%{opacity:.75}}
+    .cover-glow{position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,rgba(200,0,40,0.6),rgba(120,0,200,0.5),transparent);}
+    .avatar-circle{
+      width:92px;height:92px;border-radius:50%;
+      background:radial-gradient(circle at 38% 32%,rgba(80,0,150,0.6),rgba(120,0,20,0.5));
+      border:3px solid rgba(14,5,22,1);
+      box-shadow:0 0 0 2px rgba(190,0,40,0.5),0 0 28px rgba(180,0,30,0.4);
+      display:flex;align-items:center;justify-content:center;
+      font-family:'Cinzel',serif;font-size:2.2rem;color:#d4c4e0;overflow:hidden;
+    }
+    .avatar-circle img{width:100%;height:100%;object-fit:cover;}
+    .rank-bar-wrap{height:5px;background:rgba(255,255,255,0.07);border-radius:9999px;overflow:hidden;margin-top:.45rem;}
+    .rank-bar{height:100%;border-radius:9999px;transition:width .8s ease;}
+    .g-card{
+      background:rgba(14,5,22,0.82);border:1px solid rgba(110,0,150,0.22);
+      border-radius:.875rem;backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 4px 24px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.04);
+      position:relative;
+    }
+    .g-card::before{
+      content:'';position:absolute;top:0;left:20%;right:20%;height:1px;
+      background:linear-gradient(90deg,transparent,rgba(200,0,45,0.35),transparent);
+    }
+    .stat-row{display:flex;justify-content:space-between;align-items:center;padding:.52rem 0;border-bottom:1px solid rgba(110,0,20,0.1);}
+    .stat-row:last-child{border-bottom:none;}
+    .btn{
+      background:linear-gradient(135deg,#6a001a,#a00022);border:none;border-radius:.55rem;
+      padding:.42rem .95rem;color:#fff;font-size:.75rem;font-weight:700;
+      cursor:pointer;box-shadow:0 0 14px rgba(180,0,30,0.45);transition:all .2s;
+      text-decoration:none;display:inline-flex;align-items:center;gap:.35rem;
+    }
+    .btn:hover{box-shadow:0 0 26px rgba(210,0,40,0.7);transform:translateY(-1px);}
+    .btn-ghost{background:rgba(80,0,15,0.3);border:1px solid rgba(150,0,20,0.35);box-shadow:none;color:var(--muted);}
+    .btn-ghost:hover{background:rgba(100,0,20,0.4);color:var(--text);box-shadow:none;}
+    @keyframes fade-up{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+    .g-card{animation:fade-up .4s ease both;}
+    ::-webkit-scrollbar{width:5px;}
+    ::-webkit-scrollbar-track{background:rgba(8,0,14,0.4);}
+    ::-webkit-scrollbar-thumb{background:rgba(130,0,24,0.5);border-radius:3px;}
+  </style>
+</head>
+<body>
+
+<nav class="glass-nav">
+  <div style="max-width:680px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
+    <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">V RISING</a>
+    <a href="/" class="btn btn-ghost" style="font-size:.72rem;">← Главная</a>
+  </div>
+</nav>
+
+<div style="max-width:680px;margin:2rem auto 3rem;padding:0 1rem;">
+
+  <div id="not-found" style="display:none;text-align:center;padding:4rem 1rem;">
+    <div style="font-size:2.5rem;margin-bottom:1rem;">⚰</div>
+    <div class="gothic" style="font-size:1rem;color:var(--muted);">Игрок не найден</div>
+    <a href="/" class="btn" style="margin-top:1.5rem;font-size:.78rem;">← На главную</a>
+  </div>
+
+  <div id="profile-wrap">
+    <!-- Cover + Avatar -->
+    <div class="g-card" style="overflow:hidden;padding:0;margin-bottom:1.1rem;">
+      <div class="profile-cover">
+        <div class="cover-fog"></div>
+        <div class="cover-stars" id="cover-stars"></div>
+        <div style="position:absolute;bottom:1rem;left:1.5rem;font-family:'Cinzel',serif;font-size:.6rem;font-weight:700;letter-spacing:.22em;color:rgba(200,170,255,0.55);text-transform:uppercase;" id="cover-subtitle">— Профиль игрока —</div>
+        <div class="cover-glow"></div>
+      </div>
+      <div style="padding:0 1.5rem 1.5rem;">
+        <div style="margin-top:-46px;margin-bottom:.75rem;">
+          <div class="avatar-circle" id="user-avatar"></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-bottom:.2rem;">
+          <h1 class="gothic" id="user-name" style="font-size:1.45rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;">—</h1>
+          <span id="user-role-badge" style="font-size:.6rem;padding:.15rem .6rem;border-radius:9999px;border:1px solid rgba(120,80,200,0.4);color:#c4b5fd;background:rgba(80,40,140,0.2);"></span>
+        </div>
+        <!-- Rank -->
+        <div id="rank-wrap" style="display:none;margin-top:.5rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.2rem;">
+            <span id="rank-label" style="font-family:'Oswald',sans-serif;font-size:.85rem;font-weight:500;letter-spacing:.04em;"></span>
+            <span id="rank-time" style="font-size:.62rem;color:var(--muted);font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;"></span>
+          </div>
+          <div class="rank-bar-wrap"><div id="rank-bar" class="rank-bar" style="width:0%;"></div></div>
+          <div style="display:flex;justify-content:space-between;margin-top:.18rem;">
+            <span id="rank-cur-label" style="font-size:.52rem;color:var(--muted);"></span>
+            <span id="rank-next-label" style="font-size:.52rem;color:var(--muted);"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info -->
+    <div class="g-card" style="padding:1.4rem 1.5rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Информация —</h2>
+      <div class="stat-row">
+        <span style="color:var(--muted);font-size:.82rem;">Роль</span>
+        <span id="user-role" style="font-size:.85rem;color:var(--text);font-weight:500;">—</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--muted);font-size:.82rem;">На сервере с</span>
+        <span id="user-since" style="font-size:.85rem;color:var(--text);font-weight:500;font-family:'Oswald',sans-serif;">—</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--muted);font-size:.82rem;">Всего на серверах</span>
+        <span id="user-playtime" style="font-size:.85rem;color:var(--text);font-weight:500;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;">—</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = '/api';
+const RANKS = [
+  {label:'⚰ Смертный',    min:0,      max:18000,   color:'#9488a8', next:'Охотник'},
+  {label:'⚔ Охотник',     min:18000,  max:90000,   color:'#c8a84a', next:'Лорд крови'},
+  {label:'🩸 Лорд крови', min:90000,  max:360000,  color:'#e05070', next:'Повелитель'},
+  {label:'☠ Повелитель',  min:360000, max:Infinity, color:'#b46ef0', next:null},
+];
+
+function fmtDate(iso){return new Date(iso).toLocaleDateString('ru-RU',{day:'2-digit',month:'long',year:'numeric'});}
+function fmtSec(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h>0?`${h}ч ${m}м`:`${m}м`;}
+
+function buildStars(){
+  const ct=document.getElementById('cover-stars');
+  for(let i=0;i<40;i++){
+    const s=document.createElement('div');s.className='cover-star';
+    const sz=Math.random()*1.8+.6;
+    s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;animation-delay:${Math.random()*4}s;animation-duration:${2+Math.random()*3}s;`;
+    ct.appendChild(s);
+  }
+}
+
+function renderRank(totalSeconds){
+  const wrap=document.getElementById('rank-wrap'); if(!wrap)return;
+  const rank=RANKS.slice().reverse().find(r=>totalSeconds>=r.min)||RANKS[0];
+  const pct=rank.max===Infinity?100:Math.min(100,Math.round((totalSeconds-rank.min)/(rank.max-rank.min)*100));
+  const bar=document.getElementById('rank-bar');
+  document.getElementById('rank-label').textContent=rank.label;
+  document.getElementById('rank-label').style.color=rank.color;
+  document.getElementById('rank-time').textContent=fmtSec(totalSeconds)+' на серверах';
+  bar.style.background=`linear-gradient(90deg,${rank.color}88,${rank.color})`;
+  bar.style.boxShadow=`0 0 8px ${rank.color}66`;
+  setTimeout(()=>{bar.style.width=pct+'%';},80);
+  document.getElementById('rank-cur-label').textContent=rank.label.split(' ').slice(1).join(' ');
+  document.getElementById('rank-next-label').textContent=rank.next?rank.next+' → '+fmtSec(rank.max-totalSeconds):'Максимальный ранг';
+  wrap.style.display='';
+}
+
+async function loadUser(){
+  buildStars();
+  const params=new URLSearchParams(location.search);
+  const username=params.get('u');
+  if(!username){document.getElementById('not-found').style.display='';document.getElementById('profile-wrap').style.display='none';return;}
+  try{
+    const u=await fetch(`${API}/users/${encodeURIComponent(username)}`).then(r=>{if(!r.ok)throw r;return r.json();});
+    document.title=`V Rising — ${u.username}`;
+    const av=document.getElementById('user-avatar');
+    if(u.avatar_url){const img=document.createElement('img');img.src=u.avatar_url;av.appendChild(img);}
+    else{av.textContent=u.username.charAt(0).toUpperCase();}
+    document.getElementById('user-name').textContent=u.username;
+    const badge=document.getElementById('user-role-badge');
+    badge.textContent=u.role==='admin'?'Админ':'Игрок';
+    badge.style.color=u.role==='admin'?'#fcd34d':'#c4b5fd';
+    badge.style.borderColor=u.role==='admin'?'rgba(200,160,74,0.5)':'rgba(120,80,200,0.4)';
+    badge.style.background=u.role==='admin'?'rgba(140,100,0,0.2)':'rgba(80,40,140,0.2)';
+    document.getElementById('user-role').textContent=u.role==='admin'?'Администратор':'Игрок';
+    document.getElementById('user-since').textContent=fmtDate(u.created_at);
+    document.getElementById('user-playtime').textContent=u.total_seconds>0?fmtSec(u.total_seconds):'Ещё не играл';
+    renderRank(u.total_seconds||0);
+    try{
+      const s=await fetch(`${API}/settings/public`).then(r=>r.json());
+      document.getElementById('nav-logo').textContent=s.site_title||'V RISING';
+      document.getElementById('cover-subtitle').textContent='— '+(s.site_title||'V Rising')+' · Профиль игрока —';
+    }catch{}
+  }catch{
+    document.getElementById('not-found').style.display='';
+    document.getElementById('profile-wrap').style.display='none';
+  }
+}
+loadUser();
+</script>
+</body>
+</html>
