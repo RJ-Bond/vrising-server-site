@@ -61,6 +61,9 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="site_title", value="V RISING"),
         Setting(key="site_logo_url", value=""),
         Setting(key="discord_url", value=""),
+        Setting(key="server2_name", value=""),
+        Setting(key="server2_ip", value=""),
+        Setting(key="server2_port", value="27016"),
     ]
     for s in default_settings:
         existing = await db.execute(select(Setting).where(Setting.key == s.key))
@@ -237,13 +240,36 @@ async def me(current_user: User = Depends(get_current_user)):
 
 @app.get("/api/monitor/status")
 async def server_status(db: AsyncSession = Depends(get_db)):
-    ip_row = await db.execute(select(Setting).where(Setting.key == "server_ip"))
-    port_row = await db.execute(select(Setting).where(Setting.key == "server_port"))
-    ip_setting = ip_row.scalar_one_or_none()
-    port_setting = port_row.scalar_one_or_none()
-    ip = ip_setting.value if ip_setting else "127.0.0.1"
-    port = int(port_setting.value) if port_setting else 27016
-    return await get_server_status(ip, port)
+    result = await db.execute(
+        select(Setting).where(Setting.key.in_(["server_ip", "server_port", "server_name"]))
+    )
+    cfg = {s.key: s.value for s in result.scalars().all()}
+    ip = cfg.get("server_ip", "127.0.0.1")
+    port = int(cfg.get("server_port", "27016"))
+    fallback = cfg.get("server_name", "V Rising Server")
+    data = await get_server_status(ip, port)
+    if not data.get("online") or data.get("name") == "Unknown":
+        data = {**data, "name": fallback}
+    return data
+
+
+@app.get("/api/monitor/status2")
+async def server_status2(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Setting).where(Setting.key.in_(["server2_ip", "server2_port", "server2_name"]))
+    )
+    cfg = {s.key: s.value for s in result.scalars().all()}
+    ip = cfg.get("server2_ip", "").strip()
+    fallback = cfg.get("server2_name", "Server 2")
+    if not ip:
+        return {"enabled": False, "online": False, "name": fallback,
+                "players": 0, "max_players": 0, "players_list": []}
+    port_str = cfg.get("server2_port", "27016")
+    port = int(port_str) if port_str.isdigit() else 27016
+    data = await get_server_status(ip, port)
+    if not data.get("online") or data.get("name") == "Unknown":
+        data = {**data, "name": fallback}
+    return {"enabled": True, **data}
 
 
 # ─── News (public) ──────────────────────────────────────────────────────────

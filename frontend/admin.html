@@ -183,6 +183,36 @@
         </div>
       </div>
 
+      <!-- Server 2 -->
+      <div class="glass-card rounded-xl p-6 mb-5" style="max-width:38rem;">
+        <h2 class="gothic" style="font-size:.8rem;letter-spacing:.15em;color:var(--gold);margin-bottom:1.5rem;text-transform:uppercase;">— Второй сервер (опционально) —</h2>
+        <div class="space-y-5">
+          <div>
+            <label>Название второго сервера</label>
+            <div style="display:flex;gap:.5rem;">
+              <input id="setting-server2_name" type="text" class="dark-input" placeholder="Server 2" style="flex:1;" />
+              <button onclick="saveSetting('server2_name')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
+            </div>
+            <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">Резервное название, если сервер офлайн</p>
+          </div>
+          <div>
+            <label>IP адрес второго сервера</label>
+            <div style="display:flex;gap:.5rem;">
+              <input id="setting-server2_ip" type="text" class="dark-input" placeholder="Оставьте пустым — сервер не отображается" style="flex:1;" />
+              <button onclick="saveSetting('server2_ip')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
+            </div>
+            <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">Пустое поле — блок второго сервера скрыт на сайте</p>
+          </div>
+          <div>
+            <label>Порт второго сервера (UDP)</label>
+            <div style="display:flex;gap:.5rem;">
+              <input id="setting-server2_port" type="number" min="1" max="65535" class="dark-input" placeholder="27016" style="flex:1;" />
+              <button onclick="saveSetting('server2_port')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Appearance -->
       <div class="glass-card rounded-xl p-6 mb-5" style="max-width:38rem;">
         <h2 class="gothic" style="font-size:.8rem;letter-spacing:.15em;color:var(--gold);margin-bottom:1.5rem;text-transform:uppercase;">— Внешний вид —</h2>
@@ -401,7 +431,7 @@ async function loadSettings() {
   const settings = await res.json();
   const map = {};
   settings.forEach(s => { map[s.key] = s.value; });
-  ['server_ip', 'server_port', 'server_name', 'site_title', 'site_logo_url', 'discord_url'].forEach(key => {
+  ['server_ip', 'server_port', 'server_name', 'server2_name', 'server2_ip', 'server2_port', 'site_title', 'site_logo_url', 'discord_url'].forEach(key => {
     const el = document.getElementById(`setting-${key}`);
     if (el && map[key] !== undefined) el.value = map[key];
   });
