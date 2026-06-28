@@ -918,6 +918,21 @@
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
       <div id="left-info2" style="font-size:.78rem;display:flex;flex-direction:column;gap:.45rem;"></div>
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;text-align:center;margin-bottom:.5rem;">
+        <div>
+          <div id="stat-uptime24-s2" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
+          <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Аптайм 24ч</div>
+        </div>
+        <div>
+          <div id="stat-uptime7d-s2" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
+          <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Аптайм 7д</div>
+        </div>
+        <div>
+          <div id="stat-peak7d-s2" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
+          <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Пик 7д</div>
+        </div>
+      </div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
       <h3 class="gothic" style="font-size:.68rem;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-bottom:.6rem;">Игроки онлайн</h3>
       <div id="players-list2" style="font-size:.77rem;display:flex;flex-direction:column;gap:0;max-height:180px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(110,0,20,0.4) transparent;"></div>
     </div>
@@ -1287,6 +1302,22 @@ async function loadStats() {
 
     const statsWrap = document.getElementById('monitor-stats');
     if (statsWrap) statsWrap.style.display = '';
+  } catch {}
+
+  try {
+    const s2 = await fetch(`${API}/monitor/stats?server=2`).then(r => r.json());
+    const fmt = v => v === null ? '—' : `${v}%`;
+    const el24 = document.getElementById('stat-uptime24-s2');
+    const el7d  = document.getElementById('stat-uptime7d-s2');
+    const elpk  = document.getElementById('stat-peak7d-s2');
+    if (el24) el24.textContent = fmt(s2.uptime_24h);
+    if (el7d)  el7d.textContent = fmt(s2.uptime_7d);
+    if (elpk)  elpk.textContent = s2.peak_7d ?? '—';
+    [['stat-uptime24-s2', s2.uptime_24h], ['stat-uptime7d-s2', s2.uptime_7d]].forEach(([id, v]) => {
+      const el = document.getElementById(id);
+      if (!el || v === null) return;
+      el.style.color = v >= 95 ? '#86efac' : v >= 80 ? '#fbbf24' : '#f87171';
+    });
   } catch {}
 }
 
