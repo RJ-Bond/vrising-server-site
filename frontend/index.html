@@ -517,6 +517,41 @@
       .main-grid { padding:0 .75rem !important; }
       #drawer-close { display:block !important; }
     }
+
+    /* ── Blood Vial ── */
+    .vial-fill { will-change:transform; }
+
+    /* ── Info cards (center bottom) ── */
+    .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin-top:1.35rem; }
+    .info-card {
+      background:rgba(14,5,18,0.75); border:1px solid rgba(110,0,150,0.2);
+      border-radius:.875rem; padding:1.1rem 1.15rem;
+      backdrop-filter:blur(8px); position:relative; overflow:hidden;
+      transition:border-color .2s, box-shadow .2s;
+    }
+    .info-card::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(190,0,45,0.35),transparent);
+    }
+    .info-card:hover { border-color:rgba(160,0,35,0.38); box-shadow:0 6px 28px rgba(0,0,0,0.45),0 0 18px rgba(100,0,20,0.12); }
+    .ic-title { font-family:'Cinzel',serif; font-size:.72rem; color:var(--gold); letter-spacing:.1em; text-transform:uppercase; margin-bottom:.6rem; }
+    .ic-rule {
+      display:flex; align-items:flex-start; gap:.45rem; font-size:.76rem;
+      color:#ccc8da; padding:.24rem 0; border-bottom:1px solid rgba(110,0,20,0.1); line-height:1.4;
+    }
+    .ic-rule:last-child { border-bottom:none; }
+    .ic-rule::before { content:'✦'; color:rgba(210,0,45,0.7); font-size:.52rem; flex-shrink:0; margin-top:.15rem; }
+    .blood-moon-digit {
+      font-family:'Cinzel',serif; font-size:1.45rem; font-weight:700;
+      color:#ecd8e0; letter-spacing:.04em;
+      text-shadow:0 0 22px rgba(210,0,40,0.7),0 0 45px rgba(150,0,30,0.35);
+    }
+
+    /* ── Right panel info rows ── */
+    .stat-row { display:flex; justify-content:space-between; align-items:center; padding:.3rem .45rem; border-radius:.35rem; transition:background .15s; }
+    .stat-row:hover { background:rgba(120,0,20,0.1); }
+    .stat-row-k { font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+    .stat-row-v { color:#ddd8e8; font-weight:600; font-size:.78rem; }
   </style>
 </head>
 <body>
@@ -653,6 +688,23 @@
     <div id="featured-wrap" style="display:none;margin-bottom:1.1rem;"></div>
     <div id="news-list" style="display:grid;gap:.75rem;grid-template-columns:1fr;"></div>
     <div id="news-pagination" style="display:flex;justify-content:center;gap:.5rem;margin-top:1.25rem;"></div>
+
+    <!-- ── Info cards (fills empty space below news) ── -->
+    <div class="info-grid">
+      <div class="info-card">
+        <div class="ic-title">⚔ Правила сервера</div>
+        <div class="ic-rule">Уважай других игроков</div>
+        <div class="ic-rule">Запрещены читы и эксплойты</div>
+        <div class="ic-rule">PvE зоны защищены от гриферства</div>
+        <div class="ic-rule">Помогай новичкам — мы команда</div>
+      </div>
+      <div class="info-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(14,3,7,0.82);border-color:rgba(190,0,35,0.2);">
+        <div style="font-size:2rem;line-height:1;margin-bottom:.45rem;filter:drop-shadow(0 0 12px rgba(220,0,40,0.5));">🌕</div>
+        <div class="ic-title" style="margin-bottom:.4rem;">Кровавое полнолуние</div>
+        <div class="blood-moon-digit" id="blood-moon-timer">—</div>
+        <p style="font-size:.63rem;color:var(--muted);margin-top:.3rem;">до следующего полнолуния</p>
+      </div>
+    </div>
   </main>
 
   <!-- ── RIGHT: Server Chronicle ── -->
@@ -821,50 +873,67 @@ function fmtDuration(sec) {
 }
 
 function row(k, v) {
-  return `<div style="display:flex;justify-content:space-between;border-bottom:1px solid rgba(110,0,20,0.12);padding-bottom:.35rem;">
-    <span style="color:var(--muted);">${k}</span>
-    <span style="color:#d4c4e0;font-weight:600;">${esc(v)}</span>
+  return `<div class="stat-row">
+    <span class="stat-row-k">${k}</span>
+    <span class="stat-row-v">${esc(v)}</span>
   </div>`;
 }
 
-function bloodCircle(centerText, label, fillPct, tooltip = '') {
-  const r = 28, cx = 36, cy = 36;
-  const circ = +(2 * Math.PI * r).toFixed(2);
-  const offset = +(circ * (1 - Math.min(100, Math.max(0, fillPct)) / 100)).toFixed(2);
+function bloodVial(centerText, label, fillPct, tooltip = '') {
+  const pct = Math.min(100, Math.max(0, fillPct));
   const uid = Math.random().toString(36).slice(2, 8);
-  return `<div style="display:flex;flex-direction:column;align-items:center;gap:.45rem;${tooltip ? 'cursor:help;' : ''}" ${tooltip ? `title="${tooltip}"` : ''}>
-    <svg width="72" height="72" viewBox="0 0 72 72" style="overflow:visible;">
+  // SVG canvas 48×82; body: x=10,y=13,w=28,h=54; fill inner: x=11,y=14,w=26,h=52
+  const cx = 24, bodyBottom = 67;
+  return `<div style="display:flex;flex-direction:column;align-items:center;gap:.4rem;${tooltip ? 'cursor:help;' : ''}" ${tooltip ? `title="${tooltip}"` : ''}>
+    <svg width="48" height="82" viewBox="0 0 48 82" style="overflow:visible;">
       <defs>
-        <linearGradient id="bg${uid}" x1="0%" y1="100%" x2="0%" y2="0%">
-          <stop offset="0%" stop-color="#1e0006"/>
-          <stop offset="45%" stop-color="#880014"/>
-          <stop offset="100%" stop-color="#d40026"/>
+        <linearGradient id="vbg${uid}" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%" stop-color="#5a000f"/>
+          <stop offset="50%" stop-color="#99001e"/>
+          <stop offset="100%" stop-color="#cc0030"/>
         </linearGradient>
-        <filter id="gf${uid}" x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur stdDeviation="2.8" result="b"/>
+        <clipPath id="vc${uid}">
+          <rect x="11" y="14" width="26" height="52" rx="7"/>
+        </clipPath>
+        <filter id="vg${uid}" x="-60%" y="-60%" width="220%" height="220%">
+          <feGaussianBlur stdDeviation="3" result="b"/>
           <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
         </filter>
       </defs>
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="rgba(18,0,6,0.7)" stroke="rgba(80,0,15,0.22)" stroke-width="5"/>
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none"
-        stroke="url(#bg${uid})" stroke-width="5" stroke-linecap="round"
-        stroke-dasharray="${circ}" stroke-dashoffset="${circ}"
-        transform="rotate(-90 ${cx} ${cy})" filter="url(#gf${uid})"
-        data-target="${offset}"
-        style="transition:stroke-dashoffset 1.4s cubic-bezier(0.25,0.46,0.45,0.94);"/>
-      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central"
-        fill="#d4c4e0" font-size="14" font-weight="700"
-        font-family="'Exo 2',sans-serif">${centerText}</text>
+      <!-- Cork stopper -->
+      <rect x="17" y="1" width="14" height="5" rx="2" fill="#2c1003" stroke="rgba(80,25,0,0.7)" stroke-width="1"/>
+      <!-- Neck -->
+      <rect x="19" y="5" width="10" height="9" fill="rgba(7,0,3,0.95)" stroke="rgba(75,0,14,0.55)" stroke-width="1"/>
+      <!-- Glass body -->
+      <rect x="10" y="13" width="28" height="54" rx="8" fill="rgba(7,0,3,0.9)" stroke="rgba(80,0,15,0.5)" stroke-width="1.5"/>
+      <!-- Blood fill — scaleY from bottom -->
+      <g clip-path="url(#vc${uid})">
+        <rect x="11" y="14" width="26" height="52" rx="7"
+          fill="url(#vbg${uid})"
+          class="vial-fill"
+          data-pct="${(pct / 100).toFixed(4)}"
+          style="transform-origin:${cx}px ${bodyBottom}px;transform:scaleY(0);transition:transform 1.4s cubic-bezier(.25,.46,.45,.94);"/>
+      </g>
+      <!-- Left shine -->
+      <rect x="14" y="17" width="4" height="42" rx="2" fill="rgba(255,255,255,0.052)"/>
+      <!-- Right subtle shine -->
+      <rect x="30" y="20" width="3" height="34" rx="1.5" fill="rgba(255,255,255,0.022)"/>
+      <!-- Center label -->
+      <text x="${cx}" y="40" text-anchor="middle" dominant-baseline="central"
+        fill="#ecdce8" font-size="12" font-weight="700" font-family="'Inter',sans-serif"
+        style="text-shadow:0 1px 6px rgba(0,0,0,0.95),0 0 14px rgba(180,0,30,0.6);">${centerText}</text>
+      <!-- Bottom glow -->
+      ${pct > 5 ? `<ellipse cx="${cx}" cy="70" rx="12" ry="3.5" fill="rgba(170,0,25,0.2)" filter="url(#vg${uid})"/>` : ''}
     </svg>
-    <p style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;">${label}</p>
+    <p style="font-size:.57rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;text-align:center;">${label}</p>
   </div>`;
 }
 
-function animateBloodCircles(container) {
+function animateVials(container) {
   if (!container) return;
   setTimeout(() => {
-    container.querySelectorAll('[data-target]').forEach(el => {
-      el.style.strokeDashoffset = el.dataset.target;
+    container.querySelectorAll('.vial-fill').forEach(el => {
+      el.style.transform = `scaleY(${el.dataset.pct})`;
     });
   }, 60);
 }
@@ -909,8 +978,8 @@ function renderServerBlock(d, sfx) {
     const fillPct = d.max_players > 0 ? d.players / d.max_players * 100 : 0;
     const tipOnline = `Игроков онлайн: ${d.players} из ${d.max_players}`;
     const tipFill   = `Заполненность: ${pct}%`;
-    circEl.innerHTML = bloodCircle(d.players, 'Онлайн', fillPct, tipOnline) + bloodCircle(pct + '%', 'Заполнен', pct, tipFill);
-    animateBloodCircles(circEl);
+    circEl.innerHTML = bloodVial(d.players, 'Онлайн', fillPct, tipOnline) + bloodVial(pct + '%', 'Заполнен', pct, tipFill);
+    animateVials(circEl);
   }
 
   const infoEl = document.getElementById('left-info' + sfx);
@@ -933,16 +1002,19 @@ function updateHunters(players) {
   const sorted = [...players].sort((a, b) => b.duration - a.duration);
   const top3 = sorted.slice(0, 3);
   const rest = sorted.slice(3, 6);
-  const drops = [
-    { cls: 'gold',   icon: '🩸' },
-    { cls: 'silver', icon: '🩸' },
-    { cls: 'bronze', icon: '🩸' },
+  const medals = [
+    { cls: 'gold',   icon: '🩸', badge: '👑' },
+    { cls: 'silver', icon: '🩸', badge: '2' },
+    { cls: 'bronze', icon: '🩸', badge: '3' },
   ];
   const podiumHtml = `<div class="hunter-podium">
     ${top3.map((p, i) => `
-      <div class="hunter-medal">
-        <span class="h-drop ${drops[i].cls}">${drops[i].icon}</span>
-        <span class="h-name">${esc(p.name)}</span>
+      <div class="hunter-medal${i === 0 ? ' hunter-medal-first' : ''}">
+        <div style="position:relative;display:inline-flex;align-items:center;justify-content:center;">
+          <span class="h-drop ${medals[i].cls}" style="font-size:${i === 0 ? '2rem' : '1.5rem'};">${medals[i].icon}</span>
+          <span style="position:absolute;top:-4px;right:-6px;font-size:${i === 0 ? '.8rem' : '.65rem'};line-height:1;">${medals[i].badge}</span>
+        </div>
+        <span class="h-name" style="${i === 0 ? 'font-size:.88rem;color:#f0dcc0;' : ''}">${esc(p.name)}</span>
         <span class="h-time">${fmtDuration(p.duration)}</span>
       </div>`).join('')}
   </div>`;
@@ -951,8 +1023,8 @@ function updateHunters(players) {
       <em>▼ Ещё ${rest.length}</em>
     </button>
     <div class="hunters-rest">
-      ${rest.map(p => `<div class="hunter-row">
-        <span style="font-size:.65rem;color:var(--muted);text-align:center;">⚔</span>
+      ${rest.map((p, i) => `<div class="hunter-row">
+        <span style="font-size:.6rem;color:var(--muted);text-align:center;min-width:14px;">${i + 4}</span>
         <span style="font-family:'Philosopher',serif;font-size:.78rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.name)}</span>
         <span style="font-size:.65rem;color:var(--muted);white-space:nowrap;">${fmtDuration(p.duration)}</span>
       </div>`).join('')}
@@ -1249,6 +1321,29 @@ async function loadVersion() {
   } catch {}
 }
 
+// ── Blood moon countdown ────────────────────────────────────────────────────
+function getNextFullMoon() {
+  const KNOWN_FULL = new Date('2025-01-13T22:27:00Z').getTime();
+  const CYCLE_MS = 29.530588853 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const elapsed = now - KNOWN_FULL;
+  const cyclesSince = Math.floor(elapsed / CYCLE_MS);
+  let next = KNOWN_FULL + (cyclesSince + 1) * CYCLE_MS;
+  if (next <= now) next += CYCLE_MS;
+  return new Date(next);
+}
+
+function updateBloodMoonTimer() {
+  const el = document.getElementById('blood-moon-timer');
+  if (!el) return;
+  const diff = getNextFullMoon().getTime() - Date.now();
+  if (diff <= 0) { el.textContent = 'Сегодня!'; return; }
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  el.textContent = d > 0 ? `${d}д ${h}ч ${m}м` : `${h}ч ${m}м`;
+}
+
 // ── Init ───────────────────────────────────────────────────────────────────
 // Stagger panel entrance animations
 document.querySelectorAll('.g-panel').forEach((p, i) => {
@@ -1265,6 +1360,8 @@ setInterval(loadHistory, 300000);
 loadFeatured();
 loadNews(1);
 loadTags();
+updateBloodMoonTimer();
+setInterval(updateBloodMoonTimer, 60000);
 </script>
 </body>
 </html>
