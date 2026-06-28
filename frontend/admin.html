@@ -337,13 +337,18 @@
           <div class="s-field">
             <label style="display:flex;align-items:center;gap:.4rem;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-              Дата следующего вайпа
+              Следующий вайп
             </label>
-            <div class="s-field-row">
+            <div class="s-field-row" style="gap:.5rem;">
+              <select id="setting-wipe_type" class="dark-input" style="flex:0 0 auto;width:auto;">
+                <option value="full">Полный</option>
+                <option value="map">Карта</option>
+                <option value="progress">Прогресс</option>
+              </select>
               <input id="setting-wipe_date" type="datetime-local" class="dark-input">
-              <button class="s-save-btn" onclick="saveSetting('wipe_date')">Сохранить</button>
+              <button class="s-save-btn" onclick="saveSetting('wipe_type');saveSetting('wipe_date')">Сохранить</button>
             </div>
-            <p class="s-desc">Показывает таймер обратного отсчёта на главной. Оставьте пустым — таймер скрыт</p>
+            <p class="s-desc">Тип + дата вайпа. Показывает таймер на главной. Оставьте дату пустой — таймер скрыт</p>
           </div>
         </div>
 
@@ -380,6 +385,22 @@
               <button class="s-save-btn" onclick="saveSetting('server2_port')">Сохранить</button>
             </div>
             <p class="s-desc">Обычно GamePort + 1 (27015 → 27016)</p>
+          </div>
+          <div class="s-field">
+            <label style="display:flex;align-items:center;gap:.4rem;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              Следующий вайп
+            </label>
+            <div class="s-field-row" style="gap:.5rem;">
+              <select id="setting-wipe_type2" class="dark-input" style="flex:0 0 auto;width:auto;">
+                <option value="full">Полный</option>
+                <option value="map">Карта</option>
+                <option value="progress">Прогресс</option>
+              </select>
+              <input id="setting-wipe_date2" type="datetime-local" class="dark-input">
+              <button class="s-save-btn" onclick="saveSetting('wipe_type2');saveSetting('wipe_date2')">Сохранить</button>
+            </div>
+            <p class="s-desc">Тип + дата вайпа для второго сервера</p>
           </div>
         </div>
 
@@ -509,6 +530,50 @@
           </div>
         </div>
 
+      </div>
+
+      <!-- Wipe History -->
+      <div style="margin-top:1.5rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+          <h2 class="gothic" style="font-size:.8rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">История вайпов</h2>
+          <button onclick="showWipeForm()" style="display:flex;align-items:center;gap:.4rem;padding:.35rem .8rem;background:rgba(0,100,40,.18);border:1px solid rgba(0,160,60,.35);color:#4ade80;border-radius:.45rem;font-size:.75rem;font-weight:600;cursor:pointer;">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Добавить
+          </button>
+        </div>
+
+        <div id="wipe-form" style="display:none;background:rgba(14,5,18,0.6);border:1px solid rgba(110,0,20,.3);border-radius:.75rem;padding:1rem;margin-bottom:1rem;">
+          <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:flex-end;">
+            <div style="display:flex;flex-direction:column;gap:.3rem;">
+              <label style="font-size:.68rem;color:var(--muted);">Сервер</label>
+              <select id="wf-server" class="dark-input" style="width:auto;">
+                <option value="1">Сервер 1</option>
+                <option value="2">Сервер 2</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:.3rem;">
+              <label style="font-size:.68rem;color:var(--muted);">Тип</label>
+              <select id="wf-type" class="dark-input" style="width:auto;">
+                <option value="full">Полный</option>
+                <option value="map">Карта</option>
+                <option value="progress">Прогресс</option>
+              </select>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:.3rem;flex:1;min-width:180px;">
+              <label style="font-size:.68rem;color:var(--muted);">Дата и время</label>
+              <input id="wf-date" type="datetime-local" class="dark-input">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:.3rem;flex:2;min-width:200px;">
+              <label style="font-size:.68rem;color:var(--muted);">Заметка (необязательно)</label>
+              <input id="wf-note" type="text" class="dark-input" placeholder="Причина вайпа, изменения…" maxlength="256">
+            </div>
+            <button onclick="addWipe()" class="s-save-btn">Добавить</button>
+          </div>
+        </div>
+
+        <div id="wipe-history-admin" style="display:flex;flex-direction:column;gap:.4rem;">
+          <p style="color:var(--muted);font-size:.8rem;">Загрузка…</p>
+        </div>
       </div>
 
     </div>
@@ -737,7 +802,7 @@ async function loadSettings() {
   const settings = await res.json();
   const map = {};
   settings.forEach(s => { map[s.key] = s.value; });
-  ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email','wipe_date'].forEach(key => {
+  ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2'].forEach(key => {
     const el = document.getElementById(`setting-${key}`);
     if (el && map[key] !== undefined) el.value = map[key];
   });
@@ -888,7 +953,67 @@ async function copyHttpsCmd() {
   } catch { alert('Не удалось скопировать: ' + cmd); }
 }
 
+// ─── Wipe history ─────────────────────────────────────────────────────────
+const WIPE_LABELS = { full: 'Полный', map: 'Карта', progress: 'Прогресс' };
+const WIPE_COLORS = { full: '#f87171', map: '#fbbf24', progress: '#34d399' };
+
+function showWipeForm() {
+  const f = document.getElementById('wipe-form');
+  if (f) f.style.display = f.style.display === 'none' ? '' : 'none';
+}
+
+async function loadWipeHistory() {
+  const el = document.getElementById('wipe-history-admin');
+  if (!el) return;
+  try {
+    const wipes = await fetch(`${API}/wipes`).then(r => r.json());
+    if (!wipes.length) { el.innerHTML = `<p style="color:var(--muted);font-size:.8rem;">Нет записей.</p>`; return; }
+    el.innerHTML = wipes.map(w => {
+      const dt = new Date(w.wipe_date);
+      const label = WIPE_LABELS[w.wipe_type] || w.wipe_type;
+      const color = WIPE_COLORS[w.wipe_type] || '#d4c4e0';
+      const srv = w.server_num === 2 ? 'Сервер 2' : 'Сервер 1';
+      const srvColor = w.server_num === 2 ? '#818cf8' : '#4ade80';
+      const isPast = dt < new Date();
+      return `<div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;background:rgba(14,5,18,0.5);border:1px solid rgba(110,0,20,.18);border-radius:.5rem;opacity:${isPast ? '.75' : '1'};">
+        <span style="color:${srvColor};font-size:.65rem;font-weight:700;min-width:58px;">${srv}</span>
+        <span style="color:${color};font-size:.68rem;font-weight:600;min-width:70px;">${label}</span>
+        <span style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${dt.toLocaleString('ru-RU',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+        ${w.note ? `<span style="color:#a09ab0;font-size:.7rem;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${w.note}</span>` : '<span style="flex:1"></span>'}
+        <button onclick="deleteWipe(${w.id})" style="background:none;border:none;color:rgba(200,0,30,.45);cursor:pointer;font-size:.85rem;padding:.1rem .3rem;border-radius:4px;flex-shrink:0;" onmouseover="this.style.color='rgba(240,0,40,.9)'" onmouseout="this.style.color='rgba(200,0,30,.45)'">✕</button>
+      </div>`;
+    }).join('');
+  } catch { el.innerHTML = `<p style="color:var(--muted);font-size:.8rem;">Ошибка загрузки.</p>`; }
+}
+
+async function addWipe() {
+  const server_num = parseInt(document.getElementById('wf-server').value);
+  const wipe_type  = document.getElementById('wf-type').value;
+  const dateVal    = document.getElementById('wf-date').value;
+  const note       = document.getElementById('wf-note').value.trim() || null;
+  if (!dateVal) { alert('Укажите дату вайпа'); return; }
+  try {
+    const r = await fetch(`${API}/admin/wipes`, {
+      method: 'POST',
+      headers: authH(),
+      body: JSON.stringify({ server_num, wipe_type, wipe_date: new Date(dateVal).toISOString(), note }),
+    });
+    if (!r.ok) { const e = await r.json(); alert(e.detail || 'Ошибка'); return; }
+    document.getElementById('wipe-form').style.display = 'none';
+    document.getElementById('wf-date').value = '';
+    document.getElementById('wf-note').value = '';
+    loadWipeHistory();
+  } catch { alert('Ошибка сохранения'); }
+}
+
+async function deleteWipe(id) {
+  if (!confirm('Удалить запись о вайпе?')) return;
+  await fetch(`${API}/admin/wipes/${id}`, { method: 'DELETE', headers: authH() });
+  loadWipeHistory();
+}
+
 loadAdminNews(1);
+loadWipeHistory();
 
 // ── Deep-link: /admin.html?edit=slug ──────────────────────────────────────
 (async () => {

@@ -103,6 +103,38 @@ class NewsListOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class WipeCreate(BaseModel):
+    server_num: int = 1
+    wipe_type: str = "full"
+    wipe_date: datetime
+    note: Optional[str] = None
+
+    @field_validator("wipe_type")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
+        if v not in ("full", "map", "progress"):
+            raise ValueError("wipe_type must be full, map, or progress")
+        return v
+
+    @field_validator("server_num")
+    @classmethod
+    def validate_server(cls, v: int) -> int:
+        if v not in (1, 2):
+            raise ValueError("server_num must be 1 or 2")
+        return v
+
+
+class WipeOut(BaseModel):
+    id: int
+    server_num: int
+    wipe_type: str
+    wipe_date: datetime
+    note: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class CommentCreate(BaseModel):
     content: str
 

@@ -39,6 +39,17 @@ class News(Base):
     comments = relationship("Comment", back_populates="news", cascade="all, delete-orphan", lazy="noload")
 
 
+class Wipe(Base):
+    __tablename__ = "wipes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    server_num = Column(Integer, nullable=False, default=1)
+    wipe_type = Column(String(32), nullable=False, default="full")
+    wipe_date = Column(DateTime, nullable=False)
+    note = Column(String(256), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 class Comment(Base):
     __tablename__ = "comments"
 

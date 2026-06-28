@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, text
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment
+from .models import Base, User, News, Setting, Comment, Wipe
 from .auth import (
     verify_password,
     get_password_hash,
@@ -42,6 +42,8 @@ from .schemas import (
     ChatRequest,
     CommentCreate,
     CommentOut,
+    WipeCreate,
+    WipeOut,
 )
 
 OVERSEER_PROMPT = """Ты — Тёмный Управляющий Замком, древний вампирский дух, хранитель этого сервера V Rising.
@@ -75,6 +77,9 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="server2_port", value="27016"),
         Setting(key="discord_server_id", value=""),
         Setting(key="wipe_date", value=""),
+        Setting(key="wipe_type", value="full"),
+        Setting(key="wipe_date2", value=""),
+        Setting(key="wipe_type2", value="full"),
     ]
     for s in default_settings:
         existing = await db.execute(select(Setting).where(Setting.key == s.key))
@@ -491,6 +496,41 @@ async def delete_comment(
     await db.commit()
 
 
+# ─── Wipes ───────────────────────────────────────────────────────────────────
+
+@app.get("/api/wipes", response_model=list[WipeOut])
+async def get_wipes(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Wipe).order_by(Wipe.wipe_date.desc()))
+    return [WipeOut.model_validate(w) for w in result.scalars().all()]
+
+
+@app.post("/api/admin/wipes", response_model=WipeOut, status_code=201)
+async def create_wipe(
+    body: WipeCreate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    wipe = Wipe(**body.model_dump())
+    db.add(wipe)
+    await db.commit()
+    await db.refresh(wipe)
+    return WipeOut.model_validate(wipe)
+
+
+@app.delete("/api/admin/wipes/{wipe_id}", status_code=204)
+async def delete_wipe(
+    wipe_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(select(Wipe).where(Wipe.id == wipe_id))
+    wipe = result.scalar_one_or_none()
+    if wipe is None:
+        raise HTTPException(status_code=404, detail="Wipe not found")
+    await db.delete(wipe)
+    await db.commit()
+
+
 # ─── News (admin) ────────────────────────────────────────────────────────────
 
 @app.get("/api/admin/news", response_model=PaginatedNews)
@@ -624,7 +664,7 @@ async def serve_upload(filename: str):
 
 @app.get("/api/settings/public")
 async def get_public_settings(db: AsyncSession = Depends(get_db)):
-    keys = ["site_title", "site_logo_url", "discord_url", "discord_server_id", "bg_image_url", "server_ip", "server_port", "wipe_date"]
+    keys = ["site_title", "site_logo_url", "discord_url", "discord_server_id", "bg_image_url", "server_ip", "server_port", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2"]
     result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
     settings = result.scalars().all()
     return {s.key: s.value for s in settings}
