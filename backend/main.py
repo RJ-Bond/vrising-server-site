@@ -87,6 +87,7 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="event_title", value=""),
         Setting(key="event_text", value=""),
         Setting(key="event_color", value="crimson"),
+        Setting(key="rules", value='[{"icon":"🤝","text":"Уважай других игроков и сохраняй дружескую атмосферу"},{"icon":"🚫","text":"Запрещены читы, эксплойты и любые программы-читы"},{"icon":"🛡","text":"PvE зоны защищены — гриферство в них запрещено"},{"icon":"⚔","text":"PvP только в отведённых зонах и по взаимному согласию"},{"icon":"🌱","text":"Помогай новичкам — каждый когда-то начинал с нуля"},{"icon":"💬","text":"Спорные ситуации решай через чат или с администратором"}]'),
     ]
     for s in default_settings:
         existing = await db.execute(select(Setting).where(Setting.key == s.key))
@@ -807,7 +808,7 @@ async def serve_upload(filename: str):
 
 @app.get("/api/settings/public")
 async def get_public_settings(db: AsyncSession = Depends(get_db)):
-    keys = ["site_title", "site_logo_url", "discord_url", "discord_server_id", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color"]
+    keys = ["site_title", "site_logo_url", "discord_url", "discord_server_id", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules"]
     result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
     settings = result.scalars().all()
     return {s.key: s.value for s in settings}

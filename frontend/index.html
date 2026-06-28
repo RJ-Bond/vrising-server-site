@@ -1031,32 +1031,7 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         <span class="gothic" style="font-size:.68rem;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;">Правила сервера</span>
       </div>
-      <div class="rules-grid">
-        <div class="rule-item">
-          <div class="rule-icon">🤝</div>
-          <div class="rule-text">Уважай других игроков и сохраняй дружескую атмосферу</div>
-        </div>
-        <div class="rule-item">
-          <div class="rule-icon">🚫</div>
-          <div class="rule-text">Запрещены читы, эксплойты и любые программы-читы</div>
-        </div>
-        <div class="rule-item">
-          <div class="rule-icon">🛡</div>
-          <div class="rule-text">PvE зоны защищены — гриферство в них запрещено</div>
-        </div>
-        <div class="rule-item">
-          <div class="rule-icon">⚔</div>
-          <div class="rule-text">PvP только в отведённых зонах и по взаимному согласию</div>
-        </div>
-        <div class="rule-item">
-          <div class="rule-icon">🌱</div>
-          <div class="rule-text">Помогай новичкам — каждый когда-то начинал с нуля</div>
-        </div>
-        <div class="rule-item">
-          <div class="rule-icon">💬</div>
-          <div class="rule-text">Спорные ситуации решай через чат или с администратором</div>
-        </div>
-      </div>
+      <div class="rules-grid" id="rules-grid"></div>
     </div>
 
     <!-- ── Info cards ── -->
@@ -2133,6 +2108,17 @@ async function loadSiteSettings() {
           sbWipe2.textContent = days2 > 0 ? `${days2}д ${hrs2}ч` : `${hrs2}ч`;
         } else { sbWipe2.textContent = 'Вайп!'; }
       }
+    }
+
+    // Rules
+    const rulesGrid = document.getElementById('rules-grid');
+    if (rulesGrid) {
+      try {
+        const rules = JSON.parse(d.rules || '[]');
+        rulesGrid.innerHTML = rules.map(r =>
+          `<div class="rule-item"><div class="rule-icon">${esc(r.icon)}</div><div class="rule-text">${esc(r.text)}</div></div>`
+        ).join('');
+      } catch {}
     }
 
     // Event banner

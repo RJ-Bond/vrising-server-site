@@ -599,6 +599,32 @@
         </div>
       </div>
 
+      <!-- Rules editor -->
+      <div class="s-row" style="margin-top:1.25rem;">
+        <div class="s-card">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(80,40,0,.18);border:1px solid rgba(200,155,0,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div style="flex:1;">
+              <h2>Правила сервера</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Отображаются на главной странице</p>
+            </div>
+            <button onclick="saveRules()" style="display:inline-flex;align-items:center;gap:.4rem;padding:.42rem .9rem;background:rgba(80,50,0,.22);border:1px solid rgba(200,155,0,.4);color:var(--gold);border-radius:.5rem;font-size:.75rem;font-weight:700;cursor:pointer;transition:all .2s;flex-shrink:0;" onmouseover="this.style.background='rgba(100,65,0,.32)'" onmouseout="this.style.background='rgba(80,50,0,.22)'">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Сохранить
+            </button>
+          </div>
+
+          <div id="rules-editor" style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.75rem;"></div>
+
+          <button onclick="addRule()" style="display:inline-flex;align-items:center;gap:.38rem;padding:.38rem .82rem;background:rgba(14,5,18,.5);border:1px solid rgba(110,0,150,.3);color:var(--muted);border-radius:.45rem;font-size:.73rem;font-weight:600;cursor:pointer;transition:all .2s;" onmouseover="this.style.color='var(--text)';this.style.borderColor='rgba(150,50,200,.5)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='rgba(110,0,150,.3)'">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+            Добавить правило
+          </button>
+        </div>
+      </div>
+
       <!-- Wipe History -->
       <div style="margin-top:1.5rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
@@ -659,6 +685,7 @@
 <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 <script>
 const API = '/api';
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 let adminNewsPage = 1;
 let quill = null;
 
@@ -681,7 +708,7 @@ function showSection(name) {
     if (btn) btn.className = 'sidebar-btn' + (s === name ? ' active' : '');
   });
   if (name === 'editor')   document.getElementById('btn-news').className = 'sidebar-btn active';
-  if (name === 'settings') loadSettings();
+  if (name === 'settings') { loadSettings(); loadRules(); }
   if (name === 'users')    loadUsers();
   if (name === 'news')     loadAdminNews(adminNewsPage);
 }
@@ -1080,6 +1107,66 @@ async function installSsl() {
 // ─── Site update ──────────────────────────────────────────────────────────
 async function updateSite() {
   await sseRun('/admin/update', 'update-log', 'update-btn');
+}
+
+// ─── Rules editor ─────────────────────────────────────────────────────────
+let _rules = [];
+
+function renderRulesEditor() {
+  const el = document.getElementById('rules-editor');
+  if (!el) return;
+  el.innerHTML = _rules.map((r, i) => `
+    <div style="display:flex;align-items:center;gap:.5rem;">
+      <input value="${esc(r.icon)}" maxlength="4" oninput="_rules[${i}].icon=this.value"
+        style="width:3rem;text-align:center;font-size:1.1rem;background:rgba(14,5,18,.6);border:1px solid rgba(110,0,150,.25);border-radius:.4rem;padding:.3rem .2rem;color:var(--text);outline:none;flex-shrink:0;">
+      <input value="${esc(r.text)}" oninput="_rules[${i}].text=this.value"
+        style="flex:1;background:rgba(14,5,18,.6);border:1px solid rgba(110,0,150,.25);border-radius:.4rem;padding:.35rem .65rem;color:var(--text);font-size:.78rem;outline:none;">
+      <button onclick="deleteRule(${i})" title="Удалить"
+        style="width:1.9rem;height:1.9rem;display:flex;align-items:center;justify-content:center;background:rgba(120,0,20,.18);border:1px solid rgba(200,0,40,.25);border-radius:.4rem;color:var(--muted);cursor:pointer;flex-shrink:0;transition:all .2s;"
+        onmouseover="this.style.color='#f87171';this.style.borderColor='rgba(200,0,40,.5)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='rgba(200,0,40,.25)'">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>`).join('');
+}
+
+function addRule() {
+  _rules.push({ icon: '⚔', text: '' });
+  renderRulesEditor();
+  const inputs = document.querySelectorAll('#rules-editor input[type!=""]');
+  // focus last text input
+  const last = document.querySelectorAll('#rules-editor input:not([maxlength])');
+  if (last.length) last[last.length - 1].focus();
+}
+
+function deleteRule(i) {
+  _rules.splice(i, 1);
+  renderRulesEditor();
+}
+
+async function loadRules() {
+  try {
+    const res = await fetch(`${API}/admin/settings`, { headers: authH() });
+    if (!res.ok) return;
+    const settings = await res.json();
+    const raw = settings.find(s => s.key === 'rules')?.value || '[]';
+    _rules = JSON.parse(raw);
+  } catch { _rules = []; }
+  renderRulesEditor();
+}
+
+async function saveRules() {
+  // flush any focused inputs first
+  document.activeElement?.blur();
+  const value = JSON.stringify(_rules);
+  const res = await fetch(`${API}/admin/settings/rules`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...authH() },
+    body: JSON.stringify({ value }),
+  });
+  if (res.ok) {
+    const badge = document.getElementById('settings-saved');
+    if (badge) { badge.style.display = 'inline-flex'; setTimeout(() => { badge.style.display = 'none'; }, 2500); }
+  } else { alert('Ошибка сохранения'); }
 }
 
 // ─── Wipe history ─────────────────────────────────────────────────────────
