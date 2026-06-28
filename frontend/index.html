@@ -5,20 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>V Rising — Замок</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
-      --bg:       #08000e;
-      --panel:    rgba(16,5,26,0.94);
-      --border:   rgba(110,0,20,0.38);
-      --crimson:  #cc0028;
-      --purple:   #7b00cc;
-      --glow-r:   rgba(204,0,40,0.45);
-      --glow-p:   rgba(123,0,204,0.45);
-      --text:     #c8c5d4;
-      --muted:    #8a8098;
-      --gold:     #c9a04a;
+      --bg:       #06000f;
+      --panel:    rgba(14,5,22,0.82);
+      --border:   rgba(110,0,150,0.22);
+      --border-r: rgba(180,0,35,0.35);
+      --crimson:  #c8002a;
+      --purple:   #7c3aed;
+      --glow-r:   rgba(200,0,42,0.5);
+      --glow-p:   rgba(124,58,237,0.45);
+      --text:     #e2d8f0;
+      --muted:    #9488a8;
+      --gold:     #c9a94a;
+      --green:    #22c55e;
+      --green-s:  rgba(34,197,94,0.2);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
@@ -97,15 +100,17 @@
 
     /* ── Gothic Panel ── */
     .g-panel {
-      background: rgba(20,10,25,0.65);
-      border: 1px solid rgba(110,0,150,0.18);
+      background: rgba(14,5,22,0.75);
+      border: 1px solid rgba(120,0,160,0.2);
       border-radius: 1rem !important;
       box-shadow:
-        0 0 0 1px rgba(160,0,80,0.08),
-        0 8px 32px rgba(0,0,0,0.55),
-        0 0 18px rgba(80,0,120,0.12),
-        inset 0 0 24px rgba(50,0,80,0.06);
-      backdrop-filter: blur(12px);
+        0 0 0 1px rgba(255,255,255,0.03),
+        0 8px 40px rgba(0,0,0,0.6),
+        0 0 22px rgba(80,0,130,0.14),
+        inset 0 1px 0 rgba(255,255,255,0.05),
+        inset 0 0 28px rgba(50,0,80,0.06);
+      backdrop-filter: blur(20px) saturate(1.3);
+      -webkit-backdrop-filter: blur(20px) saturate(1.3);
       position: relative;
     }
     .g-panel > .corner-tl, .g-panel > .corner-tr,
@@ -133,8 +138,8 @@
     .corner-br::after  { width:1px; height:10px; bottom:13px; right:5px; }
 
     /* ── Status badge ── */
-    .badge-on  { background:rgba(0,70,15,.35); border:1px solid rgba(0,180,40,.45); color:#4ade80; box-shadow:0 0 10px rgba(0,180,40,.2); animation: badge-glow 2.2s ease-in-out infinite; }
-    .badge-off { background:rgba(100,0,0,.35);  border:1px solid rgba(200,0,0,.45);  color:#f87171; box-shadow:0 0 10px rgba(200,0,0,.2); }
+    .badge-on  { background:rgba(0,80,20,.4); border:1px solid rgba(34,197,94,.55); color:#4ade80; box-shadow:0 0 14px rgba(34,197,94,.28),inset 0 0 8px rgba(0,160,40,.1); animation: badge-glow 2.2s ease-in-out infinite; }
+    .badge-off { background:rgba(100,0,0,.4);  border:1px solid rgba(220,0,0,.5);   color:#fca5a5; box-shadow:0 0 10px rgba(220,0,0,.2); }
     @keyframes badge-glow {
       0%,100% { box-shadow: 0 0 8px rgba(0,180,40,0.25); }
       50%      { box-shadow: 0 0 18px rgba(0,220,55,0.6), 0 0 6px rgba(0,200,40,0.35); }
@@ -320,12 +325,19 @@
     .nav-link-item:hover { background:rgba(150,0,28,0.22); border-color:rgba(160,0,35,0.5); box-shadow:0 0 12px rgba(190,0,35,0.22), inset 0 0 10px rgba(140,0,25,0.1); }
     .discord-btn {
       display:flex; align-items:center; gap:.65rem;
-      padding:.6rem .8rem; border-radius:.5rem;
-      background:rgba(88,101,242,0.12); border:1px solid rgba(88,101,242,0.28);
-      color:#7289da; text-decoration:none; font-size:.82rem; font-weight:600;
-      transition:background .2s, border-color .2s, box-shadow .2s;
+      padding:.6rem .8rem; border-radius:.55rem;
+      background:linear-gradient(135deg,rgba(88,101,242,0.2),rgba(88,101,242,0.08));
+      border:1px solid rgba(88,101,242,0.38);
+      color:#bbc3ff; text-decoration:none; font-size:.82rem; font-weight:600;
+      box-shadow:0 0 18px rgba(88,101,242,0.12),inset 0 0 12px rgba(88,101,242,0.05);
+      transition:all .22s;
     }
-    .discord-btn:hover { background:rgba(88,101,242,0.22); border-color:rgba(88,101,242,0.5); box-shadow:0 0 14px rgba(88,101,242,0.2); }
+    .discord-btn:hover {
+      background:linear-gradient(135deg,rgba(88,101,242,0.32),rgba(88,101,242,0.15));
+      border-color:rgba(88,101,242,0.6);
+      box-shadow:0 0 28px rgba(88,101,242,0.3),inset 0 0 16px rgba(88,101,242,0.1);
+      transform:translateY(-1px);
+    }
     @media (max-width: 1024px) {
       .main-grid { flex-direction: column !important; }
       .side-panel { width: 100% !important; }
@@ -433,12 +445,19 @@
     /* ── Hunter podium ── */
     .hunter-podium { display:flex; gap:.35rem; justify-content:space-around; margin-bottom:.6rem; }
     .hunter-medal { display:flex; flex-direction:column; align-items:center; gap:.25rem; flex:1; min-width:0; }
-    .h-drop { font-size:1.45rem; line-height:1; }
-    .h-drop.gold   { filter:drop-shadow(0 0 8px rgba(215,175,0,0.75)); }
-    .h-drop.silver { filter:drop-shadow(0 0 6px rgba(175,185,205,0.55)); }
-    .h-drop.bronze { filter:drop-shadow(0 0 6px rgba(185,105,30,0.6)); }
-    .h-name { font-family:'Philosopher',serif; font-size:.7rem; color:var(--text); text-align:center; max-width:58px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .h-time { font-size:.58rem; color:var(--muted); }
+    .h-drop { font-size:1.55rem; line-height:1; }
+    .h-drop.gold   { filter:drop-shadow(0 0 10px rgba(215,175,0,0.85)); }
+    .h-drop.silver { filter:drop-shadow(0 0 8px rgba(175,185,205,0.65)); }
+    .h-drop.bronze { filter:drop-shadow(0 0 8px rgba(185,105,30,0.7)); }
+    .h-name {
+      font-family:'Philosopher',serif; font-size:.72rem; color:var(--text);
+      text-align:center; max-width:64px; overflow:hidden; text-overflow:ellipsis;
+      white-space:nowrap; line-height:1.3; margin-top:.1rem;
+    }
+    .h-time {
+      font-family:'Oswald',sans-serif; font-size:.62rem; font-weight:400;
+      color:var(--muted); letter-spacing:.02em; font-variant-numeric:tabular-nums;
+    }
     .hunters-rest { overflow:hidden; transition:max-height .3s ease; max-height:0; }
     .hunters-rest.open { max-height:200px; }
     .hunters-toggle {
@@ -450,12 +469,18 @@
 
     /* ── Compact player row ── */
     .p-row-c {
-      display:grid; grid-template-columns:9px 1fr auto;
+      display:grid; grid-template-columns:8px 1fr auto;
       align-items:center; gap:.5rem;
-      padding:.26rem 0; border-bottom:1px solid rgba(110,0,20,0.08);
+      padding:.3rem 0; border-bottom:1px solid rgba(110,0,20,0.09);
+      line-height:1.4;
     }
     .p-row-c:last-child { border-bottom:none; }
-    .p-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .p-row-c span:nth-child(2) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .p-row-c span:last-child {
+      font-variant-numeric: tabular-nums;
+      font-size:.68rem; color:var(--muted); min-width:44px; text-align:right;
+    }
+    .p-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 
     /* ── Featured news ── */
     .featured-card {
@@ -558,16 +583,21 @@
     /* ── Info cards (center bottom) ── */
     .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:.75rem; margin-top:1.35rem; }
     .info-card {
-      background:rgba(14,5,18,0.75); border:1px solid rgba(110,0,150,0.2);
+      background:rgba(10,3,16,0.82); border:1px solid rgba(110,0,150,0.22);
       border-radius:.875rem; padding:1.1rem 1.15rem;
-      backdrop-filter:blur(8px); position:relative; overflow:hidden;
-      transition:border-color .2s, box-shadow .2s;
+      backdrop-filter:blur(16px) saturate(1.2); position:relative; overflow:hidden;
+      box-shadow:0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+      transition:border-color .25s, box-shadow .25s, transform .2s;
     }
     .info-card::before {
-      content:''; position:absolute; top:0; left:0; right:0; height:1px;
-      background:linear-gradient(90deg,transparent,rgba(190,0,45,0.35),transparent);
+      content:''; position:absolute; top:0; left:20%; right:20%; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(200,0,45,0.45),transparent);
     }
-    .info-card:hover { border-color:rgba(160,0,35,0.38); box-shadow:0 6px 28px rgba(0,0,0,0.45),0 0 18px rgba(100,0,20,0.12); }
+    .info-card:hover {
+      border-color:rgba(170,0,40,0.42);
+      box-shadow:0 8px 32px rgba(0,0,0,0.6),0 0 22px rgba(120,0,25,0.18), inset 0 1px 0 rgba(255,255,255,0.06);
+      transform:translateY(-1px);
+    }
     .ic-title { font-family:'Cinzel',serif; font-size:.72rem; color:var(--gold); letter-spacing:.1em; text-transform:uppercase; margin-bottom:.6rem; }
     .ic-rule {
       display:flex; align-items:flex-start; gap:.45rem; font-size:.76rem;
@@ -575,15 +605,33 @@
     }
     .ic-rule:last-child { border-bottom:none; }
     .ic-rule::before { content:'✦'; color:rgba(210,0,45,0.7); font-size:.52rem; flex-shrink:0; margin-top:.15rem; }
-    .wipe-digit {
-      font-family:'Cinzel',serif; font-size:1.45rem; font-weight:700;
-      color:#c8e8d0; letter-spacing:.04em;
-      text-shadow:0 0 18px rgba(40,180,80,0.35);
+    /* ── Wipe timer blocks ── */
+    .wipe-blocks {
+      display:flex; align-items:flex-start; justify-content:center; gap:.35rem; margin:.15rem 0;
+    }
+    .wipe-block { display:flex; flex-direction:column; align-items:center; min-width:36px; }
+    .wipe-block-val {
+      font-family:'Oswald',sans-serif; font-size:1.7rem; font-weight:600;
+      line-height:1; letter-spacing:.02em; display:block;
+      font-variant-numeric:tabular-nums;
+    }
+    .wipe-block-lbl {
+      font-size:.5rem; color:var(--muted); text-transform:uppercase;
+      letter-spacing:.1em; display:block; margin-top:.1rem;
+    }
+    .wipe-sep {
+      font-family:'Oswald',sans-serif; font-size:1.4rem; font-weight:500;
+      color:var(--muted); line-height:1; padding-top:.15rem; opacity:.5;
+    }
+    .wipe-digit { /* fallback if blocks not rendered */
+      font-family:'Oswald',sans-serif; font-size:1.6rem; font-weight:600;
+      color:#c8e8d0; letter-spacing:.03em;
+      text-shadow:0 0 18px rgba(40,180,80,0.4);
     }
     .blood-moon-digit {
-      font-family:'Cinzel',serif; font-size:1.45rem; font-weight:700;
-      color:#ecd8e0; letter-spacing:.04em;
-      text-shadow:0 0 22px rgba(210,0,40,0.7),0 0 45px rgba(150,0,30,0.35);
+      font-family:'Oswald',sans-serif; font-size:1.6rem; font-weight:600;
+      color:#f0dce8; letter-spacing:.03em;
+      text-shadow:0 0 22px rgba(220,0,40,0.75),0 0 50px rgba(160,0,30,0.4);
     }
 
     /* ── Right panel info rows ── */
@@ -747,21 +795,39 @@
       <div class="info-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(14,3,7,0.82);border-color:rgba(190,0,35,0.2);">
         <div style="font-size:2rem;line-height:1;margin-bottom:.45rem;filter:drop-shadow(0 0 12px rgba(220,0,40,0.5));">🌕</div>
         <div class="ic-title" style="margin-bottom:.4rem;">Кровавое полнолуние</div>
-        <div class="blood-moon-digit" id="blood-moon-timer">—</div>
+        <div class="wipe-blocks" id="blood-moon-timer">
+          <div class="wipe-block"><span class="wipe-block-val blood-moon-digit" id="bm-d">—</span><span class="wipe-block-lbl">дней</span></div>
+          <div class="wipe-sep" style="text-shadow:0 0 12px rgba(200,0,40,0.5);">:</div>
+          <div class="wipe-block"><span class="wipe-block-val blood-moon-digit" id="bm-h">—</span><span class="wipe-block-lbl">часов</span></div>
+          <div class="wipe-sep" style="text-shadow:0 0 12px rgba(200,0,40,0.5);">:</div>
+          <div class="wipe-block"><span class="wipe-block-val blood-moon-digit" id="bm-m">—</span><span class="wipe-block-lbl">минут</span></div>
+        </div>
         <p style="font-size:.63rem;color:var(--muted);margin-top:.3rem;">до следующего полнолуния</p>
       </div>
       <div id="wipe-card" class="info-card" style="display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(3,14,8,0.82);border-color:rgba(0,160,60,0.2);">
         <div style="font-size:2rem;line-height:1;margin-bottom:.45rem;filter:drop-shadow(0 0 12px rgba(40,200,80,0.45));">🗡️</div>
         <div id="wipe-card-title" class="ic-title" style="margin-bottom:.2rem;color:#7ecf9a;">Вайп · Сервер 1</div>
         <div id="wipe-type-label" style="font-size:.6rem;color:rgba(126,207,154,0.6);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.35rem;"></div>
-        <div class="wipe-digit" id="wipe-timer">—</div>
+        <div class="wipe-blocks" id="wipe-timer">
+          <div class="wipe-block"><span class="wipe-block-val" id="wipe-d1" style="color:#7ecf9a;">—</span><span class="wipe-block-lbl">дней</span></div>
+          <div class="wipe-sep">:</div>
+          <div class="wipe-block"><span class="wipe-block-val" id="wipe-h1" style="color:#c8e8d0;">—</span><span class="wipe-block-lbl">часов</span></div>
+          <div class="wipe-sep">:</div>
+          <div class="wipe-block"><span class="wipe-block-val" id="wipe-m1" style="color:#c8e8d0;">—</span><span class="wipe-block-lbl">минут</span></div>
+        </div>
         <p id="wipe-date-label" style="font-size:.63rem;color:var(--muted);margin-top:.3rem;"></p>
       </div>
       <div id="wipe-card2" class="info-card" style="display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(3,8,18,0.82);border-color:rgba(60,80,200,0.2);">
         <div style="font-size:2rem;line-height:1;margin-bottom:.45rem;filter:drop-shadow(0 0 12px rgba(80,100,240,0.45));">🗡️</div>
         <div id="wipe-card-title2" class="ic-title" style="margin-bottom:.2rem;color:#9aaef0;">Вайп · Сервер 2</div>
         <div id="wipe-type-label2" style="font-size:.6rem;color:rgba(154,174,240,0.6);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.35rem;"></div>
-        <div class="wipe-digit" id="wipe-timer2" style="color:#c8d4f0;text-shadow:0 0 18px rgba(80,100,240,0.35);">—</div>
+        <div class="wipe-blocks" id="wipe-timer2">
+          <div class="wipe-block"><span class="wipe-block-val" id="wipe-d2" style="color:#9aaef0;">—</span><span class="wipe-block-lbl">дней</span></div>
+          <div class="wipe-sep">:</div>
+          <div class="wipe-block"><span class="wipe-block-val" id="wipe-h2" style="color:#c8d4f0;">—</span><span class="wipe-block-lbl">часов</span></div>
+          <div class="wipe-sep">:</div>
+          <div class="wipe-block"><span class="wipe-block-val" id="wipe-m2" style="color:#c8d4f0;">—</span><span class="wipe-block-lbl">минут</span></div>
+        </div>
         <p id="wipe-date-label2" style="font-size:.63rem;color:var(--muted);margin-top:.3rem;"></p>
       </div>
     </div>
@@ -801,15 +867,15 @@
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.6rem;"></div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;text-align:center;margin-bottom:.5rem;">
         <div>
-          <div id="stat-uptime24" style="font-size:.88rem;font-weight:700;font-family:'Cinzel',serif;color:#ecd8e0;">—</div>
+          <div id="stat-uptime24" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
           <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Аптайм 24ч</div>
         </div>
         <div>
-          <div id="stat-uptime7d" style="font-size:.88rem;font-weight:700;font-family:'Cinzel',serif;color:#ecd8e0;">—</div>
+          <div id="stat-uptime7d" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
           <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Аптайм 7д</div>
         </div>
         <div>
-          <div id="stat-peak7d" style="font-size:.88rem;font-weight:700;font-family:'Cinzel',serif;color:#ecd8e0;">—</div>
+          <div id="stat-peak7d" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
           <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Пик 7д</div>
         </div>
       </div>
@@ -1672,25 +1738,29 @@ let _wipeDate = null, _wipeDate2 = null;
 
 const WIPE_TYPE_LABELS = { full: 'Полный вайп', map: 'Вайп карты', progress: 'Вайп прогресса' };
 
-function _wipeCountdown(date, sfx) {
-  const timerEl = document.getElementById('wipe-timer' + sfx);
-  const labelEl = document.getElementById('wipe-date-label' + sfx);
-  if (!timerEl || !date) return;
+function _wipeCountdown(date, num) {
+  const labelEl = document.getElementById('wipe-date-label' + (num === 1 ? '' : '2'));
+  const dEl = document.getElementById('wipe-d' + num);
+  const hEl = document.getElementById('wipe-h' + num);
+  const mEl = document.getElementById('wipe-m' + num);
+  if (!dEl || !date) return;
   const diff = date.getTime() - Date.now();
   if (diff <= 0) {
-    timerEl.textContent = 'Вайп!';
+    dEl.textContent = '0'; hEl.textContent = '00'; mEl.textContent = '00';
     if (labelEl) labelEl.textContent = 'Сервер сброшен';
     return;
   }
   const d = Math.floor(diff / 86400000);
   const h = Math.floor((diff % 86400000) / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
-  timerEl.textContent = d > 0 ? `${d}д ${h}ч ${m}м` : `${h}ч ${m}м`;
+  dEl.textContent = d;
+  hEl.textContent = String(h).padStart(2, '0');
+  mEl.textContent = String(m).padStart(2, '0');
   if (labelEl) labelEl.textContent = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
-function updateWipeTimer()  { _wipeCountdown(_wipeDate,  '');  }
-function updateWipeTimer2() { _wipeCountdown(_wipeDate2, '2'); }
+function updateWipeTimer()  { _wipeCountdown(_wipeDate,  1); }
+function updateWipeTimer2() { _wipeCountdown(_wipeDate2, 2); }
 
 async function loadWipeHistory() {
   try {
@@ -1728,14 +1798,21 @@ function getNextFullMoon() {
 }
 
 function updateBloodMoonTimer() {
-  const el = document.getElementById('blood-moon-timer');
-  if (!el) return;
+  const dEl = document.getElementById('bm-d');
+  const hEl = document.getElementById('bm-h');
+  const mEl = document.getElementById('bm-m');
+  if (!dEl) return;
   const diff = getNextFullMoon().getTime() - Date.now();
-  if (diff <= 0) { el.textContent = 'Сегодня!'; return; }
+  if (diff <= 0) {
+    dEl.textContent = '0'; hEl.textContent = '00'; mEl.textContent = '00';
+    return;
+  }
   const d = Math.floor(diff / 86400000);
   const h = Math.floor((diff % 86400000) / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
-  el.textContent = d > 0 ? `${d}д ${h}ч ${m}м` : `${h}ч ${m}м`;
+  dEl.textContent = d;
+  hEl.textContent = String(h).padStart(2, '0');
+  mEl.textContent = String(m).padStart(2, '0');
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
