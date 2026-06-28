@@ -58,7 +58,7 @@
 
     /* ── Hero ── */
     .hero {
-      position: relative; min-height: 60vh;
+      position: relative; min-height: 28vh;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       overflow: hidden;
     }
@@ -87,13 +87,13 @@
     @keyframes twinkle { 0% { opacity: .3; } 100% { opacity: .9; } }
 
     .hero-title {
-      font-size: clamp(2.2rem, 6vw, 5rem);
+      font-size: clamp(1.6rem, 4.5vw, 3.2rem);
       letter-spacing: .18em; line-height: 1;
       text-shadow: 0 0 30px rgba(204,0,40,0.7), 0 0 70px rgba(204,0,40,0.3), 0 0 120px rgba(123,0,204,0.2);
       color: #d4c4e0;
     }
     .hero-sub { font-size: .75rem; letter-spacing: .3em; color: var(--muted); text-transform: uppercase; }
-    .hero-divider { width: 120px; height: 1px; background: linear-gradient(90deg, transparent, var(--crimson), var(--purple), transparent); margin: 1rem auto; }
+    .hero-divider { width: 120px; height: 1px; background: linear-gradient(90deg, transparent, var(--crimson), var(--purple), transparent); margin: .45rem auto; }
 
     /* ── Gothic Panel ── */
     .g-panel {
@@ -306,11 +306,13 @@
   </div>
 
   <!-- Content -->
-  <div style="position:relative;z-index:2;text-align:center;padding:2rem 1rem;">
-    <div style="font-size:.65rem;letter-spacing:.4em;color:var(--muted);text-transform:uppercase;margin-bottom:.5rem;">Добро пожаловать в замок</div>
+  <div style="position:relative;z-index:2;text-align:center;padding:.75rem 1rem;">
     <h1 id="hero-title" class="gothic hero-title">V RISING</h1>
     <div class="hero-divider"></div>
-    <div id="hero-status" style="font-size:.8rem;color:var(--muted);">Загрузка статуса...</div>
+    <div id="hero-servers" style="display:flex;justify-content:center;align-items:center;gap:.5rem 1.25rem;flex-wrap:wrap;">
+      <div id="hero-status" style="display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:var(--muted);">Загрузка статуса...</div>
+      <div id="hero-status2" style="display:none;align-items:center;gap:.5rem;"></div>
+    </div>
   </div>
 
   <!-- Scroll hint -->
@@ -362,7 +364,7 @@
   <!-- ── CENTER: News ── -->
   <main id="news-section" style="flex:1;min-width:0;">
     <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:1.1rem;">— Летопись —</h2>
-    <div id="news-list" style="display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));"></div>
+    <div id="news-list" style="display:grid;gap:.75rem;grid-template-columns:1fr;"></div>
     <div id="news-pagination" style="display:flex;justify-content:center;gap:.5rem;margin-top:1.25rem;"></div>
   </main>
 
@@ -545,11 +547,24 @@ async function loadStatus2() {
   try {
     const d = await fetch(`${API}/monitor/status2`).then(r => r.json());
     const section = document.getElementById('server2-section');
-    if (!d.enabled) { section.style.display = 'none'; return; }
+    const heroSt2 = document.getElementById('hero-status2');
+    if (!d.enabled) {
+      section.style.display = 'none';
+      if (heroSt2) heroSt2.style.display = 'none';
+      return;
+    }
     section.style.display = 'block';
     const titleEl = document.getElementById('server2-title');
     if (titleEl) titleEl.textContent = `— ${d.name} —`;
-    renderServerBlock(d, '2');
+    const { lbl, cls } = renderServerBlock(d, '2');
+    if (heroSt2) {
+      heroSt2.style.display = 'flex';
+      heroSt2.innerHTML = `
+        <span style="width:1px;height:14px;background:rgba(110,0,20,0.4);flex-shrink:0;"></span>
+        <span class="${cls}" style="font-size:.72rem;font-weight:700;padding:.2rem .75rem;border-radius:9999px;">${lbl}</span>
+        <span style="color:var(--text);font-size:.78rem;font-weight:500;">${esc(d.name)}</span>
+        <span style="color:var(--muted);font-size:.75rem;">${d.players} / ${d.max_players} игроков</span>`;
+    }
   } catch {}
 }
 
@@ -560,17 +575,19 @@ async function loadNews(page = 1) {
   list.innerHTML = '';
   if (!data.items.length) { list.innerHTML = `<p style="color:var(--muted);">Новостей нет.</p>`; return; }
   data.items.forEach(n => {
-    const thumb = n.thumbnail_url
-      ? `<img src="${n.thumbnail_url}" alt="" class="news-thumb">`
-      : `<div class="news-no-thumb">⚔</div>`;
+    const thumbImg = n.thumbnail_url
+      ? `<img src="${esc(n.thumbnail_url)}" alt="" style="width:140px;min-height:100px;height:100%;object-fit:cover;flex-shrink:0;">`
+      : `<div style="width:140px;min-height:100px;flex-shrink:0;background:linear-gradient(135deg,rgba(60,0,100,0.4),rgba(90,0,15,0.4));display:flex;align-items:center;justify-content:center;font-size:1.8rem;color:rgba(180,0,30,0.45);">⚔</div>`;
     const card = document.createElement('div');
     card.className = 'news-card';
-    card.innerHTML = `${thumb}
-      <div style="padding:.75rem;">
-        <p style="font-size:.65rem;color:var(--muted);margin-bottom:.3rem;">${fmtDate(n.created_at)} · ${n.author.username}</p>
-        <h3 class="gothic" style="font-size:.85rem;font-weight:700;color:#d4c4e0;line-height:1.3;margin-bottom:.35rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${n.title}</h3>
-        <p style="font-size:.75rem;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${n.summary}</p>
-      </div>`;
+    card.innerHTML = `<div style="display:flex;gap:0;min-height:100px;">
+      ${thumbImg}
+      <div style="padding:.75rem 1rem;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;">
+        <p style="font-size:.65rem;color:var(--muted);margin-bottom:.35rem;">${fmtDate(n.created_at)} · ${esc(n.author.username)}</p>
+        <h3 class="gothic" style="font-size:.92rem;font-weight:700;color:#d4c4e0;line-height:1.35;margin-bottom:.4rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.title)}</h3>
+        <p style="font-size:.78rem;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.summary)}</p>
+      </div>
+    </div>`;
     card.onclick = () => openNews(n.slug);
     list.appendChild(card);
   });
