@@ -666,7 +666,7 @@
 <div id="modal-bg" class="modal-bg">
   <div class="modal-box">
     <button onclick="closeModal()" style="position:absolute;top:.75rem;right:1rem;font-size:1.5rem;color:var(--muted);background:none;border:none;cursor:pointer;" onmouseover="this.style.color=var(--text)" onmouseout="this.style.color=var(--muted)">&times;</button>
-    <p id="modal-date" style="font-size:.7rem;color:var(--muted);margin-bottom:.4rem;"></p>
+    <div id="modal-author" style="display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem;"></div>
     <h3 id="modal-title" class="gothic" style="font-size:1.2rem;font-weight:700;color:#d4c4e0;margin-bottom:.75rem;"></h3>
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(180,0,30,0.5),transparent);margin-bottom:1rem;"></div>
     <div id="modal-content" class="rich-content"></div>
@@ -1063,7 +1063,16 @@ async function openNews(slug) {
   try {
     const n = await fetch(`${API}/news/${slug}`).then(r => r.json());
     document.getElementById('modal-title').textContent = n.title;
-    document.getElementById('modal-date').textContent = `${fmtDate(n.created_at)} · ${n.author.username}`;
+    const authorName = esc(n.author.username);
+    const avatarEl = n.author.avatar_url
+      ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.3);flex-shrink:0;">`
+      : `<span style="width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(80,0,150,0.6),rgba(120,0,20,0.4));border:1px solid rgba(190,0,40,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:.95rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
+    document.getElementById('modal-author').innerHTML = `
+      ${avatarEl}
+      <div style="display:flex;flex-direction:column;gap:.1rem;">
+        <span style="font-size:.88rem;color:#d4c4e0;font-weight:600;">${authorName}</span>
+        <span style="font-size:.68rem;color:var(--muted);">${fmtDate(n.created_at)}</span>
+      </div>`;
     document.getElementById('modal-content').innerHTML = n.content || '';
     document.getElementById('modal-bg').classList.add('open');
     document.body.style.overflow = 'hidden';
