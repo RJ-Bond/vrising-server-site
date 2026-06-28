@@ -531,11 +531,18 @@ async function uploadThumb(input) {
   input.value = '';
 }
 
-function openEditor(news) {
+async function openEditor(news) {
   initQuill();
   document.getElementById('editor-error').classList.add('hidden');
   showSection('editor');
   if (news) {
+    // NewsListOut from the admin list does not include content — fetch it
+    if (news.content == null) {
+      try {
+        const r = await fetch(`${API}/news/${news.slug}`);
+        if (r.ok) { const full = await r.json(); news = { ...news, content: full.content }; }
+      } catch {}
+    }
     document.getElementById('editor-title-label').textContent = 'Редактировать новость';
     document.getElementById('editor-news-id').value      = news.id;
     document.getElementById('editor-news-title').value   = news.title;
@@ -543,7 +550,9 @@ function openEditor(news) {
     document.getElementById('editor-news-thumb').value   = news.thumbnail_url || '';
     document.getElementById('editor-news-tags').value    = news.tags || '';
     document.getElementById('editor-news-published').checked = news.published;
-    quill.root.innerHTML = news.content || '';
+    // dangerouslyPasteHTML keeps Quill's internal Delta in sync; defer so DOM is ready
+    const html = news.content || '';
+    setTimeout(() => quill.clipboard.dangerouslyPasteHTML(html), 0);
   } else {
     document.getElementById('editor-title-label').textContent = 'Новая новость';
     document.getElementById('editor-news-id').value      = '';
@@ -552,7 +561,7 @@ function openEditor(news) {
     document.getElementById('editor-news-thumb').value   = '';
     document.getElementById('editor-news-tags').value    = '';
     document.getElementById('editor-news-published').checked = true;
-    quill.setText('');
+    setTimeout(() => quill.setText(''), 0);
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
