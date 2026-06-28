@@ -2,10 +2,14 @@ import asyncio
 import socket
 import struct
 import time
+from collections import deque
 from typing import Optional
 
 _cache: dict = {}  # key: (ip, port) -> {"data": ..., "timestamp": ...}
+_history: dict = {}  # key: (ip, port) -> deque of (ts, player_count)
 CACHE_TTL = 30
+HISTORY_INTERVAL = 300  # record every 5 min
+HISTORY_MAX = 288       # 24h at 5-min intervals
 
 
 async def query_server(ip: str, port: int) -> Optional[dict]:
@@ -127,4 +131,15 @@ async def get_server_status(ip: str, port: int) -> dict:
         status = {**result, "players_list": players_list}
 
     _cache[key] = {"data": status, "timestamp": now}
+
+    # record history snapshot every HISTORY_INTERVAL seconds
+    hist = _history.setdefault(key, deque(maxlen=HISTORY_MAX))
+    if not hist or (now - hist[-1][0]) >= HISTORY_INTERVAL:
+        hist.append((now, status["players"]))
+
     return status
+
+
+def get_history(ip: str, port: int) -> list:
+    key = (ip, port)
+    return [{"ts": int(ts), "players": p} for ts, p in _history.get(key, [])]

@@ -28,6 +28,7 @@ class News(Base):
     summary = Column(String(512), nullable=False)
     content = Column(Text, nullable=False)
     thumbnail_url = Column(String(512), nullable=True)
+    tags = Column(String(256), nullable=True, default="")
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     published = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

@@ -52,6 +52,7 @@ class NewsCreate(BaseModel):
     summary: str
     content: str
     thumbnail_url: Optional[str] = None
+    tags: Optional[str] = None
     published: bool = True
 
     @field_validator("title")
@@ -67,6 +68,7 @@ class NewsUpdate(BaseModel):
     summary: Optional[str] = None
     content: Optional[str] = None
     thumbnail_url: Optional[str] = None
+    tags: Optional[str] = None
     published: Optional[bool] = None
 
 
@@ -77,6 +79,7 @@ class NewsOut(BaseModel):
     summary: str
     content: str
     thumbnail_url: Optional[str]
+    tags: Optional[str] = None
     published: bool
     created_at: datetime
     updated_at: datetime
@@ -91,6 +94,7 @@ class NewsListOut(BaseModel):
     slug: str
     summary: str
     thumbnail_url: Optional[str]
+    tags: Optional[str] = None
     published: bool
     created_at: datetime
     author: UserOut

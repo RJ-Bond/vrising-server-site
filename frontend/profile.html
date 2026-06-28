@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V Rising — Профиль</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --accent: #b5002a; --accent-glow: rgba(181,0,42,0.4);
+      --card: rgba(14,3,24,0.92); --border: rgba(150,0,28,0.3);
+      --text: #c8c5d4; --muted: #8a8098; --gold: #c9a04a;
+      --crimson: #cc0028; --purple: #7b00cc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #08000e;
+      background-image:
+        radial-gradient(ellipse at 20% 60%, rgba(80,0,120,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
+      background-attachment: fixed;
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text); min-height: 100vh;
+    }
+    .fog { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .fog::before {
+      content: ''; position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
+      background: radial-gradient(ellipse at 38% 55%, rgba(90,0,150,0.09) 0%, transparent 55%);
+      animation: fog1 28s ease-in-out infinite alternate;
+    }
+    @keyframes fog1 { to { transform: translate(5%,7%) scale(1.1); } }
+    .gothic { font-family: 'Cinzel', serif; }
+    .glass-nav { background: rgba(8,0,14,0.9); border-bottom: 1px solid rgba(110,0,20,0.35); backdrop-filter: blur(14px); }
+    .g-card {
+      background: rgba(20,10,25,0.65); border: 1px solid rgba(110,0,150,0.18);
+      border-radius: 1rem; backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 18px rgba(80,0,120,0.1);
+      position: relative;
+    }
+    .btn-sm {
+      background: linear-gradient(135deg,#6a001a,#a00022); border: none; border-radius: .55rem;
+      padding: .4rem .9rem; color: #fff; font-size: .75rem; font-weight: 700;
+      cursor: pointer; box-shadow: 0 0 14px rgba(180,0,30,0.45); transition: all .2s;
+      text-decoration: none; display: inline-block;
+    }
+    .btn-sm:hover { box-shadow: 0 0 26px rgba(210,0,40,0.7); transform: translateY(-1px); }
+    .stat-row { display: flex; justify-content: space-between; align-items: center;
+      padding: .55rem 0; border-bottom: 1px solid rgba(110,0,20,0.12); }
+    .stat-row:last-child { border-bottom: none; }
+    .avatar-circle {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: radial-gradient(circle at 38% 32%, rgba(80,0,150,0.5), rgba(120,0,20,0.4));
+      border: 2px solid rgba(190,0,40,0.4);
+      box-shadow: 0 0 24px rgba(180,0,30,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Cinzel', serif; font-size: 1.8rem; color: #d4c4e0;
+    }
+    @keyframes fade-up { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+    .g-card { animation: fade-up .4s ease both; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(8,0,14,0.4); }
+    ::-webkit-scrollbar-thumb { background: rgba(130,0,24,0.5); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div class="fog"></div>
+
+<!-- NAV -->
+<nav class="glass-nav sticky top-0 z-40 relative">
+  <div style="max-width:900px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
+    <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">V RISING</a>
+    <div style="display:flex;align-items:center;gap:.75rem;">
+      <a href="/" class="btn-sm" style="font-size:.72rem;">← Главная</a>
+      <button onclick="doLogout()" class="btn-sm" style="background:rgba(14,3,24,0.9);border:1px solid rgba(110,0,20,0.35);box-shadow:none;font-size:.72rem;">Выйти</button>
+    </div>
+  </div>
+</nav>
+
+<!-- CONTENT -->
+<div style="max-width:600px;margin:3rem auto;padding:0 1.25rem;">
+
+  <!-- Profile card -->
+  <div class="g-card" style="padding:2rem;margin-bottom:1.25rem;">
+    <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:1.75rem;">
+      <div class="avatar-circle" id="profile-avatar">?</div>
+      <div>
+        <h1 class="gothic" id="profile-name" style="font-size:1.4rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;margin-bottom:.25rem;">—</h1>
+        <span id="profile-role-badge" style="font-size:.65rem;padding:.15rem .6rem;border-radius:9999px;border:1px solid rgba(200,0,40,.4);color:#fca5a5;background:rgba(120,0,20,.2);">загрузка...</span>
+      </div>
+    </div>
+
+    <h2 class="gothic" style="font-size:.7rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Данные аккаунта —</h2>
+
+    <div>
+      <div class="stat-row">
+        <span style="color:var(--muted);font-size:.82rem;">Email</span>
+        <span id="profile-email" style="font-size:.85rem;color:#d4c4e0;font-weight:500;">—</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--muted);font-size:.82rem;">Роль</span>
+        <span id="profile-role" style="font-size:.85rem;color:#d4c4e0;font-weight:500;">—</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--muted);font-size:.82rem;">Аккаунт с</span>
+        <span id="profile-since" style="font-size:.85rem;color:#d4c4e0;font-weight:500;">—</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--muted);font-size:.82rem;">Статус</span>
+        <span id="profile-status" style="font-size:.82rem;">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions card -->
+  <div class="g-card" style="padding:1.5rem;">
+    <h2 class="gothic" style="font-size:.7rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Действия —</h2>
+    <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+      <a href="/" class="btn-sm">← На главную</a>
+      <a id="admin-link" href="/admin.html" class="btn-sm" style="display:none;">Панель администратора</a>
+      <button onclick="doLogout()" class="btn-sm" style="background:rgba(80,0,15,0.4);border:1px solid rgba(150,0,20,0.4);box-shadow:none;">Выйти</button>
+    </div>
+  </div>
+
+  <p id="profile-error" style="display:none;text-align:center;color:var(--muted);margin-top:1.5rem;font-size:.85rem;">Нет доступа. <a href="/login.html" style="color:var(--accent);">Войдите</a> в аккаунт.</p>
+</div>
+
+<script>
+const API = '/api';
+
+function getToken() { return localStorage.getItem('token'); }
+function getUser()  { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } }
+function doLogout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login.html'; }
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+const roleLabels = { admin: 'Администратор', user: 'Игрок' };
+const roleColors = { admin: 'rgba(200,160,74,0.85)', user: 'rgba(180,140,220,0.85)' };
+
+async function loadProfile() {
+  const token = getToken();
+  if (!token) {
+    document.getElementById('profile-error').style.display = '';
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/auth/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) { doLogout(); return; }
+    const u = await res.json();
+
+    const initial = (u.username || '?').charAt(0).toUpperCase();
+    document.getElementById('profile-avatar').textContent = initial;
+    document.getElementById('profile-name').textContent   = u.username;
+    document.getElementById('profile-email').textContent  = u.email;
+    document.getElementById('profile-role').textContent   = roleLabels[u.role] || u.role;
+    document.getElementById('profile-since').textContent  = fmtDate(u.created_at);
+
+    const statusEl = document.getElementById('profile-status');
+    statusEl.textContent   = u.is_active ? '✔ Активен' : '✘ Заблокирован';
+    statusEl.style.color   = u.is_active ? '#4ade80' : '#f87171';
+
+    const badgeEl = document.getElementById('profile-role-badge');
+    badgeEl.textContent = roleLabels[u.role] || u.role;
+    badgeEl.style.color = u.role === 'admin' ? '#fcd34d' : '#c4b5fd';
+    badgeEl.style.borderColor = u.role === 'admin' ? 'rgba(200,160,74,0.5)' : 'rgba(120,80,200,0.4)';
+    badgeEl.style.background  = u.role === 'admin' ? 'rgba(140,100,0,0.2)' : 'rgba(80,40,140,0.2)';
+
+    if (u.role === 'admin') {
+      document.getElementById('admin-link').style.display = '';
+    }
+
+    // Update logo from site settings
+    try {
+      const s = await fetch(`${API}/settings/public`).then(r => r.json());
+      const logo = document.getElementById('nav-logo');
+      if (s.site_logo_url) {
+        logo.innerHTML = `<img src="${s.site_logo_url}" alt="${s.site_title||'V RISING'}" style="height:1.8rem;object-fit:contain;vertical-align:middle;">`;
+      } else {
+        logo.textContent = s.site_title || 'V RISING';
+      }
+      document.title = (s.site_title || 'V RISING') + ' — Профиль';
+    } catch {}
+  } catch {
+    document.getElementById('profile-error').style.display = '';
+  }
+}
+
+loadProfile();
+</script>
+</body>
+</html>

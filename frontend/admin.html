@@ -237,6 +237,12 @@
           </div>
         </div>
 
+        <!-- Tags -->
+        <div class="glass-card rounded-xl p-4">
+          <label>Теги <span style="font-size:.68rem;color:var(--muted);text-transform:none;letter-spacing:0;">(через запятую: PvE, Ивент, Обновление)</span></label>
+          <input id="editor-news-tags" type="text" class="dark-input" placeholder="PvE, Ивент, Обновление" />
+        </div>
+
         <!-- Rich editor -->
         <div>
           <div id="quill-editor"></div>
@@ -535,6 +541,7 @@ function openEditor(news) {
     document.getElementById('editor-news-title').value   = news.title;
     document.getElementById('editor-news-summary').value = news.summary;
     document.getElementById('editor-news-thumb').value   = news.thumbnail_url || '';
+    document.getElementById('editor-news-tags').value    = news.tags || '';
     document.getElementById('editor-news-published').checked = news.published;
     quill.root.innerHTML = news.content || '';
   } else {
@@ -543,6 +550,7 @@ function openEditor(news) {
     document.getElementById('editor-news-title').value   = '';
     document.getElementById('editor-news-summary').value = '';
     document.getElementById('editor-news-thumb').value   = '';
+    document.getElementById('editor-news-tags').value    = '';
     document.getElementById('editor-news-published').checked = true;
     quill.setText('');
   }
@@ -564,6 +572,7 @@ async function submitEditor() {
   const summary = document.getElementById('editor-news-summary').value.trim();
   const content = quill.root.innerHTML;
   const thumb   = document.getElementById('editor-news-thumb').value.trim();
+  const tags    = document.getElementById('editor-news-tags').value.trim();
 
   if (!title || !summary) {
     errEl.textContent = 'Заголовок и краткое описание обязательны';
@@ -572,6 +581,7 @@ async function submitEditor() {
   }
 
   const payload = { title, summary, content, thumbnail_url: thumb || null,
+                    tags: tags || null,
                     published: document.getElementById('editor-news-published').checked };
   try {
     const res = await fetch(id ? `${API}/admin/news/${id}` : `${API}/admin/news`, {

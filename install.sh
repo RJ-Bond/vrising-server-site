@@ -73,7 +73,7 @@ copy_project_files() {
     cp "$SCRIPT_DIR/backend/$f" "$INSTALL_DIR/backend/$f"
   done
 
-  for f in index.html login.html admin.html setup.html; do
+  for f in index.html login.html admin.html setup.html profile.html; do
     [[ -f "$SCRIPT_DIR/frontend/$f" ]] || die "Файл не найден: $SCRIPT_DIR/frontend/$f"
     cp "$SCRIPT_DIR/frontend/$f" "$INSTALL_DIR/frontend/$f"
   done

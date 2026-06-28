@@ -47,7 +47,7 @@ OVERSEER_PROMPT = """Ты — Тёмный Управляющий Замком, 
 Стиль: готический, величественный, слегка таинственный. Обращайся к игрокам как «смертный», «странник» или по имени.
 Отвечай на языке вопроса (русский или английский). Максимум 3–4 предложения. Будь полезным и по делу.
 Если не знаешь конкретных данных сервера — говори об этом честно, но оставайся в образе."""
-from .monitor import get_server_status
+from .monitor import get_server_status, get_history
 
 
 def slugify(text: str) -> str:
@@ -262,6 +262,31 @@ async def server_status(db: AsyncSession = Depends(get_db)):
     return data
 
 
+@app.get("/api/monitor/history")
+async def server_history(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Setting).where(Setting.key.in_(["server_ip", "server_port"]))
+    )
+    cfg = {s.key: s.value for s in result.scalars().all()}
+    ip = cfg.get("server_ip", "127.0.0.1")
+    port = int(cfg.get("server_port", "27016"))
+    return get_history(ip, port)
+
+
+@app.get("/api/monitor/history2")
+async def server_history2(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(Setting).where(Setting.key.in_(["server2_ip", "server2_port"]))
+    )
+    cfg = {s.key: s.value for s in result.scalars().all()}
+    ip = cfg.get("server2_ip", "").strip()
+    if not ip:
+        return []
+    port_str = cfg.get("server2_port", "27016")
+    port = int(port_str) if port_str.isdigit() else 27016
+    return get_history(ip, port)
+
+
 @app.get("/api/monitor/status2")
 async def server_status2(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -285,21 +310,41 @@ async def server_status2(db: AsyncSession = Depends(get_db)):
 
 # ─── News (public) ──────────────────────────────────────────────────────────
 
+@app.get("/api/news/tags")
+async def list_tags(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(News.tags).where(News.published == True, News.tags != None, News.tags != "")
+    )
+    all_tags: set[str] = set()
+    for (tags_str,) in result.all():
+        if tags_str:
+            for t in tags_str.split(","):
+                t = t.strip()
+                if t:
+                    all_tags.add(t)
+    return sorted(all_tags)
+
+
 @app.get("/api/news", response_model=PaginatedNews)
 async def list_news(
     page: int = Query(1, ge=1),
     per_page: int = Query(5, ge=1, le=50),
+    tag: str = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
+    base_filter = News.published == True
+    if tag:
+        base_filter = base_filter & News.tags.contains(tag)
+
     total_result = await db.execute(
-        select(func.count()).select_from(News).where(News.published == True)
+        select(func.count()).select_from(News).where(base_filter)
     )
     total = total_result.scalar_one()
     pages = max(1, math.ceil(total / per_page))
     offset = (page - 1) * per_page
     result = await db.execute(
         select(News)
-        .where(News.published == True)
+        .where(base_filter)
         .order_by(News.created_at.desc())
         .offset(offset)
         .limit(per_page)
@@ -368,6 +413,7 @@ async def create_news(
         summary=body.summary,
         content=body.content,
         thumbnail_url=body.thumbnail_url,
+        tags=body.tags or "",
         author_id=current_user.id,
         published=body.published,
     )
@@ -397,6 +443,8 @@ async def update_news(
         news.content = body.content
     if body.thumbnail_url is not None:
         news.thumbnail_url = body.thumbnail_url
+    if body.tags is not None:
+        news.tags = body.tags
     if body.published is not None:
         news.published = body.published
     news.updated_at = datetime.utcnow()
