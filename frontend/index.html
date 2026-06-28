@@ -1169,9 +1169,6 @@ function renderServerBlock(d, sfx) {
       ? `<span style="color:${d.latency_ms < 80 ? '#86efac' : d.latency_ms < 200 ? '#fbbf24' : '#f87171'}">${d.latency_ms} мс</span>`
       : '—';
     infoEl.innerHTML =
-      row('Карта', d.map || '—') +
-      row('Версия', d.version || '—') +
-      row('VAC', d.vac ? '✔ Защищён' : '✘ Нет') +
       `<div class="stat-row"><span class="stat-row-k">Задержка</span><span class="stat-row-v">${latencyStr}</span></div>`;
   }
 
