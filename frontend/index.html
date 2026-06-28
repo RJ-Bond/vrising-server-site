@@ -284,6 +284,32 @@
     ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
 
     @keyframes pulse { 0%,100% { opacity:.5; } 50% { opacity:.85; } }
+
+    /* ── Hero glow behind title ── */
+    .hero-content { position:relative; z-index:2; text-align:center; padding:.75rem 1rem; }
+    .hero-content::before {
+      content:'';
+      position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%);
+      width:clamp(400px,70vw,800px); height:220px;
+      background:radial-gradient(ellipse at center,
+        rgba(160,0,45,0.32) 0%,
+        rgba(100,0,160,0.22) 38%,
+        transparent 70%);
+      filter:blur(22px);
+      pointer-events:none;
+      animation:hero-glow-pulse 3.5s ease-in-out infinite alternate;
+    }
+    @keyframes hero-glow-pulse {
+      0%   { opacity:.7; transform:translate(-50%,-50%) scale(1); }
+      100% { opacity:1;  transform:translate(-50%,-50%) scale(1.08); }
+    }
+
+    /* ── Scroll arrow bounce ── */
+    @keyframes scroll-bounce {
+      0%,100% { transform:translateX(-50%) translateY(0);   opacity:.38; }
+      50%      { transform:translateX(-50%) translateY(9px); opacity:.7;  }
+    }
     .nav-link-item {
       display:flex; align-items:center; gap:.6rem;
       padding:.55rem .8rem; border-radius:.6rem;
@@ -352,18 +378,17 @@
   </div>
 
   <!-- Content -->
-  <div style="position:relative;z-index:2;text-align:center;padding:.75rem 1rem;">
-    <h1 id="hero-title" class="gothic hero-title">V RISING</h1>
-    <div class="hero-divider"></div>
+  <div class="hero-content">
+    <h1 id="hero-title" class="gothic hero-title" style="position:relative;z-index:1;">V RISING</h1>
+    <div class="hero-divider" style="position:relative;z-index:1;"></div>
     <div id="hero-status" style="display:none;"></div>
     <div id="hero-status2" style="display:none;"></div>
   </div>
 
   <!-- Scroll hint -->
-  <div style="position:absolute;bottom:1.5rem;left:50%;transform:translateX(-50%);z-index:2;opacity:.3;animation:bounce 2s ease-in-out infinite;">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+  <div style="position:absolute;bottom:1.2rem;left:50%;z-index:2;animation:scroll-bounce 2.2s ease-in-out infinite;">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(180,80,120,0.75)" stroke-width="1.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
   </div>
-  @keyframes bounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(6px)} }
 </section>
 
 <!-- ══ MAIN ══════════════════════════════════════════════════════════════════ -->
