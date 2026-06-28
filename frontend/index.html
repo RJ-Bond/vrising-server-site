@@ -3,279 +3,504 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>V Rising — Сервер</title>
+  <title>V Rising — Замок</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
-      --accent: #b5002a;
-      --accent-glow: rgba(181,0,42,0.4);
-      --card: rgba(14,3,24,0.92);
-      --border: rgba(150,0,28,0.32);
-      --text: #e0c8d8;
-      --muted: #6a4d65;
-      --gold: #c9a04a;
+      --bg:       #08000e;
+      --panel:    rgba(16,5,26,0.94);
+      --border:   rgba(110,0,20,0.38);
+      --crimson:  #cc0028;
+      --purple:   #7b00cc;
+      --glow-r:   rgba(204,0,40,0.45);
+      --glow-p:   rgba(123,0,204,0.45);
+      --text:     #d4c4e0;
+      --muted:    #5a3d6b;
+      --gold:     #c9a04a;
     }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
     body {
-      margin: 0;
-      background: #080010;
+      background: var(--bg);
       background-image:
-        radial-gradient(ellipse at 20% 60%, rgba(80,0,120,0.13) 0%, transparent 55%),
-        radial-gradient(ellipse at 80% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
+        radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
       background-attachment: fixed;
       font-family: 'Inter', system-ui, sans-serif;
       color: var(--text);
       min-height: 100vh;
     }
+    .gothic { font-family: 'Cinzel', serif; }
+
+    /* ── Fog ── */
     .fog { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
     .fog::before {
-      content: '';
-      position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
-      background: radial-gradient(ellipse at 38% 55%, rgba(90,0,150,0.1) 0%, transparent 55%);
-      animation: fog1 28s ease-in-out infinite alternate;
+      content: ''; position: absolute; width: 180%; height: 180%; top: -40%; left: -40%;
+      background: radial-gradient(ellipse at 38% 55%, rgba(80,0,150,0.09) 0%, transparent 55%);
+      animation: fog1 30s ease-in-out infinite alternate;
     }
     .fog::after {
-      content: '';
-      position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
-      background: radial-gradient(ellipse at 65% 28%, rgba(170,0,32,0.07) 0%, transparent 50%);
-      animation: fog2 38s ease-in-out infinite alternate-reverse;
+      content: ''; position: absolute; width: 180%; height: 180%; top: -40%; left: -40%;
+      background: radial-gradient(ellipse at 68% 28%, rgba(160,0,30,0.06) 0%, transparent 50%);
+      animation: fog2 42s ease-in-out infinite alternate-reverse;
     }
-    @keyframes fog1 { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(5%,7%) scale(1.1); } }
-    @keyframes fog2 { 0% { transform: translate(0,0) scale(1.06); } 100% { transform: translate(-6%,4%) scale(1); } }
-    .gothic { font-family: 'Cinzel', serif; }
-    .glow-text { text-shadow: 0 0 24px rgba(200,0,40,0.65), 0 0 50px rgba(200,0,40,0.2); }
-    .glass-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      box-shadow: 0 0 40px rgba(0,0,0,0.6), inset 0 0 20px rgba(80,0,120,0.04);
-      backdrop-filter: blur(6px);
-      transition: border-color .25s, box-shadow .25s;
-    }
-    .glass-card:hover {
-      border-color: rgba(181,0,42,0.55);
-      box-shadow: 0 0 40px rgba(0,0,0,0.6), 0 0 24px var(--accent-glow), inset 0 0 20px rgba(80,0,120,0.04);
-    }
+    @keyframes fog1 { to { transform: translate(6%,8%) scale(1.12); } }
+    @keyframes fog2 { to { transform: translate(-7%,5%) scale(0.94); } }
+
+    /* ── Nav ── */
     .glass-nav {
-      background: rgba(8,0,16,0.85);
-      border-bottom: 1px solid rgba(150,0,28,0.3);
-      backdrop-filter: blur(12px);
+      background: rgba(8,0,14,0.9);
+      border-bottom: 1px solid rgba(110,0,20,0.35);
+      backdrop-filter: blur(14px);
     }
-    .badge-online {
-      background: rgba(0,80,15,0.35); border: 1px solid rgba(0,180,40,0.45);
-      color: #4ade80; box-shadow: 0 0 10px rgba(0,180,40,0.2);
+
+    /* ── Hero ── */
+    .hero {
+      position: relative; min-height: 60vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      overflow: hidden;
     }
-    .badge-offline {
-      background: rgba(100,0,0,0.35); border: 1px solid rgba(200,0,0,0.45);
-      color: #f87171; box-shadow: 0 0 10px rgba(200,0,0,0.2);
+    .hero-bg {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse at 50% 80%, rgba(100,0,20,0.15) 0%, transparent 60%),
+        radial-gradient(ellipse at 50% 40%, rgba(60,0,100,0.18) 0%, transparent 55%),
+        linear-gradient(180deg, #08000e 0%, #0d0018 50%, #100008 100%);
     }
-    .stat-block { text-align: center; }
-    .stat-value { font-size: 1.6rem; font-weight: 700; color: #e0c8d8; line-height: 1; }
-    .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-top: .35rem; }
-    .players-bar { height: 4px; background: rgba(150,0,28,0.2); border-radius: 2px; overflow: hidden; margin-top: .5rem; }
-    .players-fill { height: 100%; background: linear-gradient(90deg, #7a001c, #b5002a); border-radius: 2px; transition: width .6s ease; }
-    .divider-v { width: 1px; background: rgba(150,0,28,0.25); align-self: stretch; margin: .5rem 0; }
-    .news-thumb { width: 100%; height: 9rem; object-fit: cover; }
-    .news-thumb-placeholder {
-      width: 100%; height: 9rem;
-      background: linear-gradient(135deg, rgba(80,0,120,0.4) 0%, rgba(100,0,15,0.4) 100%);
+    /* Castle silhouette */
+    .castle-wrap { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: min(900px,100%); pointer-events: none; }
+    .castle-svg { width: 100%; opacity: 0.22; filter: blur(0.5px); }
+
+    /* Moon */
+    .moon {
+      position: absolute; top: 10%; right: 15%;
+      width: 80px; height: 80px; border-radius: 50%;
+      background: radial-gradient(circle at 40% 40%, #2a1a40, #0d0018);
+      box-shadow: 0 0 30px rgba(123,0,204,0.2), 0 0 80px rgba(80,0,140,0.12);
+      opacity: 0.5;
+    }
+    /* Stars */
+    .stars { position: absolute; inset: 0; }
+    .star { position: absolute; border-radius: 50%; background: rgba(212,196,224,0.6); animation: twinkle 3s ease-in-out infinite alternate; }
+    @keyframes twinkle { 0% { opacity: .3; } 100% { opacity: .9; } }
+
+    .hero-title {
+      font-size: clamp(2.2rem, 6vw, 5rem);
+      letter-spacing: .18em; line-height: 1;
+      text-shadow: 0 0 30px rgba(204,0,40,0.7), 0 0 70px rgba(204,0,40,0.3), 0 0 120px rgba(123,0,204,0.2);
+      color: #d4c4e0;
+    }
+    .hero-sub { font-size: .75rem; letter-spacing: .3em; color: var(--muted); text-transform: uppercase; }
+    .hero-divider { width: 120px; height: 1px; background: linear-gradient(90deg, transparent, var(--crimson), var(--purple), transparent); margin: 1rem auto; }
+
+    /* ── Gothic Panel ── */
+    .g-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      box-shadow: 0 0 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(60,0,100,0.04);
+      backdrop-filter: blur(6px);
+      position: relative;
+    }
+    .g-panel::before, .g-panel::after,
+    .g-panel > .corner-tl, .g-panel > .corner-tr,
+    .g-panel > .corner-bl, .g-panel > .corner-br {
+      position: absolute; font-size: 10px; color: rgba(180,0,30,0.5); line-height: 1;
+    }
+    .corner-tl { top: 4px; left: 6px; content: '✦'; }
+    .corner-tr { top: 4px; right: 6px; content: '✦'; }
+    .corner-bl { bottom: 4px; left: 6px; content: '✦'; }
+    .corner-br { bottom: 4px; right: 6px; content: '✦'; }
+
+    /* ── Status badge ── */
+    .badge-on  { background:rgba(0,70,15,.35); border:1px solid rgba(0,180,40,.45); color:#4ade80; box-shadow:0 0 10px rgba(0,180,40,.2); }
+    .badge-off { background:rgba(100,0,0,.35);  border:1px solid rgba(200,0,0,.45);  color:#f87171; box-shadow:0 0 10px rgba(200,0,0,.2); }
+
+    /* ── Stat circle ── */
+    .stat-circle {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: radial-gradient(circle at 40% 40%, rgba(40,5,60,0.9), rgba(10,0,16,0.95));
+      border: 1px solid rgba(120,0,24,0.5);
+      box-shadow: 0 0 18px rgba(123,0,204,0.15), inset 0 0 12px rgba(0,0,0,0.6);
       display: flex; align-items: center; justify-content: center;
-      font-size: 2rem; color: rgba(181,0,42,0.5);
+      font-size: 1.3rem;
     }
-    .btn-primary {
-      background: linear-gradient(135deg, #7a001c, #b5002a);
-      box-shadow: 0 0 20px rgba(181,0,42,0.3);
-      color: #fff; border: none; cursor: pointer;
-      transition: box-shadow .2s, transform .15s;
+
+    /* ── Players bar ── */
+    .p-bar { height: 3px; background: rgba(110,0,20,0.2); border-radius: 2px; overflow: hidden; }
+    .p-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--purple), var(--crimson)); transition: width .8s ease; }
+
+    /* ── News card ── */
+    .news-card {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: .75rem; overflow: hidden; cursor: pointer;
+      transition: transform .2s, border-color .25s, box-shadow .25s;
     }
-    .btn-primary:hover { box-shadow: 0 0 32px rgba(181,0,42,0.5); transform: translateY(-1px); }
-    .pagination-btn {
-      background: rgba(14,3,24,0.8); border: 1px solid rgba(150,0,28,0.3);
-      color: var(--muted); padding: .4rem .85rem; border-radius: .4rem;
-      cursor: pointer; font-size: .85rem; transition: all .2s;
+    .news-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(180,0,30,0.6);
+      box-shadow: 0 0 28px rgba(204,0,40,0.2);
     }
-    .pagination-btn:hover, .pagination-btn.active {
-      border-color: var(--accent); color: var(--text);
-      box-shadow: 0 0 10px var(--accent-glow);
+    .news-thumb { width:100%; height:7rem; object-fit:cover; }
+    .news-no-thumb {
+      width:100%; height:7rem;
+      background: linear-gradient(135deg, rgba(60,0,100,0.4), rgba(90,0,15,0.4));
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.8rem; color:rgba(180,0,30,0.5);
     }
-    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 50; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
-    .modal-bg.open { display: flex; }
+
+    /* ── Pagination ── */
+    .pg-btn {
+      background: rgba(14,3,24,0.8); border:1px solid rgba(110,0,20,0.3);
+      color: var(--muted); padding:.35rem .75rem; border-radius:.4rem;
+      cursor:pointer; font-size:.8rem; transition:all .2s;
+    }
+    .pg-btn:hover, .pg-btn.active { border-color:var(--crimson); color:var(--text); box-shadow:0 0 8px var(--glow-r); }
+
+    /* ── Chat ── */
+    .chat-messages {
+      flex: 1; overflow-y: auto; padding: .75rem;
+      display: flex; flex-direction: column; gap: .6rem;
+      scrollbar-width: thin; scrollbar-color: rgba(110,0,20,0.4) transparent;
+    }
+    .msg-user {
+      align-self: flex-end; max-width: 80%;
+      background: rgba(123,0,204,0.18); border:1px solid rgba(123,0,204,0.3);
+      border-radius: .6rem .6rem 0 .6rem; padding: .5rem .75rem;
+      font-size: .82rem; color: var(--text);
+    }
+    .msg-ai {
+      align-self: flex-start; max-width: 85%;
+      background: rgba(100,0,16,0.18); border:1px solid rgba(150,0,25,0.3);
+      border-radius: .6rem .6rem .6rem 0; padding: .5rem .75rem;
+      font-size: .82rem; color: var(--text); line-height: 1.5;
+    }
+    .msg-ai .author { font-size:.65rem; color:var(--crimson); margin-bottom:.25rem; font-family:'Cinzel',serif; letter-spacing:.05em; }
+    .chat-input-area {
+      border-top: 1px solid var(--border);
+      padding: .6rem;
+      display: flex; gap: .5rem; align-items: flex-end;
+    }
+    .chat-textarea {
+      flex:1; background:rgba(8,0,14,0.8); border:1px solid rgba(100,0,18,0.35);
+      border-radius:.5rem; padding:.55rem .75rem; color:var(--text);
+      font-size:.82rem; resize:none; min-height:38px; max-height:90px;
+      font-family:inherit; line-height:1.4;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .chat-textarea::placeholder { color:var(--muted); }
+    .chat-textarea:focus { border-color:var(--crimson); box-shadow:0 0 10px rgba(204,0,40,0.18); outline:none; }
+
+    /* ── RUNE BUTTON ── */
+    .rune-btn {
+      width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+      background: radial-gradient(circle at 40% 40%, rgba(90,0,150,0.4), rgba(130,0,25,0.3));
+      border: 1px solid rgba(150,0,28,0.55);
+      cursor: pointer; display:flex; align-items:center; justify-content:center;
+      font-size: 1.2rem; transition: transform .15s;
+      animation: rune-idle 3s ease-in-out infinite;
+    }
+    .rune-btn:hover { transform: scale(1.08); }
+    .rune-btn:disabled { cursor: not-allowed; opacity: .5; animation: rune-think .7s ease-in-out infinite; }
+    @keyframes rune-idle {
+      0%,100% { box-shadow: 0 0 8px var(--glow-r), 0 0 4px var(--glow-p); }
+      50%      { box-shadow: 0 0 18px var(--glow-r), 0 0 10px var(--glow-p); }
+    }
+    @keyframes rune-think {
+      0%,100% { box-shadow: 0 0 24px var(--glow-p), 0 0 48px rgba(123,0,204,0.3); transform: scale(1); }
+      50%      { box-shadow: 0 0 36px var(--glow-r), 0 0 72px rgba(204,0,40,0.35); transform: scale(1.06); }
+    }
+
+    /* ── Chat welcome ── */
+    .chat-welcome {
+      flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-align:center; padding:1rem; gap:.5rem; opacity:.6;
+    }
+    .chat-welcome .rune-big { font-size:2.5rem; opacity:.4; }
+
+    /* ── Modal ── */
+    .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:50; align-items:center; justify-content:center; padding:1rem; backdrop-filter:blur(5px); }
+    .modal-bg.open { display:flex; }
     .modal-box {
-      background: rgba(12,2,22,0.98); border: 1px solid rgba(150,0,28,0.4);
-      box-shadow: 0 0 60px rgba(0,0,0,0.8), 0 0 30px rgba(100,0,20,0.2);
-      border-radius: 1rem; max-width: 640px; width: 100%; max-height: 80vh;
-      overflow-y: auto; padding: 2rem; position: relative;
+      background:rgba(12,2,20,0.98); border:1px solid rgba(130,0,25,0.45);
+      box-shadow:0 0 60px rgba(0,0,0,0.8), 0 0 30px rgba(100,0,20,0.15);
+      border-radius:1rem; max-width:640px; width:100%; max-height:82vh;
+      overflow-y:auto; padding:1.75rem; position:relative;
     }
-    ::-webkit-scrollbar { width: 5px; }
-    ::-webkit-scrollbar-track { background: rgba(8,0,16,0.5); }
-    ::-webkit-scrollbar-thumb { background: rgba(150,0,28,0.5); border-radius: 3px; }
+
+    /* ── Buttons ── */
+    .btn-sm { background:linear-gradient(135deg,#6a001a,#a00022); border:none; border-radius:.4rem; padding:.4rem .9rem; color:#fff; font-size:.75rem; font-weight:700; cursor:pointer; box-shadow:0 0 12px rgba(160,0,34,0.3); transition:all .2s; }
+    .btn-sm:hover { box-shadow:0 0 22px rgba(204,0,40,0.5); transform:translateY(-1px); }
+
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
+    ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
+
+    @media (max-width: 1024px) { .main-grid { flex-direction: column !important; } .side-panel { width: 100% !important; } }
   </style>
 </head>
 <body>
 <div class="fog"></div>
 
-<!-- NAV -->
+<!-- ══ NAV ══════════════════════════════════════════════════════════════════ -->
 <nav class="glass-nav sticky top-0 z-40 relative">
-  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-    <a href="/" class="gothic font-black text-xl tracking-widest glow-text" style="color:#e0c8d8; text-decoration:none;">⚔ V RISING</a>
-    <div class="flex items-center gap-3">
-      <span id="nav-username" class="hidden text-sm" style="color:var(--muted);"></span>
-      <a id="nav-admin-link" href="/admin.html" class="hidden text-sm font-semibold" style="color:var(--gold); text-decoration:none;">Администратор</a>
-      <a id="nav-login" href="/login.html" class="btn-primary text-sm font-bold px-4 py-1.5 rounded-lg" style="text-decoration:none;">Войти</a>
-      <button id="nav-logout" class="hidden text-sm px-3 py-1.5 rounded-lg transition" style="background:rgba(150,0,28,0.2);border:1px solid rgba(150,0,28,0.4);color:var(--muted);" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Выйти</button>
+  <div style="max-width:1280px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
+    <a href="/" class="gothic" style="font-size:1.25rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">⚔ V RISING</a>
+    <div style="display:flex;align-items:center;gap:.75rem;">
+      <span id="nav-username" class="hidden" style="font-size:.8rem;color:var(--muted);"></span>
+      <a id="nav-admin" href="/admin.html" class="hidden gothic" style="font-size:.75rem;color:var(--gold);text-decoration:none;letter-spacing:.05em;">Администратор</a>
+      <a id="nav-login" href="/login.html" class="btn-sm">Войти</a>
+      <button id="nav-logout" class="hidden pg-btn" style="font-size:.75rem;" onclick="doLogout()">Выйти</button>
     </div>
   </div>
 </nav>
 
-<main class="relative z-10 max-w-6xl mx-auto px-4 py-10">
+<!-- ══ HERO ══════════════════════════════════════════════════════════════════ -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="moon"></div>
+  <div class="stars" id="stars"></div>
 
-  <!-- SERVER STATUS -->
-  <section class="mb-14">
-    <h2 class="gothic text-2xl font-bold mb-6 tracking-widest uppercase" style="color:var(--gold); letter-spacing:.15em;">— Статус сервера —</h2>
-    <div id="status-card" class="glass-card rounded-2xl p-6">
-      <div class="animate-pulse flex gap-4 flex-wrap">
-        <div class="h-6 w-48 rounded" style="background:rgba(150,0,28,0.2);"></div>
-        <div class="h-6 w-20 rounded" style="background:rgba(150,0,28,0.2);"></div>
+  <!-- Castle SVG silhouette -->
+  <div class="castle-wrap">
+    <svg class="castle-svg" viewBox="0 0 1000 320" preserveAspectRatio="xMidYMax meet" fill="#0d0018">
+      <path d="
+        M0,320 L0,200
+        L30,200 L30,160 L50,160 L50,140 L70,140 L70,160 L90,160 L90,200
+        L130,200 L130,130 L145,130 L145,100 L155,100 L155,85 L165,85 L165,100 L175,100 L175,130 L190,130 L190,200
+        L220,200 L220,170 L235,170 L235,150 L245,150 L245,130 L255,130 L255,150 L265,150 L265,170 L280,170 L280,200
+        L300,200 L300,100 L310,80 L315,60 L320,40 L325,60 L330,80 L340,100 L340,200
+        L370,200 L370,160 L380,160 L380,140 L385,120 L390,140 L395,160 L405,160 L405,200
+        L430,200 L430,180 L450,180 L450,140 L460,120 L465,100 L470,80 L475,100 L480,120 L490,140 L490,180 L510,180 L510,200
+        L540,200 L540,160 L555,160 L555,130 L565,130 L565,110 L575,110 L575,130 L585,130 L585,160 L600,160 L600,200
+        L630,200 L630,100 L640,80 L645,60 L650,40 L655,60 L660,80 L670,100 L670,200
+        L700,200 L700,170 L710,170 L710,145 L720,145 L720,125 L730,125 L730,145 L740,145 L740,170 L750,170 L750,200
+        L780,200 L780,130 L790,115 L800,100 L810,115 L820,130 L820,200
+        L850,200 L850,175 L865,175 L865,155 L875,155 L875,135 L885,135 L885,155 L895,155 L895,175 L910,175 L910,200
+        L960,200 L960,240 L980,240 L980,200 L1000,200 L1000,320 Z
+      "/>
+      <!-- Windows -->
+      <rect x="315" y="105" width="10" height="15" fill="rgba(100,0,180,0.15)" rx="3"/>
+      <rect x="645" y="65" width="10" height="15" fill="rgba(100,0,180,0.15)" rx="3"/>
+      <rect x="462" y="105" width="10" height="15" fill="rgba(100,0,180,0.15)" rx="3"/>
+      <rect x="797" y="105" width="10" height="15" fill="rgba(100,0,180,0.12)" rx="3"/>
+    </svg>
+  </div>
+
+  <!-- Content -->
+  <div style="position:relative;z-index:2;text-align:center;padding:2rem 1rem;">
+    <div style="font-size:.65rem;letter-spacing:.4em;color:var(--muted);text-transform:uppercase;margin-bottom:.5rem;">Добро пожаловать в замок</div>
+    <h1 class="gothic hero-title">V RISING</h1>
+    <div class="hero-divider"></div>
+    <div id="hero-status" style="font-size:.8rem;color:var(--muted);">Загрузка статуса...</div>
+  </div>
+
+  <!-- Scroll hint -->
+  <div style="position:absolute;bottom:1.5rem;left:50%;transform:translateX(-50%);z-index:2;opacity:.3;animation:bounce 2s ease-in-out infinite;">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+  </div>
+  @keyframes bounce { 0%,100%{transform:translateX(-50%) translateY(0)} 50%{transform:translateX(-50%) translateY(6px)} }
+</section>
+
+<!-- ══ MAIN ══════════════════════════════════════════════════════════════════ -->
+<div class="main-grid" style="max-width:1280px;margin:2rem auto;padding:0 1.25rem;display:flex;gap:1.25rem;align-items:flex-start;">
+
+  <!-- ── LEFT: Server Analytics ── -->
+  <aside class="side-panel g-panel" style="width:268px;border-radius:.875rem;padding:1.25rem;flex-shrink:0;">
+    <span class="corner-tl">✦</span><span class="corner-tr">✦</span>
+    <span class="corner-bl">✦</span><span class="corner-br">✦</span>
+
+    <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:1.1rem;">— Хроника Замка —</h2>
+
+    <!-- Status -->
+    <div id="left-status" style="margin-bottom:1.25rem;">
+      <div style="width:100%;height:3rem;border-radius:.5rem;background:rgba(110,0,20,0.1);animation:pulse 2s ease-in-out infinite;"></div>
+    </div>
+
+    <!-- Divider -->
+    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:1rem 0;"></div>
+
+    <!-- Circular stats -->
+    <div id="left-circles" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;text-align:center;"></div>
+
+    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:1.1rem 0;"></div>
+
+    <!-- Server info rows -->
+    <div id="left-info" style="font-size:.78rem;display:flex;flex-direction:column;gap:.55rem;"></div>
+  </aside>
+
+  <!-- ── CENTER: News ── -->
+  <main style="flex:1;min-width:0;">
+    <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:1.1rem;">— Летопись —</h2>
+    <div id="news-list" style="display:grid;gap:.9rem;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));"></div>
+    <div id="news-pagination" style="display:flex;justify-content:center;gap:.5rem;margin-top:1.25rem;"></div>
+  </main>
+
+  <!-- ── RIGHT: Castle Overseer Chat ── -->
+  <aside class="side-panel" style="width:280px;border-radius:.875rem;display:flex;flex-direction:column;height:520px;flex-shrink:0;overflow:hidden;">
+    <span class="corner-tl">✦</span><span class="corner-tr">✦</span>
+    <span class="corner-bl">✦</span><span class="corner-br">✦</span>
+
+    <!-- Chat header -->
+    <div style="padding:.85rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.6rem;flex-shrink:0;">
+      <div style="width:32px;height:32px;border-radius:50%;background:radial-gradient(circle at 40%40%,rgba(90,0,150,0.5),rgba(130,0,25,0.4));border:1px solid rgba(150,0,28,0.5);display:flex;align-items:center;justify-content:center;font-size:1rem;box-shadow:0 0 12px var(--glow-p),0 0 6px var(--glow-r);animation:rune-idle 3s ease-in-out infinite;">ᚷ</div>
+      <div>
+        <p class="gothic" style="font-size:.72rem;color:var(--gold);letter-spacing:.08em;line-height:1;">Управляющий замком</p>
+        <p style="font-size:.6rem;color:var(--muted);">Ancient Castle Overseer · Claude AI</p>
       </div>
     </div>
-  </section>
 
-  <!-- NEWS -->
-  <section>
-    <h2 class="gothic text-2xl font-bold mb-6 tracking-widest uppercase" style="color:var(--gold); letter-spacing:.15em;">— Новости —</h2>
-    <div id="news-list" class="grid gap-5 md:grid-cols-2 lg:grid-cols-3"></div>
-    <div id="news-pagination" class="flex justify-center gap-2 mt-8"></div>
-  </section>
+    <!-- Messages -->
+    <div id="chat-messages" class="chat-messages">
+      <div class="chat-welcome">
+        <div class="rune-big">ᚷ</div>
+        <p class="gothic" style="font-size:.75rem;color:var(--muted);letter-spacing:.05em;">Алтарь Сердца Замка</p>
+        <p style="font-size:.72rem;color:var(--muted);line-height:1.4;">Задайте вопрос о сервере, правилах или механиках V Rising</p>
+      </div>
+    </div>
 
-</main>
+    <!-- Input -->
+    <div class="chat-input-area">
+      <textarea id="chat-input" class="chat-textarea" placeholder="Обратитесь к Управляющему..." rows="1"
+        onkeydown="onChatKey(event)" oninput="autoResize(this)"></textarea>
+      <button id="rune-send" class="rune-btn" onclick="sendChat()" title="Отправить (Enter)">ᚱ</button>
+    </div>
+  </aside>
 
-<!-- MODAL -->
-<div id="modal-backdrop" class="modal-bg">
+</div>
+
+<!-- ══ MODAL ═════════════════════════════════════════════════════════════════ -->
+<div id="modal-bg" class="modal-bg">
   <div class="modal-box">
-    <button onclick="closeModal()" style="position:absolute;top:.75rem;right:1rem;font-size:1.5rem;color:var(--muted);background:none;border:none;cursor:pointer;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">&times;</button>
-    <p id="modal-date" class="text-xs mb-2" style="color:var(--muted);"></p>
-    <h3 id="modal-title" class="gothic text-xl font-bold mb-4" style="color:#e0c8d8;"></h3>
-    <div style="width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(181,0,42,0.5),transparent);margin-bottom:1rem;"></div>
-    <div id="modal-content" class="leading-relaxed whitespace-pre-wrap text-sm" style="color:var(--text);"></div>
+    <button onclick="closeModal()" style="position:absolute;top:.75rem;right:1rem;font-size:1.5rem;color:var(--muted);background:none;border:none;cursor:pointer;" onmouseover="this.style.color=var(--text)" onmouseout="this.style.color=var(--muted)">&times;</button>
+    <p id="modal-date" style="font-size:.7rem;color:var(--muted);margin-bottom:.4rem;"></p>
+    <h3 id="modal-title" class="gothic" style="font-size:1.2rem;font-weight:700;color:#d4c4e0;margin-bottom:.75rem;"></h3>
+    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(180,0,30,0.5),transparent);margin-bottom:1rem;"></div>
+    <div id="modal-content" style="font-size:.875rem;line-height:1.7;color:var(--text);white-space:pre-wrap;"></div>
   </div>
 </div>
 
 <script>
 const API = '/api';
+let chatHistory = [];
+let isStreaming = false;
 
-// ─── Setup guard ─────────────────────────────────────────────────────────
+// ── Setup guard ────────────────────────────────────────────────────────────
 (async () => {
   try {
-    const res = await fetch(`${API}/setup/status`);
-    const data = await res.json();
-    if (!data.completed) { window.location.href = '/setup.html'; }
+    const r = await fetch(`${API}/setup/status`);
+    const d = await r.json();
+    if (!d.completed) window.location.href = '/setup.html';
   } catch {}
 })();
 
-// ─── Nav ─────────────────────────────────────────────────────────────────
+// ── Stars ──────────────────────────────────────────────────────────────────
+(() => {
+  const c = document.getElementById('stars');
+  for (let i = 0; i < 60; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    const sz = Math.random() * 2 + 1;
+    s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*60}%;left:${Math.random()*100}%;animation-delay:${Math.random()*4}s;animation-duration:${2+Math.random()*3}s;`;
+    c.appendChild(s);
+  }
+})();
+
+// ── Nav ────────────────────────────────────────────────────────────────────
 function getToken() { return localStorage.getItem('token'); }
 function getUser()  { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } }
+function doLogout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.reload(); }
 
-function initNav() {
-  const user = getUser();
-  if (user && getToken()) {
-    document.getElementById('nav-username').textContent = user.username;
+(() => {
+  const u = getUser();
+  if (u && getToken()) {
+    document.getElementById('nav-username').textContent = u.username;
     document.getElementById('nav-username').classList.remove('hidden');
     document.getElementById('nav-login').classList.add('hidden');
     document.getElementById('nav-logout').classList.remove('hidden');
-    if (user.role === 'admin') document.getElementById('nav-admin-link').classList.remove('hidden');
+    if (u.role === 'admin') document.getElementById('nav-admin').classList.remove('hidden');
   }
-}
+})();
 
-document.getElementById('nav-logout').addEventListener('click', () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  window.location.reload();
-});
-
-// ─── Status ──────────────────────────────────────────────────────────────
-function fmtDate(iso) {
-  return new Date(iso).toLocaleDateString('ru-RU', { day:'2-digit', month:'long', year:'numeric' });
-}
+// ── Status ─────────────────────────────────────────────────────────────────
+function fmtDate(iso) { return new Date(iso).toLocaleDateString('ru-RU',{day:'2-digit',month:'short',year:'numeric'}); }
 
 async function loadStatus() {
   try {
     const d = await fetch(`${API}/monitor/status`).then(r => r.json());
-    const online = d.online;
     const pct = d.max_players > 0 ? Math.round(d.players / d.max_players * 100) : 0;
-    document.getElementById('status-card').innerHTML = `
-      <div class="flex flex-wrap items-center gap-3 mb-5">
-        <span class="gothic text-lg font-bold" style="color:#e0c8d8;">${d.name || 'V Rising Server'}</span>
-        <span class="text-xs font-bold px-3 py-1 rounded-full ${online ? 'badge-online' : 'badge-offline'}">${online ? '● ОНЛАЙН' : '● ОФЛАЙН'}</span>
+    const cls = d.online ? 'badge-on' : 'badge-off';
+    const lbl = d.online ? '● ОНЛАЙН' : '● ОФЛАЙН';
+
+    document.getElementById('hero-status').innerHTML = `
+      <span class="${cls}" style="font-size:.72rem;font-weight:700;padding:.2rem .75rem;border-radius:9999px;">${lbl}</span>
+      <span style="color:var(--muted);margin-left:.6rem;font-size:.75rem;">${d.players} / ${d.max_players} игроков</span>`;
+
+    document.getElementById('left-status').innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+        <span class="gothic" style="font-size:.8rem;color:#d4c4e0;font-weight:700;">${d.name || 'V Rising Server'}</span>
+        <span class="${cls}" style="font-size:.6rem;padding:.15rem .5rem;border-radius:9999px;font-weight:700;">${lbl}</span>
       </div>
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-6">
-        <div class="stat-block">
-          <div class="stat-value">${d.players}<span style="color:var(--muted);font-size:1rem;"> / ${d.max_players}</span></div>
-          <div class="players-bar"><div class="players-fill" style="width:${pct}%"></div></div>
-          <div class="stat-label">Игроков онлайн</div>
-        </div>
-        <div style="width:1px;background:rgba(150,0,28,0.25);align-self:stretch;margin:.25rem 0;"></div>
-        <div class="stat-block">
-          <div class="stat-value" style="font-size:1.1rem;">${d.map || '—'}</div>
-          <div class="stat-label">Карта</div>
-        </div>
-        <div style="width:1px;background:rgba(150,0,28,0.25);align-self:stretch;margin:.25rem 0;"></div>
-        <div class="stat-block">
-          <div class="stat-value" style="font-size:1.1rem;">${d.version || '—'}</div>
-          <div class="stat-label">Версия</div>
-        </div>
-        <div style="width:1px;background:rgba(150,0,28,0.25);align-self:stretch;margin:.25rem 0;"></div>
-        <div class="stat-block">
-          <div class="stat-value" style="font-size:1.1rem;">${d.vac ? '✔' : '✘'}</div>
-          <div class="stat-label">VAC защита</div>
-        </div>
+      <div class="p-bar"><div class="p-fill" style="width:${pct}%"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:.3rem;font-size:.65rem;color:var(--muted);">
+        <span>Игроков: ${d.players}</span><span>Макс: ${d.max_players}</span>
       </div>`;
+
+    document.getElementById('left-circles').innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:.4rem;">
+        <div class="stat-circle">${d.players}</div>
+        <p style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Онлайн</p>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:.4rem;">
+        <div class="stat-circle" style="font-size:.9rem;">${pct}%</div>
+        <p style="font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Заполнен</p>
+      </div>`;
+
+    document.getElementById('left-info').innerHTML = `
+      ${row('Карта', d.map || '—')}
+      ${row('Версия', d.version || '—')}
+      ${row('VAC', d.vac ? '✔ Защищён' : '✘ Нет')}`;
   } catch {
-    document.getElementById('status-card').innerHTML =
-      `<p style="color:var(--muted);">Не удалось получить статус сервера.</p>`;
+    document.getElementById('hero-status').innerHTML = `<span style="color:var(--muted);font-size:.78rem;">Статус недоступен</span>`;
   }
 }
 
-// ─── News ────────────────────────────────────────────────────────────────
+function row(k, v) {
+  return `<div style="display:flex;justify-content:space-between;border-bottom:1px solid rgba(110,0,20,0.12);padding-bottom:.4rem;">
+    <span style="color:var(--muted);">${k}</span>
+    <span style="color:#d4c4e0;font-weight:600;">${v}</span>
+  </div>`;
+}
+
+// ── News ───────────────────────────────────────────────────────────────────
 async function loadNews(page = 1) {
-  const data = await fetch(`${API}/news?page=${page}&per_page=6`).then(r => r.json());
+  const data = await fetch(`${API}/news?page=${page}&per_page=9`).then(r => r.json());
   const list = document.getElementById('news-list');
   list.innerHTML = '';
-
-  if (!data.items.length) {
-    list.innerHTML = `<p style="color:var(--muted);" class="col-span-3">Новостей пока нет.</p>`;
-    return;
-  }
-
+  if (!data.items.length) { list.innerHTML = `<p style="color:var(--muted);">Новостей нет.</p>`; return; }
   data.items.forEach(n => {
     const thumb = n.thumbnail_url
-      ? `<img src="${n.thumbnail_url}" alt="" class="news-thumb rounded-t-xl">`
-      : `<div class="news-thumb-placeholder rounded-t-xl">⚔</div>`;
-    const el = document.createElement('div');
-    el.className = 'glass-card rounded-xl overflow-hidden cursor-pointer';
-    el.style.cssText = 'transition:transform .2s,box-shadow .25s;';
-    el.onmouseenter = () => el.style.transform = 'translateY(-3px)';
-    el.onmouseleave = () => el.style.transform = '';
-    el.onclick = () => openNews(n.slug);
-    el.innerHTML = `
-      ${thumb}
-      <div style="padding:1rem;">
-        <p style="color:var(--muted);font-size:.7rem;margin-bottom:.4rem;">${fmtDate(n.created_at)} · ${n.author.username}</p>
-        <h3 class="gothic" style="color:#e0c8d8;font-size:1rem;font-weight:700;margin-bottom:.5rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${n.title}</h3>
-        <p style="color:var(--muted);font-size:.85rem;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">${n.summary}</p>
+      ? `<img src="${n.thumbnail_url}" alt="" class="news-thumb">`
+      : `<div class="news-no-thumb">⚔</div>`;
+    const card = document.createElement('div');
+    card.className = 'news-card';
+    card.innerHTML = `${thumb}
+      <div style="padding:.75rem;">
+        <p style="font-size:.65rem;color:var(--muted);margin-bottom:.3rem;">${fmtDate(n.created_at)} · ${n.author.username}</p>
+        <h3 class="gothic" style="font-size:.85rem;font-weight:700;color:#d4c4e0;line-height:1.3;margin-bottom:.35rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${n.title}</h3>
+        <p style="font-size:.75rem;color:var(--muted);line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${n.summary}</p>
       </div>`;
-    list.appendChild(el);
+    card.onclick = () => openNews(n.slug);
+    list.appendChild(card);
   });
-
   const pag = document.getElementById('news-pagination');
   pag.innerHTML = '';
   for (let i = 1; i <= data.pages; i++) {
-    const btn = document.createElement('button');
-    btn.className = 'pagination-btn' + (i === page ? ' active' : '');
-    btn.textContent = i;
-    btn.onclick = () => loadNews(i);
-    pag.appendChild(btn);
+    const b = document.createElement('button');
+    b.className = 'pg-btn' + (i === page ? ' active' : '');
+    b.textContent = i; b.onclick = () => loadNews(i);
+    pag.appendChild(b);
   }
 }
 
@@ -285,20 +510,100 @@ async function openNews(slug) {
     document.getElementById('modal-title').textContent = n.title;
     document.getElementById('modal-date').textContent = `${fmtDate(n.created_at)} · ${n.author.username}`;
     document.getElementById('modal-content').textContent = n.content;
-    document.getElementById('modal-backdrop').classList.add('open');
+    document.getElementById('modal-bg').classList.add('open');
     document.body.style.overflow = 'hidden';
   } catch { alert('Не удалось загрузить новость.'); }
 }
-
-function closeModal() {
-  document.getElementById('modal-backdrop').classList.remove('open');
-  document.body.style.overflow = '';
-}
-
-document.getElementById('modal-backdrop').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+function closeModal() { document.getElementById('modal-bg').classList.remove('open'); document.body.style.overflow = ''; }
+document.getElementById('modal-bg').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-initNav();
+// ── Chat ───────────────────────────────────────────────────────────────────
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 90) + 'px'; }
+
+function onChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+}
+
+function appendMsg(role, text) {
+  const msgs = document.getElementById('chat-messages');
+  // Remove welcome screen on first message
+  const welcome = msgs.querySelector('.chat-welcome');
+  if (welcome) welcome.remove();
+
+  const el = document.createElement('div');
+  el.className = role === 'user' ? 'msg-user' : 'msg-ai';
+  if (role === 'assistant') el.innerHTML = `<div class="author">ᚷ Управляющий</div><span class="msg-text"></span>`;
+  else el.textContent = text;
+  msgs.appendChild(el);
+  msgs.scrollTop = msgs.scrollHeight;
+  return role === 'assistant' ? el.querySelector('.msg-text') : null;
+}
+
+async function sendChat() {
+  if (isStreaming) return;
+  const input = document.getElementById('chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+
+  input.value = ''; input.style.height = 'auto';
+  appendMsg('user', message);
+  chatHistory.push({ role: 'user', content: message });
+
+  isStreaming = true;
+  const btn = document.getElementById('rune-send');
+  btn.disabled = true;
+
+  const textEl = appendMsg('assistant', '');
+  let fullText = '';
+
+  try {
+    const res = await fetch(`${API}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message, history: chatHistory.slice(-20) }),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      textEl.textContent = err.detail || 'Ошибка соединения.';
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6);
+        if (payload === '[DONE]') break;
+        try {
+          const obj = JSON.parse(payload);
+          if (obj.text) { fullText += obj.text; textEl.textContent = fullText; }
+          if (obj.error) { textEl.textContent = '⚠ ' + obj.error; }
+        } catch {}
+      }
+      document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+    }
+
+    chatHistory.push({ role: 'assistant', content: fullText });
+  } catch (err) {
+    if (textEl) textEl.textContent = '⚠ Ошибка соединения с Управляющим.';
+  } finally {
+    isStreaming = false;
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
 loadStatus();
 setInterval(loadStatus, 30000);
 loadNews(1);

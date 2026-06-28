@@ -116,6 +116,16 @@ class PaginatedNews(BaseModel):
     pages: int
 
 
+class ChatHistoryItem(BaseModel):
+    role: str
+    content: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+    history: list[ChatHistoryItem] = []
+
+
 class SetupComplete(BaseModel):
     username: str
     email: EmailStr

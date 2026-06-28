@@ -195,7 +195,9 @@ SECRET_KEY=${SECRET_KEY}
 DATABASE_URL=sqlite+aiosqlite:////data/vrising.db
 VRISING_SERVER_IP=127.0.0.1
 VRISING_SERVER_PORT=27016
+ANTHROPIC_API_KEY=
 ENV
+warn "Добавьте ANTHROPIC_API_KEY в $INSTALL_DIR/.env для активации чата 'Управляющий замком'."
 ok ".env создан."
 
 # ─── 6. Сборка и запуск ──────────────────────────────────────────────────

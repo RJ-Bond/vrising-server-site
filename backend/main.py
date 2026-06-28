@@ -1,11 +1,13 @@
 import os
 import math
 import re
+import json
 from contextlib import asynccontextmanager
 from datetime import datetime
 
 from fastapi import FastAPI, Depends, HTTPException, status, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
 
@@ -31,7 +33,14 @@ from .schemas import (
     SettingUpdate,
     SettingOut,
     SetupComplete,
+    ChatRequest,
 )
+
+OVERSEER_PROMPT = """Ты — Тёмный Управляющий Замком, древний вампирский дух, хранитель этого сервера V Rising.
+Твоя задача — помогать игрокам: отвечать на вопросы об игровом сервере, правилах, механиках V Rising, событиях.
+Стиль: готический, величественный, слегка таинственный. Обращайся к игрокам как «смертный», «странник» или по имени.
+Отвечай на языке вопроса (русский или английский). Максимум 3–4 предложения. Будь полезным и по делу.
+Если не знаешь конкретных данных сервера — говори об этом честно, но оставайся в образе."""
 from .monitor import get_server_status
 
 
@@ -140,6 +149,46 @@ async def setup_complete(body: SetupComplete, db: AsyncSession = Depends(get_db)
     await db.refresh(admin)
     token = create_access_token({"sub": str(admin.id)})
     return TokenOut(access_token=token, user=UserOut.model_validate(admin))
+
+
+# ─── Castle Overseer Chat ────────────────────────────────────────────────────
+
+@app.post("/api/chat")
+async def castle_overseer_chat(body: ChatRequest):
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        raise HTTPException(status_code=503, detail="Управляющий замком сейчас недоступен. Добавьте ANTHROPIC_API_KEY в .env")
+    try:
+        from anthropic import AsyncAnthropic
+        client = AsyncAnthropic(api_key=api_key)
+        messages = [
+            {"role": h.role, "content": h.content}
+            for h in body.history[-10:]
+            if h.role in ("user", "assistant")
+        ]
+        messages.append({"role": "user", "content": body.message})
+
+        async def generate():
+            try:
+                async with client.messages.stream(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=512,
+                    system=OVERSEER_PROMPT,
+                    messages=messages,
+                ) as stream:
+                    async for text in stream.text_stream:
+                        yield f"data: {json.dumps({'text': text})}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            yield "data: [DONE]\n\n"
+
+        return StreamingResponse(
+            generate(),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+    except ImportError:
+        raise HTTPException(status_code=503, detail="Библиотека anthropic не установлена")
 
 
 # ─── Auth ───────────────────────────────────────────────────────────────────
