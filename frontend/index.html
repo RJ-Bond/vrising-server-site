@@ -657,12 +657,17 @@
       border-bottom:1px solid rgba(110,0,20,0.2); backdrop-filter:blur(12px);
     }
     .status-bar-inner {
-      max-width:1280px; margin:0 auto; padding:.55rem 1.25rem;
-      display:flex; align-items:center; gap:0; flex-wrap:wrap;
+      max-width:1280px; margin:0 auto; padding:.4rem 1.25rem;
+      display:flex; flex-direction:column; gap:0;
     }
+    .sb-row {
+      display:flex; align-items:center; gap:0;
+      border-bottom:1px solid rgba(110,0,20,0.12);
+    }
+    .sb-row:last-child { border-bottom:none; }
     .sb-item {
       display:flex; align-items:center; gap:.45rem;
-      padding:.2rem 1.1rem; border-right:1px solid rgba(110,0,20,0.2);
+      padding:.22rem 1.1rem; border-right:1px solid rgba(110,0,20,0.2);
       font-size:.72rem; color:var(--muted); white-space:nowrap;
     }
     .sb-val { font-family:'Oswald',sans-serif; font-size:.85rem; font-weight:500;
@@ -674,10 +679,7 @@
       padding:.1rem .7rem .1rem .15rem; border-right:1px solid rgba(110,0,20,0.2);
       white-space:nowrap; align-self:center;
     }
-    .sb-srv-sep {
-      width:1px; align-self:stretch; margin:0 .3rem;
-      background:rgba(180,0,40,0.28);
-    }
+    .sb-srv-sep { display:none; }
 
     /* ── Event banner ── */
     .event-banner {
@@ -899,35 +901,38 @@
 <!-- ══ STATUS BAR ═══════════════════════════════════════════════════════════ -->
 <div class="status-bar">
   <div class="status-bar-inner">
-    <!-- Server 1 -->
-    <span class="sb-srv-tag" id="sb-s1name">Сервер 1</span>
-    <div class="sb-item">
-      <span class="sb-icon">🩸</span>
-      <span style="color:var(--muted);">Игрок(ов)</span>
-      <span class="sb-val" id="sb-online1">—</span>
+    <!-- Server 1 row -->
+    <div class="sb-row">
+      <span class="sb-srv-tag" id="sb-s1name">Сервер 1</span>
+      <div class="sb-item">
+        <span class="sb-icon">🩸</span>
+        <span style="color:var(--muted);">Игрок(ов)</span>
+        <span class="sb-val" id="sb-online1">—</span>
+      </div>
+      <div class="sb-item">
+        <span class="sb-icon">⬆</span>
+        <span style="color:var(--muted);">Аптайм 24ч</span>
+        <span class="sb-val" id="sb-uptime1">—</span>
+      </div>
+      <div class="sb-item" style="border-right:none">
+        <span class="sb-icon">⚔</span>
+        <span style="color:var(--muted);">До вайпа</span>
+        <span class="sb-val" id="sb-wipe1">—</span>
+      </div>
     </div>
-    <div class="sb-item">
-      <span class="sb-icon">⬆</span>
-      <span style="color:var(--muted);">Аптайм 24ч</span>
-      <span class="sb-val" id="sb-uptime1">—</span>
-    </div>
-    <div class="sb-item" id="sb-s1-wipe-row">
-      <span class="sb-icon">⚔</span>
-      <span style="color:var(--muted);">До вайпа</span>
-      <span class="sb-val" id="sb-wipe1">—</span>
-    </div>
-    <!-- Server 2 (shown by JS when server2_ip is configured) -->
-    <div class="sb-srv-sep" id="sb-s2sep" style="display:none"></div>
-    <span class="sb-srv-tag" id="sb-s2name" style="display:none">Сервер 2</span>
-    <div class="sb-item" id="sb-s2online-row" style="display:none">
-      <span class="sb-icon">🩸</span>
-      <span style="color:var(--muted);">Игрок(ов)</span>
-      <span class="sb-val" id="sb-online2">—</span>
-    </div>
-    <div class="sb-item" id="sb-s2wipe-row" style="display:none;border-right:none">
-      <span class="sb-icon">⚔</span>
-      <span style="color:var(--muted);">До вайпа</span>
-      <span class="sb-val" id="sb-wipe2">—</span>
+    <!-- Server 2 row (shown by JS when enabled) -->
+    <div class="sb-row" id="sb-s2-row" style="display:none">
+      <span class="sb-srv-tag" id="sb-s2name">Сервер 2</span>
+      <div class="sb-item" id="sb-s2online-row">
+        <span class="sb-icon">🩸</span>
+        <span style="color:var(--muted);">Игрок(ов)</span>
+        <span class="sb-val" id="sb-online2">—</span>
+      </div>
+      <div class="sb-item" style="border-right:none" id="sb-s2wipe-row">
+        <span class="sb-icon">⚔</span>
+        <span style="color:var(--muted);">До вайпа</span>
+        <span class="sb-val" id="sb-wipe2">—</span>
+      </div>
     </div>
   </div>
 </div>
@@ -1716,12 +1721,9 @@ async function loadStatus2() {
       return;
     }
     section.style.display = 'block';
-    // Show server 2 section in status bar
-    ['sb-s2sep','sb-s2name','sb-s2online-row'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.style.display = '';
-    });
-    const sw2 = document.getElementById('sb-s2wipe-row');
-    if (sw2) sw2.style.display = 'flex';
+    // Show server 2 row in status bar
+    const sr2 = document.getElementById('sb-s2-row');
+    if (sr2) sr2.style.display = '';
     // server2 title stays as static "— Сервер 2 —"
     renderServerBlock(d, '2');
     window._sb_online2 = d.online ? d.players : 0;
