@@ -99,6 +99,7 @@
     .g-panel {
       background: rgba(20,10,25,0.65);
       border: 1px solid rgba(110,0,150,0.18);
+      border-radius: 1rem !important;
       box-shadow:
         0 0 0 1px rgba(160,0,80,0.08),
         0 8px 32px rgba(0,0,0,0.55),
@@ -107,15 +108,29 @@
       backdrop-filter: blur(12px);
       position: relative;
     }
-    .g-panel::before, .g-panel::after,
     .g-panel > .corner-tl, .g-panel > .corner-tr,
     .g-panel > .corner-bl, .g-panel > .corner-br {
-      position: absolute; font-size: 10px; color: rgba(180,0,30,0.5); line-height: 1;
+      position: absolute; font-size: 11px; line-height: 1;
+      color: rgba(210,0,45,0.7);
+      text-shadow: 0 0 8px rgba(210,0,45,0.8), 0 0 18px rgba(140,0,180,0.5);
     }
-    .corner-tl { top: 4px; left: 6px; content: '✦'; }
-    .corner-tr { top: 4px; right: 6px; content: '✦'; }
-    .corner-bl { bottom: 4px; left: 6px; content: '✦'; }
-    .corner-br { bottom: 4px; right: 6px; content: '✦'; }
+    .corner-tl { top: 5px; left: 7px; }
+    .corner-tr { top: 5px; right: 7px; }
+    .corner-bl { bottom: 5px; left: 7px; }
+    .corner-br { bottom: 5px; right: 7px; }
+    /* Thin bracket lines at corners */
+    .corner-tl::before,.corner-tl::after,.corner-tr::before,.corner-tr::after,
+    .corner-bl::before,.corner-bl::after,.corner-br::before,.corner-br::after {
+      content:''; position:absolute; background:rgba(200,0,50,0.35);
+    }
+    .corner-tl::before { width:10px; height:1px; top:5px; left:13px; }
+    .corner-tl::after  { width:1px; height:10px; top:13px; left:5px; }
+    .corner-tr::before { width:10px; height:1px; top:5px; right:13px; }
+    .corner-tr::after  { width:1px; height:10px; top:13px; right:5px; }
+    .corner-bl::before { width:10px; height:1px; bottom:5px; left:13px; }
+    .corner-bl::after  { width:1px; height:10px; bottom:13px; left:5px; }
+    .corner-br::before { width:10px; height:1px; bottom:5px; right:13px; }
+    .corner-br::after  { width:1px; height:10px; bottom:13px; right:5px; }
 
     /* ── Status badge ── */
     .badge-on  { background:rgba(0,70,15,.35); border:1px solid rgba(0,180,40,.45); color:#4ade80; box-shadow:0 0 10px rgba(0,180,40,.2); }
@@ -125,8 +140,8 @@
     .stat-circle {
       width: 72px; height: 72px; border-radius: 50%;
       background: radial-gradient(circle at 40% 40%, rgba(40,5,60,0.9), rgba(10,0,16,0.95));
-      border: 1px solid rgba(120,0,24,0.5);
-      box-shadow: 0 0 18px rgba(123,0,204,0.15), inset 0 0 12px rgba(0,0,0,0.6);
+      border: 1px solid rgba(160,0,40,0.45);
+      box-shadow: 0 0 16px rgba(190,0,35,0.25), 0 0 8px rgba(120,0,180,0.2), inset 0 0 14px rgba(0,0,0,0.65);
       display: flex; align-items: center; justify-content: center;
       font-size: 1.3rem;
     }
@@ -137,14 +152,15 @@
 
     /* ── News card ── */
     .news-card {
-      background: var(--panel); border: 1px solid var(--border);
-      border-radius: .75rem; overflow: hidden; cursor: pointer;
+      background: rgba(20,10,25,0.6); border: 1px solid rgba(110,0,150,0.16);
+      border-radius: 1rem; overflow: hidden; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 10px rgba(80,0,100,0.08);
       transition: transform .2s, border-color .25s, box-shadow .25s;
     }
     .news-card:hover {
       transform: translateY(-3px);
-      border-color: rgba(180,0,30,0.6);
-      box-shadow: 0 0 28px rgba(204,0,40,0.2);
+      border-color: rgba(190,0,40,0.45);
+      box-shadow: 0 0 28px rgba(190,0,35,0.28), 0 0 12px rgba(120,0,160,0.18), inset 0 0 20px rgba(100,0,30,0.06);
     }
     .news-thumb { width:100%; height:7rem; object-fit:cover; }
     .news-no-thumb {
@@ -157,10 +173,10 @@
     /* ── Pagination ── */
     .pg-btn {
       background: rgba(14,3,24,0.8); border:1px solid rgba(110,0,20,0.3);
-      color: var(--muted); padding:.35rem .75rem; border-radius:.4rem;
+      color: var(--muted); padding:.35rem .75rem; border-radius:.5rem;
       cursor:pointer; font-size:.8rem; transition:all .2s;
     }
-    .pg-btn:hover, .pg-btn.active { border-color:var(--crimson); color:var(--text); box-shadow:0 0 8px var(--glow-r); }
+    .pg-btn:hover, .pg-btn.active { border-color:var(--crimson); color:var(--text); box-shadow:0 0 14px rgba(200,0,35,0.45), inset 0 0 8px rgba(170,0,30,0.12); }
 
     /* ── Chat ── */
     .chat-messages {
@@ -251,8 +267,8 @@
     .rich-content em { color:#b8a0cc; }
 
     /* ── Buttons ── */
-    .btn-sm { background:linear-gradient(135deg,#6a001a,#a00022); border:none; border-radius:.4rem; padding:.4rem .9rem; color:#fff; font-size:.75rem; font-weight:700; cursor:pointer; box-shadow:0 0 12px rgba(160,0,34,0.3); transition:all .2s; }
-    .btn-sm:hover { box-shadow:0 0 22px rgba(204,0,40,0.5); transform:translateY(-1px); }
+    .btn-sm { background:linear-gradient(135deg,#6a001a,#a00022); border:none; border-radius:.55rem; padding:.4rem .9rem; color:#fff; font-size:.75rem; font-weight:700; cursor:pointer; box-shadow:0 0 14px rgba(180,0,30,0.45), inset 0 0 8px rgba(180,0,30,0.14); transition:all .2s; }
+    .btn-sm:hover { box-shadow:0 0 26px rgba(210,0,40,0.7), 0 0 10px rgba(210,0,40,0.3), inset 0 0 12px rgba(180,0,30,0.2); transform:translateY(-1px); }
 
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
@@ -261,12 +277,12 @@
     @keyframes pulse { 0%,100% { opacity:.5; } 50% { opacity:.85; } }
     .nav-link-item {
       display:flex; align-items:center; gap:.6rem;
-      padding:.55rem .8rem; border-radius:.5rem;
+      padding:.55rem .8rem; border-radius:.6rem;
       background:rgba(110,0,20,0.1); border:1px solid rgba(110,0,20,0.2);
       color:var(--text); text-decoration:none; font-size:.82rem;
-      transition:background .2s, border-color .2s;
+      transition:background .2s, border-color .2s, box-shadow .2s;
     }
-    .nav-link-item:hover { background:rgba(150,0,28,0.22); border-color:rgba(150,0,28,0.45); }
+    .nav-link-item:hover { background:rgba(150,0,28,0.22); border-color:rgba(160,0,35,0.5); box-shadow:0 0 12px rgba(190,0,35,0.22), inset 0 0 10px rgba(140,0,25,0.1); }
     .discord-btn {
       display:flex; align-items:center; gap:.65rem;
       padding:.6rem .8rem; border-radius:.5rem;
