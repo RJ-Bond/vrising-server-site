@@ -5,6 +5,7 @@ import json
 import uuid
 import shutil
 import time
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
@@ -959,3 +960,123 @@ async def delete_leaderboard_record(
         raise HTTPException(status_code=404, detail="Record not found")
     await db.delete(rec)
     await db.commit()
+
+
+# ─── System operations (admin) ────────────────────────────────────────────────
+
+async def _stream_cmd(*cmd: str):
+    """Async generator that yields decoded lines from a subprocess command."""
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+    async for raw in proc.stdout:
+        line = raw.decode(errors="replace").rstrip()
+        if line:
+            yield line
+    await proc.wait()
+    yield f"__rc__{proc.returncode}"
+
+
+@app.post("/api/admin/ssl/install")
+async def ssl_install(
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Setting).where(Setting.key.in_(["https_domain", "https_email"]))
+    )
+    smap = {s.key: s.value for s in result.scalars()}
+    domain = smap.get("https_domain", "").strip()
+    email = smap.get("https_email", "").strip()
+    if not domain or not email:
+        raise HTTPException(400, "Заполните домен и email в настройках HTTPS")
+
+    async def stream():
+        def sse(msg: str) -> str:
+            return f"data: {msg}\n\n"
+
+        yield sse(f"🔐 Запрашиваем сертификат Let's Encrypt для {domain}...")
+
+        rc = 0
+        async for line in _stream_cmd(
+            "docker", "run", "--rm",
+            "-v", "vrising_letsencrypt:/etc/letsencrypt",
+            "-v", "vrising_certbot_webroot:/var/www/certbot",
+            "certbot/certbot",
+            "certonly", "--webroot",
+            "--webroot-path=/var/www/certbot",
+            "-d", domain,
+            "--email", email,
+            "--agree-tos", "--non-interactive", "--no-eff-email",
+        ):
+            if line.startswith("__rc__"):
+                rc = int(line[6:])
+            else:
+                yield sse(line)
+
+        if rc != 0:
+            yield sse("❌ Ошибка получения сертификата. Проверьте что A-запись домена указывает на этот сервер.")
+            yield sse("DONE:error")
+            return
+
+        yield sse("📝 Обновляем конфигурацию nginx...")
+        try:
+            workspace = "/workspace"
+            with open(f"{workspace}/nginx/nginx-ssl.conf") as f:
+                ssl_conf = f.read().replace("DOMAIN", domain)
+            with open(f"{workspace}/nginx/nginx.conf", "w") as f:
+                f.write(ssl_conf)
+            yield sse(f"✅ nginx.conf обновлён для домена {domain}")
+        except Exception as exc:
+            yield sse(f"❌ Ошибка записи конфига: {exc}")
+            yield sse("DONE:error")
+            return
+
+        yield sse("🔄 Перезапускаем nginx...")
+        rc2 = 0
+        async for line in _stream_cmd("docker", "exec", "vrising_nginx", "nginx", "-s", "reload"):
+            if line.startswith("__rc__"):
+                rc2 = int(line[6:])
+            else:
+                yield sse(line)
+
+        if rc2 != 0:
+            async for line in _stream_cmd("docker", "restart", "vrising_nginx"):
+                if not line.startswith("__rc__"):
+                    yield sse(line)
+
+        yield sse("🎉 HTTPS успешно настроен! Сайт теперь доступен по https://" + domain)
+        yield sse("DONE:ok")
+
+    return StreamingResponse(stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/admin/update")
+async def site_update(_: User = Depends(get_admin_user)):
+    async def stream():
+        def sse(msg: str) -> str:
+            return f"data: {msg}\n\n"
+
+        yield sse("📦 Получаем обновления из репозитория...")
+
+        rc = 0
+        async for line in _stream_cmd("git", "-C", "/workspace", "pull", "--ff-only"):
+            if line.startswith("__rc__"):
+                rc = int(line[6:])
+            else:
+                yield sse(line)
+
+        if rc != 0:
+            yield sse("❌ Ошибка git pull. Убедитесь что репозиторий настроен и нет конфликтов.")
+            yield sse("DONE:error")
+            return
+
+        yield sse("✅ Код обновлён. Frontend применён мгновенно.")
+        yield sse("🔄 Backend перезагружается автоматически через uvicorn --reload...")
+        yield sse("DONE:ok")
+
+    return StreamingResponse(stream(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

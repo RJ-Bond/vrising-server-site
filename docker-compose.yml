@@ -1,3 +1,5 @@
+name: vrising
+
 services:
   web:
     build: .
@@ -11,6 +13,9 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
     volumes:
       - db_data:/data
+      - ./backend:/app/backend
+      - .:/workspace
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - vrising_net
 
@@ -20,9 +25,12 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./frontend:/usr/share/nginx/html:ro
+      - letsencrypt_data:/etc/letsencrypt:ro
+      - certbot_webroot:/var/www/certbot:ro
     depends_on:
       - web
     networks:
@@ -30,6 +38,10 @@ services:
 
 volumes:
   db_data:
+  letsencrypt_data:
+    name: vrising_letsencrypt
+  certbot_webroot:
+    name: vrising_certbot_webroot
 
 networks:
   vrising_net:
