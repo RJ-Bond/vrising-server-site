@@ -252,10 +252,12 @@ async def server_status(db: AsyncSession = Depends(get_db)):
     cfg = {s.key: s.value for s in result.scalars().all()}
     ip = cfg.get("server_ip", "127.0.0.1")
     port = int(cfg.get("server_port", "27016"))
-    fallback = cfg.get("server_name", "V Rising Server")
+    admin_name = cfg.get("server_name", "").strip()
     data = await get_server_status(ip, port)
-    if not data.get("online") or data.get("name") == "Unknown":
-        data = {**data, "name": fallback}
+    if admin_name:
+        data = {**data, "name": admin_name}
+    elif not data.get("name") or data.get("name") == "Unknown":
+        data = {**data, "name": "V Rising Server"}
     return data
 
 
@@ -266,15 +268,17 @@ async def server_status2(db: AsyncSession = Depends(get_db)):
     )
     cfg = {s.key: s.value for s in result.scalars().all()}
     ip = cfg.get("server2_ip", "").strip()
-    fallback = cfg.get("server2_name", "Server 2")
+    admin_name = cfg.get("server2_name", "").strip()
     if not ip:
-        return {"enabled": False, "online": False, "name": fallback,
+        return {"enabled": False, "online": False, "name": admin_name or "Server 2",
                 "players": 0, "max_players": 0, "players_list": []}
     port_str = cfg.get("server2_port", "27016")
     port = int(port_str) if port_str.isdigit() else 27016
     data = await get_server_status(ip, port)
-    if not data.get("online") or data.get("name") == "Unknown":
-        data = {**data, "name": fallback}
+    if admin_name:
+        data = {**data, "name": admin_name}
+    elif not data.get("name") or data.get("name") == "Unknown":
+        data = {**data, "name": "Server 2"}
     return {"enabled": True, **data}
 
 
