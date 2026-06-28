@@ -151,7 +151,10 @@ async function loadProfile() {
     const res = await fetch(`${API}/auth/me`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    if (!res.ok) { doLogout(); return; }
+    if (!res.ok) {
+      document.getElementById('profile-error').style.display = '';
+      return;
+    }
     const u = await res.json();
 
     const initial = (u.username || '?').charAt(0).toUpperCase();

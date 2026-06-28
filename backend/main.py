@@ -15,7 +15,7 @@ from fastapi.responses import StreamingResponse, FileResponse
 UPLOAD_DIR = Path("/data/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete
+from sqlalchemy import select, func, delete, text
 
 from .database import engine, get_db
 from .models import Base, User, News, Setting
@@ -93,6 +93,14 @@ async def _seed_defaults(db: AsyncSession):
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # add columns that may be missing in existing DBs (SQLite ALTER TABLE)
+        for stmt in [
+            "ALTER TABLE news ADD COLUMN tags VARCHAR(256) DEFAULT ''",
+        ]:
+            try:
+                await conn.execute(text(stmt))
+            except Exception:
+                pass  # column already exists
     async with AsyncSession(engine, expire_on_commit=False) as db:
         await _seed_defaults(db)
     yield
