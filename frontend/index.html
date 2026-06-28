@@ -857,9 +857,10 @@ function renderServerBlock(d, sfx) {
 
   const statusEl = document.getElementById('left-status' + sfx);
   if (statusEl) statusEl.innerHTML = `
-    <div style="margin-bottom:.55rem;">
+    <div style="margin-bottom:.35rem;">
       <span class="${cls}" style="font-size:.6rem;padding:.15rem .6rem;border-radius:9999px;font-weight:700;">${dot} ${badgeTxt}</span>
     </div>
+    <div style="font-size:.82rem;color:#d4c4e0;font-weight:600;line-height:1.3;margin-bottom:.45rem;word-break:break-word;">${esc(d.name)}</div>
     <div class="p-bar"><div class="p-fill" style="width:${pct}%"></div></div>`;
 
   const circEl = document.getElementById('left-circles' + sfx);
@@ -987,8 +988,7 @@ async function loadStatus2() {
       return;
     }
     section.style.display = 'block';
-    const titleEl = document.getElementById('server2-title');
-    if (titleEl) titleEl.textContent = `— ${d.name} —`;
+    // server2 title stays as static "— Сервер 2 —"
     renderServerBlock(d, '2');
     if (_prevOnline2 !== null && _prevOnline2 !== d.online) {
       d.online
