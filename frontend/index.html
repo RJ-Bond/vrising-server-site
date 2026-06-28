@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>V Rising — Замок</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600;700&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
@@ -486,8 +486,8 @@ function renderPlayerList(players, elId) {
   const sorted = [...players].sort((a, b) => b.duration - a.duration);
   el.innerHTML = sorted.map(p => `
     <div style="display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid rgba(110,0,20,0.1);">
-      <span style="color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:68%;">${esc(p.name) || 'Аноним'}</span>
-      <span style="color:var(--muted);font-size:.7rem;flex-shrink:0;margin-left:.4rem;">${fmtDuration(p.duration)}</span>
+      <span style="font-family:'Philosopher',serif;color:var(--text);font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:68%;">${esc(p.name) || 'Аноним'}</span>
+      <span style="font-family:'Philosopher',serif;color:var(--muted);font-size:.72rem;flex-shrink:0;margin-left:.4rem;">${fmtDuration(p.duration)}</span>
     </div>`).join('');
 }
 
