@@ -334,6 +334,17 @@
             </div>
             <p class="s-desc">Пустое — берётся из игры (A2S)</p>
           </div>
+          <div class="s-field">
+            <label style="display:flex;align-items:center;gap:.4rem;">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              Дата следующего вайпа
+            </label>
+            <div class="s-field-row">
+              <input id="setting-wipe_date" type="datetime-local" class="dark-input">
+              <button class="s-save-btn" onclick="saveSetting('wipe_date')">Сохранить</button>
+            </div>
+            <p class="s-desc">Показывает таймер обратного отсчёта на главной. Оставьте пустым — таймер скрыт</p>
+          </div>
         </div>
 
         <!-- Server 2 -->
@@ -726,7 +737,7 @@ async function loadSettings() {
   const settings = await res.json();
   const map = {};
   settings.forEach(s => { map[s.key] = s.value; });
-  ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email'].forEach(key => {
+  ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email','wipe_date'].forEach(key => {
     const el = document.getElementById(`setting-${key}`);
     if (el && map[key] !== undefined) el.value = map[key];
   });

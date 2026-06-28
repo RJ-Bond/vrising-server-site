@@ -565,6 +565,11 @@
     }
     .ic-rule:last-child { border-bottom:none; }
     .ic-rule::before { content:'✦'; color:rgba(210,0,45,0.7); font-size:.52rem; flex-shrink:0; margin-top:.15rem; }
+    .wipe-digit {
+      font-family:'Cinzel',serif; font-size:1.45rem; font-weight:700;
+      color:#c8e8d0; letter-spacing:.04em;
+      text-shadow:0 0 18px rgba(40,180,80,0.35);
+    }
     .blood-moon-digit {
       font-family:'Cinzel',serif; font-size:1.45rem; font-weight:700;
       color:#ecd8e0; letter-spacing:.04em;
@@ -727,6 +732,12 @@
         <div class="ic-title" style="margin-bottom:.4rem;">Кровавое полнолуние</div>
         <div class="blood-moon-digit" id="blood-moon-timer">—</div>
         <p style="font-size:.63rem;color:var(--muted);margin-top:.3rem;">до следующего полнолуния</p>
+      </div>
+      <div id="wipe-card" class="info-card" style="display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(3,14,8,0.82);border-color:rgba(0,160,60,0.2);">
+        <div style="font-size:2rem;line-height:1;margin-bottom:.45rem;filter:drop-shadow(0 0 12px rgba(40,200,80,0.45));">🗡️</div>
+        <div class="ic-title" style="margin-bottom:.4rem;color:#7ecf9a;">Следующий вайп</div>
+        <div class="wipe-digit" id="wipe-timer">—</div>
+        <p id="wipe-date-label" style="font-size:.63rem;color:var(--muted);margin-top:.3rem;"></p>
       </div>
     </div>
   </main>
@@ -1451,6 +1462,18 @@ async function loadSiteSettings() {
         wrap.style.display = '';
       }
     }
+
+    const wipeDateStr = (d.wipe_date || '').trim();
+    if (wipeDateStr) {
+      const parsed = new Date(wipeDateStr);
+      if (!isNaN(parsed)) {
+        _wipeDate = parsed;
+        const card = document.getElementById('wipe-card');
+        if (card) card.style.display = 'flex';
+        updateWipeTimer();
+        setInterval(updateWipeTimer, 60000);
+      }
+    }
   } catch {}
 }
 
@@ -1460,6 +1483,27 @@ async function loadVersion() {
     const el = document.getElementById('footer-version');
     if (el) el.textContent = `Версия: ${d.version || 'dev'}`;
   } catch {}
+}
+
+// ── Wipe countdown ─────────────────────────────────────────────────────────
+let _wipeDate = null;
+
+function updateWipeTimer() {
+  const card = document.getElementById('wipe-card');
+  const timerEl = document.getElementById('wipe-timer');
+  const labelEl = document.getElementById('wipe-date-label');
+  if (!card || !timerEl || !_wipeDate) return;
+  const diff = _wipeDate.getTime() - Date.now();
+  if (diff <= 0) {
+    timerEl.textContent = 'Вайп!';
+    labelEl.textContent = 'Сервер сброшен';
+    return;
+  }
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  timerEl.textContent = d > 0 ? `${d}д ${h}ч ${m}м` : `${h}ч ${m}м`;
+  labelEl.textContent = _wipeDate.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 // ── Blood moon countdown ────────────────────────────────────────────────────

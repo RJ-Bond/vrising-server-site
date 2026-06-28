@@ -74,6 +74,7 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="server2_ip", value=""),
         Setting(key="server2_port", value="27016"),
         Setting(key="discord_server_id", value=""),
+        Setting(key="wipe_date", value=""),
     ]
     for s in default_settings:
         existing = await db.execute(select(Setting).where(Setting.key == s.key))
@@ -623,7 +624,7 @@ async def serve_upload(filename: str):
 
 @app.get("/api/settings/public")
 async def get_public_settings(db: AsyncSession = Depends(get_db)):
-    keys = ["site_title", "site_logo_url", "discord_url", "discord_server_id", "bg_image_url", "server_ip", "server_port"]
+    keys = ["site_title", "site_logo_url", "discord_url", "discord_server_id", "bg_image_url", "server_ip", "server_port", "wipe_date"]
     result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
     settings = result.scalars().all()
     return {s.key: s.value for s in settings}
