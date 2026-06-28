@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V Rising — Первичная настройка</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --accent: #b5002a;
+      --accent-glow: rgba(181,0,42,0.45);
+      --card: rgba(14,3,24,0.95);
+      --border: rgba(150,0,28,0.35);
+      --text: #e0c8d8;
+      --muted: #6a4d65;
+      --gold: #c9a04a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #080010;
+      background-image:
+        radial-gradient(ellipse at 25% 60%, rgba(80,0,120,0.14) 0%, transparent 55%),
+        radial-gradient(ellipse at 75% 25%, rgba(150,0,28,0.09) 0%, transparent 50%);
+      background-attachment: fixed;
+      font-family: 'Inter', sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .fog { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .fog::before {
+      content: '';
+      position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
+      background: radial-gradient(ellipse at 40% 55%, rgba(90,0,150,0.1) 0%, transparent 55%);
+      animation: fog1 28s ease-in-out infinite alternate;
+    }
+    .fog::after {
+      content: '';
+      position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
+      background: radial-gradient(ellipse at 65% 30%, rgba(170,0,32,0.07) 0%, transparent 50%);
+      animation: fog2 38s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes fog1 { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(5%,7%) scale(1.1); } }
+    @keyframes fog2 { 0% { transform: translate(0,0) scale(1.06); } 100% { transform: translate(-6%,4%) scale(1); } }
+    .gothic { font-family: 'Cinzel', serif; }
+    .glass-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      box-shadow: 0 0 60px rgba(0,0,0,0.7), 0 0 30px rgba(100,0,20,0.15), inset 0 0 30px rgba(80,0,120,0.04);
+      backdrop-filter: blur(8px);
+    }
+    .dark-input {
+      width: 100%;
+      background: rgba(8,0,16,0.8);
+      border: 1px solid rgba(120,0,24,0.4);
+      color: var(--text);
+      border-radius: 0.5rem;
+      padding: 0.7rem 1rem;
+      font-size: 0.95rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .dark-input::placeholder { color: var(--muted); }
+    .dark-input:focus { border-color: var(--accent); box-shadow: 0 0 12px rgba(181,0,42,0.22); outline: none; }
+    .btn-primary {
+      width: 100%;
+      background: linear-gradient(135deg, #7a001c 0%, #b5002a 100%);
+      box-shadow: 0 0 24px rgba(181,0,42,0.35);
+      color: #fff;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.8rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      transition: box-shadow 0.2s, transform 0.15s;
+    }
+    .btn-primary:hover { box-shadow: 0 0 36px rgba(181,0,42,0.55); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    label { display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.35rem; }
+    .glow-text { text-shadow: 0 0 24px rgba(200,0,40,0.7), 0 0 48px rgba(200,0,40,0.25); }
+    .error-box { background: rgba(140,0,20,0.25); border: 1px solid rgba(180,0,30,0.5); color: #fca5a5; border-radius: 0.5rem; padding: 0.6rem 0.9rem; font-size: 0.85rem; }
+    .step-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(150,0,28,0.3); border: 1px solid rgba(150,0,28,0.5); transition: all 0.3s; }
+    .step-dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(8,0,16,0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(150,0,28,0.5); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<div class="fog"></div>
+
+<div class="relative z-10 w-full max-w-md mx-auto px-4 py-10">
+  <div class="glass-card rounded-2xl p-8">
+
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div class="text-red-600 text-4xl mb-3">⚔</div>
+      <h1 class="gothic text-3xl font-black glow-text" style="color:#e0c8d8; letter-spacing:.08em;">V RISING</h1>
+      <div class="mt-2 text-xs uppercase tracking-widest" style="color:var(--muted);">Первичная настройка</div>
+      <div class="mt-4 w-24 mx-auto h-px" style="background:linear-gradient(90deg,transparent,rgba(181,0,42,0.6),transparent);"></div>
+    </div>
+
+    <!-- Steps -->
+    <div class="flex justify-center gap-2 mb-6">
+      <div class="step-dot active" id="dot-1"></div>
+      <div class="step-dot" id="dot-2"></div>
+    </div>
+
+    <!-- Step 1: Welcome -->
+    <div id="step-1">
+      <h2 class="gothic text-lg font-bold mb-3" style="color:#c9a04a;">Добро пожаловать!</h2>
+      <p style="color:var(--muted); font-size:.9rem; line-height:1.6;" class="mb-6">
+        Сайт вашего сервера V Rising успешно развёрнут.<br>
+        Создайте учётную запись администратора для управления новостями, настройками сервера и пользователями.
+      </p>
+      <button onclick="goStep2()" class="btn-primary">Создать администратора →</button>
+    </div>
+
+    <!-- Step 2: Form -->
+    <div id="step-2" class="hidden">
+      <h2 class="gothic text-lg font-bold mb-5" style="color:#c9a04a;">Учётная запись администратора</h2>
+      <form onsubmit="submitSetup(event)" class="space-y-4">
+        <div>
+          <label>Имя пользователя</label>
+          <input id="s-username" type="text" required autocomplete="username"
+            placeholder="admin (3-32 символа, a-z 0-9 _)" class="dark-input" />
+        </div>
+        <div>
+          <label>Email</label>
+          <input id="s-email" type="email" required autocomplete="email"
+            placeholder="admin@example.com" class="dark-input" />
+        </div>
+        <div>
+          <label>Пароль</label>
+          <input id="s-password" type="password" required autocomplete="new-password"
+            placeholder="Минимум 6 символов" class="dark-input" />
+        </div>
+        <div>
+          <label>Повторите пароль</label>
+          <input id="s-confirm" type="password" required autocomplete="new-password"
+            placeholder="Повторите пароль" class="dark-input" />
+        </div>
+        <div id="setup-error" class="error-box hidden"></div>
+        <button type="submit" id="setup-btn" class="btn-primary" style="margin-top:.5rem;">
+          Завершить настройку
+        </button>
+      </form>
+    </div>
+
+  </div>
+  <p class="text-center mt-4 text-xs" style="color:var(--muted);">V Rising Server Site</p>
+</div>
+
+<script>
+function goStep2() {
+  document.getElementById('step-1').classList.add('hidden');
+  document.getElementById('step-2').classList.remove('hidden');
+  document.getElementById('dot-1').classList.remove('active');
+  document.getElementById('dot-2').classList.add('active');
+  document.getElementById('s-username').focus();
+}
+
+async function submitSetup(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('setup-error');
+  errEl.classList.add('hidden');
+
+  const username = document.getElementById('s-username').value.trim();
+  const email    = document.getElementById('s-email').value.trim();
+  const password = document.getElementById('s-password').value;
+  const confirm  = document.getElementById('s-confirm').value;
+
+  if (password !== confirm) {
+    errEl.textContent = 'Пароли не совпадают.';
+    errEl.classList.remove('hidden');
+    return;
+  }
+
+  const btn = document.getElementById('setup-btn');
+  btn.disabled = true;
+  btn.textContent = 'Создание...';
+
+  try {
+    const res = await fetch('/api/setup/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, email, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const msg = Array.isArray(data.detail)
+        ? data.detail.map(d => d.msg).join(', ')
+        : (data.detail || 'Ошибка создания аккаунта');
+      errEl.textContent = msg;
+      errEl.classList.remove('hidden');
+      return;
+    }
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    window.location.href = '/admin.html';
+  } catch {
+    errEl.textContent = 'Сетевая ошибка. Попробуйте снова.';
+    errEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Завершить настройку';
+  }
+}
+
+// Если уже настроено — на главную
+(async () => {
+  try {
+    const res = await fetch('/api/setup/status');
+    const data = await res.json();
+    if (data.completed) window.location.href = '/';
+  } catch {}
+})();
+</script>
+</body>
+</html>

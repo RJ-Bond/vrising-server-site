@@ -114,3 +114,23 @@ class PaginatedNews(BaseModel):
     total: int
     page: int
     pages: int
+
+
+class SetupComplete(BaseModel):
+    username: str
+    email: EmailStr
+    password: str
+
+    @field_validator("username")
+    @classmethod
+    def username_valid(cls, v: str) -> str:
+        if not re.match(r"^[a-zA-Z0-9_]{3,32}$", v):
+            raise ValueError("Username must be 3-32 chars, letters/digits/underscore only")
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def password_length(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("Password must be at least 6 characters")
+        return v

@@ -3,82 +3,159 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>V Rising — Панель администратора</title>
+  <title>V Rising — Администратор</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background: #0e0b14; }
-    .gothic { font-family: 'Georgia', serif; }
-    .tab-active { background: #7f1d1d; color: #fca5a5; }
-    #news-modal-backdrop { display:none; }
-    #news-modal-backdrop.open { display:flex; }
+    :root {
+      --accent: #b5002a; --accent-glow: rgba(181,0,42,0.4);
+      --card: rgba(14,3,24,0.92); --border: rgba(150,0,28,0.3);
+      --text: #e0c8d8; --muted: #6a4d65; --gold: #c9a04a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #080010;
+      background-image:
+        radial-gradient(ellipse at 20% 60%, rgba(80,0,120,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
+      background-attachment: fixed;
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text); min-height: 100vh;
+    }
+    .fog { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .fog::before {
+      content: ''; position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
+      background: radial-gradient(ellipse at 38% 55%, rgba(90,0,150,0.09) 0%, transparent 55%);
+      animation: fog1 28s ease-in-out infinite alternate;
+    }
+    @keyframes fog1 { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(5%,7%) scale(1.1); } }
+    .gothic { font-family: 'Cinzel', serif; }
+    .glow-text { text-shadow: 0 0 20px rgba(200,0,40,0.6), 0 0 40px rgba(200,0,40,0.2); }
+    .glass-nav { background: rgba(8,0,16,0.88); border-bottom: 1px solid rgba(150,0,28,0.3); backdrop-filter: blur(12px); }
+    .glass-card {
+      background: var(--card); border: 1px solid var(--border);
+      box-shadow: 0 0 30px rgba(0,0,0,0.5), inset 0 0 20px rgba(80,0,120,0.03);
+      backdrop-filter: blur(5px);
+    }
+    .sidebar-btn {
+      width: 100%; text-align: left; padding: .75rem 1rem; font-size: .8rem;
+      font-weight: 600; text-transform: uppercase; letter-spacing: .08em;
+      background: none; border: none; cursor: pointer; color: var(--muted);
+      border-left: 2px solid transparent; transition: all .2s;
+    }
+    .sidebar-btn:hover { color: var(--text); background: rgba(150,0,28,0.1); }
+    .sidebar-btn.active { color: var(--text); border-left-color: var(--accent); background: rgba(150,0,28,0.15); }
+    .dark-input {
+      width: 100%; background: rgba(8,0,16,0.8); border: 1px solid rgba(120,0,24,0.4);
+      color: var(--text); border-radius: .5rem; padding: .65rem .9rem; font-size: .9rem;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .dark-input::placeholder { color: var(--muted); }
+    .dark-input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(181,0,42,0.2); outline: none; }
+    textarea.dark-input { resize: vertical; }
+    .btn-primary {
+      background: linear-gradient(135deg, #7a001c, #b5002a);
+      box-shadow: 0 0 18px rgba(181,0,42,0.3); color: #fff;
+      border: none; border-radius: .5rem; padding: .6rem 1.2rem;
+      font-size: .85rem; font-weight: 700; letter-spacing: .04em;
+      cursor: pointer; transition: box-shadow .2s, transform .15s;
+    }
+    .btn-primary:hover { box-shadow: 0 0 28px rgba(181,0,42,0.5); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    .btn-ghost {
+      background: rgba(14,3,24,0.8); border: 1px solid rgba(150,0,28,0.3);
+      color: var(--muted); border-radius: .4rem; padding: .4rem .8rem;
+      font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .2s;
+    }
+    .btn-ghost:hover { border-color: rgba(150,0,28,0.6); color: var(--text); }
+    .btn-danger {
+      background: rgba(100,0,15,0.3); border: 1px solid rgba(180,0,25,0.4);
+      color: #f87171; border-radius: .4rem; padding: .4rem .8rem;
+      font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .2s;
+    }
+    .btn-danger:hover { background: rgba(150,0,20,0.4); }
+    label { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .3rem; }
+    .section-title { font-family: 'Cinzel', serif; font-size: 1.25rem; font-weight: 700; color: var(--gold); letter-spacing: .08em; }
+    .badge-pub { background: rgba(0,70,15,0.3); border: 1px solid rgba(0,160,35,0.4); color: #86efac; font-size: .65rem; padding: .15rem .5rem; border-radius: 9999px; }
+    .badge-draft { background: rgba(60,60,60,0.3); border: 1px solid rgba(100,100,100,0.4); color: var(--muted); font-size: .65rem; padding: .15rem .5rem; border-radius: 9999px; }
+    .error-box { background: rgba(140,0,20,0.25); border: 1px solid rgba(180,0,30,0.5); color: #fca5a5; border-radius: .5rem; padding: .55rem .85rem; font-size: .82rem; }
+    .success-box { background: rgba(0,70,15,0.25); border: 1px solid rgba(0,160,35,0.4); color: #86efac; border-radius: .5rem; padding: .55rem .85rem; font-size: .82rem; }
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 50; align-items: flex-start; justify-content: center; padding: 1.5rem; overflow-y: auto; backdrop-filter: blur(4px); }
+    .modal-bg.open { display: flex; }
+    .modal-box {
+      background: rgba(12,2,22,0.98); border: 1px solid rgba(150,0,28,0.45);
+      box-shadow: 0 0 60px rgba(0,0,0,0.8), 0 0 25px rgba(100,0,20,0.15);
+      border-radius: 1rem; width: 100%; max-width: 640px; padding: 2rem; position: relative; margin: auto;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+    th { background: rgba(14,3,24,0.8); color: var(--muted); text-transform: uppercase; font-size: .65rem; letter-spacing: .1em; padding: .75rem 1rem; text-align: left; border-bottom: 1px solid rgba(150,0,28,0.2); }
+    td { padding: .65rem 1rem; border-bottom: 1px solid rgba(150,0,28,0.1); color: var(--text); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(150,0,28,0.05); }
+    .pagination-btn { background: rgba(14,3,24,0.8); border: 1px solid rgba(150,0,28,0.3); color: var(--muted); padding: .35rem .75rem; border-radius: .4rem; cursor: pointer; font-size: .8rem; transition: all .2s; }
+    .pagination-btn:hover, .pagination-btn.active { border-color: var(--accent); color: var(--text); box-shadow: 0 0 8px var(--accent-glow); }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(8,0,16,0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(150,0,28,0.5); border-radius: 3px; }
   </style>
 </head>
-<body class="min-h-screen text-gray-100">
+<body>
+<div class="fog"></div>
 
 <!-- NAV -->
-<nav class="bg-gray-900 border-b border-red-900 sticky top-0 z-40">
+<nav class="glass-nav sticky top-0 z-40 relative">
   <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-    <div class="flex items-center gap-4">
-      <a href="/" class="gothic text-xl font-bold text-red-500 tracking-widest">⚔ V RISING</a>
-      <span class="text-gray-600">|</span>
-      <span class="text-gray-300 text-sm font-semibold">Панель администратора</span>
+    <div class="flex items-center gap-3">
+      <a href="/" class="gothic font-black text-lg tracking-widest glow-text" style="color:#e0c8d8;text-decoration:none;">⚔ V RISING</a>
+      <span style="color:rgba(150,0,28,0.5);">|</span>
+      <span class="gothic text-sm" style="color:var(--gold);">Администратор</span>
     </div>
     <div class="flex items-center gap-3">
-      <span id="nav-username" class="text-gray-400 text-sm"></span>
-      <button onclick="logout()" class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded transition">Выйти</button>
+      <span id="nav-username" class="text-sm" style="color:var(--muted);"></span>
+      <button onclick="logout()" class="btn-ghost">Выйти</button>
     </div>
   </div>
 </nav>
 
-<div class="max-w-7xl mx-auto px-4 py-8 flex gap-6">
+<div class="relative z-10 max-w-7xl mx-auto px-4 py-8 flex gap-5">
 
   <!-- SIDEBAR -->
-  <aside class="w-48 flex-shrink-0">
-    <nav class="bg-gray-900 rounded-xl border border-gray-700 overflow-hidden">
-      <button onclick="showSection('news')" id="btn-news"
-        class="tab-active w-full text-left px-4 py-3 text-sm font-semibold transition hover:bg-red-900/40">
-        📰 Новости
-      </button>
-      <button onclick="showSection('settings')" id="btn-settings"
-        class="w-full text-left px-4 py-3 text-sm font-semibold text-gray-400 transition hover:bg-gray-800">
-        ⚙ Настройки
-      </button>
-      <button onclick="showSection('users')" id="btn-users"
-        class="w-full text-left px-4 py-3 text-sm font-semibold text-gray-400 transition hover:bg-gray-800">
-        👥 Пользователи
-      </button>
-    </nav>
+  <aside style="width:12rem;flex-shrink:0;">
+    <div class="glass-card rounded-xl overflow-hidden">
+      <button id="btn-news"     onclick="showSection('news')"     class="sidebar-btn active">📰 Новости</button>
+      <button id="btn-settings" onclick="showSection('settings')" class="sidebar-btn">⚙ Настройки</button>
+      <button id="btn-users"    onclick="showSection('users')"    class="sidebar-btn">👥 Пользователи</button>
+    </div>
   </aside>
 
-  <!-- MAIN CONTENT -->
-  <main class="flex-1 min-w-0">
+  <!-- CONTENT -->
+  <main style="flex:1;min-width:0;">
 
-    <!-- NEWS SECTION -->
+    <!-- NEWS -->
     <div id="section-news">
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="gothic text-2xl font-bold text-red-400">Управление новостями</h1>
-        <button onclick="openNewsModal(null)"
-          class="bg-red-700 hover:bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-          + Добавить новость
-        </button>
+      <div class="flex items-center justify-between mb-5">
+        <h1 class="section-title">Управление новостями</h1>
+        <button onclick="openNewsModal(null)" class="btn-primary">+ Добавить</button>
       </div>
       <div id="admin-news-list" class="space-y-3"></div>
-      <div id="admin-news-pagination" class="flex gap-2 mt-6"></div>
+      <div id="admin-news-pagination" class="flex gap-2 mt-5"></div>
     </div>
 
-    <!-- SETTINGS SECTION -->
+    <!-- SETTINGS -->
     <div id="section-settings" class="hidden">
-      <h1 class="gothic text-2xl font-bold text-red-400 mb-6">Настройки сервера</h1>
-      <div id="settings-form" class="bg-gray-900 border border-gray-700 rounded-xl p-6 space-y-4 max-w-lg">
-        <p class="text-gray-400 text-sm">Загрузка...</p>
+      <h1 class="section-title mb-5">Настройки сервера</h1>
+      <div id="settings-form" class="glass-card rounded-xl p-6 space-y-5" style="max-width:32rem;">
+        <p style="color:var(--muted);font-size:.85rem;">Загрузка...</p>
       </div>
     </div>
 
-    <!-- USERS SECTION -->
+    <!-- USERS -->
     <div id="section-users" class="hidden">
-      <h1 class="gothic text-2xl font-bold text-red-400 mb-6">Пользователи</h1>
-      <div id="users-table" class="bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">
-        <p class="p-6 text-gray-400 text-sm">Загрузка...</p>
+      <h1 class="section-title mb-5">Пользователи</h1>
+      <div id="users-table" class="glass-card rounded-xl overflow-hidden">
+        <p class="p-6" style="color:var(--muted);font-size:.85rem;">Загрузка...</p>
       </div>
     </div>
 
@@ -86,46 +163,36 @@
 </div>
 
 <!-- NEWS MODAL -->
-<div id="news-modal-backdrop" class="fixed inset-0 bg-black/80 z-50 items-start justify-center p-4 overflow-y-auto">
-  <div class="bg-gray-900 border border-red-900 rounded-xl w-full max-w-2xl my-8 p-6 relative">
-    <button onclick="closeNewsModal()" class="absolute top-3 right-4 text-gray-400 hover:text-white text-2xl">&times;</button>
-    <h2 id="modal-title-label" class="gothic text-xl font-bold text-red-300 mb-5"></h2>
+<div id="news-modal-backdrop" class="modal-bg">
+  <div class="modal-box">
+    <button onclick="closeNewsModal()" style="position:absolute;top:.75rem;right:1rem;font-size:1.5rem;color:var(--muted);background:none;border:none;cursor:pointer;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">&times;</button>
+    <h2 id="modal-title-label" class="gothic text-lg font-bold mb-5" style="color:var(--gold);"></h2>
     <form id="news-form" onsubmit="submitNewsForm(event)" class="space-y-4">
       <input type="hidden" id="news-id" />
       <div>
-        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Заголовок *</label>
-        <input id="news-title" type="text" required
-          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+        <label>Заголовок *</label>
+        <input id="news-title" type="text" required class="dark-input" />
       </div>
       <div>
-        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Краткое описание *</label>
-        <input id="news-summary" type="text" required
-          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+        <label>Краткое описание *</label>
+        <input id="news-summary" type="text" required class="dark-input" />
       </div>
       <div>
-        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">URL миниатюры</label>
-        <input id="news-thumb" type="url"
-          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
+        <label>URL миниатюры</label>
+        <input id="news-thumb" type="url" class="dark-input" placeholder="https://..." />
       </div>
       <div>
-        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Текст новости *</label>
-        <textarea id="news-content" rows="8" required
-          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600 resize-y"></textarea>
+        <label>Текст новости *</label>
+        <textarea id="news-content" rows="7" required class="dark-input"></textarea>
       </div>
       <div class="flex items-center gap-2">
-        <input id="news-published" type="checkbox" checked class="w-4 h-4 accent-red-600" />
-        <label for="news-published" class="text-sm text-gray-300">Опубликовано</label>
+        <input id="news-published" type="checkbox" checked style="width:1rem;height:1rem;accent-color:var(--accent);" />
+        <label style="margin:0;text-transform:none;font-size:.85rem;color:var(--text);">Опубликовано</label>
       </div>
-      <div id="modal-error" class="hidden text-red-400 text-sm bg-red-900/30 rounded-lg px-3 py-2"></div>
-      <div class="flex gap-3 pt-2">
-        <button type="submit" id="modal-submit-btn"
-          class="flex-1 bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-lg transition">
-          Сохранить
-        </button>
-        <button type="button" onclick="closeNewsModal()"
-          class="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-2.5 rounded-lg transition">
-          Отмена
-        </button>
+      <div id="modal-error" class="error-box hidden"></div>
+      <div class="flex gap-3 pt-1">
+        <button type="submit" id="modal-submit-btn" class="btn-primary" style="flex:1;">Сохранить</button>
+        <button type="button" onclick="closeNewsModal()" class="btn-ghost" style="flex:1;">Отмена</button>
       </div>
     </form>
   </div>
@@ -134,85 +201,66 @@
 <script>
 const API = '/api';
 let adminNewsPage = 1;
-
 function getToken() { return localStorage.getItem('token'); }
-function authHeaders() { return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' }; }
+function authH()   { return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' }; }
 
-function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
-  window.location.href = '/login.html';
-}
+function logout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login.html'; }
 
 // ─── Guard ────────────────────────────────────────────────────────────────
-(function guard() {
+(function() {
   const token = getToken();
   const user = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
-  if (!token || !user || user.role !== 'admin') {
-    window.location.href = '/login.html';
-  } else {
-    document.getElementById('nav-username').textContent = user.username;
-  }
+  if (!token || !user || user.role !== 'admin') { window.location.href = '/login.html'; return; }
+  document.getElementById('nav-username').textContent = user.username;
 })();
 
 // ─── Sections ─────────────────────────────────────────────────────────────
 function showSection(name) {
-  ['news', 'settings', 'users'].forEach(s => {
+  ['news','settings','users'].forEach(s => {
     document.getElementById(`section-${s}`).classList.toggle('hidden', s !== name);
-    const btn = document.getElementById(`btn-${s}`);
-    btn.className = s === name
-      ? 'tab-active w-full text-left px-4 py-3 text-sm font-semibold transition hover:bg-red-900/40'
-      : 'w-full text-left px-4 py-3 text-sm font-semibold text-gray-400 transition hover:bg-gray-800';
+    document.getElementById(`btn-${s}`).className = 'sidebar-btn' + (s === name ? ' active' : '');
   });
   if (name === 'settings') loadSettings();
-  if (name === 'users') loadUsers();
-  if (name === 'news') loadAdminNews(adminNewsPage);
+  if (name === 'users')    loadUsers();
+  if (name === 'news')     loadAdminNews(adminNewsPage);
 }
 
 // ─── News ─────────────────────────────────────────────────────────────────
-function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short', year: 'numeric' });
-}
+function fmtDate(iso) { return new Date(iso).toLocaleDateString('ru-RU', { day:'2-digit', month:'short', year:'numeric' }); }
 
 async function loadAdminNews(page = 1) {
   adminNewsPage = page;
-  const res = await fetch(`${API}/admin/news?page=${page}&per_page=10`, { headers: authHeaders() });
-  if (!res.ok) { handleAuthError(res); return; }
+  const res = await fetch(`${API}/admin/news?page=${page}&per_page=10`, { headers: authH() });
+  if (!res.ok) { handleAuth(res); return; }
   const data = await res.json();
   const list = document.getElementById('admin-news-list');
   list.innerHTML = '';
-  if (data.items.length === 0) {
-    list.innerHTML = '<p class="text-gray-500">Новостей нет.</p>';
-    return;
-  }
+  if (!data.items.length) { list.innerHTML = `<p style="color:var(--muted);">Новостей нет.</p>`; return; }
   data.items.forEach(n => {
-    const badge = n.published
-      ? '<span class="text-xs bg-green-900 text-green-300 px-2 py-0.5 rounded-full">Опубл.</span>'
-      : '<span class="text-xs bg-gray-700 text-gray-400 px-2 py-0.5 rounded-full">Черновик</span>';
-    list.innerHTML += `
-      <div class="bg-gray-900 border border-gray-700 rounded-xl p-4 flex items-start justify-between gap-4">
-        <div class="flex-1 min-w-0">
-          <div class="flex items-center gap-2 mb-1">
-            ${badge}
-            <span class="text-gray-500 text-xs">${formatDate(n.created_at)}</span>
-          </div>
-          <p class="text-white font-semibold truncate">${n.title}</p>
-          <p class="text-gray-400 text-sm mt-1 line-clamp-1">${n.summary}</p>
+    const el = document.createElement('div');
+    el.className = 'glass-card rounded-xl p-4 flex items-start justify-between gap-4';
+    el.innerHTML = `
+      <div style="flex:1;min-width:0;">
+        <div class="flex items-center gap-2 mb-1">
+          <span class="${n.published ? 'badge-pub' : 'badge-draft'}">${n.published ? 'Опубл.' : 'Черновик'}</span>
+          <span style="color:var(--muted);font-size:.7rem;">${fmtDate(n.created_at)}</span>
         </div>
-        <div class="flex gap-2 flex-shrink-0">
-          <button onclick='openNewsModal(${JSON.stringify(n)})'
-            class="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded-lg transition">Ред.</button>
-          <button onclick="deleteNews(${n.id})"
-            class="text-xs bg-red-900 hover:bg-red-800 text-red-300 px-3 py-1.5 rounded-lg transition">Удалить</button>
-        </div>
+        <p style="color:var(--text);font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.title}</p>
+        <p style="color:var(--muted);font-size:.8rem;margin-top:.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.summary}</p>
+      </div>
+      <div style="display:flex;gap:.5rem;flex-shrink:0;">
+        <button class="btn-ghost" onclick='openNewsModal(${JSON.stringify(n)})'>Ред.</button>
+        <button class="btn-danger" onclick="deleteNews(${n.id})">Удалить</button>
       </div>`;
+    list.appendChild(el);
   });
-
   const pag = document.getElementById('admin-news-pagination');
   pag.innerHTML = '';
   for (let i = 1; i <= data.pages; i++) {
-    const active = i === page ? 'bg-red-700 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700';
-    pag.innerHTML += `<button onclick="loadAdminNews(${i})" class="px-3 py-1.5 rounded text-sm ${active}">${i}</button>`;
+    const b = document.createElement('button');
+    b.className = 'pagination-btn' + (i === page ? ' active' : '');
+    b.textContent = i; b.onclick = () => loadAdminNews(i);
+    pag.appendChild(b);
   }
 }
 
@@ -220,11 +268,11 @@ function openNewsModal(news) {
   document.getElementById('modal-error').classList.add('hidden');
   if (news) {
     document.getElementById('modal-title-label').textContent = 'Редактировать новость';
-    document.getElementById('news-id').value = news.id;
-    document.getElementById('news-title').value = news.title;
-    document.getElementById('news-summary').value = news.summary;
-    document.getElementById('news-thumb').value = news.thumbnail_url || '';
-    document.getElementById('news-content').value = news.content || '';
+    document.getElementById('news-id').value         = news.id;
+    document.getElementById('news-title').value      = news.title;
+    document.getElementById('news-summary').value    = news.summary;
+    document.getElementById('news-thumb').value      = news.thumbnail_url || '';
+    document.getElementById('news-content').value    = news.content || '';
     document.getElementById('news-published').checked = news.published;
   } else {
     document.getElementById('modal-title-label').textContent = 'Новая новость';
@@ -233,174 +281,136 @@ function openNewsModal(news) {
     document.getElementById('news-published').checked = true;
   }
   document.getElementById('news-modal-backdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
 }
 
 function closeNewsModal() {
   document.getElementById('news-modal-backdrop').classList.remove('open');
+  document.body.style.overflow = '';
 }
 
 async function submitNewsForm(e) {
   e.preventDefault();
   document.getElementById('modal-error').classList.add('hidden');
   const btn = document.getElementById('modal-submit-btn');
-  btn.disabled = true;
-  btn.textContent = 'Сохранение...';
+  btn.disabled = true; btn.textContent = 'Сохранение...';
   const id = document.getElementById('news-id').value;
   const payload = {
-    title: document.getElementById('news-title').value,
-    summary: document.getElementById('news-summary').value,
-    content: document.getElementById('news-content').value,
+    title:         document.getElementById('news-title').value,
+    summary:       document.getElementById('news-summary').value,
+    content:       document.getElementById('news-content').value,
     thumbnail_url: document.getElementById('news-thumb').value || null,
-    published: document.getElementById('news-published').checked,
+    published:     document.getElementById('news-published').checked,
   };
   try {
-    const url = id ? `${API}/admin/news/${id}` : `${API}/admin/news`;
-    const method = id ? 'PUT' : 'POST';
-    const res = await fetch(url, { method, headers: authHeaders(), body: JSON.stringify(payload) });
+    const res = await fetch(id ? `${API}/admin/news/${id}` : `${API}/admin/news`, {
+      method: id ? 'PUT' : 'POST', headers: authH(), body: JSON.stringify(payload),
+    });
     if (!res.ok) {
-      const data = await res.json();
+      const d = await res.json();
       const el = document.getElementById('modal-error');
-      el.textContent = data.detail || 'Ошибка сохранения';
-      el.classList.remove('hidden');
-      return;
+      el.textContent = d.detail || 'Ошибка сохранения'; el.classList.remove('hidden'); return;
     }
-    closeNewsModal();
-    loadAdminNews(adminNewsPage);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Сохранить';
-  }
+    closeNewsModal(); loadAdminNews(adminNewsPage);
+  } finally { btn.disabled = false; btn.textContent = 'Сохранить'; }
 }
 
 async function deleteNews(id) {
-  if (!confirm('Удалить эту новость?')) return;
-  const res = await fetch(`${API}/admin/news/${id}`, { method: 'DELETE', headers: authHeaders() });
-  if (res.ok || res.status === 204) {
-    loadAdminNews(adminNewsPage);
-  } else {
-    alert('Ошибка удаления');
-  }
+  if (!confirm('Удалить новость?')) return;
+  const res = await fetch(`${API}/admin/news/${id}`, { method: 'DELETE', headers: authH() });
+  if (res.ok || res.status === 204) loadAdminNews(adminNewsPage);
+  else alert('Ошибка удаления');
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
 async function loadSettings() {
-  const res = await fetch(`${API}/admin/settings`, { headers: authHeaders() });
-  if (!res.ok) { handleAuthError(res); return; }
+  const res = await fetch(`${API}/admin/settings`, { headers: authH() });
+  if (!res.ok) { handleAuth(res); return; }
   const settings = await res.json();
   const form = document.getElementById('settings-form');
   form.innerHTML = '';
   settings.forEach(s => {
-    form.innerHTML += `
-      <div>
-        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">${s.key}</label>
-        <div class="flex gap-2">
-          <input id="setting-${s.key}" type="text" value="${s.value}"
-            class="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600" />
-          <button onclick="saveSetting('${s.key}')"
-            class="bg-red-700 hover:bg-red-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-            Сохранить
-          </button>
-        </div>
+    const row = document.createElement('div');
+    row.innerHTML = `
+      <label>${s.key}</label>
+      <div style="display:flex;gap:.5rem;">
+        <input id="setting-${s.key}" type="text" value="${s.value}" class="dark-input" style="flex:1;" />
+        <button onclick="saveSetting('${s.key}')" class="btn-primary" style="white-space:nowrap;">Сохранить</button>
       </div>`;
+    form.appendChild(row);
   });
-  form.innerHTML += '<p id="settings-msg" class="text-green-400 text-sm hidden">Сохранено!</p>';
+  const msg = document.createElement('p');
+  msg.id = 'settings-msg'; msg.className = 'success-box hidden'; msg.textContent = 'Сохранено!';
+  form.appendChild(msg);
 }
 
 async function saveSetting(key) {
   const value = document.getElementById(`setting-${key}`).value;
   const res = await fetch(`${API}/admin/settings/${key}`, {
-    method: 'PUT',
-    headers: authHeaders(),
-    body: JSON.stringify({ value }),
+    method: 'PUT', headers: authH(), body: JSON.stringify({ value }),
   });
   if (res.ok) {
     const msg = document.getElementById('settings-msg');
     msg.classList.remove('hidden');
     setTimeout(() => msg.classList.add('hidden'), 2000);
-  } else {
-    alert('Ошибка сохранения настройки');
-  }
+  } else alert('Ошибка сохранения');
 }
 
-// ─── Users ────────────────────────────────────────────────────────────────
+// ─── Users ─────────────────────────────────────────────────────────────────
 async function loadUsers() {
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
-  const res = await fetch(`${API}/admin/users`, { headers: authHeaders() });
-  if (!res.ok) { handleAuthError(res); return; }
+  const res = await fetch(`${API}/admin/users`, { headers: authH() });
+  if (!res.ok) { handleAuth(res); return; }
   const users = await res.json();
-  const table = document.getElementById('users-table');
-  if (users.length === 0) {
-    table.innerHTML = '<p class="p-6 text-gray-400">Пользователей нет.</p>';
-    return;
-  }
-  table.innerHTML = `
-    <table class="w-full text-sm">
-      <thead class="bg-gray-800 text-gray-400 uppercase text-xs">
-        <tr>
-          <th class="px-4 py-3 text-left">ID</th>
-          <th class="px-4 py-3 text-left">Имя</th>
-          <th class="px-4 py-3 text-left">Email</th>
-          <th class="px-4 py-3 text-left">Роль</th>
-          <th class="px-4 py-3 text-left">Активен</th>
-          <th class="px-4 py-3 text-left">Дата</th>
-          <th class="px-4 py-3 text-left">Действия</th>
-        </tr>
+  const el = document.getElementById('users-table');
+  if (!users.length) { el.innerHTML = '<p class="p-6" style="color:var(--muted);">Пользователей нет.</p>'; return; }
+  el.innerHTML = `
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Имя</th><th>Email</th><th>Роль</th><th>Активен</th><th>Дата</th><th>Действия</th></tr>
       </thead>
-      <tbody class="divide-y divide-gray-800">
+      <tbody>
         ${users.map(u => {
           const isSelf = u.id === currentUser?.id;
-          const roleColor = u.role === 'admin' ? 'text-red-400' : 'text-gray-300';
-          const activeColor = u.is_active ? 'text-green-400' : 'text-red-400';
-          const actions = isSelf ? '<span class="text-gray-600 text-xs">— (вы)</span>' : `
-            <button onclick="toggleRole(${u.id}, '${u.role}')" class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded mr-1 transition">
-              ${u.role === 'admin' ? 'Снять admin' : 'Сделать admin'}
-            </button>
-            <button onclick="toggleActive(${u.id})" class="text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded transition">
-              ${u.is_active ? 'Заблок.' : 'Разблок.'}
-            </button>`;
-          return `<tr class="hover:bg-gray-800/40 transition">
-            <td class="px-4 py-3 text-gray-500">${u.id}</td>
-            <td class="px-4 py-3 font-semibold">${u.username}</td>
-            <td class="px-4 py-3 text-gray-400">${u.email}</td>
-            <td class="px-4 py-3 ${roleColor} font-semibold">${u.role}</td>
-            <td class="px-4 py-3 ${activeColor}">${u.is_active ? 'Да' : 'Нет'}</td>
-            <td class="px-4 py-3 text-gray-500">${new Date(u.created_at).toLocaleDateString('ru-RU')}</td>
-            <td class="px-4 py-3">${actions}</td>
+          const roleColor = u.role === 'admin' ? 'color:#f87171;' : 'color:var(--text);';
+          const activeColor = u.is_active ? 'color:#86efac;' : 'color:#f87171;';
+          const actions = isSelf
+            ? `<span style="color:var(--muted);font-size:.75rem;">— вы</span>`
+            : `<div style="display:flex;gap:.4rem;">
+                <button class="btn-ghost" onclick="toggleRole(${u.id},'${u.role}')">${u.role === 'admin' ? 'Снять admin' : 'В admin'}</button>
+                <button class="btn-ghost" onclick="toggleActive(${u.id})">${u.is_active ? 'Заблок.' : 'Разблок.'}</button>
+               </div>`;
+          return `<tr>
+            <td style="color:var(--muted);">${u.id}</td>
+            <td style="font-weight:600;">${u.username}</td>
+            <td style="color:var(--muted);">${u.email}</td>
+            <td style="${roleColor}font-weight:700;">${u.role}</td>
+            <td style="${activeColor}font-weight:600;">${u.is_active ? 'Да' : 'Нет'}</td>
+            <td style="color:var(--muted);">${new Date(u.created_at).toLocaleDateString('ru-RU')}</td>
+            <td>${actions}</td>
           </tr>`;
         }).join('')}
       </tbody>
     </table>`;
 }
 
-async function toggleRole(userId, currentRole) {
-  const newRole = currentRole === 'admin' ? 'user' : 'admin';
+async function toggleRole(userId, cur) {
+  const newRole = cur === 'admin' ? 'user' : 'admin';
   if (!confirm(`Изменить роль на "${newRole}"?`)) return;
-  const res = await fetch(`${API}/admin/users/${userId}/role?role=${newRole}`, {
-    method: 'PUT', headers: authHeaders(),
-  });
+  const res = await fetch(`${API}/admin/users/${userId}/role?role=${newRole}`, { method: 'PUT', headers: authH() });
   if (res.ok) loadUsers(); else alert('Ошибка изменения роли');
 }
 
 async function toggleActive(userId) {
-  const res = await fetch(`${API}/admin/users/${userId}/toggle-active`, {
-    method: 'PUT', headers: authHeaders(),
-  });
+  const res = await fetch(`${API}/admin/users/${userId}/toggle-active`, { method: 'PUT', headers: authH() });
   if (res.ok) loadUsers(); else alert('Ошибка изменения статуса');
 }
 
-function handleAuthError(res) {
-  if (res.status === 401 || res.status === 403) {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login.html';
-  }
+function handleAuth(res) {
+  if (res.status === 401 || res.status === 403) logout();
 }
 
-document.getElementById('news-modal-backdrop').addEventListener('click', function(e) {
-  if (e.target === this) closeNewsModal();
-});
-
-// Initial load
+document.getElementById('news-modal-backdrop').addEventListener('click', e => { if (e.target === e.currentTarget) closeNewsModal(); });
 loadAdminNews(1);
 </script>
 </body>

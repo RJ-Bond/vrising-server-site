@@ -4,83 +4,187 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>V Rising — Сервер</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background: #0e0b14; }
-    .gothic { font-family: 'Georgia', serif; }
-    .card-hover { transition: transform .2s, box-shadow .2s; }
-    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(176,0,32,.3); }
-    #modal-backdrop { display:none; }
-    #modal-backdrop.open { display:flex; }
+    :root {
+      --accent: #b5002a;
+      --accent-glow: rgba(181,0,42,0.4);
+      --card: rgba(14,3,24,0.92);
+      --border: rgba(150,0,28,0.32);
+      --text: #e0c8d8;
+      --muted: #6a4d65;
+      --gold: #c9a04a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #080010;
+      background-image:
+        radial-gradient(ellipse at 20% 60%, rgba(80,0,120,0.13) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
+      background-attachment: fixed;
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .fog { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .fog::before {
+      content: '';
+      position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
+      background: radial-gradient(ellipse at 38% 55%, rgba(90,0,150,0.1) 0%, transparent 55%);
+      animation: fog1 28s ease-in-out infinite alternate;
+    }
+    .fog::after {
+      content: '';
+      position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
+      background: radial-gradient(ellipse at 65% 28%, rgba(170,0,32,0.07) 0%, transparent 50%);
+      animation: fog2 38s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes fog1 { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(5%,7%) scale(1.1); } }
+    @keyframes fog2 { 0% { transform: translate(0,0) scale(1.06); } 100% { transform: translate(-6%,4%) scale(1); } }
+    .gothic { font-family: 'Cinzel', serif; }
+    .glow-text { text-shadow: 0 0 24px rgba(200,0,40,0.65), 0 0 50px rgba(200,0,40,0.2); }
+    .glass-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      box-shadow: 0 0 40px rgba(0,0,0,0.6), inset 0 0 20px rgba(80,0,120,0.04);
+      backdrop-filter: blur(6px);
+      transition: border-color .25s, box-shadow .25s;
+    }
+    .glass-card:hover {
+      border-color: rgba(181,0,42,0.55);
+      box-shadow: 0 0 40px rgba(0,0,0,0.6), 0 0 24px var(--accent-glow), inset 0 0 20px rgba(80,0,120,0.04);
+    }
+    .glass-nav {
+      background: rgba(8,0,16,0.85);
+      border-bottom: 1px solid rgba(150,0,28,0.3);
+      backdrop-filter: blur(12px);
+    }
+    .badge-online {
+      background: rgba(0,80,15,0.35); border: 1px solid rgba(0,180,40,0.45);
+      color: #4ade80; box-shadow: 0 0 10px rgba(0,180,40,0.2);
+    }
+    .badge-offline {
+      background: rgba(100,0,0,0.35); border: 1px solid rgba(200,0,0,0.45);
+      color: #f87171; box-shadow: 0 0 10px rgba(200,0,0,0.2);
+    }
+    .stat-block { text-align: center; }
+    .stat-value { font-size: 1.6rem; font-weight: 700; color: #e0c8d8; line-height: 1; }
+    .stat-label { font-size: 0.65rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-top: .35rem; }
+    .players-bar { height: 4px; background: rgba(150,0,28,0.2); border-radius: 2px; overflow: hidden; margin-top: .5rem; }
+    .players-fill { height: 100%; background: linear-gradient(90deg, #7a001c, #b5002a); border-radius: 2px; transition: width .6s ease; }
+    .divider-v { width: 1px; background: rgba(150,0,28,0.25); align-self: stretch; margin: .5rem 0; }
+    .news-thumb { width: 100%; height: 9rem; object-fit: cover; }
+    .news-thumb-placeholder {
+      width: 100%; height: 9rem;
+      background: linear-gradient(135deg, rgba(80,0,120,0.4) 0%, rgba(100,0,15,0.4) 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem; color: rgba(181,0,42,0.5);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #7a001c, #b5002a);
+      box-shadow: 0 0 20px rgba(181,0,42,0.3);
+      color: #fff; border: none; cursor: pointer;
+      transition: box-shadow .2s, transform .15s;
+    }
+    .btn-primary:hover { box-shadow: 0 0 32px rgba(181,0,42,0.5); transform: translateY(-1px); }
+    .pagination-btn {
+      background: rgba(14,3,24,0.8); border: 1px solid rgba(150,0,28,0.3);
+      color: var(--muted); padding: .4rem .85rem; border-radius: .4rem;
+      cursor: pointer; font-size: .85rem; transition: all .2s;
+    }
+    .pagination-btn:hover, .pagination-btn.active {
+      border-color: var(--accent); color: var(--text);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+    .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 50; align-items: center; justify-content: center; padding: 1rem; backdrop-filter: blur(4px); }
+    .modal-bg.open { display: flex; }
+    .modal-box {
+      background: rgba(12,2,22,0.98); border: 1px solid rgba(150,0,28,0.4);
+      box-shadow: 0 0 60px rgba(0,0,0,0.8), 0 0 30px rgba(100,0,20,0.2);
+      border-radius: 1rem; max-width: 640px; width: 100%; max-height: 80vh;
+      overflow-y: auto; padding: 2rem; position: relative;
+    }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(8,0,16,0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(150,0,28,0.5); border-radius: 3px; }
   </style>
 </head>
-<body class="min-h-screen text-gray-100">
+<body>
+<div class="fog"></div>
 
 <!-- NAV -->
-<nav class="bg-gray-900 border-b border-red-900 sticky top-0 z-40">
+<nav class="glass-nav sticky top-0 z-40 relative">
   <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-    <a href="/" class="gothic text-2xl font-bold text-red-500 tracking-widest">⚔ V RISING</a>
-    <div class="flex items-center gap-4">
-      <span id="nav-username" class="text-gray-400 text-sm hidden"></span>
-      <a id="nav-admin-link" href="/admin.html" class="hidden text-red-400 hover:text-red-300 text-sm font-semibold">Панель Админа</a>
-      <a id="nav-login" href="/login.html" class="text-sm bg-red-700 hover:bg-red-600 px-3 py-1.5 rounded transition">Войти</a>
-      <button id="nav-logout" class="hidden text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1.5 rounded transition">Выйти</button>
+    <a href="/" class="gothic font-black text-xl tracking-widest glow-text" style="color:#e0c8d8; text-decoration:none;">⚔ V RISING</a>
+    <div class="flex items-center gap-3">
+      <span id="nav-username" class="hidden text-sm" style="color:var(--muted);"></span>
+      <a id="nav-admin-link" href="/admin.html" class="hidden text-sm font-semibold" style="color:var(--gold); text-decoration:none;">Администратор</a>
+      <a id="nav-login" href="/login.html" class="btn-primary text-sm font-bold px-4 py-1.5 rounded-lg" style="text-decoration:none;">Войти</a>
+      <button id="nav-logout" class="hidden text-sm px-3 py-1.5 rounded-lg transition" style="background:rgba(150,0,28,0.2);border:1px solid rgba(150,0,28,0.4);color:var(--muted);" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Выйти</button>
     </div>
   </div>
 </nav>
 
-<main class="max-w-6xl mx-auto px-4 py-10">
+<main class="relative z-10 max-w-6xl mx-auto px-4 py-10">
 
   <!-- SERVER STATUS -->
-  <section class="mb-12">
-    <h2 class="gothic text-3xl font-bold text-red-400 mb-6 tracking-wide">Статус сервера</h2>
-    <div id="status-card" class="bg-gray-900 border border-gray-700 rounded-xl p-6 grid grid-cols-2 md:grid-cols-4 gap-6 animate-pulse">
-      <div class="col-span-2 md:col-span-4 h-6 bg-gray-700 rounded"></div>
-      <div class="h-10 bg-gray-700 rounded"></div>
-      <div class="h-10 bg-gray-700 rounded"></div>
-      <div class="h-10 bg-gray-700 rounded"></div>
-      <div class="h-10 bg-gray-700 rounded"></div>
+  <section class="mb-14">
+    <h2 class="gothic text-2xl font-bold mb-6 tracking-widest uppercase" style="color:var(--gold); letter-spacing:.15em;">— Статус сервера —</h2>
+    <div id="status-card" class="glass-card rounded-2xl p-6">
+      <div class="animate-pulse flex gap-4 flex-wrap">
+        <div class="h-6 w-48 rounded" style="background:rgba(150,0,28,0.2);"></div>
+        <div class="h-6 w-20 rounded" style="background:rgba(150,0,28,0.2);"></div>
+      </div>
     </div>
   </section>
 
   <!-- NEWS -->
   <section>
-    <h2 class="gothic text-3xl font-bold text-red-400 mb-6 tracking-wide">Новости</h2>
-    <div id="news-list" class="grid gap-6 md:grid-cols-2 lg:grid-cols-3"></div>
+    <h2 class="gothic text-2xl font-bold mb-6 tracking-widest uppercase" style="color:var(--gold); letter-spacing:.15em;">— Новости —</h2>
+    <div id="news-list" class="grid gap-5 md:grid-cols-2 lg:grid-cols-3"></div>
     <div id="news-pagination" class="flex justify-center gap-2 mt-8"></div>
   </section>
 
 </main>
 
-<!-- NEWS MODAL -->
-<div id="modal-backdrop" class="fixed inset-0 bg-black/80 z-50 items-center justify-center p-4">
-  <div class="bg-gray-900 border border-red-900 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6 relative">
-    <button onclick="closeModal()" class="absolute top-3 right-4 text-gray-400 hover:text-white text-2xl">&times;</button>
-    <h3 id="modal-title" class="gothic text-2xl font-bold text-red-300 mb-2"></h3>
-    <p id="modal-date" class="text-gray-500 text-xs mb-4"></p>
-    <div id="modal-content" class="text-gray-200 leading-relaxed whitespace-pre-wrap"></div>
+<!-- MODAL -->
+<div id="modal-backdrop" class="modal-bg">
+  <div class="modal-box">
+    <button onclick="closeModal()" style="position:absolute;top:.75rem;right:1rem;font-size:1.5rem;color:var(--muted);background:none;border:none;cursor:pointer;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">&times;</button>
+    <p id="modal-date" class="text-xs mb-2" style="color:var(--muted);"></p>
+    <h3 id="modal-title" class="gothic text-xl font-bold mb-4" style="color:#e0c8d8;"></h3>
+    <div style="width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(181,0,42,0.5),transparent);margin-bottom:1rem;"></div>
+    <div id="modal-content" class="leading-relaxed whitespace-pre-wrap text-sm" style="color:var(--text);"></div>
   </div>
 </div>
 
 <script>
 const API = '/api';
-let currentPage = 1;
 
-// ─── Auth state ───────────────────────────────────────────────────────────
+// ─── Setup guard ─────────────────────────────────────────────────────────
+(async () => {
+  try {
+    const res = await fetch(`${API}/setup/status`);
+    const data = await res.json();
+    if (!data.completed) { window.location.href = '/setup.html'; }
+  } catch {}
+})();
+
+// ─── Nav ─────────────────────────────────────────────────────────────────
 function getToken() { return localStorage.getItem('token'); }
-function getUser() { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } }
+function getUser()  { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } }
 
 function initNav() {
   const user = getUser();
-  const token = getToken();
-  if (user && token) {
+  if (user && getToken()) {
     document.getElementById('nav-username').textContent = user.username;
     document.getElementById('nav-username').classList.remove('hidden');
     document.getElementById('nav-login').classList.add('hidden');
     document.getElementById('nav-logout').classList.remove('hidden');
-    if (user.role === 'admin') {
-      document.getElementById('nav-admin-link').classList.remove('hidden');
-    }
+    if (user.role === 'admin') document.getElementById('nav-admin-link').classList.remove('hidden');
   }
 }
 
@@ -90,105 +194,110 @@ document.getElementById('nav-logout').addEventListener('click', () => {
   window.location.reload();
 });
 
-// ─── Server status ────────────────────────────────────────────────────────
-async function loadStatus() {
-  try {
-    const res = await fetch(`${API}/monitor/status`);
-    const data = await res.json();
-    const online = data.online;
-    const badgeColor = online ? 'bg-green-700 text-green-200' : 'bg-red-900 text-red-300';
-    const badgeText = online ? '● ОНЛАЙН' : '● ОФЛАЙН';
-    document.getElementById('status-card').innerHTML = `
-      <div class="col-span-2 md:col-span-4 flex items-center gap-3">
-        <span class="gothic text-xl font-bold text-white">${data.name || 'V Rising Server'}</span>
-        <span class="text-xs font-bold px-2 py-1 rounded-full ${badgeColor}">${badgeText}</span>
-      </div>
-      <div class="flex flex-col">
-        <span class="text-gray-400 text-xs uppercase tracking-wider mb-1">Игроков</span>
-        <span class="text-2xl font-bold text-red-300">${data.players} <span class="text-gray-500 text-base">/ ${data.max_players}</span></span>
-      </div>
-      <div class="flex flex-col">
-        <span class="text-gray-400 text-xs uppercase tracking-wider mb-1">Карта</span>
-        <span class="text-lg font-semibold">${data.map || '—'}</span>
-      </div>
-      <div class="flex flex-col">
-        <span class="text-gray-400 text-xs uppercase tracking-wider mb-1">Версия</span>
-        <span class="text-lg font-semibold">${data.version || '—'}</span>
-      </div>
-      <div class="flex flex-col">
-        <span class="text-gray-400 text-xs uppercase tracking-wider mb-1">VAC</span>
-        <span class="text-lg font-semibold">${data.vac ? '✔ Защищён' : '✘ Нет'}</span>
-      </div>
-    `;
-  } catch {
-    document.getElementById('status-card').innerHTML = `<p class="col-span-4 text-gray-500">Не удалось получить статус сервера.</p>`;
-  }
-}
-
-// ─── News ─────────────────────────────────────────────────────────────────
-function formatDate(iso) {
+// ─── Status ──────────────────────────────────────────────────────────────
+function fmtDate(iso) {
   return new Date(iso).toLocaleDateString('ru-RU', { day:'2-digit', month:'long', year:'numeric' });
 }
 
-async function loadNews(page = 1) {
-  currentPage = page;
-  const res = await fetch(`${API}/news?page=${page}&per_page=6`);
-  const data = await res.json();
-
-  const list = document.getElementById('news-list');
-  list.innerHTML = '';
-  if (data.items.length === 0) {
-    list.innerHTML = '<p class="text-gray-500 col-span-3">Новостей пока нет.</p>';
-    return;
-  }
-  data.items.forEach(n => {
-    const thumb = n.thumbnail_url
-      ? `<img src="${n.thumbnail_url}" alt="" class="w-full h-36 object-cover rounded-t-xl">`
-      : `<div class="w-full h-36 bg-gradient-to-br from-red-900 to-gray-900 rounded-t-xl flex items-center justify-center"><span class="text-red-500 text-3xl">⚔</span></div>`;
-    list.innerHTML += `
-      <div class="card-hover bg-gray-900 border border-gray-700 rounded-xl overflow-hidden cursor-pointer" onclick="openNews('${n.slug}')">
-        ${thumb}
-        <div class="p-4">
-          <p class="text-gray-500 text-xs mb-1">${formatDate(n.created_at)} · ${n.author.username}</p>
-          <h3 class="gothic text-lg font-bold text-red-300 mb-2 line-clamp-2">${n.title}</h3>
-          <p class="text-gray-400 text-sm line-clamp-3">${n.summary}</p>
+async function loadStatus() {
+  try {
+    const d = await fetch(`${API}/monitor/status`).then(r => r.json());
+    const online = d.online;
+    const pct = d.max_players > 0 ? Math.round(d.players / d.max_players * 100) : 0;
+    document.getElementById('status-card').innerHTML = `
+      <div class="flex flex-wrap items-center gap-3 mb-5">
+        <span class="gothic text-lg font-bold" style="color:#e0c8d8;">${d.name || 'V Rising Server'}</span>
+        <span class="text-xs font-bold px-3 py-1 rounded-full ${online ? 'badge-online' : 'badge-offline'}">${online ? '● ОНЛАЙН' : '● ОФЛАЙН'}</span>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-6">
+        <div class="stat-block">
+          <div class="stat-value">${d.players}<span style="color:var(--muted);font-size:1rem;"> / ${d.max_players}</span></div>
+          <div class="players-bar"><div class="players-fill" style="width:${pct}%"></div></div>
+          <div class="stat-label">Игроков онлайн</div>
+        </div>
+        <div style="width:1px;background:rgba(150,0,28,0.25);align-self:stretch;margin:.25rem 0;"></div>
+        <div class="stat-block">
+          <div class="stat-value" style="font-size:1.1rem;">${d.map || '—'}</div>
+          <div class="stat-label">Карта</div>
+        </div>
+        <div style="width:1px;background:rgba(150,0,28,0.25);align-self:stretch;margin:.25rem 0;"></div>
+        <div class="stat-block">
+          <div class="stat-value" style="font-size:1.1rem;">${d.version || '—'}</div>
+          <div class="stat-label">Версия</div>
+        </div>
+        <div style="width:1px;background:rgba(150,0,28,0.25);align-self:stretch;margin:.25rem 0;"></div>
+        <div class="stat-block">
+          <div class="stat-value" style="font-size:1.1rem;">${d.vac ? '✔' : '✘'}</div>
+          <div class="stat-label">VAC защита</div>
         </div>
       </div>`;
+  } catch {
+    document.getElementById('status-card').innerHTML =
+      `<p style="color:var(--muted);">Не удалось получить статус сервера.</p>`;
+  }
+}
+
+// ─── News ────────────────────────────────────────────────────────────────
+async function loadNews(page = 1) {
+  const data = await fetch(`${API}/news?page=${page}&per_page=6`).then(r => r.json());
+  const list = document.getElementById('news-list');
+  list.innerHTML = '';
+
+  if (!data.items.length) {
+    list.innerHTML = `<p style="color:var(--muted);" class="col-span-3">Новостей пока нет.</p>`;
+    return;
+  }
+
+  data.items.forEach(n => {
+    const thumb = n.thumbnail_url
+      ? `<img src="${n.thumbnail_url}" alt="" class="news-thumb rounded-t-xl">`
+      : `<div class="news-thumb-placeholder rounded-t-xl">⚔</div>`;
+    const el = document.createElement('div');
+    el.className = 'glass-card rounded-xl overflow-hidden cursor-pointer';
+    el.style.cssText = 'transition:transform .2s,box-shadow .25s;';
+    el.onmouseenter = () => el.style.transform = 'translateY(-3px)';
+    el.onmouseleave = () => el.style.transform = '';
+    el.onclick = () => openNews(n.slug);
+    el.innerHTML = `
+      ${thumb}
+      <div style="padding:1rem;">
+        <p style="color:var(--muted);font-size:.7rem;margin-bottom:.4rem;">${fmtDate(n.created_at)} · ${n.author.username}</p>
+        <h3 class="gothic" style="color:#e0c8d8;font-size:1rem;font-weight:700;margin-bottom:.5rem;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${n.title}</h3>
+        <p style="color:var(--muted);font-size:.85rem;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">${n.summary}</p>
+      </div>`;
+    list.appendChild(el);
   });
 
   const pag = document.getElementById('news-pagination');
   pag.innerHTML = '';
   for (let i = 1; i <= data.pages; i++) {
-    const active = i === page ? 'bg-red-700 text-white' : 'bg-gray-800 text-gray-300 hover:bg-gray-700';
-    pag.innerHTML += `<button onclick="loadNews(${i})" class="px-3 py-1.5 rounded text-sm ${active}">${i}</button>`;
+    const btn = document.createElement('button');
+    btn.className = 'pagination-btn' + (i === page ? ' active' : '');
+    btn.textContent = i;
+    btn.onclick = () => loadNews(i);
+    pag.appendChild(btn);
   }
 }
 
 async function openNews(slug) {
   try {
-    const res = await fetch(`${API}/news/${slug}`);
-    if (!res.ok) throw new Error();
-    const n = await res.json();
+    const n = await fetch(`${API}/news/${slug}`).then(r => r.json());
     document.getElementById('modal-title').textContent = n.title;
-    document.getElementById('modal-date').textContent = `${formatDate(n.created_at)} · ${n.author.username}`;
+    document.getElementById('modal-date').textContent = `${fmtDate(n.created_at)} · ${n.author.username}`;
     document.getElementById('modal-content').textContent = n.content;
     document.getElementById('modal-backdrop').classList.add('open');
-  } catch {
-    alert('Не удалось загрузить новость.');
-  }
+    document.body.style.overflow = 'hidden';
+  } catch { alert('Не удалось загрузить новость.'); }
 }
 
 function closeModal() {
   document.getElementById('modal-backdrop').classList.remove('open');
+  document.body.style.overflow = '';
 }
 
-document.getElementById('modal-backdrop').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
-});
-
+document.getElementById('modal-backdrop').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-// ─── Init ─────────────────────────────────────────────────────────────────
 initNav();
 loadStatus();
 setInterval(loadStatus, 30000);

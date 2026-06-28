@@ -3,81 +3,135 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>V Rising — Вход / Регистрация</title>
+  <title>V Rising — Вход</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    body { background: #0e0b14; }
-    .gothic { font-family: 'Georgia', serif; }
-    .tab-active { border-bottom: 2px solid #b91c1c; color: #fca5a5; }
+    :root {
+      --accent: #b5002a; --accent-glow: rgba(181,0,42,0.4);
+      --card: rgba(14,3,24,0.95); --border: rgba(150,0,28,0.32);
+      --text: #e0c8d8; --muted: #6a4d65; --gold: #c9a04a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #080010;
+      background-image:
+        radial-gradient(ellipse at 25% 60%, rgba(80,0,120,0.13) 0%, transparent 55%),
+        radial-gradient(ellipse at 78% 25%, rgba(150,0,28,0.08) 0%, transparent 50%);
+      background-attachment: fixed;
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text); min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+    .fog { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+    .fog::before {
+      content: ''; position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
+      background: radial-gradient(ellipse at 38% 55%, rgba(90,0,150,0.1) 0%, transparent 55%);
+      animation: fog1 28s ease-in-out infinite alternate;
+    }
+    .fog::after {
+      content: ''; position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
+      background: radial-gradient(ellipse at 65% 28%, rgba(170,0,32,0.07) 0%, transparent 50%);
+      animation: fog2 38s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes fog1 { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(5%,7%) scale(1.1); } }
+    @keyframes fog2 { 0% { transform: translate(0,0) scale(1.06); } 100% { transform: translate(-6%,4%) scale(1); } }
+    .gothic { font-family: 'Cinzel', serif; }
+    .glow-text { text-shadow: 0 0 24px rgba(200,0,40,0.65), 0 0 50px rgba(200,0,40,0.2); }
+    .glass-card {
+      background: var(--card); border: 1px solid var(--border);
+      box-shadow: 0 0 60px rgba(0,0,0,0.7), 0 0 30px rgba(100,0,20,0.1), inset 0 0 30px rgba(80,0,120,0.04);
+      backdrop-filter: blur(8px);
+    }
+    .glass-nav { background: rgba(8,0,16,0.85); border-bottom: 1px solid rgba(150,0,28,0.3); backdrop-filter: blur(12px); }
+    .dark-input {
+      width: 100%; background: rgba(8,0,16,0.8); border: 1px solid rgba(120,0,24,0.4);
+      color: var(--text); border-radius: .5rem; padding: .7rem 1rem; font-size: .95rem;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .dark-input::placeholder { color: var(--muted); }
+    .dark-input:focus { border-color: var(--accent); box-shadow: 0 0 12px rgba(181,0,42,0.22); outline: none; }
+    .btn-primary {
+      width: 100%; background: linear-gradient(135deg, #7a001c, #b5002a);
+      box-shadow: 0 0 24px rgba(181,0,42,0.35); color: #fff; border: none;
+      border-radius: .5rem; padding: .8rem 1.5rem; font-size: 1rem; font-weight: 700;
+      letter-spacing: .05em; cursor: pointer; transition: box-shadow .2s, transform .15s;
+    }
+    .btn-primary:hover { box-shadow: 0 0 36px rgba(181,0,42,0.55); transform: translateY(-1px); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+    label { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .35rem; }
+    .tab-btn {
+      flex: 1; padding: .75rem; font-size: .75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .1em; cursor: pointer;
+      background: none; border: none; color: var(--muted);
+      border-bottom: 2px solid transparent; transition: all .2s;
+    }
+    .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); text-shadow: 0 0 12px var(--accent-glow); }
+    .error-box { background: rgba(140,0,20,0.25); border: 1px solid rgba(180,0,30,0.5); color: #fca5a5; border-radius: .5rem; padding: .6rem .9rem; font-size: .85rem; }
+    .success-box { background: rgba(0,80,20,0.25); border: 1px solid rgba(0,180,40,0.4); color: #86efac; border-radius: .5rem; padding: .6rem .9rem; font-size: .85rem; }
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(8,0,16,0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(150,0,28,0.5); border-radius: 3px; }
   </style>
 </head>
-<body class="min-h-screen text-gray-100 flex flex-col">
+<body>
+<div class="fog"></div>
 
-<nav class="bg-gray-900 border-b border-red-900">
+<nav class="glass-nav relative z-40">
   <div class="max-w-6xl mx-auto px-4 py-3">
-    <a href="/" class="gothic text-2xl font-bold text-red-500 tracking-widest">⚔ V RISING</a>
+    <a href="/" class="gothic font-black text-xl tracking-widest glow-text" style="color:#e0c8d8;text-decoration:none;">⚔ V RISING</a>
   </div>
 </nav>
 
-<div class="flex-1 flex items-center justify-center p-4">
-  <div class="bg-gray-900 border border-gray-700 rounded-2xl p-8 w-full max-w-md shadow-2xl">
+<div class="relative z-10 flex-1 flex items-center justify-center p-4">
+  <div class="glass-card rounded-2xl p-8 w-full max-w-md">
 
-    <!-- Tabs -->
-    <div class="flex mb-6 border-b border-gray-700">
-      <button id="tab-login" onclick="switchTab('login')"
-        class="tab-active flex-1 pb-3 text-sm font-semibold tracking-wide uppercase transition">
-        Вход
-      </button>
-      <button id="tab-register" onclick="switchTab('register')"
-        class="flex-1 pb-3 text-sm font-semibold tracking-wide uppercase text-gray-400 hover:text-gray-200 transition">
-        Регистрация
-      </button>
+    <!-- Logo -->
+    <div class="text-center mb-6">
+      <div class="text-3xl mb-2" style="color:var(--accent);">⚔</div>
+      <h1 class="gothic text-2xl font-black glow-text" style="color:#e0c8d8;letter-spacing:.08em;">V RISING</h1>
+      <div style="width:5rem;height:1px;background:linear-gradient(90deg,transparent,rgba(181,0,42,0.6),transparent);margin:.75rem auto 0;"></div>
     </div>
 
-    <!-- Login form -->
-    <form id="form-login" onsubmit="submitLogin(event)">
-      <div class="mb-4">
-        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Имя пользователя</label>
-        <input name="username" type="text" required autocomplete="username"
-          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600 transition" />
+    <!-- Tabs -->
+    <div class="flex mb-6" style="border-bottom:1px solid rgba(150,0,28,0.25);">
+      <button id="tab-login" class="tab-btn active" onclick="switchTab('login')">Вход</button>
+      <button id="tab-register" class="tab-btn" onclick="switchTab('register')">Регистрация</button>
+    </div>
+
+    <!-- Login -->
+    <form id="form-login" onsubmit="submitLogin(event)" class="space-y-4">
+      <div>
+        <label>Имя пользователя</label>
+        <input name="username" type="text" required autocomplete="username" class="dark-input" />
       </div>
-      <div class="mb-6">
-        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Пароль</label>
-        <input name="password" type="password" required autocomplete="current-password"
-          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600 transition" />
+      <div>
+        <label>Пароль</label>
+        <input name="password" type="password" required autocomplete="current-password" class="dark-input" />
       </div>
-      <div id="login-error" class="hidden mb-4 text-red-400 text-sm bg-red-900/30 rounded-lg px-3 py-2"></div>
-      <button type="submit" id="login-btn"
-        class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-lg transition">
-        Войти
-      </button>
+      <div id="login-error" class="error-box hidden"></div>
+      <button type="submit" id="login-btn" class="btn-primary" style="margin-top:.25rem;">Войти</button>
     </form>
 
-    <!-- Register form -->
-    <form id="form-register" class="hidden" onsubmit="submitRegister(event)">
-      <div class="mb-4">
-        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Имя пользователя</label>
-        <input name="username" type="text" required autocomplete="username"
-          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600 transition"
-          placeholder="3-32 символа, a-z A-Z 0-9 _" />
+    <!-- Register -->
+    <form id="form-register" class="hidden space-y-4" onsubmit="submitRegister(event)">
+      <div>
+        <label>Имя пользователя</label>
+        <input name="username" type="text" required autocomplete="username" placeholder="3-32 символа, a-z 0-9 _" class="dark-input" />
       </div>
-      <div class="mb-4">
-        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Email</label>
-        <input name="email" type="email" required autocomplete="email"
-          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600 transition" />
+      <div>
+        <label>Email</label>
+        <input name="email" type="email" required autocomplete="email" class="dark-input" />
       </div>
-      <div class="mb-6">
-        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Пароль</label>
-        <input name="password" type="password" required autocomplete="new-password"
-          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-red-600 transition"
-          placeholder="Минимум 6 символов" />
+      <div>
+        <label>Пароль</label>
+        <input name="password" type="password" required autocomplete="new-password" placeholder="Минимум 6 символов" class="dark-input" />
       </div>
-      <div id="register-error" class="hidden mb-4 text-red-400 text-sm bg-red-900/30 rounded-lg px-3 py-2"></div>
-      <div id="register-success" class="hidden mb-4 text-green-400 text-sm bg-green-900/30 rounded-lg px-3 py-2"></div>
-      <button type="submit" id="register-btn"
-        class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-lg transition">
-        Зарегистрироваться
-      </button>
+      <div id="register-error" class="error-box hidden"></div>
+      <div id="register-success" class="success-box hidden"></div>
+      <button type="submit" id="register-btn" class="btn-primary" style="margin-top:.25rem;">Зарегистрироваться</button>
     </form>
 
   </div>
@@ -90,43 +144,34 @@ function switchTab(tab) {
   const isLogin = tab === 'login';
   document.getElementById('form-login').classList.toggle('hidden', !isLogin);
   document.getElementById('form-register').classList.toggle('hidden', isLogin);
-  document.getElementById('tab-login').className = `flex-1 pb-3 text-sm font-semibold tracking-wide uppercase transition ${isLogin ? 'tab-active' : 'text-gray-400 hover:text-gray-200'}`;
-  document.getElementById('tab-register').className = `flex-1 pb-3 text-sm font-semibold tracking-wide uppercase transition ${!isLogin ? 'tab-active' : 'text-gray-400 hover:text-gray-200'}`;
-  document.getElementById('login-error').classList.add('hidden');
-  document.getElementById('register-error').classList.add('hidden');
-  document.getElementById('register-success').classList.add('hidden');
+  document.getElementById('tab-login').className = 'tab-btn' + (isLogin ? ' active' : '');
+  document.getElementById('tab-register').className = 'tab-btn' + (!isLogin ? ' active' : '');
+  ['login-error','register-error','register-success'].forEach(id => document.getElementById(id).classList.add('hidden'));
 }
 
-function showError(id, message) {
+function showError(id, msg) {
   const el = document.getElementById(id);
-  el.textContent = message;
-  el.classList.remove('hidden');
+  el.textContent = msg; el.classList.remove('hidden');
 }
 
 async function submitLogin(e) {
   e.preventDefault();
   document.getElementById('login-error').classList.add('hidden');
   const btn = document.getElementById('login-btn');
-  btn.disabled = true;
-  btn.textContent = 'Вход...';
+  btn.disabled = true; btn.textContent = 'Вход...';
   const fd = new FormData(e.target);
   try {
     const res = await fetch(`${API}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: fd.get('username'), password: fd.get('password') }),
     });
     const data = await res.json();
-    if (!res.ok) { showError('login-error', data.detail || 'Ошибка входа'); return; }
+    if (!res.ok) { showError('login-error', data.detail || 'Неверный логин или пароль'); return; }
     localStorage.setItem('token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
     window.location.href = data.user.role === 'admin' ? '/admin.html' : '/';
-  } catch {
-    showError('login-error', 'Сетевая ошибка. Попробуйте снова.');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Войти';
-  }
+  } catch { showError('login-error', 'Сетевая ошибка. Попробуйте снова.'); }
+  finally { btn.disabled = false; btn.textContent = 'Войти'; }
 }
 
 async function submitRegister(e) {
@@ -134,44 +179,29 @@ async function submitRegister(e) {
   document.getElementById('register-error').classList.add('hidden');
   document.getElementById('register-success').classList.add('hidden');
   const btn = document.getElementById('register-btn');
-  btn.disabled = true;
-  btn.textContent = 'Создание аккаунта...';
+  btn.disabled = true; btn.textContent = 'Создание...';
   const fd = new FormData(e.target);
   try {
     const res = await fetch(`${API}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: fd.get('username'), email: fd.get('email'), password: fd.get('password') }),
     });
     const data = await res.json();
     if (!res.ok) {
-      const msg = Array.isArray(data.detail)
-        ? data.detail.map(d => d.msg).join(', ')
-        : data.detail || 'Ошибка регистрации';
-      showError('register-error', msg);
-      return;
+      const msg = Array.isArray(data.detail) ? data.detail.map(d => d.msg).join(', ') : (data.detail || 'Ошибка регистрации');
+      showError('register-error', msg); return;
     }
     localStorage.setItem('token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
-    const suc = document.getElementById('register-success');
-    suc.textContent = 'Аккаунт создан! Перенаправление...';
-    suc.classList.remove('hidden');
+    const s = document.getElementById('register-success');
+    s.textContent = 'Аккаунт создан! Перенаправление...'; s.classList.remove('hidden');
     setTimeout(() => { window.location.href = '/'; }, 1200);
-  } catch {
-    showError('register-error', 'Сетевая ошибка. Попробуйте снова.');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Зарегистрироваться';
-  }
+  } catch { showError('register-error', 'Сетевая ошибка. Попробуйте снова.'); }
+  finally { btn.disabled = false; btn.textContent = 'Зарегистрироваться'; }
 }
 
-// Redirect if already logged in
 const user = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
-if (user && localStorage.getItem('token')) {
-  window.location.href = user.role === 'admin' ? '/admin.html' : '/';
-}
-
-// Check hash for auto-switch to register tab
+if (user && localStorage.getItem('token')) window.location.href = user.role === 'admin' ? '/admin.html' : '/';
 if (window.location.hash === '#register') switchTab('register');
 </script>
 </body>

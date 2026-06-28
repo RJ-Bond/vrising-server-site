@@ -30,6 +30,7 @@ from .schemas import (
     PaginatedNews,
     SettingUpdate,
     SettingOut,
+    SetupComplete,
 )
 from .monitor import get_server_status
 
@@ -43,38 +44,27 @@ def slugify(text: str) -> str:
 
 
 async def _seed_defaults(db: AsyncSession):
-    result = await db.execute(select(User).where(User.username == "admin"))
-    if result.scalar_one_or_none() is None:
-        admin = User(
-            username="admin",
-            email="admin@vrising.local",
-            hashed_password=get_password_hash("supersecretpassword"),
-            role="admin",
-        )
-        db.add(admin)
-        await db.flush()
+    default_settings = [
+        Setting(key="setup_completed", value="false"),
+        Setting(key="server_ip", value=os.getenv("VRISING_SERVER_IP", "127.0.0.1")),
+        Setting(key="server_port", value=os.getenv("VRISING_SERVER_PORT", "27016")),
+        Setting(key="server_name", value="V Rising Server"),
+    ]
+    for s in default_settings:
+        existing = await db.execute(select(Setting).where(Setting.key == s.key))
+        if existing.scalar_one_or_none() is None:
+            db.add(s)
+    await db.flush()
 
-        default_settings = [
-            Setting(key="server_ip", value=os.getenv("VRISING_SERVER_IP", "127.0.0.1")),
-            Setting(key="server_port", value=os.getenv("VRISING_SERVER_PORT", "27016")),
-            Setting(key="server_name", value="V Rising Server"),
-        ]
-        for s in default_settings:
-            result2 = await db.execute(select(Setting).where(Setting.key == s.key))
-            if result2.scalar_one_or_none() is None:
-                db.add(s)
+    # Если администратор уже существует — считаем настройку завершённой
+    admin_result = await db.execute(select(User).where(User.role == "admin"))
+    if admin_result.scalar_one_or_none():
+        sc = await db.execute(select(Setting).where(Setting.key == "setup_completed"))
+        sc_row = sc.scalar_one_or_none()
+        if sc_row and sc_row.value == "false":
+            sc_row.value = "true"
 
-        welcome_news = News(
-            title="Добро пожаловать на наш сервер!",
-            slug="dobro-pozhalovat-na-nash-server",
-            summary="Мы рады приветствовать вас на официальном сайте нашего сервера V Rising.",
-            content="Мы рады приветствовать вас на официальном сайте нашего сервера V Rising.\n\nЗдесь вы найдёте последние новости, обновления сервера и многое другое.\n\nПриятной игры!",
-            thumbnail_url=None,
-            author_id=admin.id,
-            published=True,
-        )
-        db.add(welcome_news)
-        await db.commit()
+    await db.commit()
 
 
 @asynccontextmanager
@@ -95,6 +85,61 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ─── Setup ──────────────────────────────────────────────────────────────────
+
+@app.get("/api/setup/status")
+async def setup_status(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Setting).where(Setting.key == "setup_completed"))
+    s = result.scalar_one_or_none()
+    if s and s.value == "true":
+        return {"completed": True}
+    admin_result = await db.execute(select(User).where(User.role == "admin"))
+    if admin_result.scalar_one_or_none():
+        return {"completed": True}
+    return {"completed": False}
+
+
+@app.post("/api/setup/complete", response_model=TokenOut, status_code=201)
+async def setup_complete(body: SetupComplete, db: AsyncSession = Depends(get_db)):
+    sc_result = await db.execute(select(Setting).where(Setting.key == "setup_completed"))
+    sc = sc_result.scalar_one_or_none()
+    admin_result = await db.execute(select(User).where(User.role == "admin"))
+    if (sc and sc.value == "true") or admin_result.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Setup already completed")
+    existing = await db.execute(select(User).where(
+        (User.username == body.username) | (User.email == body.email)
+    ))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Username or email already taken")
+    admin = User(
+        username=body.username,
+        email=body.email,
+        hashed_password=get_password_hash(body.password),
+        role="admin",
+    )
+    db.add(admin)
+    await db.flush()
+    if sc:
+        sc.value = "true"
+        sc.updated_at = datetime.utcnow()
+    else:
+        db.add(Setting(key="setup_completed", value="true"))
+    welcome = News(
+        title="Добро пожаловать на сервер!",
+        slug="dobro-pozhalovat-na-server",
+        summary="Официальный сайт нашего сервера V Rising запущен.",
+        content="Официальный сайт нашего сервера V Rising запущен.\n\nЗдесь вы найдёте последние новости, статус сервера и многое другое.\n\nПриятной игры!",
+        thumbnail_url=None,
+        author_id=admin.id,
+        published=True,
+    )
+    db.add(welcome)
+    await db.commit()
+    await db.refresh(admin)
+    token = create_access_token({"sub": str(admin.id)})
+    return TokenOut(access_token=token, user=UserOut.model_validate(admin))
 
 
 # ─── Auth ───────────────────────────────────────────────────────────────────
