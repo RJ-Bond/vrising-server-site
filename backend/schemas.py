@@ -12,8 +12,9 @@ class UserRegister(BaseModel):
     @field_validator("username")
     @classmethod
     def username_valid(cls, v: str) -> str:
-        if not re.match(r"^[a-zA-Z0-9_]{3,32}$", v):
-            raise ValueError("Username must be 3-32 chars, letters/digits/underscore only")
+        v = v.strip()
+        if not re.match(r"^[a-zA-Z0-9_а-яёА-ЯЁ ]{3,32}$", v):
+            raise ValueError("Имя пользователя: 3–32 символа, буквы, цифры, _ и пробелы")
         return v
 
     @field_validator("password")
@@ -134,8 +135,9 @@ class SetupComplete(BaseModel):
     @field_validator("username")
     @classmethod
     def username_valid(cls, v: str) -> str:
-        if not re.match(r"^[a-zA-Z0-9_]{3,32}$", v):
-            raise ValueError("Username must be 3-32 chars, letters/digits/underscore only")
+        v = v.strip()
+        if not re.match(r"^[a-zA-Z0-9_а-яёА-ЯЁ ]{3,32}$", v):
+            raise ValueError("Имя пользователя: 3–32 символа, буквы, цифры, _ и пробелы")
         return v
 
     @field_validator("password")
