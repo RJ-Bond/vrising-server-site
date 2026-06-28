@@ -892,9 +892,10 @@ async function loadUsers() {
           const activeColor = u.is_active ? 'color:#86efac;' : 'color:#f87171;';
           const actions = isSelf
             ? `<span style="color:var(--muted);font-size:.75rem;">— вы</span>`
-            : `<div style="display:flex;gap:.4rem;">
+            : `<div style="display:flex;gap:.4rem;flex-wrap:wrap;">
                 <button class="btn-ghost" onclick="toggleRole(${u.id},'${u.role}')">${u.role === 'admin' ? 'Снять admin' : 'В admin'}</button>
                 <button class="btn-ghost" onclick="toggleActive(${u.id})">${u.is_active ? 'Заблок.' : 'Разблок.'}</button>
+                <button class="btn-ghost" onclick="deleteUser(${u.id},'${u.username}')" style="color:#f87171;border-color:rgba(248,113,113,0.3);">Удалить</button>
                </div>`;
           return `<tr>
             <td style="color:var(--muted);">${u.id}</td>
@@ -920,6 +921,12 @@ async function toggleRole(userId, cur) {
 async function toggleActive(userId) {
   const res = await fetch(`${API}/admin/users/${userId}/toggle-active`, { method: 'PUT', headers: authH() });
   if (res.ok) loadUsers(); else alert('Ошибка изменения статуса');
+}
+
+async function deleteUser(userId, username) {
+  if (!confirm(`Удалить пользователя "${username}"? Это действие нельзя отменить.`)) return;
+  const res = await fetch(`${API}/admin/users/${userId}`, { method: 'DELETE', headers: authH() });
+  if (res.ok) loadUsers(); else alert('Ошибка удаления пользователя');
 }
 
 function handleAuth(res) {

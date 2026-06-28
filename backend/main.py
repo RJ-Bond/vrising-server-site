@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, text
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord
 from .auth import (
     verify_password,
     get_password_hash,
@@ -44,6 +44,7 @@ from .schemas import (
     CommentOut,
     WipeCreate,
     WipeOut,
+    PlayerRecordOut,
 )
 
 OVERSEER_PROMPT = """Ты — Тёмный Управляющий Замком, древний вампирский дух, хранитель этого сервера V Rising.
@@ -324,6 +325,40 @@ async def upload_avatar(
 
 # ─── Monitor ────────────────────────────────────────────────────────────────
 
+async def _track_players(db: AsyncSession, players: list, server_num: int):
+    if not players:
+        return
+    now = datetime.utcnow()
+    for p in players:
+        name = (p.get("name") or "").strip()
+        if not name:
+            continue
+        cur_dur = int(p.get("duration", 0))
+        result = await db.execute(
+            select(PlayerRecord).where(
+                PlayerRecord.server_num == server_num,
+                PlayerRecord.player_name == name,
+            )
+        )
+        rec = result.scalar_one_or_none()
+        if rec is None:
+            db.add(PlayerRecord(
+                server_num=server_num,
+                player_name=name,
+                total_seconds=cur_dur,
+                last_seen=now,
+                last_duration=cur_dur,
+            ))
+        else:
+            if cur_dur >= rec.last_duration:
+                rec.total_seconds += cur_dur - rec.last_duration
+            else:
+                rec.total_seconds += cur_dur
+            rec.last_duration = cur_dur
+            rec.last_seen = now
+    await db.commit()
+
+
 @app.get("/api/monitor/status")
 async def server_status(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -338,6 +373,7 @@ async def server_status(db: AsyncSession = Depends(get_db)):
         data = {**data, "name": admin_name}
     elif not data.get("name") or data.get("name") == "Unknown":
         data = {**data, "name": "V Rising Server"}
+    await _track_players(db, data.get("players_list", []), 1)
     return data
 
 
@@ -384,6 +420,7 @@ async def server_status2(db: AsyncSession = Depends(get_db)):
         data = {**data, "name": admin_name}
     elif not data.get("name") or data.get("name") == "Unknown":
         data = {**data, "name": "Server 2"}
+    await _track_players(db, data.get("players_list", []), 2)
     return {"enabled": True, **data}
 
 
@@ -745,3 +782,52 @@ async def toggle_active(
     user.is_active = not user.is_active
     await db.commit()
     return {"ok": True, "is_active": user.is_active}
+
+
+@app.delete("/api/admin/users/{user_id}", status_code=204)
+async def delete_user(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_admin_user),
+):
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.delete(user)
+    await db.commit()
+
+
+# ─── Leaderboard ─────────────────────────────────────────────────────────────
+
+@app.get("/api/leaderboard", response_model=list[PlayerRecordOut])
+async def get_leaderboard(
+    server: int = Query(1),
+    period: str = Query("all"),
+    db: AsyncSession = Depends(get_db),
+):
+    q = select(PlayerRecord).where(PlayerRecord.server_num == server)
+    if period == "week":
+        cutoff = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        from datetime import timedelta
+        cutoff -= timedelta(days=7)
+        q = q.where(PlayerRecord.last_seen >= cutoff)
+    q = q.order_by(PlayerRecord.total_seconds.desc()).limit(20)
+    result = await db.execute(q)
+    return [PlayerRecordOut.model_validate(r) for r in result.scalars().all()]
+
+
+@app.delete("/api/admin/leaderboard/{record_id}", status_code=204)
+async def delete_leaderboard_record(
+    record_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(select(PlayerRecord).where(PlayerRecord.id == record_id))
+    rec = result.scalar_one_or_none()
+    if rec is None:
+        raise HTTPException(status_code=404, detail="Record not found")
+    await db.delete(rec)
+    await db.commit()

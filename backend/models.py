@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Index
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -37,6 +37,19 @@ class News(Base):
 
     author = relationship("User", backref="news_posts", lazy="selectin")
     comments = relationship("Comment", back_populates="news", cascade="all, delete-orphan", lazy="noload")
+
+
+class PlayerRecord(Base):
+    __tablename__ = "player_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    server_num = Column(Integer, nullable=False, default=1)
+    player_name = Column(String(128), nullable=False)
+    total_seconds = Column(Integer, nullable=False, default=0)
+    last_seen = Column(DateTime, nullable=True)
+    last_duration = Column(Integer, nullable=False, default=0)
+
+    __table_args__ = (UniqueConstraint("server_num", "player_name", name="uq_player_server"),)
 
 
 class Wipe(Base):

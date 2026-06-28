@@ -521,6 +521,16 @@
     /* ── Blood Vial ── */
     .vial-fill { will-change:transform; }
 
+    /* ── Leaderboard tabs ── */
+    .lb-tab { flex:1; padding:.28rem .2rem; background:rgba(12,2,20,0.5); border:1px solid rgba(110,0,20,0.2); border-radius:.4rem; color:var(--muted); font-size:.6rem; font-family:'Inter',sans-serif; letter-spacing:.06em; text-transform:uppercase; cursor:pointer; transition:all .18s; }
+    .lb-tab:hover { border-color:rgba(160,0,30,0.4); color:var(--text); }
+    .lb-tab-active { background:rgba(120,0,22,0.35); border-color:rgba(180,0,35,0.5); color:#e8c8d0; }
+    .lb-row { display:flex; align-items:center; gap:.45rem; padding:.3rem 0; border-bottom:1px solid rgba(110,0,20,0.1); font-size:.74rem; }
+    .lb-row:last-child { border-bottom:none; }
+    .lb-rank { color:var(--muted); font-size:.62rem; min-width:16px; text-align:center; }
+    .lb-name { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:'Philosopher',serif; color:#d0ccd8; }
+    .lb-time { color:var(--muted); font-size:.65rem; white-space:nowrap; }
+
     /* ── Discord widget ── */
     .discord-panel { background:rgba(88,101,242,0.08); border:1px solid rgba(88,101,242,0.25); border-radius:12px; overflow:hidden; }
     .discord-panel iframe { display:block; width:100%; border:none; }
@@ -700,11 +710,18 @@
       </a>
     </div>
 
-    <!-- Top Hunters -->
+    <!-- Top Hunters + Leaderboard -->
     <div id="hunters-wrap" style="display:none;margin-top:1.1rem;">
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:1rem;"></div>
       <h3 class="gothic" style="font-size:.7rem;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-bottom:.6rem;text-align:center;">Топ охотников</h3>
+      <!-- Tabs -->
+      <div style="display:flex;gap:.25rem;margin-bottom:.65rem;">
+        <button id="lb-tab-now"  onclick="switchLbTab('now')"  class="lb-tab lb-tab-active">Сейчас</button>
+        <button id="lb-tab-week" onclick="switchLbTab('week')" class="lb-tab">Неделя</button>
+        <button id="lb-tab-all"  onclick="switchLbTab('all')"  class="lb-tab">Всё время</button>
+      </div>
       <div id="top-hunters"></div>
+      <div id="lb-list" style="display:none;"></div>
     </div>
   </aside>
 
@@ -1061,7 +1078,11 @@ function updateHunters(players) {
   const wrap = document.getElementById('hunters-wrap');
   const el = document.getElementById('top-hunters');
   if (!wrap || !el) return;
-  if (!players || !players.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  if (!players || !players.length) {
+    if (_lbTab === 'now') el.innerHTML = `<div style="color:var(--muted);font-size:.72rem;font-style:italic;padding:.3rem 0;">Нет игроков онлайн.</div>`;
+    return;
+  }
   wrap.style.display = '';
   const sorted = [...players].sort((a, b) => b.duration - a.duration);
   const top3 = sorted.slice(0, 3);
@@ -1523,6 +1544,52 @@ async function loadVersion() {
     const el = document.getElementById('footer-version');
     if (el) el.textContent = `Версия: ${d.version || 'dev'}`;
   } catch {}
+}
+
+// ── Leaderboard ────────────────────────────────────────────────────────────
+let _lbTab = 'now';
+
+function switchLbTab(tab) {
+  _lbTab = tab;
+  ['now','week','all'].forEach(t => {
+    document.getElementById(`lb-tab-${t}`)?.classList.toggle('lb-tab-active', t === tab);
+  });
+  const hunters = document.getElementById('top-hunters');
+  const lbList  = document.getElementById('lb-list');
+  if (tab === 'now') {
+    if (hunters) hunters.style.display = '';
+    if (lbList)  lbList.style.display = 'none';
+  } else {
+    if (hunters) hunters.style.display = 'none';
+    if (lbList)  lbList.style.display = '';
+    loadLeaderboard(tab);
+  }
+}
+
+async function loadLeaderboard(period) {
+  const el = document.getElementById('lb-list');
+  if (!el) return;
+  el.innerHTML = `<div style="color:var(--muted);font-size:.72rem;padding:.3rem 0;">Загрузка…</div>`;
+  try {
+    const data = await fetch(`${API}/leaderboard?server=1&period=${period}`).then(r => r.json());
+    if (!data.length) {
+      el.innerHTML = `<div style="color:var(--muted);font-size:.72rem;font-style:italic;">Нет данных.</div>`;
+      return;
+    }
+    el.innerHTML = data.map((r, i) => {
+      const rank = i === 0 ? '👑' : `${i + 1}`;
+      const hrs  = Math.floor(r.total_seconds / 3600);
+      const mins = Math.floor((r.total_seconds % 3600) / 60);
+      const time = hrs > 0 ? `${hrs}ч ${mins}м` : `${mins}м`;
+      return `<div class="lb-row">
+        <span class="lb-rank">${rank}</span>
+        <span class="lb-name">${esc(r.player_name)}</span>
+        <span class="lb-time">${time}</span>
+      </div>`;
+    }).join('');
+  } catch {
+    el.innerHTML = `<div style="color:var(--muted);font-size:.72rem;">Ошибка загрузки.</div>`;
+  }
 }
 
 // ── Wipe countdown ─────────────────────────────────────────────────────────

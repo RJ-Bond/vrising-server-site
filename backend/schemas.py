@@ -103,6 +103,16 @@ class NewsListOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PlayerRecordOut(BaseModel):
+    id: int
+    server_num: int
+    player_name: str
+    total_seconds: int
+    last_seen: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
+
+
 class WipeCreate(BaseModel):
     server_num: int = 1
     wipe_type: str = "full"
