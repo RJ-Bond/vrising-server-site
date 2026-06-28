@@ -2,12 +2,18 @@ import os
 import math
 import re
 import json
+import uuid
+import shutil
 from contextlib import asynccontextmanager
 from datetime import datetime
+from pathlib import Path
 
-from fastapi import FastAPI, Depends, HTTPException, status, Query
+from fastapi import FastAPI, Depends, HTTPException, status, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, FileResponse
+
+UPLOAD_DIR = Path("/data/uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
 
@@ -407,6 +413,34 @@ async def delete_news(
         raise HTTPException(status_code=404, detail="News not found")
     await db.delete(news)
     await db.commit()
+
+
+# ─── File upload ─────────────────────────────────────────────────────────────
+
+@app.post("/api/admin/upload")
+async def upload_file(
+    file: UploadFile = File(...),
+    _: User = Depends(get_admin_user),
+):
+    allowed = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico"}
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix not in allowed:
+        raise HTTPException(400, detail="Допустимые форматы: PNG, JPG, GIF, SVG, WebP, ICO")
+    filename = f"{uuid.uuid4().hex}{suffix}"
+    dest = UPLOAD_DIR / filename
+    with open(dest, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    return {"url": f"/api/uploads/{filename}"}
+
+
+@app.get("/api/uploads/{filename}")
+async def serve_upload(filename: str):
+    if ".." in filename or "/" in filename:
+        raise HTTPException(404)
+    path = UPLOAD_DIR / filename
+    if not path.exists() or not path.is_file():
+        raise HTTPException(404)
+    return FileResponse(str(path))
 
 
 # ─── Settings (public) ───────────────────────────────────────────────────────

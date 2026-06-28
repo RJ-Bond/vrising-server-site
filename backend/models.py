@@ -33,7 +33,7 @@ class News(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
-    author = relationship("User", backref="news_posts")
+    author = relationship("User", backref="news_posts", lazy="selectin")
 
 
 class Setting(Base):

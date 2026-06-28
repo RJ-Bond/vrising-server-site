@@ -226,12 +226,21 @@
             <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">Название сервера в шапке и на главной странице</p>
           </div>
           <div>
-            <label>URL логотипа</label>
-            <div style="display:flex;gap:.5rem;">
-              <input id="setting-site_logo_url" type="url" class="dark-input" placeholder="https://example.com/logo.png" style="flex:1;" oninput="previewLogo(this.value)" />
+            <label>Логотип сайта</label>
+            <!-- URL input -->
+            <div style="display:flex;gap:.5rem;margin-bottom:.5rem;">
+              <input id="setting-site_logo_url" type="text" class="dark-input" placeholder="https://example.com/logo.png или загрузите файл ниже" style="flex:1;" oninput="previewLogo(this.value)" />
               <button onclick="saveSetting('site_logo_url')" class="btn-primary" style="white-space:nowrap;padding:.6rem 1rem;">Сохранить</button>
             </div>
-            <p style="font-size:.72rem;color:var(--muted);margin-top:.4rem;">PNG/SVG лого для шапки. Оставьте пустым — будет текстовое название</p>
+            <!-- File upload -->
+            <div style="display:flex;align-items:center;gap:.75rem;">
+              <label for="logo-file-input" style="display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;padding:.5rem .9rem;border-radius:.5rem;border:1px solid rgba(120,0,24,0.4);background:rgba(8,0,16,0.8);color:var(--muted);font-size:.8rem;transition:border-color .2s,color .2s;margin:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,0.4)';this.style.color='var(--muted)'">
+                📁 Загрузить с компьютера
+              </label>
+              <input id="logo-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/svg+xml,image/webp,image/x-icon" style="display:none;" onchange="uploadLogoFile(this)" />
+              <span id="logo-upload-status" style="font-size:.78rem;color:var(--muted);"></span>
+            </div>
+            <p style="font-size:.72rem;color:var(--muted);margin-top:.5rem;">PNG/SVG/JPG — показывается в шапке. Оставьте пустым — отобразится текстовое название</p>
             <div id="logo-preview" style="margin-top:.75rem;display:none;">
               <img id="logo-preview-img" src="" alt="Logo preview" style="max-height:3rem;max-width:14rem;object-fit:contain;border-radius:.4rem;border:1px solid rgba(150,0,28,0.3);padding:.3rem .6rem;background:rgba(8,0,16,0.6);" onerror="this.style.display='none'" onload="this.style.display='block'" />
             </div>
@@ -443,6 +452,34 @@ function previewLogo(url) {
   const img  = document.getElementById('logo-preview-img');
   if (url) { img.src = url; wrap.style.display = 'block'; }
   else { wrap.style.display = 'none'; img.src = ''; }
+}
+
+async function uploadLogoFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const statusEl = document.getElementById('logo-upload-status');
+  statusEl.textContent = 'Загрузка...';
+  statusEl.style.color = 'var(--muted)';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const res = await fetch(`${API}/admin/upload`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+      body: fd,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки');
+    document.getElementById('setting-site_logo_url').value = data.url;
+    previewLogo(data.url);
+    statusEl.textContent = '✔ Загружено';
+    statusEl.style.color = '#86efac';
+    setTimeout(() => { statusEl.textContent = ''; }, 3000);
+  } catch (err) {
+    statusEl.textContent = '✘ ' + err.message;
+    statusEl.style.color = '#fca5a5';
+  }
+  input.value = '';
 }
 
 async function saveSetting(key) {
