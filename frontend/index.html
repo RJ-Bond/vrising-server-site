@@ -657,27 +657,27 @@
       border-bottom:1px solid rgba(110,0,20,0.2); backdrop-filter:blur(12px);
     }
     .status-bar-inner {
-      max-width:1280px; margin:0 auto; padding:.4rem 1.25rem;
-      display:flex; flex-direction:column; gap:0;
+      max-width:900px; margin:0 auto; padding:.4rem 1.25rem;
+      display:grid;
+      grid-template-columns: minmax(160px,auto) 1fr 1fr 1fr;
     }
-    .sb-row {
-      display:flex; align-items:center; justify-content:center; gap:0;
-      border-bottom:1px solid rgba(110,0,20,0.12);
-    }
-    .sb-row:last-child { border-bottom:none; }
+    .sb-row { display:contents; }
+    .sb-row.sb-sep > * { border-bottom:1px solid rgba(110,0,20,0.15); }
     .sb-item {
-      display:flex; align-items:center; gap:.45rem;
-      padding:.22rem 1.1rem; border-right:1px solid rgba(110,0,20,0.2);
+      display:flex; align-items:center; justify-content:center; gap:.45rem;
+      padding:.28rem .9rem; border-right:1px solid rgba(110,0,20,0.2);
       font-size:.72rem; color:var(--muted); white-space:nowrap;
     }
+    .sb-row > .sb-item:last-child { border-right:none; }
     .sb-val { font-family:'Oswald',sans-serif; font-size:.85rem; font-weight:500;
       font-variant-numeric:tabular-nums; color:var(--text); }
     .sb-icon { font-size:.9rem; line-height:1; }
     .sb-srv-tag {
+      display:flex; align-items:center; justify-content:flex-end;
       font-family:'Cinzel',serif; font-size:.56rem; font-weight:700;
       letter-spacing:.1em; color:rgba(200,165,255,.55); text-transform:uppercase;
-      padding:.1rem .7rem .1rem .15rem; border-right:1px solid rgba(110,0,20,0.2);
-      white-space:nowrap; align-self:center;
+      padding:.28rem .75rem; border-right:1px solid rgba(110,0,20,0.2);
+      white-space:nowrap;
     }
     .sb-srv-sep { display:none; }
 
@@ -902,21 +902,21 @@
 <div class="status-bar">
   <div class="status-bar-inner">
     <!-- Server 1 row -->
-    <div class="sb-row">
+    <div class="sb-row sb-sep" id="sb-s1-row">
       <span class="sb-srv-tag" id="sb-s1name">Сервер 1</span>
       <div class="sb-item">
         <span class="sb-icon">🩸</span>
-        <span style="color:var(--muted);">Игрок(ов)</span>
+        <span>Игрок(ов)</span>
         <span class="sb-val" id="sb-online1">—</span>
       </div>
       <div class="sb-item">
         <span class="sb-icon">⬆</span>
-        <span style="color:var(--muted);">Аптайм 24ч</span>
+        <span>Аптайм 24ч</span>
         <span class="sb-val" id="sb-uptime1">—</span>
       </div>
-      <div class="sb-item" style="border-right:none">
+      <div class="sb-item">
         <span class="sb-icon">⚔</span>
-        <span style="color:var(--muted);">До вайпа</span>
+        <span>До вайпа</span>
         <span class="sb-val" id="sb-wipe1">—</span>
       </div>
     </div>
@@ -925,17 +925,17 @@
       <span class="sb-srv-tag" id="sb-s2name">Сервер 2</span>
       <div class="sb-item" id="sb-s2online-row">
         <span class="sb-icon">🩸</span>
-        <span style="color:var(--muted);">Игрок(ов)</span>
+        <span>Игрок(ов)</span>
         <span class="sb-val" id="sb-online2">—</span>
       </div>
       <div class="sb-item">
         <span class="sb-icon">⬆</span>
-        <span style="color:var(--muted);">Аптайм 24ч</span>
+        <span>Аптайм 24ч</span>
         <span class="sb-val" id="sb-uptime2">—</span>
       </div>
-      <div class="sb-item" style="border-right:none" id="sb-s2wipe-row">
+      <div class="sb-item" id="sb-s2wipe-row">
         <span class="sb-icon">⚔</span>
-        <span style="color:var(--muted);">До вайпа</span>
+        <span>До вайпа</span>
         <span class="sb-val" id="sb-wipe2">—</span>
       </div>
     </div>
@@ -1731,9 +1731,9 @@ async function loadStatus2() {
       return;
     }
     section.style.display = 'block';
-    // Show server 2 row in status bar
+    // Show server 2 row in status bar (display:contents puts children into parent grid)
     const sr2 = document.getElementById('sb-s2-row');
-    if (sr2) sr2.style.display = '';
+    if (sr2) sr2.style.display = 'contents';
     // server2 title stays as static "— Сервер 2 —"
     renderServerBlock(d, '2');
     window._sb_online2 = d.online ? d.players : 0;
