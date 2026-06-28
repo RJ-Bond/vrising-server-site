@@ -1012,7 +1012,7 @@ async function loadNews(page = 1) {
       .map(t => `<span class="news-tag" onclick="event.stopPropagation();setTag('${esc(t)}')">${esc(t)}</span>`).join('');
     const authorName = esc(n.author.username);
     const adminBadge = n.author.role === 'admin'
-      ? `<span style="font-size:.55rem;font-weight:700;letter-spacing:.07em;padding:.1rem .45rem;border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;font-family:'Cinzel',serif;white-space:nowrap;">Админ</span>`
+      ? `<span style="font-size:.55rem;font-weight:700;letter-spacing:.07em;padding:.1rem .45rem;border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;font-family:'Inter',sans-serif;white-space:nowrap;">Админ</span>`
       : '';
     const authorAvatar = n.author.avatar_url
       ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.3);flex-shrink:0;">`
@@ -1068,7 +1068,7 @@ async function openNews(slug) {
     document.getElementById('modal-title').textContent = n.title;
     const authorName = esc(n.author.username);
     const modalAdminBadge = n.author.role === 'admin'
-      ? `<span style="font-size:.55rem;font-weight:700;letter-spacing:.07em;padding:.1rem .45rem;border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;font-family:'Cinzel',serif;white-space:nowrap;">Админ</span>`
+      ? `<span style="font-size:.55rem;font-weight:700;letter-spacing:.07em;padding:.1rem .45rem;border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;font-family:'Inter',sans-serif;white-space:nowrap;">Админ</span>`
       : '';
     const avatarEl = n.author.avatar_url
       ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.3);flex-shrink:0;">`

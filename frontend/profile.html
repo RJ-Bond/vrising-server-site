@@ -184,7 +184,7 @@ function fmtDate(iso) {
   return new Date(iso).toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
-const roleLabels = { admin: 'Администратор', user: 'Игрок' };
+const roleLabels = { admin: 'Админ', user: 'Игрок' };
 const roleColors = { admin: 'rgba(200,160,74,0.85)', user: 'rgba(180,140,220,0.85)' };
 
 function setAvatarEl(avatarUrl, initial) {
