@@ -309,7 +309,7 @@
   <div style="position:relative;z-index:2;text-align:center;padding:.75rem 1rem;">
     <h1 id="hero-title" class="gothic hero-title">V RISING</h1>
     <div class="hero-divider"></div>
-    <div id="hero-servers" style="display:flex;justify-content:center;align-items:center;gap:.5rem 1.25rem;flex-wrap:wrap;">
+    <div id="hero-servers" style="display:flex;flex-direction:column;align-items:center;gap:.35rem;">
       <div id="hero-status" style="display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:var(--muted);">Загрузка статуса...</div>
       <div id="hero-status2" style="display:none;align-items:center;gap:.5rem;"></div>
     </div>
@@ -560,7 +560,6 @@ async function loadStatus2() {
     if (heroSt2) {
       heroSt2.style.display = 'flex';
       heroSt2.innerHTML = `
-        <span style="width:1px;height:14px;background:rgba(110,0,20,0.4);flex-shrink:0;"></span>
         <span class="${cls}" style="font-size:.72rem;font-weight:700;padding:.2rem .75rem;border-radius:9999px;">${lbl}</span>
         <span style="color:var(--text);font-size:.78rem;font-weight:500;">${esc(d.name)}</span>
         <span style="color:var(--muted);font-size:.75rem;">${d.players} / ${d.max_players} игроков</span>`;
