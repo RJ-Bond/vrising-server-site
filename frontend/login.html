@@ -154,6 +154,28 @@ function showError(id, msg) {
   el.textContent = msg; el.classList.remove('hidden');
 }
 
+async function apiPost(url, body) {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  let data;
+  try { data = await res.json(); }
+  catch { data = { detail: `Ошибка сервера (${res.status})` }; }
+  return { res, data };
+}
+
+function extractError(data, fallback) {
+  if (!data.detail) return fallback;
+  if (Array.isArray(data.detail)) {
+    return data.detail
+      .map(d => (d.msg || '').replace(/^value error,\s*/i, ''))
+      .join(', ');
+  }
+  return data.detail;
+}
+
 async function submitLogin(e) {
   e.preventDefault();
   document.getElementById('login-error').classList.add('hidden');
@@ -161,16 +183,14 @@ async function submitLogin(e) {
   btn.disabled = true; btn.textContent = 'Вход...';
   const fd = new FormData(e.target);
   try {
-    const res = await fetch(`${API}/auth/login`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: fd.get('username'), password: fd.get('password') }),
+    const { res, data } = await apiPost(`${API}/auth/login`, {
+      username: fd.get('username'), password: fd.get('password'),
     });
-    const data = await res.json();
-    if (!res.ok) { showError('login-error', data.detail || 'Неверный логин или пароль'); return; }
+    if (!res.ok) { showError('login-error', extractError(data, 'Неверный логин или пароль')); return; }
     localStorage.setItem('token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
     window.location.href = data.user.role === 'admin' ? '/admin.html' : '/';
-  } catch { showError('login-error', 'Сетевая ошибка. Попробуйте снова.'); }
+  } catch (err) { showError('login-error', 'Нет связи с сервером: ' + err.message); }
   finally { btn.disabled = false; btn.textContent = 'Войти'; }
 }
 
@@ -182,21 +202,16 @@ async function submitRegister(e) {
   btn.disabled = true; btn.textContent = 'Создание...';
   const fd = new FormData(e.target);
   try {
-    const res = await fetch(`${API}/auth/register`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username: fd.get('username'), email: fd.get('email'), password: fd.get('password') }),
+    const { res, data } = await apiPost(`${API}/auth/register`, {
+      username: fd.get('username'), email: fd.get('email'), password: fd.get('password'),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      const msg = Array.isArray(data.detail) ? data.detail.map(d => d.msg).join(', ') : (data.detail || 'Ошибка регистрации');
-      showError('register-error', msg); return;
-    }
+    if (!res.ok) { showError('register-error', extractError(data, 'Ошибка регистрации')); return; }
     localStorage.setItem('token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
     const s = document.getElementById('register-success');
     s.textContent = 'Аккаунт создан! Перенаправление...'; s.classList.remove('hidden');
     setTimeout(() => { window.location.href = '/'; }, 1200);
-  } catch { showError('register-error', 'Сетевая ошибка. Попробуйте снова.'); }
+  } catch (err) { showError('register-error', 'Нет связи с сервером: ' + err.message); }
   finally { btn.disabled = false; btn.textContent = 'Зарегистрироваться'; }
 }
 
