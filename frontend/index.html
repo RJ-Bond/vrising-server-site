@@ -457,6 +457,52 @@
     .p-row-c:last-child { border-bottom:none; }
     .p-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 
+    /* ── Featured news ── */
+    .featured-card {
+      border-radius: 1rem; overflow: hidden; cursor: pointer; position: relative;
+      min-height: 220px; display: flex; flex-direction: column; justify-content: flex-end;
+      border: 1px solid rgba(190,0,40,0.3);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 20px rgba(120,0,20,0.15);
+      transition: transform .2s, box-shadow .25s;
+    }
+    .featured-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 55px rgba(0,0,0,0.65), 0 0 35px rgba(190,0,35,0.35);
+      border-color: rgba(220,0,45,0.55);
+    }
+    .featured-bg { position: absolute; inset: 0; background-size: cover; background-position: center; }
+    .featured-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(4,0,8,0.97) 0%, rgba(4,0,8,0.65) 45%, rgba(4,0,8,0.15) 100%);
+    }
+    .featured-body { position: relative; z-index: 2; padding: 1.4rem 1.6rem; }
+    .featured-badge {
+      display: inline-block; font-size: .58rem; font-weight: 700; letter-spacing: .18em;
+      padding: .18rem .65rem; border-radius: 9999px; text-transform: uppercase;
+      background: rgba(200,0,35,0.22); border: 1px solid rgba(220,0,40,0.5); color: #f87171;
+      margin-bottom: .6rem; font-family: 'Cinzel', serif;
+    }
+
+    /* ── Footer ── */
+    .site-footer {
+      border-top: 1px solid rgba(110,0,20,0.25);
+      background: rgba(5,0,10,0.6); backdrop-filter: blur(12px);
+      padding: 1.4rem 1.5rem; margin-top: 3rem;
+    }
+    .footer-inner {
+      max-width: 1280px; margin: auto;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
+    }
+    .footer-links { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+    .footer-link {
+      display: inline-flex; align-items: center; gap: .4rem;
+      font-size: .73rem; color: var(--muted); text-decoration: none;
+      padding: .28rem .7rem; border-radius: .45rem;
+      border: 1px solid rgba(110,0,20,0.22); background: rgba(20,5,30,0.4);
+      transition: color .18s, border-color .18s;
+    }
+    .footer-link:hover { color: var(--text); border-color: rgba(180,0,35,0.4); }
+
     /* ── Mobile ── */
     @media (max-width:768px) {
       .hamburger-btn { display:flex; }
@@ -604,6 +650,7 @@
       <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;">— Летопись —</h2>
       <div id="tag-filters" style="display:flex;gap:.4rem;flex-wrap:wrap;"></div>
     </div>
+    <div id="featured-wrap" style="display:none;margin-bottom:1.1rem;"></div>
     <div id="news-list" style="display:grid;gap:.75rem;grid-template-columns:1fr;"></div>
     <div id="news-pagination" style="display:flex;justify-content:center;gap:.5rem;margin-top:1.25rem;"></div>
   </main>
@@ -672,6 +719,24 @@
     <div id="modal-content" class="rich-content"></div>
   </div>
 </div>
+
+<!-- ══ FOOTER ════════════════════════════════════════════════════════════════ -->
+<footer class="site-footer">
+  <div class="footer-inner">
+    <a href="/" id="footer-logo" class="gothic" style="font-size:.95rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 16px rgba(204,0,40,0.5);">⚔ V RISING</a>
+    <div class="footer-links">
+      <a id="footer-discord" href="#" target="_blank" rel="noopener noreferrer" class="footer-link" style="display:none;">
+        <svg width="14" height="14" viewBox="0 0 127.14 96.36" fill="#5865F2"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+        Discord
+      </a>
+      <a href="https://store.steampowered.com/app/1604030/V_Rising/" target="_blank" rel="noopener noreferrer" class="footer-link">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0z"/></svg>
+        Steam
+      </a>
+    </div>
+    <span style="font-size:.68rem;color:var(--muted);">© 2025 V Rising Server</span>
+  </div>
+</footer>
 
 <script>
 const API = '/api';
@@ -972,6 +1037,47 @@ async function loadStatus2() {
   } catch {}
 }
 
+// ── Featured news ──────────────────────────────────────────────────────────
+async function loadFeatured() {
+  const wrap = document.getElementById('featured-wrap');
+  if (!wrap) return;
+  try {
+    const data = await fetch(`${API}/news?tag=featured&per_page=1&page=1`).then(r => r.json());
+    if (!data.items || !data.items.length) { wrap.style.display = 'none'; return; }
+    const n = data.items[0];
+    const authorName = esc(n.author.username);
+    const adminBadge = n.author.role === 'admin'
+      ? `<span style="font-size:.55rem;font-weight:700;letter-spacing:.07em;padding:.1rem .45rem;border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;font-family:'Inter',sans-serif;">Админ</span>` : '';
+    const avatarEl = n.author.avatar_url
+      ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.35);flex-shrink:0;">`
+      : `<span style="width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(80,0,150,0.6),rgba(120,0,20,0.4));border:1px solid rgba(190,0,40,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:.8rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
+    const bgStyle = n.thumbnail_url
+      ? `background-image:url('${esc(n.thumbnail_url)}')`
+      : `background:linear-gradient(135deg,rgba(60,0,100,0.8),rgba(90,0,15,0.8))`;
+    wrap.style.display = '';
+    wrap.innerHTML = `
+      <div class="featured-card" onclick="openNews('${esc(n.slug)}')">
+        <div class="featured-bg" style="${bgStyle}"></div>
+        <div class="featured-overlay"></div>
+        <div class="featured-body">
+          <div class="featured-badge">★ Главное</div>
+          <h2 class="gothic" style="font-size:1.3rem;font-weight:700;color:#d4c4e0;line-height:1.3;margin-bottom:.5rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.title)}</h2>
+          <p style="font-size:.82rem;color:rgba(200,190,215,0.78);line-height:1.55;margin-bottom:.85rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.summary)}</p>
+          <div style="display:flex;align-items:center;gap:.5rem;">
+            ${avatarEl}
+            <div style="display:flex;flex-direction:column;gap:.12rem;">
+              <div style="display:flex;align-items:center;gap:.35rem;">
+                <span style="font-size:.8rem;color:#d4c4e0;font-weight:600;">${authorName}</span>
+                ${adminBadge}
+              </div>
+              <span style="font-size:.62rem;color:rgba(180,170,195,0.65);">${fmtDate(n.created_at)}</span>
+            </div>
+          </div>
+        </div>
+      </div>`;
+  } catch { if (wrap) wrap.style.display = 'none'; }
+}
+
 // ── Tags ───────────────────────────────────────────────────────────────────
 let _activeTag = null;
 
@@ -1126,7 +1232,11 @@ async function loadSiteSettings() {
     if (discord) {
       discordBtn.href = discord;
       discordBtn.style.display = 'flex';
+      const footerDiscord = document.getElementById('footer-discord');
+      if (footerDiscord) { footerDiscord.href = discord; footerDiscord.style.display = 'inline-flex'; }
     }
+    const footerLogo = document.getElementById('footer-logo');
+    if (footerLogo) footerLogo.textContent = '⚔ ' + title;
   } catch {}
 }
 
@@ -1141,7 +1251,8 @@ loadStatus();
 loadStatus2();
 loadHistory();
 setInterval(() => { loadStatus(); loadStatus2(); }, 30000);
-setInterval(loadHistory, 300000); // refresh sparkline every 5 min
+setInterval(loadHistory, 300000);
+loadFeatured();
 loadNews(1);
 loadTags();
 </script>
