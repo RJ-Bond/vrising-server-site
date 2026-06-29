@@ -92,9 +92,10 @@
 
     .hero-title {
       font-size: clamp(1.6rem, 4.5vw, 3.2rem);
-      letter-spacing: .18em; line-height: 1;
-      text-shadow: 0 0 30px rgba(204,0,40,0.7), 0 0 70px rgba(204,0,40,0.3), 0 0 120px rgba(123,0,204,0.2);
-      color: #d4c4e0;
+      letter-spacing: .22em; line-height: 1;
+      text-shadow: 0 0 24px rgba(201,169,74,0.25), 0 0 60px rgba(201,169,74,0.1);
+      color: var(--gold);
+      font-family: 'Philosopher', serif;
     }
     .hero-sub { font-size: .75rem; letter-spacing: .3em; color: var(--muted); text-transform: uppercase; }
     .hero-divider { width: 120px; height: 1px; background: linear-gradient(90deg, transparent, var(--crimson), var(--purple), transparent); margin: .45rem auto; }
@@ -410,7 +411,7 @@
       .info-grid { grid-template-columns: 1fr 1fr; gap: .5rem; }
       .info-card { padding: .75rem .7rem; }
       .hero { min-height: 32vh; padding: 2rem 1rem 1.5rem; }
-      .hero-title { font-size: clamp(1.3rem, 7vw, 2.2rem); letter-spacing: .1em; }
+      .hero-title { font-size: clamp(1.3rem, 7vw, 2.2rem); letter-spacing: .12em; }
       .hero-sub { font-size: .65rem; }
       .connect-btn { font-size: .72rem; padding: .45rem .9rem; }
       .copy-ip-btn { font-size: .72rem; padding: .45rem .7rem; }
@@ -430,7 +431,7 @@
       .nav-link-item span { display: none; }
       .nav-link-item { justify-content: center; }
       .discord-btn span { display: none; }
-      .hero-title { font-size: clamp(1.1rem, 8vw, 1.8rem); letter-spacing: .07em; }
+      .hero-title { font-size: clamp(1.1rem, 8vw, 1.8rem); letter-spacing: .08em; }
       .hero-connect { flex-wrap: wrap; gap: .4rem; }
       .wipe-block-val { font-size: 1.2rem; }
       .h-name { max-width: 44px; font-size: .6rem; }
@@ -1047,7 +1048,7 @@
     <!-- Drawer close (mobile only) -->
     <button onclick="toggleDrawer()" id="drawer-close" style="display:none;position:absolute;top:.75rem;right:.75rem;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1;z-index:2;padding:.25rem;">✕</button>
 
-    <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;text-align:center;">— Навигация —</h2>
+    <h2 style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;text-align:center;">— Навигация —</h2>
 
     <!-- User card (shown when logged in) -->
     <div id="nav-user-card" class="nav-user-card" style="display:none;">
@@ -1104,7 +1105,7 @@
     <!-- Top Hunters + Leaderboard -->
     <div id="hunters-wrap" style="display:none;margin-top:1.1rem;">
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:1rem;"></div>
-      <h3 class="gothic" style="font-size:.7rem;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-bottom:.6rem;text-align:center;">Топ охотников</h3>
+      <h3 style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.6rem;text-align:center;">— Топ охотников —</h3>
       <!-- Tabs -->
       <div style="display:flex;gap:.25rem;margin-bottom:.65rem;">
         <button id="lb-tab-now"  onclick="switchLbTab('now')"  class="lb-tab lb-tab-active">Сейчас</button>
@@ -1119,7 +1120,7 @@
   <!-- ── CENTER: News ── -->
   <main id="news-section" style="flex:1;min-width:0;min-height:55vh;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:.75rem;">
-      <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;">— Новости —</h2>
+      <h2 style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;">— Новости —</h2>
       <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
         <input id="news-search" type="search" placeholder="Поиск..." oninput="onSearchInput(this.value)"
           style="background:rgba(8,0,16,0.7);border:1px solid rgba(110,0,150,0.3);color:#e2d8f0;border-radius:.4rem;padding:.3rem .65rem;font-size:.75rem;width:130px;outline:none;transition:border-color .2s;"
