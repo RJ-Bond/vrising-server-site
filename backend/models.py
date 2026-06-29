@@ -32,6 +32,7 @@ class News(Base):
     tags = Column(String(256), nullable=True, default="")
     author_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     published = Column(Boolean, default=True, nullable=False)
+    pinned = Column(Boolean, default=False, nullable=False)
     views = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -101,6 +102,16 @@ class Setting(Base):
     key = Column(String(64), unique=True, nullable=False, index=True)
     value = Column(Text, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+
+class Reaction(Base):
+    __tablename__ = "reactions"
+    id = Column(Integer, primary_key=True, index=True)
+    news_id = Column(Integer, ForeignKey("news.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    emoji = Column(String(10), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("news_id", "user_id", "emoji", name="uq_reaction"),)
 
 
 class AuditLog(Base):

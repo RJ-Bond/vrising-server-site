@@ -36,6 +36,10 @@ def revoke_token(token: str) -> None:
     _revoked_tokens.add(token)
 
 
+# Alias for external access
+revoked_tokens = _revoked_tokens
+
+
 def verify_password(plain: str, hashed: str) -> bool:
     return _bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 

@@ -11,7 +11,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, Depends, HTTPException, Request, status, Query, UploadFile, File
+from typing import Optional
+from fastapi import FastAPI, Depends, HTTPException, Request, status, Query, Header, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -30,7 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, text
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction
 from .auth import (
     verify_password,
     get_password_hash,
@@ -38,7 +39,11 @@ from .auth import (
     get_current_user,
     get_admin_user,
     revoke_token,
+    SECRET_KEY,
+    ALGORITHM,
+    revoked_tokens as _revoked_tokens,
 )
+from jose import JWTError, jwt as jose_jwt
 from .schemas import (
     UserRegister,
     UserLogin,
@@ -131,6 +136,7 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE news ADD COLUMN tags VARCHAR(256) DEFAULT ''",
             "ALTER TABLE users ADD COLUMN avatar_url VARCHAR(512) DEFAULT NULL",
             "ALTER TABLE news ADD COLUMN views INTEGER DEFAULT 0 NOT NULL",
+            "ALTER TABLE news ADD COLUMN pinned BOOLEAN DEFAULT 0 NOT NULL",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -611,7 +617,7 @@ async def list_news(
     result = await db.execute(
         select(News)
         .where(base_filter)
-        .order_by(News.created_at.desc())
+        .order_by(News.pinned.desc(), News.created_at.desc())
         .offset(offset)
         .limit(per_page)
     )
@@ -648,6 +654,84 @@ async def get_news(slug: str, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(news)
     return NewsOut.model_validate(news)
+
+
+# ─── Reactions ───────────────────────────────────────────────────────────────
+
+_ALLOWED_EMOJIS = {"fire", "heart", "thumbs_up", "wow"}
+
+
+@app.get("/api/news/{slug}/reactions")
+async def get_reactions(
+    slug: str,
+    db: AsyncSession = Depends(get_db),
+    authorization: Optional[str] = Header(None),
+):
+    news_res = await db.execute(select(News.id).where(News.slug == slug, News.published == True))
+    news_id = news_res.scalar_one_or_none()
+    if news_id is None:
+        raise HTTPException(404, "Not found")
+    counts_res = await db.execute(
+        select(Reaction.emoji, func.count(Reaction.id))
+        .where(Reaction.news_id == news_id)
+        .group_by(Reaction.emoji)
+    )
+    counts = {row[0]: row[1] for row in counts_res.all()}
+    user_reactions: list[str] = []
+    if authorization and authorization.startswith("Bearer "):
+        try:
+            token = authorization[7:]
+            if token not in _revoked_tokens:
+                payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                uid = int(payload.get("sub", 0))
+                if uid:
+                    ur_res = await db.execute(
+                        select(Reaction.emoji).where(Reaction.news_id == news_id, Reaction.user_id == uid)
+                    )
+                    user_reactions = [r[0] for r in ur_res.all()]
+        except Exception:
+            pass
+    return {"counts": counts, "user_reactions": user_reactions}
+
+
+@app.post("/api/news/{slug}/react")
+async def toggle_reaction(
+    slug: str,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    emoji = body.get("emoji", "")
+    if emoji not in _ALLOWED_EMOJIS:
+        raise HTTPException(400, "Invalid emoji")
+    news_res = await db.execute(select(News.id).where(News.slug == slug, News.published == True))
+    news_id = news_res.scalar_one_or_none()
+    if news_id is None:
+        raise HTTPException(404, "Not found")
+    existing_res = await db.execute(
+        select(Reaction).where(
+            Reaction.news_id == news_id,
+            Reaction.user_id == current_user.id,
+            Reaction.emoji == emoji,
+        )
+    )
+    existing = existing_res.scalar_one_or_none()
+    if existing:
+        await db.delete(existing)
+    else:
+        db.add(Reaction(news_id=news_id, user_id=current_user.id, emoji=emoji))
+    await db.commit()
+    counts_res = await db.execute(
+        select(Reaction.emoji, func.count(Reaction.id))
+        .where(Reaction.news_id == news_id)
+        .group_by(Reaction.emoji)
+    )
+    counts = {row[0]: row[1] for row in counts_res.all()}
+    ur_res = await db.execute(
+        select(Reaction.emoji).where(Reaction.news_id == news_id, Reaction.user_id == current_user.id)
+    )
+    user_reactions = [r[0] for r in ur_res.all()]
+    return {"counts": counts, "user_reactions": user_reactions}
 
 
 # ─── Comments ────────────────────────────────────────────────────────────────
@@ -830,6 +914,7 @@ async def update_news(
     if 'thumbnail_url' in fields: news.thumbnail_url = body.thumbnail_url  # None = clear
     if 'tags'          in fields: news.tags          = body.tags
     if 'published'     in fields: news.published     = body.published
+    if 'pinned'        in fields: news.pinned        = body.pinned
     news.updated_at = datetime.utcnow()
     await log_audit(db, admin_u, "news.update", news.title)
     await db.commit()

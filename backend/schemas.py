@@ -71,6 +71,7 @@ class NewsUpdate(BaseModel):
     thumbnail_url: Optional[str] = None
     tags: Optional[str] = None
     published: Optional[bool] = None
+    pinned: Optional[bool] = None
 
 
 class NewsOut(BaseModel):
@@ -82,6 +83,7 @@ class NewsOut(BaseModel):
     thumbnail_url: Optional[str]
     tags: Optional[str] = None
     published: bool
+    pinned: bool = False
     views: int = 0
     created_at: datetime
     updated_at: datetime
@@ -98,6 +100,7 @@ class NewsListOut(BaseModel):
     thumbnail_url: Optional[str]
     tags: Optional[str] = None
     published: bool
+    pinned: bool = False
     views: int = 0
     created_at: datetime
     author: UserOut

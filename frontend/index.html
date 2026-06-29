@@ -898,12 +898,11 @@
 
     /* ── Modal close button ── */
     .modal-close-btn {
-      position:absolute; top:.85rem; right:.9rem;
-      width:32px; height:32px; border-radius:50%;
+      width:28px; height:28px; border-radius:50%;
       background:rgba(70,0,14,0.35); border:1px solid rgba(140,0,28,0.35);
       color:var(--muted); font-size:.9rem; cursor:pointer;
       display:flex; align-items:center; justify-content:center;
-      transition:all .2s; z-index:2;
+      transition:all .2s;
     }
     .modal-close-btn:hover {
       background:rgba(180,0,32,0.45); color:#fff;
@@ -1133,7 +1132,8 @@
 
     <div id="featured-wrap" style="display:none;margin-bottom:1.1rem;"></div>
     <div id="news-list" style="display:grid;gap:.75rem;grid-template-columns:1fr;"></div>
-    <div id="news-pagination" style="display:flex;justify-content:center;gap:.5rem;margin-top:1.25rem;"></div>
+    <div id="news-sentinel" style="height:2px;margin-top:1rem;"></div>
+    <div id="news-loading-more" style="display:none;text-align:center;padding:.75rem 0;color:var(--muted);font-size:.75rem;">Загрузка…</div>
 
     <!-- ── Rules section ── -->
     <div class="rules-section">
@@ -1315,12 +1315,16 @@
 <!-- ══ MODAL ═════════════════════════════════════════════════════════════════ -->
 <div id="modal-bg" class="modal-bg">
   <div class="modal-box">
-    <button onclick="closeModal()" class="modal-close-btn" title="Закрыть">✕</button>
+    <div style="position:absolute;top:.75rem;right:.75rem;display:flex;gap:.4rem;">
+      <button onclick="shareNews()" title="Поделиться" style="width:28px;height:28px;border-radius:50%;background:rgba(20,5,40,0.8);border:1px solid rgba(110,0,20,0.35);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .15s,border-color .15s;" onmouseover="this.style.color='#d4c4e0';this.style.borderColor='rgba(180,0,30,0.55)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='rgba(110,0,20,0.35)'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+      <button onclick="closeModal()" class="modal-close-btn" title="Закрыть" style="position:static;">✕</button>
+    </div>
     <div id="modal-author" style="display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem;"></div>
     <h3 id="modal-title" class="gothic" style="font-size:1.2rem;font-weight:700;color:#d4c4e0;margin-bottom:.75rem;"></h3>
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(180,0,30,0.5),transparent);margin-bottom:1rem;"></div>
     <div id="modal-thumb" style="display:none;margin-bottom:1rem;border-radius:8px;overflow:hidden;max-height:320px;"><img id="modal-thumb-img" src="" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;max-height:320px;"></div>
     <div id="modal-content" class="rich-content"></div>
+    <div id="modal-reactions" style="display:flex;align-items:center;gap:.5rem;padding:.75rem 0;border-top:1px solid rgba(110,0,20,0.13);border-bottom:1px solid rgba(110,0,20,0.13);margin:.75rem 0;flex-wrap:wrap;"></div>
     <div class="comments-section">
       <div style="font-size:.75rem;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:.75rem;">Комментарии</div>
       <div id="modal-comments"></div>
@@ -1941,40 +1945,55 @@ function setTag(tag) {
 // ── News ───────────────────────────────────────────────────────────────────
 let _searchTerm = '';
 let _searchTimer = null;
+let _newsPage = 1;
+let _newsTotalPages = 1;
+let _newsLoading = false;
+
 function onSearchInput(val) {
   clearTimeout(_searchTimer);
   _searchTerm = val.trim();
   _searchTimer = setTimeout(() => loadNews(1), 350);
 }
 
-async function loadNews(page = 1) {
+async function loadNews(page = 1, append = false) {
+  if (_newsLoading) return;
+  _newsLoading = true;
   const list = document.getElementById('news-list');
-  list.innerHTML = Array(4).fill(0).map(() => `
-    <div class="news-card skel-card">
-      <div style="display:flex;gap:0;min-height:100px;">
-        <div class="skel skel-thumb" style="width:140px;"></div>
-        <div style="padding:.75rem 1rem;flex:1;display:flex;flex-direction:column;gap:.45rem;">
-          <div class="skel skel-line short" style="height:.65rem;"></div>
-          <div class="skel skel-line wide"  style="height:1rem;"></div>
-          <div class="skel skel-line med"   style="height:1rem;"></div>
-          <div class="skel skel-line short" style="height:.65rem;margin-top:.2rem;"></div>
+  const loadingMore = document.getElementById('news-loading-more');
+  if (!append) {
+    list.innerHTML = Array(4).fill(0).map(() => `
+      <div class="news-card skel-card">
+        <div style="display:flex;gap:0;min-height:100px;">
+          <div class="skel skel-thumb" style="width:140px;"></div>
+          <div style="padding:.75rem 1rem;flex:1;display:flex;flex-direction:column;gap:.45rem;">
+            <div class="skel skel-line short" style="height:.65rem;"></div>
+            <div class="skel skel-line wide"  style="height:1rem;"></div>
+            <div class="skel skel-line med"   style="height:1rem;"></div>
+            <div class="skel skel-line short" style="height:.65rem;margin-top:.2rem;"></div>
+          </div>
         </div>
-      </div>
-    </div>`).join('');
-  const params = new URLSearchParams({ page, per_page: 9 });
-  if (_activeTag) params.set('tag', _activeTag);
-  if (_searchTerm) params.set('search', _searchTerm);
-  const url = `${API}/news?${params}`;
-  const data = await fetch(url).then(r => r.json());
-  list.innerHTML = '';
-  if (!data.items.length) {
-    list.innerHTML = `<div class="news-empty">
-      <div class="news-empty-icon">⚔</div>
-      <div class="news-empty-title">Архивы пусты</div>
-      <p class="news-empty-sub">${_searchTerm ? 'По запросу «' + esc(_searchTerm) + '» ничего не найдено' : 'Новостей пока нет — следите за обновлениями'}</p>
-    </div>`;
-    return;
+      </div>`).join('');
+  } else if (loadingMore) {
+    loadingMore.style.display = 'block';
   }
+  try {
+    const params = new URLSearchParams({ page, per_page: 9 });
+    if (_activeTag) params.set('tag', _activeTag);
+    if (_searchTerm) params.set('search', _searchTerm);
+    const data = await fetch(`${API}/news?${params}`).then(r => r.json());
+    _newsPage = data.page;
+    _newsTotalPages = data.pages;
+    if (!append) list.innerHTML = '';
+    if (loadingMore) loadingMore.style.display = 'none';
+    if (!data.items.length && !append) {
+      list.innerHTML = `<div class="news-empty">
+        <div class="news-empty-icon">⚔</div>
+        <div class="news-empty-title">Архивы пусты</div>
+        <p class="news-empty-sub">${_searchTerm ? 'По запросу «' + esc(_searchTerm) + '» ничего не найдено' : 'Новостей пока нет — следите за обновлениями'}</p>
+      </div>`;
+      _newsLoading = false;
+      return;
+    }
   data.items.forEach((n, idx) => {
     const thumbImg = n.thumbnail_url
       ? `<div style="width:140px;flex-shrink:0;overflow:hidden;align-self:stretch;"><img src="${esc(n.thumbnail_url)}" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;"></div>`
@@ -1992,6 +2011,9 @@ async function loadNews(page = 1) {
       ? `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.6rem;color:var(--muted);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${n.comment_count}</span>`
       : '';
     const viewsBadge = `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.6rem;color:var(--muted);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${n.views || 0}</span>`;
+    const pinnedBadge = n.pinned
+      ? `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.58rem;font-weight:700;letter-spacing:.06em;color:rgba(240,192,64,0.9);background:rgba(180,130,0,0.15);border:1px solid rgba(210,165,0,0.35);border-radius:9999px;padding:.05rem .4rem;white-space:nowrap;">📌 Закреплено</span>`
+      : '';
     const card = document.createElement('div');
     card.className = 'news-card';
     card.style.animationDelay = `${idx * 0.06}s`;
@@ -2002,6 +2024,7 @@ async function loadNews(page = 1) {
           <span style="font-size:.6rem;color:var(--muted);letter-spacing:.03em;">${fmtDate(n.created_at)}</span>
           ${viewsBadge}
           ${commentBadge}
+          ${pinnedBadge}
         </div>
         <h3 class="gothic" style="font-size:1.05rem;font-weight:700;color:#d4c4e0;line-height:1.3;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.title)}</h3>
         ${n.summary
@@ -2043,20 +2066,25 @@ async function loadNews(page = 1) {
     }
     list.appendChild(card);
   });
-  const pag = document.getElementById('news-pagination');
-  pag.innerHTML = '';
-  for (let i = 1; i <= data.pages; i++) {
-    const b = document.createElement('button');
-    b.className = 'pg-btn' + (i === page ? ' active' : '');
-    b.textContent = i; b.onclick = () => loadNews(i);
-    pag.appendChild(b);
+  } catch(e) {
+    if (loadingMore) loadingMore.style.display = 'none';
   }
+  _newsLoading = false;
 }
+
+// ── Infinite scroll ─────────────────────────────────────────────────────────
+const _newsObserver = new IntersectionObserver(entries => {
+  if (entries[0].isIntersecting && !_newsLoading && _newsPage < _newsTotalPages) {
+    loadNews(_newsPage + 1, true);
+  }
+}, { rootMargin: '200px' });
+_newsObserver.observe(document.getElementById('news-sentinel'));
 
 let _modalSlug = '';
 
 async function openNews(slug) {
   _modalSlug = slug;
+  history.pushState({newsSlug: slug}, '', '?news=' + encodeURIComponent(slug));
   try {
     const n = await fetch(`${API}/news/${slug}`).then(r => r.json());
     document.getElementById('modal-title').textContent = n.title;
@@ -2093,6 +2121,7 @@ async function openNews(slug) {
     document.body.style.overflow = 'hidden';
     loadComments(slug);
     renderCommentForm(slug);
+    loadReactions(slug);
   } catch { alert('Не удалось загрузить новость.'); }
 }
 
@@ -2100,6 +2129,61 @@ function closeModal() {
   document.getElementById('modal-bg').classList.remove('open');
   document.body.style.overflow = '';
   _modalSlug = '';
+  history.pushState({}, '', location.pathname);
+}
+
+function shareNews() {
+  const url = window.location.href;
+  navigator.clipboard.writeText(url).then(() => showToast('Ссылка скопирована', 'success')).catch(() => {
+    const ta = document.createElement('textarea');
+    ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('Ссылка скопирована', 'success');
+  });
+}
+
+async function loadReactions(slug) {
+  const el = document.getElementById('modal-reactions');
+  if (!el) return;
+  const token = getToken();
+  const headers = token ? {Authorization: `Bearer ${token}`} : {};
+  const data = await fetch(`${API}/news/${slug}/reactions`, {headers}).then(r => r.json()).catch(() => ({counts:{}, user_reactions:[]}));
+  renderReactions(el, slug, data);
+}
+
+function renderReactions(el, slug, data) {
+  const emojis = [
+    {key:'fire',     icon:'🔥', label:'Огонь'},
+    {key:'heart',    icon:'❤️',  label:'Нравится'},
+    {key:'thumbs_up',icon:'👍', label:'Одобряю'},
+    {key:'wow',      icon:'😮', label:'Вау'},
+  ];
+  const user = getUser();
+  el.innerHTML = emojis.map(e => {
+    const count = data.counts[e.key] || 0;
+    const active = data.user_reactions.includes(e.key);
+    const activeStyle = active
+      ? 'background:rgba(140,0,22,0.45);border-color:rgba(200,0,40,0.65);color:#fca5a5;'
+      : 'background:rgba(20,5,35,0.55);border-color:rgba(110,0,20,0.25);color:var(--muted);';
+    return `<button onclick="toggleReaction('${slug}','${e.key}')" title="${e.label}" data-rkey="${e.key}" style="${activeStyle}display:inline-flex;align-items:center;gap:.3rem;padding:.28rem .6rem;border:1px solid;border-radius:9999px;font-size:.75rem;cursor:${user ? 'pointer' : 'default'};transition:all .18s;font-family:'Inter',sans-serif;" ${!user ? 'disabled' : ''}>
+      <span style="font-size:.85rem;line-height:1;">${e.icon}</span>
+      <span style="font-size:.72rem;font-weight:600;min-width:.6rem;text-align:center;">${count}</span>
+    </button>`;
+  }).join('') + (!user ? `<span style="font-size:.65rem;color:var(--muted);margin-left:.25rem;">Войдите чтобы реагировать</span>` : '');
+}
+
+async function toggleReaction(slug, emoji) {
+  const token = getToken();
+  if (!token) return;
+  const data = await fetch(`${API}/news/${slug}/react`, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+    body: JSON.stringify({emoji}),
+  }).then(r => r.json()).catch(() => null);
+  if (!data) return;
+  const el = document.getElementById('modal-reactions');
+  if (el) renderReactions(el, slug, data);
 }
 
 document.getElementById('modal-bg').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
@@ -2537,6 +2621,16 @@ loadLatestNews();
 loadNews(1);
 loadTags();
 loadWipeHistory();
+// auto-open news from URL ?news=slug
+(function() {
+  const qs = new URLSearchParams(location.search);
+  const slug = qs.get('news');
+  if (slug) openNews(slug);
+  window.addEventListener('popstate', e => {
+    if (e.state && e.state.newsSlug) openNews(e.state.newsSlug);
+    else closeModal();
+  });
+})();
 </script>
 </body>
 </html>
