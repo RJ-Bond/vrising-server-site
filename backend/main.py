@@ -799,18 +799,13 @@ async def update_news(
     news = result.scalar_one_or_none()
     if news is None:
         raise HTTPException(status_code=404, detail="News not found")
-    if body.title is not None:
-        news.title = body.title
-    if body.summary is not None:
-        news.summary = body.summary
-    if body.content is not None:
-        news.content = body.content
-    if body.thumbnail_url is not None:
-        news.thumbnail_url = body.thumbnail_url
-    if body.tags is not None:
-        news.tags = body.tags
-    if body.published is not None:
-        news.published = body.published
+    fields = body.model_fields_set
+    if 'title'         in fields: news.title         = body.title
+    if 'summary'       in fields: news.summary       = body.summary
+    if 'content'       in fields: news.content       = body.content
+    if 'thumbnail_url' in fields: news.thumbnail_url = body.thumbnail_url  # None = clear
+    if 'tags'          in fields: news.tags          = body.tags
+    if 'published'     in fields: news.published     = body.published
     news.updated_at = datetime.utcnow()
     await log_audit(db, admin_u, "news.update", news.title)
     await db.commit()
