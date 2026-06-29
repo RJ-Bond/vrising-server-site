@@ -321,11 +321,17 @@
       display:flex; align-items:center; gap:.6rem;
       padding:.55rem .8rem; border-radius:.6rem;
       background:rgba(110,0,20,0.1); border:1px solid rgba(110,0,20,0.2);
-      color:var(--text); text-decoration:none; font-size:.82rem;
-      transition:background .2s, border-color .2s, box-shadow .2s;
-      position:relative;
+      color:var(--muted); text-decoration:none; font-size:.82rem;
+      transition:background .2s, border-color .2s, box-shadow .2s, color .2s;
+      position:relative; overflow:hidden;
     }
-    .nav-link-item:hover { background:rgba(150,0,28,0.22); border-color:rgba(160,0,35,0.5); box-shadow:0 0 12px rgba(190,0,35,0.22), inset 0 0 10px rgba(140,0,25,0.1); }
+    .nav-link-item::after {
+      content:''; position:absolute; left:-100%; top:0; bottom:0; width:60%;
+      background:linear-gradient(90deg, transparent, rgba(200,0,40,0.1), transparent);
+      transition:left .45s ease; pointer-events:none;
+    }
+    .nav-link-item:hover { background:rgba(150,0,28,0.22); border-color:rgba(160,0,35,0.5); box-shadow:0 0 14px rgba(190,0,35,0.22), inset 0 0 10px rgba(140,0,25,0.1); color:var(--text); }
+    .nav-link-item:hover::after { left:150%; }
     .nav-link-item.active {
       background:rgba(180,0,35,0.18); border-color:rgba(200,0,40,0.55);
       box-shadow:0 0 14px rgba(200,0,40,0.2), inset 0 0 12px rgba(160,0,30,0.12);
@@ -339,26 +345,41 @@
     }
     /* ── Nav user card ── */
     .nav-user-card {
-      display:flex; align-items:center; gap:.6rem;
-      padding:.6rem .75rem; border-radius:.65rem; margin-bottom:.85rem;
+      display:flex; flex-direction:column; gap:0;
+      padding:.65rem .75rem; border-radius:.75rem; margin-bottom:.85rem;
       background:rgba(80,0,120,0.15); border:1px solid rgba(110,0,150,0.3);
-      box-shadow:0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+      box-shadow:0 2px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
+      transition:border-color .2s, box-shadow .2s;
+    }
+    .nav-user-card:hover {
+      border-color:rgba(140,0,180,0.5);
+      box-shadow:0 4px 20px rgba(0,0,0,0.5), 0 0 12px rgba(110,0,150,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
     }
     .nav-user-avatar {
-      width:36px; height:36px; border-radius:50%; flex-shrink:0; object-fit:cover;
-      border:1.5px solid rgba(180,0,40,0.45);
+      width:42px; height:42px; border-radius:50%; flex-shrink:0; object-fit:cover;
+      border:2px solid rgba(180,0,40,0.5);
+      box-shadow:0 0 10px rgba(120,0,180,0.3);
     }
     .nav-user-initial {
-      width:36px; height:36px; border-radius:50%; flex-shrink:0;
+      width:42px; height:42px; border-radius:50%; flex-shrink:0;
       background:radial-gradient(circle at 38% 35%, rgba(100,0,180,0.7), rgba(140,0,25,0.5));
-      border:1.5px solid rgba(180,0,40,0.45);
+      border:2px solid rgba(180,0,40,0.5);
+      box-shadow:0 0 10px rgba(120,0,180,0.3);
       display:flex; align-items:center; justify-content:center;
-      font-family:'Cinzel',serif; font-size:.95rem; color:#d4c4e0;
+      font-family:'Cinzel',serif; font-size:1rem; color:#d4c4e0;
     }
     .nav-user-name {
-      font-size:.8rem; font-weight:600; color:var(--text);
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:110px;
+      font-size:.82rem; font-weight:700; color:var(--text);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100px;
     }
+    .nav-card-action {
+      width:26px; height:26px; border-radius:6px; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center;
+      border:1px solid rgba(110,0,20,0.25); background:rgba(20,5,35,0.5);
+      color:var(--muted); cursor:pointer; text-decoration:none;
+      transition:color .18s, border-color .18s, background .18s;
+    }
+    .nav-card-action:hover { color:#d4c4e0; border-color:rgba(180,0,35,0.55); background:rgba(120,0,22,0.4); }
     .nav-user-role {
       font-size:.52rem; font-weight:700; letter-spacing:.06em;
       padding:.1rem .4rem; border-radius:9999px;
@@ -1052,10 +1073,26 @@
 
     <!-- User card (shown when logged in) -->
     <div id="nav-user-card" class="nav-user-card" style="display:none;">
-      <div id="nav-user-avatar-wrap"></div>
-      <div style="min-width:0;flex:1;">
-        <div id="nav-user-name" class="nav-user-name"></div>
-        <div id="nav-user-role-badge" style="margin-top:.2rem;display:none;"></div>
+      <div style="display:flex;align-items:center;gap:.6rem;">
+        <div id="nav-user-avatar-wrap"></div>
+        <div style="min-width:0;flex:1;">
+          <div id="nav-user-name" class="nav-user-name"></div>
+          <div id="nav-user-role-badge" style="margin-top:.2rem;display:none;"></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.55rem;padding-top:.45rem;border-top:1px solid rgba(110,0,20,0.18);">
+        <div id="nav-user-since" style="font-size:.6rem;color:var(--muted);display:flex;align-items:center;gap:.3rem;">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span id="nav-user-since-text"></span>
+        </div>
+        <div style="display:flex;gap:.3rem;">
+          <a id="nav-card-profile" href="/profile.html" class="nav-card-action" title="Профиль">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </a>
+          <button onclick="doLogout()" class="nav-card-action" title="Выйти">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -1491,6 +1528,18 @@ function toggleDrawer() {
         roleEl.style.display = 'inline-block';
         roleEl.innerHTML = `<span class="nav-user-role">Админ</span>`;
       }
+      // join date
+      if (u.created_at) {
+        const d = new Date(u.created_at);
+        const sinceEl = document.getElementById('nav-user-since-text');
+        if (sinceEl) sinceEl.textContent = `с ${d.toLocaleDateString('ru-RU', {day:'numeric',month:'short',year:'numeric'})}`;
+        document.getElementById('nav-user-since').style.display = 'flex';
+      }
+      // hide duplicate nav links — card now handles profile & logout
+      const profileLink = document.getElementById('nav-profile-link');
+      if (profileLink) profileLink.style.display = 'none';
+      const loginLink = document.getElementById('nav-login-link');
+      if (loginLink) loginLink.style.display = 'none';
     }
   }
 })();
