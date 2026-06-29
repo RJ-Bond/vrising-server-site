@@ -70,7 +70,7 @@
 
     /* ── Hero ── */
     .hero {
-      position: relative; min-height: 28vh;
+      position: relative; min-height: 52vh;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       overflow: hidden;
     }
@@ -409,7 +409,7 @@
       .g-panel { padding: .9rem .85rem; }
       .info-grid { grid-template-columns: 1fr 1fr; gap: .5rem; }
       .info-card { padding: .75rem .7rem; }
-      .hero { min-height: 20vh; padding: 2rem 1rem 1.5rem; }
+      .hero { min-height: 32vh; padding: 2rem 1rem 1.5rem; }
       .hero-title { font-size: clamp(1.3rem, 7vw, 2.2rem); letter-spacing: .1em; }
       .hero-sub { font-size: .65rem; }
       .connect-btn { font-size: .72rem; padding: .45rem .9rem; }
@@ -533,10 +533,11 @@
 
     /* ── Drawer overlay ── */
     #drawer-overlay {
-      display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65);
+      position:fixed; inset:0; background:rgba(0,0,0,0.65);
       z-index:290; backdrop-filter:blur(4px); cursor:pointer;
+      opacity:0; pointer-events:none; transition:opacity .28s ease;
     }
-    #drawer-overlay.open { display:block; }
+    #drawer-overlay.open { opacity:1; pointer-events:auto; }
 
     /* ── Hunter podium ── */
     .hunter-podium { display:flex; gap:.35rem; justify-content:space-around; margin-bottom:.6rem; }
@@ -724,7 +725,7 @@
     .rule-item:nth-last-child(-n+2) { border-bottom:none; }
     .rule-item:hover { background:rgba(110,0,20,0.06); }
     .rule-icon {
-      width:30px; height:30px; border-radius:.45rem; flex-shrink:0;
+      width:38px; height:38px; border-radius:.45rem; flex-shrink:0;
       display:flex; align-items:center; justify-content:center; font-size:1rem;
       background:rgba(110,0,20,0.18); border:1px solid rgba(180,0,30,0.2);
     }
@@ -820,9 +821,104 @@
     .stat-row:hover { background:rgba(120,0,20,0.1); }
     .stat-row-k { font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
     .stat-row-v { color:#ddd8e8; font-weight:600; font-size:.78rem; }
+
+    /* ── Scroll progress bar ── */
+    #scroll-progress {
+      position:fixed; top:0; left:0; z-index:1000; height:2px; width:0%;
+      background:linear-gradient(90deg, var(--crimson), var(--purple), var(--crimson));
+      background-size:200% 100%;
+      pointer-events:none; transition:width .08s linear;
+      box-shadow:0 0 8px rgba(200,0,42,0.7), 0 0 16px rgba(124,58,237,0.4);
+      animation:progress-shimmer 2s linear infinite;
+    }
+    @keyframes progress-shimmer {
+      0%   { background-position: 0% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    /* ── Skeleton loading ── */
+    @keyframes skel-shimmer {
+      0%   { background-position:-800px 0; }
+      100% { background-position: 800px 0; }
+    }
+    .skel {
+      background:linear-gradient(90deg,rgba(28,8,42,0.8) 25%,rgba(60,15,80,0.55) 50%,rgba(28,8,42,0.8) 75%);
+      background-size:1600px 100%;
+      animation:skel-shimmer 1.6s ease-in-out infinite;
+      border-radius:.45rem;
+    }
+    .skel-card { pointer-events:none !important; cursor:default !important; animation:none !important; }
+    .skel-card:hover { transform:none !important; border-color:rgba(110,0,150,0.14) !important; box-shadow:0 4px 20px rgba(0,0,0,0.35) !important; }
+    .skel-thumb { flex-shrink:0; }
+    .skel-line { display:block; }
+    .skel-line.wide  { width:88%; }
+    .skel-line.med   { width:62%; }
+    .skel-line.short { width:38%; }
+
+    /* ── News empty state ── */
+    .news-empty {
+      grid-column:1/-1;
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:3.5rem 1rem; gap:.9rem; text-align:center;
+    }
+    .news-empty-icon { font-size:2.8rem; filter:drop-shadow(0 0 18px rgba(180,0,30,0.45)); opacity:.7; }
+    .news-empty-title { font-family:'Cinzel',serif; font-size:.88rem; letter-spacing:.18em; color:var(--gold); text-transform:uppercase; }
+    .news-empty-sub { font-size:.78rem; color:var(--muted); max-width:280px; line-height:1.6; }
+
+    /* ── Nav icon hover ── */
+    .nav-link-item svg { transition:transform .22s ease; }
+    .nav-link-item:hover svg { transform:translateX(3px); }
+
+    /* ── 2-column news on desktop ── */
+    @media (min-width:1024px) {
+      #news-list { grid-template-columns:repeat(2,1fr); }
+      #news-list .news-card > div { flex-direction:column !important; }
+      #news-list .news-card > div > div:first-child {
+        width:100% !important; height:11rem !important;
+        min-height:0 !important; align-self:auto !important;
+      }
+      #news-list .news-card > div > div:first-child img {
+        min-height:0 !important; height:100% !important;
+      }
+      #news-list .skel-thumb { width:100% !important; height:11rem !important; }
+    }
+
+    /* ── Hero parallax bg layer ── */
+    .hero-bg-img {
+      position:absolute; inset:0; z-index:0;
+      background-size:cover; background-position:center 30%;
+      background-attachment:fixed;
+      opacity:0; transition:opacity .7s ease;
+      pointer-events:none;
+    }
+
+    /* ── Modal close button ── */
+    .modal-close-btn {
+      position:absolute; top:.85rem; right:.9rem;
+      width:32px; height:32px; border-radius:50%;
+      background:rgba(70,0,14,0.35); border:1px solid rgba(140,0,28,0.35);
+      color:var(--muted); font-size:.9rem; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:all .2s; z-index:2;
+    }
+    .modal-close-btn:hover {
+      background:rgba(180,0,32,0.45); color:#fff;
+      border-color:rgba(220,0,45,0.7); box-shadow:0 0 14px rgba(200,0,40,0.4);
+      transform:scale(1.1) rotate(90deg);
+    }
+
+    /* ── Status bar server online dot ── */
+    .sb-status-dot {
+      display:inline-block; width:6px; height:6px; border-radius:50%;
+      flex-shrink:0; margin-right:4px; vertical-align:middle;
+      transition:background .4s, box-shadow .4s;
+    }
+    .sb-status-dot.online  { background:#4ade80; box-shadow:0 0 6px rgba(74,222,128,0.8); animation:dot-pulse 1.6s ease-in-out infinite; }
+    .sb-status-dot.offline { background:#f87171; box-shadow:0 0 4px rgba(248,113,113,0.4); }
   </style>
 </head>
 <body>
+<div id="scroll-progress"></div>
 <div class="fog"></div>
 
 <!-- ══ NAV ══════════════════════════════════════════════════════════════════ -->
@@ -844,6 +940,7 @@
 <!-- ══ HERO ══════════════════════════════════════════════════════════════════ -->
 <section class="hero">
   <div class="hero-bg"></div>
+  <div class="hero-bg-img" id="hero-bg-img"></div>
   <div class="stars" id="stars"></div>
 
   <!-- Castle SVG silhouette -->
@@ -897,7 +994,7 @@
   <div class="status-bar-inner">
     <!-- Server 1 row -->
     <div class="sb-row sb-sep" id="sb-s1-row">
-      <span class="sb-srv-tag" id="sb-s1name">Сервер 1</span>
+      <span class="sb-srv-tag" id="sb-s1name"><span class="sb-status-dot" id="sb-dot1"></span>Сервер 1</span>
       <div class="sb-item">
         <span class="sb-icon">🩸</span>
         <span>Игрок(ов)</span>
@@ -916,7 +1013,7 @@
     </div>
     <!-- Server 2 row (shown by JS when enabled) -->
     <div class="sb-row" id="sb-s2-row" style="display:none">
-      <span class="sb-srv-tag" id="sb-s2name">Сервер 2</span>
+      <span class="sb-srv-tag" id="sb-s2name"><span class="sb-status-dot" id="sb-dot2"></span>Сервер 2</span>
       <div class="sb-item" id="sb-s2online-row">
         <span class="sb-icon">🩸</span>
         <span>Игрок(ов)</span>
@@ -1214,7 +1311,7 @@
 <!-- ══ MODAL ═════════════════════════════════════════════════════════════════ -->
 <div id="modal-bg" class="modal-bg">
   <div class="modal-box">
-    <button onclick="closeModal()" style="position:absolute;top:.75rem;right:1rem;font-size:1.5rem;color:var(--muted);background:none;border:none;cursor:pointer;" onmouseover="this.style.color=var(--text)" onmouseout="this.style.color=var(--muted)">&times;</button>
+    <button onclick="closeModal()" class="modal-close-btn" title="Закрыть">✕</button>
     <div id="modal-author" style="display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem;"></div>
     <h3 id="modal-title" class="gothic" style="font-size:1.2rem;font-weight:700;color:#d4c4e0;margin-bottom:.75rem;"></h3>
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(180,0,30,0.5),transparent);margin-bottom:1rem;"></div>
@@ -1247,6 +1344,43 @@
 
 <script>
 const API = '/api';
+
+// ── Scroll progress ────────────────────────────────────────────────────────
+window.addEventListener('scroll', () => {
+  const el = document.getElementById('scroll-progress');
+  if (!el) return;
+  const total = document.body.scrollHeight - window.innerHeight;
+  el.style.width = (total > 0 ? (window.scrollY / total * 100) : 0) + '%';
+}, { passive: true });
+
+// ── Count-up animation ─────────────────────────────────────────────────────
+function countUp(el, target, duration) {
+  if (!el) return;
+  duration = duration || 700;
+  const from = parseFloat(el.textContent) || 0;
+  const startTime = performance.now();
+  const animate = (now) => {
+    const p = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(from + (target - from) * eased);
+    if (p < 1) requestAnimationFrame(animate);
+  };
+  requestAnimationFrame(animate);
+}
+function countUpPct(el, value, duration) {
+  if (!el || value === null) return;
+  const target = parseFloat(value);
+  if (isNaN(target)) return;
+  duration = duration || 700;
+  const startTime = performance.now();
+  const animate = (now) => {
+    const p = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(target * eased) + '%';
+    if (p < 1) requestAnimationFrame(animate);
+  };
+  requestAnimationFrame(animate);
+}
 
 // ── Setup guard ────────────────────────────────────────────────────────────
 (async () => {
@@ -1598,9 +1732,9 @@ async function loadStats() {
     const el24 = document.getElementById('stat-uptime24');
     const el7d  = document.getElementById('stat-uptime7d');
     const elpk  = document.getElementById('stat-peak7d');
-    if (el24) el24.textContent = fmt(s.uptime_24h);
-    if (el7d)  el7d.textContent = fmt(s.uptime_7d);
-    if (elpk)  elpk.textContent = s.peak_7d ?? '—';
+    if (el24) { el24.textContent = '0%'; countUpPct(el24, s.uptime_24h); }
+    if (el7d)  { el7d.textContent = '0%'; countUpPct(el7d, s.uptime_7d); }
+    if (elpk)  { if (s.peak_7d) countUp(elpk, s.peak_7d); else elpk.textContent = '—'; }
     const sbUp = document.getElementById('sb-uptime1');
     if (sbUp && s.uptime_24h !== null) {
       sbUp.textContent = s.uptime_24h + '%';
@@ -1636,9 +1770,9 @@ async function loadStats() {
     const el24 = document.getElementById('stat-uptime24-s2');
     const el7d  = document.getElementById('stat-uptime7d-s2');
     const elpk  = document.getElementById('stat-peak7d-s2');
-    if (el24) el24.textContent = fmt(s2.uptime_24h);
-    if (el7d)  el7d.textContent = fmt(s2.uptime_7d);
-    if (elpk)  elpk.textContent = s2.peak_7d ?? '—';
+    if (el24) { el24.textContent = '0%'; countUpPct(el24, s2.uptime_24h); }
+    if (el7d)  { el7d.textContent = '0%'; countUpPct(el7d, s2.uptime_7d); }
+    if (elpk)  { if (s2.peak_7d) countUp(elpk, s2.peak_7d); else elpk.textContent = '—'; }
     const sbUp2 = document.getElementById('sb-uptime2');
     if (sbUp2 && s2.uptime_24h !== null) {
       sbUp2.textContent = s2.uptime_24h + '%';
@@ -1702,6 +1836,8 @@ async function loadStatus() {
         : showToast(`${d.name} ушёл офлайн`, 'error');
     }
     _prevOnline1 = d.online;
+    const dot1 = document.getElementById('sb-dot1');
+    if (dot1) dot1.className = 'sb-status-dot ' + (d.online ? 'online' : 'offline');
   } catch {
     document.getElementById('hero-status').innerHTML = `<span style="color:var(--muted);font-size:.78rem;">Статус недоступен</span>`;
   }
@@ -1732,6 +1868,8 @@ async function loadStatus2() {
         : showToast(`${d.name} ушёл офлайн`, 'error');
     }
     _prevOnline2 = d.online;
+    const dot2 = document.getElementById('sb-dot2');
+    if (dot2) dot2.className = 'sb-status-dot ' + (d.online ? 'online' : 'offline');
   } catch {}
 }
 
@@ -1805,15 +1943,31 @@ function onSearchInput(val) {
 }
 
 async function loadNews(page = 1) {
+  const list = document.getElementById('news-list');
+  list.innerHTML = Array(4).fill(0).map(() => `
+    <div class="news-card skel-card">
+      <div style="display:flex;gap:0;min-height:100px;">
+        <div class="skel skel-thumb" style="width:140px;"></div>
+        <div style="padding:.75rem 1rem;flex:1;display:flex;flex-direction:column;gap:.45rem;">
+          <div class="skel skel-line short" style="height:.65rem;"></div>
+          <div class="skel skel-line wide"  style="height:1rem;"></div>
+          <div class="skel skel-line med"   style="height:1rem;"></div>
+          <div class="skel skel-line short" style="height:.65rem;margin-top:.2rem;"></div>
+        </div>
+      </div>
+    </div>`).join('');
   const params = new URLSearchParams({ page, per_page: 9 });
   if (_activeTag) params.set('tag', _activeTag);
   if (_searchTerm) params.set('search', _searchTerm);
   const url = `${API}/news?${params}`;
   const data = await fetch(url).then(r => r.json());
-  const list = document.getElementById('news-list');
   list.innerHTML = '';
   if (!data.items.length) {
-    list.innerHTML = `<p style="color:var(--muted);font-style:italic;padding:.75rem 0;">Новостей пока нет — следите за обновлениями.</p>`;
+    list.innerHTML = `<div class="news-empty">
+      <div class="news-empty-icon">⚔</div>
+      <div class="news-empty-title">Архивы пусты</div>
+      <p class="news-empty-sub">${_searchTerm ? 'По запросу «' + esc(_searchTerm) + '» ничего не найдено' : 'Новостей пока нет — следите за обновлениями'}</p>
+    </div>`;
     return;
   }
   data.items.forEach((n, idx) => {
@@ -2014,6 +2168,11 @@ async function loadSiteSettings() {
       document.body.style.backgroundSize = 'auto,auto,auto,cover';
       document.body.style.backgroundPosition = 'center,center,center,center';
       document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
+      const heroImg = document.getElementById('hero-bg-img');
+      if (heroImg) {
+        heroImg.style.backgroundImage = `url('${bg}')`;
+        setTimeout(() => { heroImg.style.opacity = '0.28'; }, 100);
+      }
     }
 
     document.getElementById('hero-title').textContent = title;
