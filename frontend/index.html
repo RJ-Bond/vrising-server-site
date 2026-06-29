@@ -1988,10 +1988,14 @@ async function loadNews(page = 1) {
     card.style.animationDelay = `${idx * 0.06}s`;
     card.innerHTML = `<div style="display:flex;gap:0;min-height:100px;align-items:stretch;">
       ${thumbImg}
-      <div style="padding:.75rem 1rem;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;">
+      <div style="padding:.75rem 1rem;flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;">
         <div style="display:flex;align-items:center;gap:.55rem;margin-bottom:.5rem;">${authorAvatar}<div style="display:flex;flex-direction:column;gap:.2rem;"><div style="display:flex;align-items:center;gap:.35rem;"><span style="font-size:.82rem;color:#d4c4e0;font-weight:600;">${authorName}</span>${adminBadge}</div><div style="display:flex;align-items:center;gap:.5rem;"><span style="font-size:.63rem;color:var(--muted);">${fmtDate(n.created_at)}</span>${n.comment_count > 0 ? `<span style="font-size:.6rem;color:var(--muted);display:inline-flex;align-items:center;gap:.2rem;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${n.comment_count}</span>` : ''}</div></div></div>
-        <h3 class="gothic" style="font-size:1rem;font-weight:600;color:#d4c4e0;line-height:1.35;margin-bottom:.45rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.title)}</h3>
-        ${tagsHtml ? `<div style="margin-top:.1rem;">${tagsHtml}</div>` : ''}
+        <h3 class="gothic" style="font-size:1rem;font-weight:600;color:#d4c4e0;line-height:1.35;margin-bottom:.35rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.title)}</h3>
+        ${n.summary ? `<p style="font-size:.76rem;color:var(--muted);line-height:1.55;margin:.1rem 0 .4rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.summary)}</p>` : ''}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:auto;padding-top:.3rem;">
+          ${tagsHtml ? `<div>${tagsHtml}</div>` : '<div></div>'}
+          <span style="font-size:.65rem;color:rgba(180,0,40,0.6);white-space:nowrap;letter-spacing:.04em;">Читать →</span>
+        </div>
       </div>
     </div>`;
     card.onclick = () => openNews(n.slug);
