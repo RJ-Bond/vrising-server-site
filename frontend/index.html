@@ -440,9 +440,9 @@
       .news-card > div:first-child { width: 100% !important; height: 110px; }
       .hunter-podium { gap: .25rem; }
       .h-name { max-width: 52px; font-size: .65rem; }
-      .wipe-block-val { font-size: 1.4rem; }
+      .wipe-block-val { font-size: 1.5rem; }
 
-      .wipe-blocks { gap: .25rem; }
+      .wipe-blocks { gap: .15rem; }
     }
     @media (max-width: 480px) {
       body { font-size: 14px; }
@@ -454,7 +454,7 @@
       .discord-btn span { display: none; }
       .hero-title { font-size: clamp(1.1rem, 8vw, 1.8rem); letter-spacing: .08em; }
       .hero-connect { flex-wrap: wrap; gap: .4rem; }
-      .wipe-block-val { font-size: 1.2rem; }
+      .wipe-block-val { font-size: 1.3rem; }
       .h-name { max-width: 44px; font-size: .6rem; }
       .hunter-podium { gap: .15rem; }
       .h-drop { font-size: 1.2rem; }
@@ -896,28 +896,43 @@
     .ic-rule:last-child { border-bottom:none; }
     .ic-rule::before { content:'✦'; color:rgba(210,0,45,0.7); font-size:.52rem; flex-shrink:0; margin-top:.15rem; }
     /* ── Wipe timer blocks ── */
-    .wipe-blocks {
-      display:flex; align-items:flex-start; justify-content:center; gap:.35rem; margin:.15rem 0;
-    }
-    .wipe-block { display:flex; flex-direction:column; align-items:center; min-width:36px; }
+    .wipe-blocks { display:flex; align-items:flex-start; justify-content:center; gap:.2rem; margin:.1rem 0; }
+    .wipe-block { display:flex; flex-direction:column; align-items:center; min-width:42px; }
     .wipe-block-val {
-      font-family:'Oswald',sans-serif; font-size:1.7rem; font-weight:600;
+      font-family:'Oswald',sans-serif; font-size:2rem; font-weight:600;
       line-height:1; letter-spacing:.02em; display:block;
       font-variant-numeric:tabular-nums;
+      text-shadow:0 0 18px currentColor;
+      transition:color .4s ease, text-shadow .4s ease;
     }
-    .wipe-block-lbl {
-      font-size:.5rem; color:var(--muted); text-transform:uppercase;
-      letter-spacing:.1em; display:block; margin-top:.1rem;
-    }
+    .wipe-block-lbl { font-size:.5rem; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; display:block; margin-top:.15rem; }
     .wipe-sep {
-      font-family:'Oswald',sans-serif; font-size:1.4rem; font-weight:500;
-      color:var(--muted); line-height:1; padding-top:.15rem; opacity:.5;
-    }
-    .wipe-digit { /* fallback if blocks not rendered */
       font-family:'Oswald',sans-serif; font-size:1.6rem; font-weight:600;
-      color:#c8e8d0; letter-spacing:.03em;
+      color:var(--muted); line-height:1; padding-top:.1rem;
+      animation:wipe-sep-pulse 2s ease-in-out infinite;
+    }
+    @keyframes wipe-sep-pulse { 0%,100%{opacity:.5} 50%{opacity:.15} }
+    .wipe-digit { font-family:'Oswald',sans-serif; font-size:1.6rem; font-weight:600; color:#c8e8d0; letter-spacing:.03em;
       text-shadow:0 0 18px rgba(40,180,80,0.4);
     }
+
+    /* wipe type badges */
+    .wipe-badge { font-size:.55rem;letter-spacing:.07em;text-transform:uppercase;padding:.17rem .55rem;border-radius:9999px;font-weight:700;flex-shrink:0;white-space:nowrap; }
+    .wipe-badge-full     { background:rgba(180,0,30,.18);border:1px solid rgba(200,0,40,.4);color:#fca5a5; }
+    .wipe-badge-map      { background:rgba(160,120,0,.18);border:1px solid rgba(200,160,0,.4);color:var(--gold); }
+    .wipe-badge-progress { background:rgba(100,40,200,.18);border:1px solid rgba(120,60,210,.4);color:#c4b5fd; }
+
+    /* urgency mode (< 7 days) */
+    @keyframes wipe-urgency { 0%,100%{text-shadow:0 0 14px rgba(200,0,40,.65)} 50%{text-shadow:0 0 30px rgba(220,0,50,1)} }
+    .wipe-card-urgent .wipe-block-val { animation:wipe-urgency 1.4s ease-in-out infinite; color:var(--crimson)!important; }
+    .wipe-card-urgent { border-color:rgba(200,0,40,.55)!important; box-shadow:0 0 26px rgba(180,0,30,.3),0 4px 24px rgba(0,0,0,.55)!important; }
+
+    /* cycle progress bar */
+    .wipe-cycle-wrap { width:100%;margin-top:.55rem; }
+    .wipe-cycle-track { height:3px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden; }
+    .wipe-cycle-fill { height:100%;border-radius:2px;transition:width .8s ease; }
+    .wipe-cycle-lbl { font-size:.54rem;color:var(--muted);text-align:right;margin-top:.2rem;letter-spacing:.02em;opacity:.65; }
+
     /* ── Right panel info rows ── */
     .stat-row { display:flex; justify-content:space-between; align-items:center; padding:.3rem .45rem; border-radius:.35rem; transition:background .15s; }
     .stat-row:hover { background:rgba(120,0,20,0.1); }
@@ -1274,31 +1289,49 @@
     <!-- ── Info cards ── -->
     <div class="info-grid">
       <div style="display:none;"></div>
-      <div id="wipe-card" class="info-card" style="display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(3,14,8,0.82);border-color:rgba(0,160,60,0.2);">
-        <div style="font-size:2rem;line-height:1;margin-bottom:.45rem;filter:drop-shadow(0 0 12px rgba(40,200,80,0.45));">🗡️</div>
-        <div id="wipe-card-title" class="ic-title" style="margin-bottom:.2rem;color:#7ecf9a;">Вайп · Сервер 1</div>
-        <div id="wipe-type-label" style="font-size:.6rem;color:rgba(126,207,154,0.6);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.35rem;"></div>
-        <div class="wipe-blocks" id="wipe-timer">
-          <div class="wipe-block"><span class="wipe-block-val" id="wipe-d1" style="color:#7ecf9a;">—</span><span class="wipe-block-lbl">дней</span></div>
-          <div class="wipe-sep">:</div>
-          <div class="wipe-block"><span class="wipe-block-val" id="wipe-h1" style="color:#c8e8d0;">—</span><span class="wipe-block-lbl">часов</span></div>
-          <div class="wipe-sep">:</div>
-          <div class="wipe-block"><span class="wipe-block-val" id="wipe-m1" style="color:#c8e8d0;">—</span><span class="wipe-block-lbl">минут</span></div>
+      <div id="wipe-card" class="info-card" style="display:none;padding:0;overflow:hidden;">
+        <div style="height:3px;background:linear-gradient(90deg,transparent,var(--crimson),transparent);"></div>
+        <div style="padding:.85rem 1.1rem .8rem;display:flex;flex-direction:column;align-items:center;text-align:center;">
+          <div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:.5rem;gap:.5rem;">
+            <div style="font-size:1.05rem;filter:drop-shadow(0 0 8px rgba(200,0,40,.6));flex-shrink:0;">🗡️</div>
+            <div id="wipe-card-title" style="font-family:'Philosopher',serif;font-size:.68rem;font-weight:700;letter-spacing:.07em;color:var(--gold);text-transform:uppercase;flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 .4rem;">Сервер 1</div>
+            <span id="wipe-type-label" class="wipe-badge wipe-badge-full"></span>
+          </div>
+          <div class="wipe-blocks" id="wipe-timer">
+            <div class="wipe-block"><span class="wipe-block-val" id="wipe-d1" style="color:var(--crimson);">—</span><span class="wipe-block-lbl">дней</span></div>
+            <div class="wipe-sep">:</div>
+            <div class="wipe-block"><span class="wipe-block-val" id="wipe-h1" style="color:#e8b0b8;">—</span><span class="wipe-block-lbl">часов</span></div>
+            <div class="wipe-sep">:</div>
+            <div class="wipe-block"><span class="wipe-block-val" id="wipe-m1" style="color:#e8b0b8;">—</span><span class="wipe-block-lbl">минут</span></div>
+          </div>
+          <p id="wipe-date-label" style="font-size:.62rem;color:var(--muted);margin-top:.25rem;"></p>
+          <div class="wipe-cycle-wrap">
+            <div class="wipe-cycle-track"><div class="wipe-cycle-fill" id="wipe-cycle1" style="width:0%;background:linear-gradient(90deg,var(--crimson),var(--gold));"></div></div>
+            <div class="wipe-cycle-lbl" id="wipe-cycle-lbl1"></div>
+          </div>
         </div>
-        <p id="wipe-date-label" style="font-size:.63rem;color:var(--muted);margin-top:.3rem;"></p>
       </div>
-      <div id="wipe-card2" class="info-card" style="display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:rgba(3,8,18,0.82);border-color:rgba(60,80,200,0.2);">
-        <div style="font-size:2rem;line-height:1;margin-bottom:.45rem;filter:drop-shadow(0 0 12px rgba(80,100,240,0.45));">🗡️</div>
-        <div id="wipe-card-title2" class="ic-title" style="margin-bottom:.2rem;color:#9aaef0;">Вайп · Сервер 2</div>
-        <div id="wipe-type-label2" style="font-size:.6rem;color:rgba(154,174,240,0.6);letter-spacing:.1em;text-transform:uppercase;margin-bottom:.35rem;"></div>
-        <div class="wipe-blocks" id="wipe-timer2">
-          <div class="wipe-block"><span class="wipe-block-val" id="wipe-d2" style="color:#9aaef0;">—</span><span class="wipe-block-lbl">дней</span></div>
-          <div class="wipe-sep">:</div>
-          <div class="wipe-block"><span class="wipe-block-val" id="wipe-h2" style="color:#c8d4f0;">—</span><span class="wipe-block-lbl">часов</span></div>
-          <div class="wipe-sep">:</div>
-          <div class="wipe-block"><span class="wipe-block-val" id="wipe-m2" style="color:#c8d4f0;">—</span><span class="wipe-block-lbl">минут</span></div>
+      <div id="wipe-card2" class="info-card" style="display:none;padding:0;overflow:hidden;">
+        <div style="height:3px;background:linear-gradient(90deg,transparent,var(--purple),transparent);"></div>
+        <div style="padding:.85rem 1.1rem .8rem;display:flex;flex-direction:column;align-items:center;text-align:center;">
+          <div style="display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:.5rem;gap:.5rem;">
+            <div style="font-size:1.05rem;filter:drop-shadow(0 0 8px rgba(120,60,220,.6));flex-shrink:0;">🗡️</div>
+            <div id="wipe-card-title2" style="font-family:'Philosopher',serif;font-size:.68rem;font-weight:700;letter-spacing:.07em;color:var(--gold);text-transform:uppercase;flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 .4rem;">Сервер 2</div>
+            <span id="wipe-type-label2" class="wipe-badge wipe-badge-full"></span>
+          </div>
+          <div class="wipe-blocks" id="wipe-timer2">
+            <div class="wipe-block"><span class="wipe-block-val" id="wipe-d2" style="color:var(--purple);">—</span><span class="wipe-block-lbl">дней</span></div>
+            <div class="wipe-sep">:</div>
+            <div class="wipe-block"><span class="wipe-block-val" id="wipe-h2" style="color:#c4b5fd;">—</span><span class="wipe-block-lbl">часов</span></div>
+            <div class="wipe-sep">:</div>
+            <div class="wipe-block"><span class="wipe-block-val" id="wipe-m2" style="color:#c4b5fd;">—</span><span class="wipe-block-lbl">минут</span></div>
+          </div>
+          <p id="wipe-date-label2" style="font-size:.62rem;color:var(--muted);margin-top:.25rem;"></p>
+          <div class="wipe-cycle-wrap">
+            <div class="wipe-cycle-track"><div class="wipe-cycle-fill" id="wipe-cycle2" style="width:0%;background:linear-gradient(90deg,var(--purple),#a78bfa);"></div></div>
+            <div class="wipe-cycle-lbl" id="wipe-cycle-lbl2"></div>
+          </div>
         </div>
-        <p id="wipe-date-label2" style="font-size:.63rem;color:var(--muted);margin-top:.3rem;"></p>
       </div>
     </div>
 
@@ -2626,7 +2659,11 @@ async function loadSiteSettings() {
         const card = document.getElementById('wipe-card');
         if (card) card.style.display = 'flex';
         const typeEl = document.getElementById('wipe-type-label');
-        if (typeEl) typeEl.textContent = WIPE_TYPE_LABELS[d.wipe_type || 'full'] || '';
+        if (typeEl) {
+          const t = d.wipe_type || 'full';
+          typeEl.textContent = WIPE_TYPE_LABELS[t] || '';
+          typeEl.className = 'wipe-badge wipe-badge-' + t;
+        }
         updateWipeTimer();
         setInterval(updateWipeTimer, 60000);
       }
@@ -2640,7 +2677,11 @@ async function loadSiteSettings() {
         const card2 = document.getElementById('wipe-card2');
         if (card2) card2.style.display = 'flex';
         const typeEl2 = document.getElementById('wipe-type-label2');
-        if (typeEl2) typeEl2.textContent = WIPE_TYPE_LABELS[d.wipe_type2 || 'full'] || '';
+        if (typeEl2) {
+          const t2 = d.wipe_type2 || 'full';
+          typeEl2.textContent = WIPE_TYPE_LABELS[t2] || '';
+          typeEl2.className = 'wipe-badge wipe-badge-' + t2;
+        }
         updateWipeTimer2();
         setInterval(updateWipeTimer2, 60000);
       }
@@ -2776,24 +2817,44 @@ let _wipeDate = null, _wipeDate2 = null;
 const WIPE_TYPE_LABELS = { full: 'Полный вайп', map: 'Вайп карты', progress: 'Вайп прогресса' };
 
 function _wipeCountdown(date, num) {
-  const labelEl = document.getElementById('wipe-date-label' + (num === 1 ? '' : '2'));
-  const dEl = document.getElementById('wipe-d' + num);
-  const hEl = document.getElementById('wipe-h' + num);
-  const mEl = document.getElementById('wipe-m' + num);
+  const suffix  = num === 1 ? '' : '2';
+  const labelEl = document.getElementById('wipe-date-label' + suffix);
+  const dEl     = document.getElementById('wipe-d' + num);
+  const hEl     = document.getElementById('wipe-h' + num);
+  const mEl     = document.getElementById('wipe-m' + num);
+  const cardEl  = document.getElementById('wipe-card' + suffix);
+  const cycleFill = document.getElementById('wipe-cycle' + num);
+  const cycleLbl  = document.getElementById('wipe-cycle-lbl' + num);
   if (!dEl || !date) return;
+
   const diff = date.getTime() - Date.now();
   if (diff <= 0) {
     dEl.textContent = '0'; hEl.textContent = '00'; mEl.textContent = '00';
     if (labelEl) labelEl.textContent = 'Сервер сброшен';
+    if (cardEl) cardEl.classList.remove('wipe-card-urgent');
     return;
   }
+
   const d = Math.floor(diff / 86400000);
   const h = Math.floor((diff % 86400000) / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
   dEl.textContent = d;
   hEl.textContent = String(h).padStart(2, '0');
   mEl.textContent = String(m).padStart(2, '0');
-  if (labelEl) labelEl.textContent = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+  if (labelEl) labelEl.textContent = date.toLocaleDateString('ru-RU', { day:'numeric', month:'long', year:'numeric' });
+
+  // Urgency: < 7 days — card glows red, digits pulse
+  if (cardEl) cardEl.classList.toggle('wipe-card-urgent', d < 7);
+
+  // Cycle progress bar
+  const lastWipe = num === 1 ? window._lastWipeDate1 : window._lastWipeDate2;
+  if (cycleFill && lastWipe) {
+    const total   = date.getTime() - lastWipe.getTime();
+    const elapsed = Date.now() - lastWipe.getTime();
+    const pct     = total > 0 ? Math.min(100, Math.max(0, Math.round(elapsed / total * 100))) : 0;
+    cycleFill.style.width = pct + '%';
+    if (cycleLbl) cycleLbl.textContent = pct + '% цикла пройдено';
+  }
 }
 
 function updateWipeTimer()  { _wipeCountdown(_wipeDate,  1); }
@@ -2803,6 +2864,15 @@ async function loadWipeHistory() {
   try {
     const wipes = await fetch(`${API}/wipes`).then(r => r.json());
     const past = wipes.filter(w => new Date(w.wipe_date) < new Date());
+
+    // Store last past wipe per server for cycle bar
+    const byServer = (n) => past.filter(w => w.server_num === n).sort((a,b) => new Date(b.wipe_date) - new Date(a.wipe_date));
+    const l1 = byServer(1)[0]; const l2 = byServer(2)[0];
+    if (l1) window._lastWipeDate1 = new Date(l1.wipe_date);
+    if (l2) window._lastWipeDate2 = new Date(l2.wipe_date);
+    if (window._wipeDate)  updateWipeTimer();
+    if (window._wipeDate2) updateWipeTimer2();
+
     const wrap = document.getElementById('wipe-history-wrap');
     const list = document.getElementById('wipe-history-list');
     if (!wrap || !list || !past.length) return;
