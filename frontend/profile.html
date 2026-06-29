@@ -225,6 +225,10 @@
       <span class="stat-key">Статус</span>
       <span id="profile-status" class="stat-val">—</span>
     </div>
+    <div class="stat-row">
+      <span class="stat-key">Правила сервера</span>
+      <span id="profile-rules" class="stat-val">—</span>
+    </div>
   </div>
 
   <!-- Change password -->
@@ -400,6 +404,17 @@ async function loadProfile() {
     const statusEl = document.getElementById('profile-status');
     statusEl.textContent = u.is_active ? '✔ Активен' : '✘ Заблокирован';
     statusEl.style.color = u.is_active ? '#4ade80' : '#f87171';
+
+    const rulesDate = localStorage.getItem('rules_accepted');
+    const rulesEl = document.getElementById('profile-rules');
+    if (rulesEl) {
+      if (rulesDate) {
+        rulesEl.textContent = '✔ Принято ' + rulesDate;
+        rulesEl.style.color = '#4ade80';
+      } else {
+        rulesEl.innerHTML = '<a href="/" style="color:var(--muted);text-decoration:none;font-size:.8rem;">Не ознакомлен →</a>';
+      }
+    }
 
     const badgeEl = document.getElementById('profile-role-badge');
     badgeEl.textContent = u.role === 'admin' ? 'Админ' : 'Игрок';
