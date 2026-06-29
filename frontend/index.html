@@ -1062,7 +1062,7 @@
 <div class="main-grid" style="max-width:1280px;margin:2rem auto;padding:0 1.25rem;display:flex;gap:1.25rem;align-items:flex-start;">
 
   <!-- ── LEFT: Navigation ── -->
-  <aside class="side-panel left-panel g-panel" style="width:210px;border-radius:.875rem;padding:1.25rem;flex-shrink:0;">
+  <aside class="side-panel left-panel g-panel" style="width:230px;border-radius:.875rem;padding:1.25rem;flex-shrink:0;">
     <span class="corner-tl">✦</span><span class="corner-tr">✦</span>
     <span class="corner-bl">✦</span><span class="corner-br">✦</span>
 
@@ -1532,7 +1532,7 @@ function toggleDrawer() {
       if (u.created_at) {
         const d = new Date(u.created_at);
         const sinceEl = document.getElementById('nav-user-since-text');
-        if (sinceEl) sinceEl.textContent = `с ${d.toLocaleDateString('ru-RU', {day:'numeric',month:'short',year:'numeric'})}`;
+        if (sinceEl) sinceEl.textContent = `с ${d.toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric'})}`;
         document.getElementById('nav-user-since').style.display = 'flex';
       }
       // hide duplicate nav links — card now handles profile & logout
