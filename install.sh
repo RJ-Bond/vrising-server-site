@@ -14,7 +14,7 @@ die()  { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 
 [[ $EUID -ne 0 ]] && die "Запустите скрипт от root: sudo bash install.sh"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 INSTALL_DIR="/opt/vrising-site"
 ADMIN_PASS="supersecretpassword"
 BRANCH="master"
@@ -67,11 +67,11 @@ copy_project_files() {
   _ver=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "dev")
   echo "$_ver" > "$SCRIPT_DIR/VERSION"
 
-  for f in docker-compose.yml Dockerfile requirements.txt VERSION enable-https.sh; do
+  for f in docker-compose.yml Dockerfile requirements.txt VERSION enable-https.sh install.sh; do
     [[ -f "$SCRIPT_DIR/$f" ]] || die "Файл не найден: $SCRIPT_DIR/$f"
     cp "$SCRIPT_DIR/$f" "$INSTALL_DIR/$f"
   done
-  chmod +x "$INSTALL_DIR/enable-https.sh"
+  chmod +x "$INSTALL_DIR/enable-https.sh" "$INSTALL_DIR/install.sh"
 
   for f in main.py models.py database.py auth.py monitor.py schemas.py __init__.py; do
     [[ -f "$SCRIPT_DIR/backend/$f" ]] || die "Файл не найден: $SCRIPT_DIR/backend/$f"
@@ -125,9 +125,14 @@ if [[ -d "$INSTALL_DIR" && -f "$INSTALL_DIR/docker-compose.yml" ]]; then
   echo -e "${GREEN}║               Обновление завершено успешно!              ║${NC}"
   echo -e "${GREEN}╚══════════════════════════════════════════════════════════╝${NC}"
   echo ""
-  echo -e "  Версия:  ${GREEN}${CURRENT_VERSION}${NC}"
-  echo -e "  Сайт:    ${CYAN}http://${SERVER_IP}${NC}"
-  echo -e "  Логи:    docker compose -f ${INSTALL_DIR}/docker-compose.yml logs -f"
+  # Обновить симлинки на случай если они были удалены
+  ln -sf "$INSTALL_DIR/install.sh"      /usr/local/bin/vrising 2>/dev/null || true
+  ln -sf "$INSTALL_DIR/enable-https.sh" /usr/local/bin/vrising-https 2>/dev/null || true
+
+  echo -e "  Версия:      ${GREEN}${CURRENT_VERSION}${NC}"
+  echo -e "  Сайт:        ${CYAN}http://${SERVER_IP}${NC}"
+  echo -e "  Обновление:  sudo vrising"
+  echo -e "  Логи:        docker compose -f ${INSTALL_DIR}/docker-compose.yml logs -f"
   echo ""
   exit 0
 fi
@@ -198,7 +203,13 @@ ENV
 ok ".env создан."
 warn "Добавьте ANTHROPIC_API_KEY в $INSTALL_DIR/.env для активации чата 'Управляющий замком'."
 
-# ─── 6. Сборка и запуск ──────────────────────────────────────────────────
+# ─── 6. Симлинки в PATH ───────────────────────────────────────────────
+log "Создание системных команд..."
+ln -sf "$INSTALL_DIR/install.sh"      /usr/local/bin/vrising
+ln -sf "$INSTALL_DIR/enable-https.sh" /usr/local/bin/vrising-https
+ok "Команды доступны: vrising, vrising-https"
+
+# ─── 7. Сборка и запуск ──────────────────────────────────────────────────
 start_containers
 
 # ─── Итог ─────────────────────────────────────────────────────────────────
@@ -216,10 +227,10 @@ echo ""
 echo -e "  Версия:                ${GREEN}${CURRENT_VERSION}${NC}"
 echo -e "  Логин администратора:  ${YELLOW}${ADMIN_PASS}${NC}"
 echo ""
-echo -e "  Обновление:  sudo bash ${SCRIPT_DIR}/install.sh"
+echo -e "  Обновление:  sudo vrising"
 echo -e "  Логи:        docker compose -f ${INSTALL_DIR}/docker-compose.yml logs -f"
 echo ""
-echo -e "  ${CYAN}HTTPS:${NC}       sudo bash ${SCRIPT_DIR}/enable-https.sh domain.com admin@email.com"
+echo -e "  ${CYAN}HTTPS:${NC}       sudo vrising-https domain.com admin@email.com"
 echo ""
 echo -e "${YELLOW}  ВАЖНО: Смените пароль администратора после первого входа!${NC}"
 echo ""

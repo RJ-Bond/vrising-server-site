@@ -13,7 +13,7 @@ die()  { echo -e "${RED}[ERROR]${NC} $*" >&2; exit 1; }
 [[ $EUID -ne 0 ]] && die "Запустите от root: sudo bash enable-https.sh"
 
 INSTALL_DIR="/opt/vrising-site"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 
 [[ -d "$INSTALL_DIR" ]] || die "Сайт не установлен. Сначала запустите: sudo bash install.sh"
 
