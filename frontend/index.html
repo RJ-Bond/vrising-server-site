@@ -726,32 +726,78 @@
 
     /* ── Rules section ── */
     .rules-section {
-      margin-top:1.35rem; border-radius:.875rem; overflow:hidden;
+      margin-top:1.35rem; border-radius:.875rem;
       background:rgba(10,3,16,0.82); border:1px solid rgba(110,0,150,0.22);
       backdrop-filter:blur(16px) saturate(1.2);
       box-shadow:0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+      overflow:hidden;
     }
     .rules-header {
-      padding:.8rem 1.25rem; border-bottom:1px solid rgba(110,0,20,0.15);
+      padding:.75rem 1.15rem;
       display:flex; align-items:center; gap:.6rem;
-    }
-    .rules-grid {
-      display:grid; grid-template-columns:1fr 1fr; gap:0;
-    }
-    .rule-item {
-      display:flex; align-items:flex-start; gap:.75rem;
-      padding:.75rem 1.25rem; border-bottom:1px solid rgba(110,0,20,0.1);
+      cursor:pointer; user-select:none;
       transition:background .2s;
     }
-    .rule-item:nth-child(odd) { border-right:1px solid rgba(110,0,20,0.1); }
-    .rule-item:nth-last-child(-n+2) { border-bottom:none; }
-    .rule-item:hover { background:rgba(110,0,20,0.06); }
-    .rule-icon {
-      width:38px; height:38px; border-radius:.45rem; flex-shrink:0;
-      display:flex; align-items:center; justify-content:center; font-size:1rem;
-      background:rgba(110,0,20,0.18); border:1px solid rgba(180,0,30,0.2);
+    .rules-header:hover { background:rgba(110,0,20,0.07); }
+    .rules-header-title {
+      font-family:'Philosopher',serif; font-size:.72rem;
+      letter-spacing:.2em; color:var(--gold); text-transform:uppercase; flex:1;
     }
-    .rule-text { font-size:.76rem; color:#ccc8da; line-height:1.45; padding-top:.15rem; }
+    .rules-chevron {
+      color:var(--muted); transition:transform .35s ease;
+      display:flex; align-items:center;
+    }
+    .rules-chevron.open { transform:rotate(180deg); }
+    .rules-body {
+      overflow:hidden;
+      max-height:2000px;
+      transition:max-height .45s cubic-bezier(.4,0,.2,1), opacity .35s ease;
+      opacity:1;
+      border-top:1px solid rgba(110,0,20,0.15);
+    }
+    .rules-body.collapsed { max-height:0; opacity:0; border-top-color:transparent; }
+
+    .rule-item {
+      display:flex; align-items:center; gap:.8rem;
+      padding:.6rem 1.15rem;
+      border-bottom:1px solid rgba(110,0,20,0.1);
+      position:relative; overflow:hidden;
+      transition:background .22s;
+      /* stagger reveal */
+      opacity:0; transform:translateX(-14px);
+    }
+    .rule-item:last-child { border-bottom:none; }
+    .rule-item.revealed { animation:rule-in .38s ease forwards; }
+    @keyframes rule-in {
+      to { opacity:1; transform:translateX(0); }
+    }
+    /* accent bar */
+    .rule-item::before {
+      content:''; position:absolute; left:0; top:0; bottom:0;
+      width:0; background:linear-gradient(180deg,var(--crimson),rgba(140,0,180,0.7));
+      border-radius:0 2px 2px 0;
+      transition:width .22s ease;
+    }
+    .rule-item:hover { background:rgba(110,0,20,0.09); }
+    .rule-item:hover::before { width:3px; }
+
+    .rule-num {
+      font-family:'Philosopher',serif; font-size:.65rem; font-weight:700;
+      color:rgba(201,169,74,0.5); letter-spacing:.04em; flex-shrink:0;
+      width:1.4rem; text-align:right; line-height:1;
+    }
+    .rule-icon {
+      width:32px; height:32px; border-radius:.4rem; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center; font-size:.95rem;
+      background:rgba(110,0,20,0.18); border:1px solid rgba(180,0,30,0.18);
+      transition:transform .22s ease, box-shadow .22s ease, border-color .22s;
+    }
+    .rule-item:hover .rule-icon {
+      transform:scale(1.12);
+      box-shadow:0 0 10px rgba(180,0,30,0.3);
+      border-color:rgba(200,0,40,0.4);
+    }
+    .rule-text { font-size:.76rem; color:#ccc8da; line-height:1.45; flex:1; }
 
     /* ── Blood Vial ── */
     .vial-fill { will-change:transform; }
@@ -1175,11 +1221,16 @@
 
     <!-- ── Rules section ── -->
     <div class="rules-section">
-      <div class="rules-header">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        <span class="gothic" style="font-size:.68rem;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;">Правила сервера</span>
+      <div class="rules-header" onclick="toggleRules()" id="rules-header">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="rules-header-title">— Правила сервера —</span>
+        <span class="rules-chevron open" id="rules-chevron">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+        </span>
       </div>
-      <div class="rules-grid" id="rules-grid"></div>
+      <div class="rules-body" id="rules-body">
+        <div id="rules-list"></div>
+      </div>
     </div>
 
     <!-- ── Info cards ── -->
@@ -2380,6 +2431,30 @@ async function submitComment(slug) {
 }
 
 
+// ── Rules ───────────────────────────────────────────────────────────────────
+function toggleRules() {
+  const body    = document.getElementById('rules-body');
+  const chevron = document.getElementById('rules-chevron');
+  if (!body) return;
+  const collapsed = body.classList.toggle('collapsed');
+  chevron.classList.toggle('open', !collapsed);
+}
+
+function initRulesReveal() {
+  const items = document.querySelectorAll('.rule-item');
+  if (!items.length) return;
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const el = entry.target;
+      const delay = parseInt(el.dataset.delay) || 0;
+      setTimeout(() => el.classList.add('revealed'), delay);
+      observer.unobserve(el);
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
+  items.forEach(el => observer.observe(el));
+}
+
 // ── Site settings ──────────────────────────────────────────────────────────
 async function loadSiteSettings() {
   try {
@@ -2509,13 +2584,20 @@ async function loadSiteSettings() {
     }
 
     // Rules
-    const rulesGrid = document.getElementById('rules-grid');
-    if (rulesGrid) {
+    const rulesList = document.getElementById('rules-list');
+    if (rulesList) {
       try {
         const rules = JSON.parse(d.rules || '[]');
-        rulesGrid.innerHTML = rules.map(r =>
-          `<div class="rule-item"><div class="rule-icon">${esc(r.icon)}</div><div class="rule-text">${esc(r.text)}</div></div>`
-        ).join('');
+        if (rules.length) {
+          rulesList.innerHTML = rules.map((r, i) =>
+            `<div class="rule-item" data-delay="${i * 60}">
+              <span class="rule-num">${String(i + 1).padStart(2, '0')}</span>
+              <div class="rule-icon">${esc(r.icon)}</div>
+              <div class="rule-text">${esc(r.text)}</div>
+            </div>`
+          ).join('');
+          initRulesReveal();
+        }
       } catch {}
     }
 
