@@ -3,162 +3,537 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>V Rising — Вход</title>
+  <title>Вход — V Rising</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@300;400;500;600;700&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <style>
     :root {
-      --accent: #b5002a; --accent-glow: rgba(181,0,42,0.4);
-      --card: rgba(14,3,24,0.95); --border: rgba(150,0,28,0.32);
-      --text: #c8c5d4; --muted: #7a7290; --gold: #c9a04a;
+      --bg:      #06000f;
+      --crimson: #c8002a;
+      --purple:  #7c3aed;
+      --text:    #e2d8f0;
+      --muted:   #9488a8;
+      --gold:    #c9a94a;
+      --border:  rgba(150,0,28,0.32);
+      --card:    rgba(10,2,20,0.92);
     }
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      margin: 0;
-      background: #080010;
-      background-image:
-        radial-gradient(ellipse at 25% 60%, rgba(80,0,120,0.13) 0%, transparent 55%),
-        radial-gradient(ellipse at 78% 25%, rgba(150,0,28,0.08) 0%, transparent 50%);
-      background-attachment: fixed;
+      background: var(--bg);
       font-family: 'Inter', system-ui, sans-serif;
-      color: var(--text); min-height: 100vh;
-      display: flex; flex-direction: column;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
     }
-    .fog { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+
+    /* ── Background image ── */
+    #bg-layer {
+      position: fixed; inset: 0; z-index: 0;
+      background-size: cover; background-position: center;
+      opacity: 0; transition: opacity 1s ease;
+    }
+    #bg-layer::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom,
+        rgba(6,0,15,0.55) 0%,
+        rgba(6,0,15,0.75) 60%,
+        rgba(6,0,15,0.95) 100%);
+    }
+
+    /* ── Fog ── */
+    .fog { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
     .fog::before {
       content: ''; position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
-      background: radial-gradient(ellipse at 38% 55%, rgba(90,0,150,0.1) 0%, transparent 55%);
+      background: radial-gradient(ellipse at 38% 55%, rgba(90,0,150,0.12) 0%, transparent 55%);
       animation: fog1 28s ease-in-out infinite alternate;
     }
     .fog::after {
       content: ''; position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
-      background: radial-gradient(ellipse at 65% 28%, rgba(170,0,32,0.07) 0%, transparent 50%);
+      background: radial-gradient(ellipse at 65% 28%, rgba(170,0,32,0.09) 0%, transparent 50%);
       animation: fog2 38s ease-in-out infinite alternate-reverse;
     }
     @keyframes fog1 { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(5%,7%) scale(1.1); } }
     @keyframes fog2 { 0% { transform: translate(0,0) scale(1.06); } 100% { transform: translate(-6%,4%) scale(1); } }
-    .gothic { font-family: 'Cinzel', serif; }
-    .glow-text { text-shadow: 0 0 24px rgba(200,0,40,0.65), 0 0 50px rgba(200,0,40,0.2); }
-    .glass-card {
-      background: var(--card); border: 1px solid var(--border);
-      box-shadow: 0 0 60px rgba(0,0,0,0.7), 0 0 30px rgba(100,0,20,0.1), inset 0 0 30px rgba(80,0,120,0.04);
-      backdrop-filter: blur(8px);
+
+    /* ── Stars canvas ── */
+    #stars-canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+
+    /* ── Nav ── */
+    nav {
+      position: relative; z-index: 10;
+      background: rgba(6,0,15,0.88);
+      border-bottom: 1px solid rgba(150,0,28,0.28);
+      backdrop-filter: blur(14px);
+      padding: .65rem 1.5rem;
+      display: flex; align-items: center;
     }
-    .glass-nav { background: rgba(8,0,16,0.85); border-bottom: 1px solid rgba(150,0,28,0.3); backdrop-filter: blur(12px); }
-    .dark-input {
-      width: 100%; background: rgba(8,0,16,0.8); border: 1px solid rgba(120,0,24,0.4);
-      color: var(--text); border-radius: .5rem; padding: .7rem 1rem; font-size: .95rem;
-      transition: border-color .2s, box-shadow .2s;
+    .nav-logo {
+      font-family: 'Philosopher', serif;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: .18em;
+      color: var(--gold);
+      text-decoration: none;
+      text-transform: uppercase;
+      text-shadow: 0 0 20px rgba(201,169,74,0.3);
+      transition: text-shadow .2s;
     }
-    .dark-input::placeholder { color: var(--muted); }
-    .dark-input:focus { border-color: var(--accent); box-shadow: 0 0 12px rgba(181,0,42,0.22); outline: none; }
-    .btn-primary {
-      width: 100%; background: linear-gradient(135deg, #7a001c, #b5002a);
-      box-shadow: 0 0 24px rgba(181,0,42,0.35); color: #fff; border: none;
-      border-radius: .5rem; padding: .8rem 1.5rem; font-size: 1rem; font-weight: 700;
-      letter-spacing: .05em; cursor: pointer; transition: box-shadow .2s, transform .15s;
+    .nav-logo:hover { text-shadow: 0 0 30px rgba(201,169,74,0.55); }
+
+    /* ── Main wrapper ── */
+    .page-center {
+      position: relative; z-index: 5;
+      flex: 1; display: flex;
+      align-items: center; justify-content: center;
+      padding: 2rem 1rem;
     }
-    .btn-primary:hover { box-shadow: 0 0 36px rgba(181,0,42,0.55); transform: translateY(-1px); }
-    .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
-    label { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .35rem; }
+
+    /* ── Card ── */
+    .auth-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1.1rem;
+      padding: 2.25rem 2rem;
+      width: 100%; max-width: 420px;
+      box-shadow:
+        0 0 80px rgba(0,0,0,0.75),
+        0 0 40px rgba(100,0,20,0.12),
+        inset 0 0 40px rgba(80,0,120,0.05),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+      backdrop-filter: blur(10px);
+      animation: card-in .55s cubic-bezier(.22,.68,0,1.2) both;
+    }
+    @keyframes card-in {
+      from { opacity: 0; transform: translateY(28px) scale(.97); }
+      to   { opacity: 1; transform: translateY(0)    scale(1); }
+    }
+
+    /* corner runes */
+    .auth-card { position: relative; }
+    .corner { position: absolute; font-size: .6rem; color: rgba(201,169,74,0.3); line-height: 1; }
+    .corner-tl { top:.55rem; left:.65rem; }
+    .corner-tr { top:.55rem; right:.65rem; }
+    .corner-bl { bottom:.55rem; left:.65rem; }
+    .corner-br { bottom:.55rem; right:.65rem; }
+
+    /* ── Header ── */
+    .card-header { text-align: center; margin-bottom: 1.75rem; }
+    .card-rune { font-size: 1.8rem; color: var(--crimson); opacity: .8; line-height: 1; margin-bottom: .5rem; }
+    .card-title {
+      font-family: 'Philosopher', serif;
+      font-size: 1.35rem; font-weight: 700;
+      color: var(--gold);
+      letter-spacing: .2em;
+      text-transform: uppercase;
+      text-shadow: 0 0 20px rgba(201,169,74,0.25);
+    }
+    .card-divider {
+      width: 5rem; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(181,0,42,0.6), transparent);
+      margin: .65rem auto 0;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid rgba(150,0,28,0.22);
+      margin-bottom: 1.6rem;
+    }
     .tab-btn {
-      flex: 1; padding: .75rem; font-size: .75rem; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .1em; cursor: pointer;
-      background: none; border: none; color: var(--muted);
-      border-bottom: 2px solid transparent; transition: all .2s;
+      flex: 1; padding: .65rem .5rem;
+      font-family: 'Inter', sans-serif;
+      font-size: .72rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .1em;
+      cursor: pointer; background: none; border: none;
+      color: var(--muted);
+      border-bottom: 2px solid transparent;
+      transition: color .2s, border-color .2s, text-shadow .2s;
+      margin-bottom: -1px;
     }
-    .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); text-shadow: 0 0 12px var(--accent-glow); }
-    .error-box { background: rgba(140,0,20,0.25); border: 1px solid rgba(180,0,30,0.5); color: #fca5a5; border-radius: .5rem; padding: .6rem .9rem; font-size: .85rem; }
-    .success-box { background: rgba(0,80,20,0.25); border: 1px solid rgba(0,180,40,0.4); color: #86efac; border-radius: .5rem; padding: .6rem .9rem; font-size: .85rem; }
+    .tab-btn.active {
+      color: var(--text);
+      border-bottom-color: var(--crimson);
+      text-shadow: 0 0 12px rgba(200,0,40,0.4);
+    }
+
+    /* ── Form ── */
+    .form-group { margin-bottom: 1rem; }
+    .form-label {
+      display: block;
+      font-size: .65rem; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--muted);
+      margin-bottom: .38rem;
+    }
+    .input-wrap { position: relative; }
+    .input-icon {
+      position: absolute; left: .85rem; top: 50%; transform: translateY(-50%);
+      color: rgba(148,136,168,0.55); pointer-events: none;
+      display: flex; align-items: center;
+    }
+    .dark-input {
+      width: 100%;
+      background: rgba(6,0,15,0.75);
+      border: 1px solid rgba(120,0,24,0.38);
+      color: var(--text);
+      border-radius: .55rem;
+      padding: .72rem 1rem .72rem 2.6rem;
+      font-size: .9rem;
+      font-family: 'Inter', sans-serif;
+      transition: border-color .2s, box-shadow .2s;
+      outline: none;
+    }
+    .dark-input::placeholder { color: rgba(148,136,168,0.5); }
+    .dark-input:focus {
+      border-color: var(--crimson);
+      box-shadow: 0 0 14px rgba(181,0,42,0.2), inset 0 0 8px rgba(140,0,20,0.06);
+    }
+    .dark-input.has-toggle { padding-right: 2.8rem; }
+
+    /* password toggle */
+    .pw-toggle {
+      position: absolute; right: .8rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: rgba(148,136,168,0.5); padding: .15rem;
+      display: flex; align-items: center;
+      transition: color .18s;
+    }
+    .pw-toggle:hover { color: var(--muted); }
+
+    /* ── Password strength ── */
+    .pw-strength { margin-top: .45rem; }
+    .pw-strength-bar {
+      height: 3px; border-radius: 2px;
+      background: rgba(110,0,20,0.2);
+      overflow: hidden; margin-bottom: .3rem;
+    }
+    .pw-strength-fill {
+      height: 100%; border-radius: 2px;
+      width: 0; transition: width .3s ease, background .3s ease;
+    }
+    .pw-strength-label { font-size: .62rem; color: var(--muted); }
+
+    /* ── Alerts ── */
+    .alert {
+      border-radius: .5rem; padding: .55rem .85rem;
+      font-size: .82rem; margin-bottom: .75rem;
+      display: none; align-items: center; gap: .5rem;
+    }
+    .alert.show { display: flex; }
+    .alert-error  { background: rgba(140,0,20,0.25); border: 1px solid rgba(180,0,30,0.5); color: #fca5a5; }
+    .alert-success{ background: rgba(0,80,20,0.25);  border: 1px solid rgba(0,180,40,0.4);  color: #86efac; }
+
+    /* confirm hint */
+    .confirm-hint { font-size: .68rem; margin-top: .32rem; min-height: 1em; }
+
+    /* ── Submit button ── */
+    .btn-primary {
+      width: 100%; margin-top: .25rem;
+      background: linear-gradient(135deg, #6a0018, var(--crimson));
+      border: 1px solid rgba(200,0,40,0.4);
+      box-shadow: 0 0 24px rgba(181,0,42,0.3);
+      color: #fff; border-radius: .6rem;
+      padding: .82rem 1.5rem;
+      font-size: .9rem; font-weight: 700;
+      font-family: 'Philosopher', serif;
+      letter-spacing: .1em; text-transform: uppercase;
+      cursor: pointer;
+      transition: box-shadow .2s, transform .15s, background .2s;
+    }
+    .btn-primary:hover:not(:disabled) {
+      box-shadow: 0 0 38px rgba(181,0,42,0.5);
+      transform: translateY(-1px);
+      background: linear-gradient(135deg, #800020, #d4002e);
+    }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+    /* scrollbar */
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: rgba(8,0,16,0.5); }
     ::-webkit-scrollbar-thumb { background: rgba(150,0,28,0.5); border-radius: 3px; }
   </style>
 </head>
 <body>
-<div class="fog"></div>
 
-<nav class="glass-nav relative z-40">
-  <div class="max-w-6xl mx-auto px-4 py-3">
-    <a href="/" class="gothic font-black text-xl tracking-widest glow-text" style="color:#e0c8d8;text-decoration:none;">⚔ V RISING</a>
-  </div>
+<div id="bg-layer"></div>
+<div class="fog"></div>
+<canvas id="stars-canvas"></canvas>
+
+<nav>
+  <a href="/" class="nav-logo" id="nav-logo">⚔ V Rising</a>
 </nav>
 
-<div class="relative z-10 flex-1 flex items-center justify-center p-4">
-  <div class="glass-card rounded-2xl p-8 w-full max-w-md">
+<div class="page-center">
+  <div class="auth-card">
+    <span class="corner corner-tl">✦</span>
+    <span class="corner corner-tr">✦</span>
+    <span class="corner corner-bl">✦</span>
+    <span class="corner corner-br">✦</span>
 
-    <!-- Logo -->
-    <div class="text-center mb-6">
-      <div class="text-3xl mb-2" style="color:var(--accent);">⚔</div>
-      <h1 class="gothic text-2xl font-black glow-text" style="color:#e0c8d8;letter-spacing:.08em;">V RISING</h1>
-      <div style="width:5rem;height:1px;background:linear-gradient(90deg,transparent,rgba(181,0,42,0.6),transparent);margin:.75rem auto 0;"></div>
+    <div class="card-header">
+      <div class="card-rune">⚔</div>
+      <div class="card-title" id="card-title">V Rising</div>
+      <div class="card-divider"></div>
     </div>
 
-    <!-- Tabs -->
-    <div class="flex mb-6" style="border-bottom:1px solid rgba(150,0,28,0.25);">
-      <button id="tab-login" class="tab-btn active" onclick="switchTab('login')">Вход</button>
-      <button id="tab-register" class="tab-btn" onclick="switchTab('register')">Регистрация</button>
+    <div class="tabs">
+      <button id="tab-login"    class="tab-btn active" onclick="switchTab('login')">Вход</button>
+      <button id="tab-register" class="tab-btn"        onclick="switchTab('register')">Регистрация</button>
     </div>
 
-    <!-- Login -->
-    <form id="form-login" onsubmit="submitLogin(event)" class="space-y-4">
-      <div>
-        <label>Имя пользователя</label>
-        <input name="username" type="text" required autocomplete="username" class="dark-input" />
+    <!-- Login form -->
+    <form id="form-login" onsubmit="submitLogin(event)">
+      <div class="form-group">
+        <label class="form-label">Имя пользователя</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
+          <input id="login-username" name="username" type="text" required autocomplete="username"
+            placeholder="Ваш никнейм" class="dark-input" />
+        </div>
       </div>
-      <div>
-        <label>Пароль</label>
-        <input name="password" type="password" required autocomplete="current-password" class="dark-input" />
+      <div class="form-group">
+        <label class="form-label">Пароль</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <input id="login-password" name="password" type="password" required autocomplete="current-password"
+            placeholder="Ваш пароль" class="dark-input has-toggle" />
+          <button type="button" class="pw-toggle" onclick="togglePw('login-password',this)" tabindex="-1">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
       </div>
-      <div id="login-error" class="error-box hidden"></div>
-      <button type="submit" id="login-btn" class="btn-primary" style="margin-top:.25rem;">Войти</button>
+      <div id="login-error" class="alert alert-error">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="login-error-text"></span>
+      </div>
+      <button type="submit" id="login-btn" class="btn-primary">Войти</button>
     </form>
 
-    <!-- Register -->
-    <form id="form-register" class="hidden space-y-4" onsubmit="submitRegister(event)">
-      <div>
-        <label>Имя пользователя</label>
-        <input name="username" type="text" required autocomplete="username" placeholder="3-32 символа, буквы, цифры, _ и пробелы" class="dark-input" />
+    <!-- Register form -->
+    <form id="form-register" onsubmit="submitRegister(event)" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Имя пользователя</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
+          <input name="username" type="text" required autocomplete="username"
+            placeholder="3–32 символа, буквы, цифры, _" class="dark-input" />
+        </div>
       </div>
-      <div>
-        <label>Email</label>
-        <input name="email" type="email" required autocomplete="email" class="dark-input" />
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </span>
+          <input name="email" type="email" required autocomplete="email"
+            placeholder="your@email.com" class="dark-input" />
+        </div>
       </div>
-      <div>
-        <label>Пароль</label>
-        <input id="reg-password" name="password" type="password" required autocomplete="new-password" placeholder="Минимум 6 символов" class="dark-input" oninput="checkConfirm()" />
+      <div class="form-group">
+        <label class="form-label">Пароль</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <input id="reg-password" name="password" type="password" required autocomplete="new-password"
+            placeholder="Минимум 6 символов" class="dark-input has-toggle" oninput="onPwInput()" />
+          <button type="button" class="pw-toggle" onclick="togglePw('reg-password',this)" tabindex="-1">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="pw-strength" id="pw-strength" style="display:none;">
+          <div class="pw-strength-bar"><div class="pw-strength-fill" id="pw-fill"></div></div>
+          <div class="pw-strength-label" id="pw-label"></div>
+        </div>
       </div>
-      <div>
-        <label>Повторите пароль</label>
-        <input id="reg-confirm" name="password_confirm" type="password" required autocomplete="new-password" placeholder="Повторите пароль" class="dark-input" oninput="checkConfirm()" style="transition:border-color .2s,box-shadow .2s;" />
-        <div id="confirm-hint" style="font-size:.72rem;margin-top:.35rem;display:none;"></div>
+      <div class="form-group">
+        <label class="form-label">Повторите пароль</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <input id="reg-confirm" name="password_confirm" type="password" required autocomplete="new-password"
+            placeholder="Повторите пароль" class="dark-input has-toggle" oninput="checkConfirm()" />
+          <button type="button" class="pw-toggle" onclick="togglePw('reg-confirm',this)" tabindex="-1">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="confirm-hint" id="confirm-hint"></div>
       </div>
-      <div id="register-error" class="error-box hidden"></div>
-      <div id="register-success" class="success-box hidden"></div>
-      <button type="submit" id="register-btn" class="btn-primary" style="margin-top:.25rem;">Зарегистрироваться</button>
+      <div id="register-error" class="alert alert-error">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="register-error-text"></span>
+      </div>
+      <div id="register-success" class="alert alert-success">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+        <span id="register-success-text"></span>
+      </div>
+      <button type="submit" id="register-btn" class="btn-primary">Зарегистрироваться</button>
     </form>
-
   </div>
 </div>
 
 <script>
 const API = '/api';
 
+// ── Stars ────────────────────────────────────────────────────────────────────
+(function() {
+  const canvas = document.getElementById('stars-canvas');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  function init() {
+    resize();
+    stars = Array.from({length: 90}, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.1 + .2,
+      o: Math.random() * .5 + .2,
+      s: Math.random() * .008 + .003,
+      d: Math.random() > .5 ? 1 : -1,
+    }));
+  }
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stars.forEach(s => {
+      s.o += s.s * s.d;
+      if (s.o > .75 || s.o < .1) s.d *= -1;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(212,196,224,${s.o})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', resize);
+  init(); draw();
+})();
+
+// ── Load settings ─────────────────────────────────────────────────────────
+(async function() {
+  try {
+    const d = await fetch(`${API}/settings/public`).then(r => r.json());
+    const title = (d.site_title || 'V Rising').trim();
+    document.title = `Вход — ${title}`;
+    document.getElementById('nav-logo').textContent = `⚔ ${title}`;
+    document.getElementById('card-title').textContent = title;
+    if (d.bg_image_url) {
+      const bg = document.getElementById('bg-layer');
+      bg.style.backgroundImage = `url('${d.bg_image_url}')`;
+      bg.style.opacity = '1';
+    }
+  } catch {}
+})();
+
+// ── Auth redirect ─────────────────────────────────────────────────────────
+const _user = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
+if (_user && localStorage.getItem('token'))
+  window.location.replace(_user.role === 'admin' ? '/admin.html' : '/');
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
 function switchTab(tab) {
   const isLogin = tab === 'login';
-  document.getElementById('form-login').classList.toggle('hidden', !isLogin);
-  document.getElementById('form-register').classList.toggle('hidden', isLogin);
-  document.getElementById('tab-login').className = 'tab-btn' + (isLogin ? ' active' : '');
+  document.getElementById('form-login').style.display    = isLogin ? 'block' : 'none';
+  document.getElementById('form-register').style.display = isLogin ? 'none'  : 'block';
+  document.getElementById('tab-login').className    = 'tab-btn' + (isLogin ? ' active' : '');
   document.getElementById('tab-register').className = 'tab-btn' + (!isLogin ? ' active' : '');
-  ['login-error','register-error','register-success'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  hideAlerts();
+  setTimeout(() => {
+    const first = isLogin
+      ? document.getElementById('login-username')
+      : document.querySelector('#form-register input');
+    if (first) first.focus();
+  }, 50);
 }
+if (window.location.hash === '#register') switchTab('register');
+else document.getElementById('login-username').focus();
 
-function showError(id, msg) {
+// ── Alerts ────────────────────────────────────────────────────────────────
+function hideAlerts() {
+  ['login-error','register-error','register-success'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('show');
+  });
+}
+function showAlert(id, msg) {
   const el = document.getElementById(id);
-  el.textContent = msg; el.classList.remove('hidden');
+  const textEl = document.getElementById(id + '-text');
+  if (textEl) textEl.textContent = msg;
+  el.classList.add('show');
 }
 
+// ── Password toggle ───────────────────────────────────────────────────────
+const eyeOpen  = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const eyeClosed = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+function togglePw(inputId, btn) {
+  const input = document.getElementById(inputId);
+  const isText = input.type === 'text';
+  input.type = isText ? 'password' : 'text';
+  btn.innerHTML = isText ? eyeOpen : eyeClosed;
+  btn.style.color = isText ? '' : 'var(--muted)';
+}
+
+// ── Password strength ─────────────────────────────────────────────────────
+function pwStrength(pw) {
+  if (!pw) return 0;
+  let score = 0;
+  if (pw.length >= 6)  score++;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  return score;
+}
+function onPwInput() {
+  const pw  = document.getElementById('reg-password').value;
+  const bar = document.getElementById('pw-strength');
+  const fill = document.getElementById('pw-fill');
+  const label = document.getElementById('pw-label');
+  if (!pw) { bar.style.display = 'none'; return; }
+  bar.style.display = 'block';
+  const score = pwStrength(pw);
+  const levels = [
+    { w: '20%',  color: '#ef4444', text: 'Очень слабый' },
+    { w: '40%',  color: '#f97316', text: 'Слабый' },
+    { w: '60%',  color: '#eab308', text: 'Средний' },
+    { w: '80%',  color: '#84cc16', text: 'Хороший' },
+    { w: '100%', color: '#22c55e', text: 'Надёжный' },
+  ];
+  const lvl = levels[Math.min(score, 4)];
+  fill.style.width = lvl.w;
+  fill.style.background = lvl.color;
+  label.textContent = lvl.text;
+  label.style.color = lvl.color;
+  checkConfirm();
+}
+
+// ── Confirm match ─────────────────────────────────────────────────────────
+function checkConfirm() {
+  const pw  = document.getElementById('reg-password').value;
+  const cfw = document.getElementById('reg-confirm').value;
+  const hint = document.getElementById('confirm-hint');
+  const input = document.getElementById('reg-confirm');
+  if (!cfw) { hint.textContent = ''; input.style.borderColor = ''; input.style.boxShadow = ''; return; }
+  const match = pw === cfw;
+  hint.textContent = match ? '✔ Пароли совпадают' : '✘ Пароли не совпадают';
+  hint.style.color = match ? '#86efac' : '#fca5a5';
+  input.style.borderColor = match ? 'rgba(0,180,40,0.5)' : 'rgba(180,0,30,0.6)';
+  input.style.boxShadow   = match ? '0 0 8px rgba(0,180,40,0.18)' : '0 0 8px rgba(180,0,30,0.18)';
+}
+
+// ── API helpers ───────────────────────────────────────────────────────────
 async function apiPost(url, body) {
   const res = await fetch(url, {
     method: 'POST',
@@ -166,80 +541,57 @@ async function apiPost(url, body) {
     body: JSON.stringify(body),
   });
   let data;
-  try { data = await res.json(); }
-  catch { data = { detail: `Ошибка сервера (${res.status})` }; }
+  try { data = await res.json(); } catch { data = { detail: `Ошибка сервера (${res.status})` }; }
   return { res, data };
 }
-
 function extractError(data, fallback) {
   if (!data.detail) return fallback;
-  if (Array.isArray(data.detail)) {
-    return data.detail
-      .map(d => (d.msg || '').replace(/^value error,\s*/i, ''))
-      .join(', ');
-  }
+  if (Array.isArray(data.detail))
+    return data.detail.map(d => (d.msg || '').replace(/^value error,\s*/i, '')).join(', ');
   return data.detail;
 }
 
+// ── Login ─────────────────────────────────────────────────────────────────
 async function submitLogin(e) {
   e.preventDefault();
-  document.getElementById('login-error').classList.add('hidden');
+  document.getElementById('login-error').classList.remove('show');
   const btn = document.getElementById('login-btn');
-  btn.disabled = true; btn.textContent = 'Вход...';
+  btn.disabled = true; btn.textContent = 'Вход…';
   const fd = new FormData(e.target);
   try {
     const { res, data } = await apiPost(`${API}/auth/login`, {
       username: fd.get('username'), password: fd.get('password'),
     });
-    if (!res.ok) { showError('login-error', extractError(data, 'Неверный логин или пароль')); return; }
+    if (!res.ok) { showAlert('login-error', extractError(data, 'Неверный логин или пароль')); return; }
     localStorage.setItem('token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
     window.location.href = data.user.role === 'admin' ? '/admin.html' : '/';
-  } catch (err) { showError('login-error', 'Нет связи с сервером: ' + err.message); }
+  } catch (err) { showAlert('login-error', 'Нет связи с сервером: ' + err.message); }
   finally { btn.disabled = false; btn.textContent = 'Войти'; }
 }
 
-function checkConfirm() {
-  const pw  = document.getElementById('reg-password').value;
-  const cfw = document.getElementById('reg-confirm').value;
-  const hint = document.getElementById('confirm-hint');
-  const input = document.getElementById('reg-confirm');
-  if (!cfw) { hint.style.display = 'none'; input.style.borderColor = ''; return; }
-  const match = pw === cfw;
-  hint.style.display = 'block';
-  hint.textContent   = match ? '✔ Пароли совпадают' : '✘ Пароли не совпадают';
-  hint.style.color   = match ? '#86efac' : '#fca5a5';
-  input.style.borderColor = match ? 'rgba(0,180,40,0.5)' : 'rgba(180,0,30,0.6)';
-  input.style.boxShadow   = match ? '0 0 8px rgba(0,180,40,0.2)' : '0 0 8px rgba(180,0,30,0.2)';
-}
-
+// ── Register ──────────────────────────────────────────────────────────────
 async function submitRegister(e) {
   e.preventDefault();
-  document.getElementById('register-error').classList.add('hidden');
-  document.getElementById('register-success').classList.add('hidden');
+  hideAlerts();
   const pw  = document.getElementById('reg-password').value;
   const cfw = document.getElementById('reg-confirm').value;
-  if (pw !== cfw) { showError('register-error', 'Пароли не совпадают'); return; }
+  if (pw !== cfw) { showAlert('register-error', 'Пароли не совпадают'); return; }
   const btn = document.getElementById('register-btn');
-  btn.disabled = true; btn.textContent = 'Создание...';
+  btn.disabled = true; btn.textContent = 'Создание…';
   const fd = new FormData(e.target);
   try {
     const { res, data } = await apiPost(`${API}/auth/register`, {
       username: fd.get('username'), email: fd.get('email'), password: pw,
     });
-    if (!res.ok) { showError('register-error', extractError(data, 'Ошибка регистрации')); return; }
+    if (!res.ok) { showAlert('register-error', extractError(data, 'Ошибка регистрации')); return; }
     localStorage.setItem('token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));
-    const s = document.getElementById('register-success');
-    s.textContent = 'Аккаунт создан! Перенаправление...'; s.classList.remove('hidden');
+    showAlert('register-success', 'Аккаунт создан! Перенаправление…');
     setTimeout(() => { window.location.href = '/'; }, 1200);
-  } catch (err) { showError('register-error', 'Нет связи с сервером: ' + err.message); }
+  } catch (err) { showAlert('register-error', 'Нет связи с сервером: ' + err.message); }
   finally { btn.disabled = false; btn.textContent = 'Зарегистрироваться'; }
 }
-
-const user = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
-if (user && localStorage.getItem('token')) window.location.href = user.role === 'admin' ? '/admin.html' : '/';
-if (window.location.hash === '#register') switchTab('register');
 </script>
 </body>
 </html>
