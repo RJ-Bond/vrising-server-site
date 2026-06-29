@@ -130,6 +130,7 @@ async def lifespan(app: FastAPI):
         for stmt in [
             "ALTER TABLE news ADD COLUMN tags VARCHAR(256) DEFAULT ''",
             "ALTER TABLE users ADD COLUMN avatar_url VARCHAR(512) DEFAULT NULL",
+            "ALTER TABLE news ADD COLUMN views INTEGER DEFAULT 0 NOT NULL",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -643,6 +644,9 @@ async def get_news(slug: str, db: AsyncSession = Depends(get_db)):
     news = result.scalar_one_or_none()
     if news is None:
         raise HTTPException(status_code=404, detail="News not found")
+    news.views = (news.views or 0) + 1
+    await db.commit()
+    await db.refresh(news)
     return NewsOut.model_validate(news)
 
 

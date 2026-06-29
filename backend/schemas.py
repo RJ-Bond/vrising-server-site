@@ -82,6 +82,7 @@ class NewsOut(BaseModel):
     thumbnail_url: Optional[str]
     tags: Optional[str] = None
     published: bool
+    views: int = 0
     created_at: datetime
     updated_at: datetime
     author: UserOut
@@ -97,6 +98,7 @@ class NewsListOut(BaseModel):
     thumbnail_url: Optional[str]
     tags: Optional[str] = None
     published: bool
+    views: int = 0
     created_at: datetime
     author: UserOut
     comment_count: int = 0

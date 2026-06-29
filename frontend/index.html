@@ -1991,6 +1991,7 @@ async function loadNews(page = 1) {
     const commentBadge = n.comment_count > 0
       ? `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.6rem;color:var(--muted);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${n.comment_count}</span>`
       : '';
+    const viewsBadge = `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.6rem;color:var(--muted);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${n.views || 0}</span>`;
     const card = document.createElement('div');
     card.className = 'news-card';
     card.style.animationDelay = `${idx * 0.06}s`;
@@ -1999,6 +2000,7 @@ async function loadNews(page = 1) {
       <div style="padding:.85rem 1rem .75rem;flex:1;min-width:0;display:flex;flex-direction:column;gap:.28rem;">
         <div style="display:flex;align-items:center;gap:.5rem;">
           <span style="font-size:.6rem;color:var(--muted);letter-spacing:.03em;">${fmtDate(n.created_at)}</span>
+          ${viewsBadge}
           ${commentBadge}
         </div>
         <h3 class="gothic" style="font-size:1.05rem;font-weight:700;color:#d4c4e0;line-height:1.3;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.title)}</h3>
@@ -2072,7 +2074,10 @@ async function openNews(slug) {
           <span style="font-size:.88rem;color:#d4c4e0;font-weight:600;">${authorName}</span>
           ${modalAdminBadge}
         </div>
-        <span style="font-size:.68rem;color:var(--muted);">${fmtDate(n.created_at)}</span>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <span style="font-size:.68rem;color:var(--muted);">${fmtDate(n.created_at)}</span>
+          <span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.68rem;color:var(--muted);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${n.views || 0}</span>
+        </div>
       </div>`;
     const thumbWrap = document.getElementById('modal-thumb');
     const thumbImg  = document.getElementById('modal-thumb-img');
