@@ -1172,6 +1172,10 @@ async def ssl_install(
     _: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
+    import os
+    import struct
+    import json as _json
+
     result = await db.execute(
         select(Setting).where(Setting.key.in_(["https_domain", "https_email"]))
     )
@@ -1181,47 +1185,122 @@ async def ssl_install(
     if not domain or not email:
         raise HTTPException(400, "Заполните домен и email в настройках HTTPS")
 
-    async def stream():
-        import shutil
+    DOCKER_SOCK = "/var/run/docker.sock"
 
+    async def stream():
         def sse(msg: str) -> str:
             return f"data: {msg}\n\n"
 
         try:
             yield sse(f"🔐 Запрашиваем сертификат Let's Encrypt для {domain}...")
 
-            if not shutil.which("docker"):
-                yield sse("❌ docker не найден в PATH контейнера")
+            if not os.path.exists(DOCKER_SOCK):
+                yield sse("❌ Docker socket не найден: /var/run/docker.sock")
                 yield sse("DONE:error")
                 return
 
-            rc = 0
-            try:
-                async for line in _stream_cmd(
-                    "docker", "run", "--rm",
-                    "-v", "vrising_letsencrypt:/etc/letsencrypt",
-                    "-v", "vrising_certbot_webroot:/var/www/certbot",
-                    "certbot/certbot",
-                    "certonly", "--webroot",
-                    "--webroot-path=/var/www/certbot",
-                    "-d", domain,
-                    "--email", email,
-                    "--agree-tos", "--non-interactive", "--no-eff-email",
-                ):
-                    if line.startswith("__rc__"):
-                        rc = int(line[6:])
-                    else:
-                        yield sse(line)
-            except Exception as exc:
-                yield sse(f"❌ Ошибка запуска certbot: {exc}")
-                yield sse("DONE:error")
-                return
+            transport = httpx.AsyncHTTPTransport(uds=DOCKER_SOCK)
+            async with httpx.AsyncClient(
+                transport=transport, base_url="http://docker", timeout=httpx.Timeout(300.0)
+            ) as dc:
 
-            if rc != 0:
-                yield sse("❌ Ошибка получения сертификата. Проверьте что A-запись домена указывает на этот сервер.")
-                yield sse("DONE:error")
-                return
+                # Pull certbot image
+                yield sse("📥 Загружаем образ certbot/certbot...")
+                try:
+                    async with dc.stream("POST", "/images/create",
+                                         params={"fromImage": "certbot/certbot", "tag": "latest"}) as resp:
+                        async for line in resp.aiter_lines():
+                            if not line:
+                                continue
+                            try:
+                                data = _json.loads(line)
+                                status = data.get("status", "")
+                                # skip noisy per-layer lines
+                                if status and status not in (
+                                    "Pulling fs layer", "Waiting", "Verifying Checksum",
+                                    "Download complete", "Pull complete", "Already exists",
+                                ):
+                                    yield sse(status)
+                                if "error" in data:
+                                    yield sse(f"❌ {data['error']}")
+                            except Exception:
+                                pass
+                except Exception as exc:
+                    yield sse(f"❌ Ошибка загрузки образа: {exc}")
+                    yield sse("DONE:error")
+                    return
 
+                # Create certbot container
+                yield sse("🚀 Запускаем certbot...")
+                try:
+                    create_resp = await dc.post("/containers/create", json={
+                        "Image": "certbot/certbot",
+                        "Cmd": [
+                            "certonly", "--webroot",
+                            "--webroot-path=/var/www/certbot",
+                            "-d", domain,
+                            "--email", email,
+                            "--agree-tos", "--non-interactive", "--no-eff-email",
+                        ],
+                        "HostConfig": {
+                            "Binds": [
+                                "vrising_letsencrypt:/etc/letsencrypt",
+                                "vrising_certbot_webroot:/var/www/certbot",
+                            ],
+                        },
+                    })
+                    if create_resp.status_code not in (200, 201):
+                        yield sse(f"❌ Ошибка создания контейнера: {create_resp.text}")
+                        yield sse("DONE:error")
+                        return
+                    container_id = create_resp.json()["Id"]
+                except Exception as exc:
+                    yield sse(f"❌ Ошибка создания контейнера: {exc}")
+                    yield sse("DONE:error")
+                    return
+
+                # Start
+                await dc.post(f"/containers/{container_id}/start")
+
+                # Stream logs (Docker multiplexed frame format)
+                try:
+                    async with dc.stream("GET", f"/containers/{container_id}/logs",
+                                         params={"stdout": 1, "stderr": 1, "follow": 1}) as log_resp:
+                        buf = b""
+                        async for chunk in log_resp.aiter_bytes():
+                            buf += chunk
+                            while len(buf) >= 8:
+                                frame_size = struct.unpack(">I", buf[4:8])[0]
+                                if len(buf) < 8 + frame_size:
+                                    break
+                                payload = buf[8:8 + frame_size].decode(errors="replace").strip()
+                                buf = buf[8 + frame_size:]
+                                if payload:
+                                    yield sse(payload)
+                except Exception as exc:
+                    yield sse(f"⚠ Ошибка чтения логов: {exc}")
+
+                # Get exit code
+                rc = -1
+                try:
+                    wait_resp = await dc.post(f"/containers/{container_id}/wait",
+                                              timeout=httpx.Timeout(30.0))
+                    rc = wait_resp.json().get("StatusCode", -1)
+                except Exception:
+                    pass
+
+                # Cleanup container
+                try:
+                    await dc.delete(f"/containers/{container_id}", params={"force": True})
+                except Exception:
+                    pass
+
+                if rc != 0:
+                    yield sse("❌ Ошибка получения сертификата. Проверьте что A-запись домена указывает на этот сервер и порт 80 открыт.")
+                    yield sse("DONE:error")
+                    return
+
+            # Update nginx config
             yield sse("📝 Обновляем конфигурацию nginx...")
             try:
                 workspace = "/workspace"
@@ -1235,26 +1314,27 @@ async def ssl_install(
                 yield sse("DONE:error")
                 return
 
+            # Reload nginx via Docker socket
             yield sse("🔄 Перезапускаем nginx...")
-            rc2 = 0
             try:
-                async for line in _stream_cmd("docker", "exec", "vrising_nginx", "nginx", "-s", "reload"):
-                    if line.startswith("__rc__"):
-                        rc2 = int(line[6:])
+                transport2 = httpx.AsyncHTTPTransport(uds=DOCKER_SOCK)
+                async with httpx.AsyncClient(
+                    transport=transport2, base_url="http://docker", timeout=httpx.Timeout(60.0)
+                ) as dc2:
+                    exec_resp = await dc2.post("/containers/vrising_nginx/exec", json={
+                        "Cmd": ["nginx", "-s", "reload"],
+                        "AttachStdout": True, "AttachStderr": True,
+                    })
+                    if exec_resp.status_code in (200, 201):
+                        await dc2.post(f"/exec/{exec_resp.json()['Id']}/start",
+                                       json={"Detach": True})
+                        yield sse("✅ nginx перезагружен")
                     else:
-                        yield sse(line)
+                        await dc2.post("/containers/vrising_nginx/restart",
+                                       timeout=httpx.Timeout(30.0))
+                        yield sse("✅ nginx перезапущен")
             except Exception as exc:
-                yield sse(f"❌ Ошибка перезапуска nginx: {exc}")
-                yield sse("DONE:error")
-                return
-
-            if rc2 != 0:
-                try:
-                    async for line in _stream_cmd("docker", "restart", "vrising_nginx"):
-                        if not line.startswith("__rc__"):
-                            yield sse(line)
-                except Exception as exc:
-                    yield sse(f"⚠ docker restart nginx: {exc}")
+                yield sse(f"⚠ Перезапуск nginx: {exc}")
 
             yield sse("🎉 HTTPS успешно настроен! Сайт теперь доступен по https://" + domain)
             yield sse("DONE:ok")
