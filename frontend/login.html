@@ -229,6 +229,17 @@
     /* confirm hint */
     .confirm-hint { font-size: .68rem; margin-top: .32rem; min-height: 1em; }
 
+    /* remember-me + forgot row */
+    .login-meta { display:flex; align-items:center; justify-content:space-between; margin:.55rem 0 .85rem; }
+    .remember-label { display:flex; align-items:center; gap:.45rem; font-size:.74rem; color:var(--muted); cursor:pointer; user-select:none; }
+    .remember-label input[type=checkbox] { accent-color:var(--crimson); width:14px; height:14px; cursor:pointer; }
+    .forgot-link { background:none; border:none; color:var(--muted); font-size:.74rem; cursor:pointer; padding:0; transition:color .18s; font-family:inherit; }
+    .forgot-link:hover { color:var(--text); }
+
+    /* back link */
+    .back-link { display:block; text-align:center; margin-top:.85rem; font-size:.74rem; color:var(--muted); cursor:pointer; background:none; border:none; font-family:inherit; transition:color .18s; width:100%; }
+    .back-link:hover { color:var(--text); }
+
     /* ── Submit button ── */
     .btn-primary {
       width: 100%; margin-top: .25rem;
@@ -282,6 +293,7 @@
     <div class="tabs">
       <button id="tab-login"    class="tab-btn active" onclick="switchTab('login')">Вход</button>
       <button id="tab-register" class="tab-btn"        onclick="switchTab('register')">Регистрация</button>
+      <button id="tab-forgot"   class="tab-btn"        onclick="switchTab('forgot')" style="display:none;">Сброс пароля</button>
     </div>
 
     <!-- Login form -->
@@ -308,6 +320,13 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
+      </div>
+      <div class="login-meta">
+        <label class="remember-label">
+          <input type="checkbox" id="remember-me" checked>
+          Запомнить меня
+        </label>
+        <button type="button" class="forgot-link" onclick="switchTab('forgot')">Забыли пароль?</button>
       </div>
       <div id="login-error" class="alert alert-error">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -379,6 +398,33 @@
       </div>
       <button type="submit" id="register-btn" class="btn-primary">Зарегистрироваться</button>
     </form>
+
+    <!-- Forgot password form -->
+    <form id="form-forgot" onsubmit="submitForgot(event)" style="display:none;">
+      <p style="font-size:.78rem;color:var(--muted);line-height:1.55;margin-bottom:1.1rem;">
+        Введите email от вашего аккаунта. Администратор получит запрос и вышлет вам ссылку для сброса пароля.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          </span>
+          <input id="forgot-email" type="email" required autocomplete="email"
+            placeholder="your@email.com" class="dark-input" />
+        </div>
+      </div>
+      <div id="forgot-error" class="alert alert-error">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="forgot-error-text"></span>
+      </div>
+      <div id="forgot-success" class="alert alert-success">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
+        <span id="forgot-success-text"></span>
+      </div>
+      <button type="submit" id="forgot-btn" class="btn-primary">Отправить запрос</button>
+      <button type="button" class="back-link" onclick="switchTab('login')">← Вернуться ко входу</button>
+    </form>
   </div>
 </div>
 
@@ -438,22 +484,30 @@ const API = '/api';
 })();
 
 // ── Auth redirect ─────────────────────────────────────────────────────────
-const _user = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
-if (_user && localStorage.getItem('token'))
+const _tok  = localStorage.getItem('token') || sessionStorage.getItem('token');
+const _user = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
+if (_user && _tok)
   window.location.replace(_user.role === 'admin' ? '/admin.html' : '/');
 
 // ── Tabs ──────────────────────────────────────────────────────────────────
 function switchTab(tab) {
-  const isLogin = tab === 'login';
-  document.getElementById('form-login').style.display    = isLogin ? 'block' : 'none';
-  document.getElementById('form-register').style.display = isLogin ? 'none'  : 'block';
-  document.getElementById('tab-login').className    = 'tab-btn' + (isLogin ? ' active' : '');
-  document.getElementById('tab-register').className = 'tab-btn' + (!isLogin ? ' active' : '');
+  const tabs = { login: 'form-login', register: 'form-register', forgot: 'form-forgot' };
+  Object.keys(tabs).forEach(t => {
+    document.getElementById(tabs[t]).style.display = t === tab ? 'block' : 'none';
+  });
+  ['login','register'].forEach(t => {
+    document.getElementById('tab-' + t).className = 'tab-btn' + (t === tab ? ' active' : '');
+  });
+  const forgotTab = document.getElementById('tab-forgot');
+  if (forgotTab) {
+    forgotTab.style.display = tab === 'forgot' ? '' : 'none';
+    if (tab === 'forgot') forgotTab.className = 'tab-btn active';
+  }
   hideAlerts();
   setTimeout(() => {
-    const first = isLogin
-      ? document.getElementById('login-username')
-      : document.querySelector('#form-register input');
+    const first = tab === 'login' ? document.getElementById('login-username')
+      : tab === 'register' ? document.querySelector('#form-register input')
+      : document.getElementById('forgot-email');
     if (first) first.focus();
   }, 50);
 }
@@ -462,7 +516,7 @@ else document.getElementById('login-username').focus();
 
 // ── Alerts ────────────────────────────────────────────────────────────────
 function hideAlerts() {
-  ['login-error','register-error','register-success'].forEach(id => {
+  ['login-error','register-error','register-success','forgot-error','forgot-success'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('show');
   });
@@ -563,11 +617,28 @@ async function submitLogin(e) {
       username: fd.get('username'), password: fd.get('password'),
     });
     if (!res.ok) { showAlert('login-error', extractError(data, 'Неверный логин или пароль')); return; }
-    localStorage.setItem('token', data.access_token);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    const store = document.getElementById('remember-me')?.checked !== false ? localStorage : sessionStorage;
+    store.setItem('token', data.access_token);
+    store.setItem('user', JSON.stringify(data.user));
     window.location.href = data.user.role === 'admin' ? '/admin.html' : '/';
   } catch (err) { showAlert('login-error', 'Нет связи с сервером: ' + err.message); }
   finally { btn.disabled = false; btn.textContent = 'Войти'; }
+}
+
+// ── Forgot password ───────────────────────────────────────────────────────
+async function submitForgot(e) {
+  e.preventDefault();
+  hideAlerts();
+  const btn = document.getElementById('forgot-btn');
+  btn.disabled = true; btn.textContent = 'Отправка…';
+  try {
+    const email = document.getElementById('forgot-email').value.trim();
+    const { res, data } = await apiPost(`${API}/auth/forgot-password`, { email });
+    if (!res.ok) { showAlert('forgot-error', extractError(data, 'Ошибка запроса')); return; }
+    showAlert('forgot-success', 'Запрос отправлен. Обратитесь к администратору — он вышлет ссылку для сброса пароля.');
+    document.getElementById('forgot-email').value = '';
+  } catch (err) { showAlert('forgot-error', 'Нет связи с сервером: ' + err.message); }
+  finally { btn.disabled = false; btn.textContent = 'Отправить запрос'; }
 }
 
 // ── Register ──────────────────────────────────────────────────────────────

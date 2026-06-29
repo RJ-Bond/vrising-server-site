@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Сброс пароля</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#06000f; --card:rgba(14,5,22,0.92); --border:rgba(110,0,150,0.22); --text:#e2d8f0; --muted:#9488a8; --gold:#c9a94a; --crimson:#c8002a; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; }
+    canvas { position:fixed; inset:0; pointer-events:none; z-index:0; }
+    .wrap { position:relative; z-index:1; width:100%; max-width:400px; padding:1.5rem 1rem; }
+    .card {
+      background:var(--card); border:1px solid var(--border); border-radius:1.1rem;
+      padding:2rem 1.75rem; box-shadow:0 0 60px rgba(120,0,200,0.12), 0 20px 60px rgba(0,0,0,0.6);
+    }
+    .logo { font-family:'Cinzel',serif; font-size:1.2rem; font-weight:900; letter-spacing:.18em; color:#d4c4e0; text-align:center; margin-bottom:1.5rem; text-shadow:0 0 20px rgba(204,0,40,.5); }
+    h2 { font-family:'Cinzel',serif; font-size:.85rem; letter-spacing:.14em; color:var(--gold); text-align:center; margin-bottom:1.5rem; }
+    .form-group { margin-bottom:1rem; }
+    .form-label { display:block; font-size:.72rem; color:var(--muted); letter-spacing:.05em; text-transform:uppercase; margin-bottom:.4rem; }
+    .input-wrap { position:relative; display:flex; align-items:center; }
+    .input-icon { position:absolute; left:.7rem; color:var(--muted); display:flex; pointer-events:none; }
+    .dark-input {
+      width:100%; background:rgba(6,0,15,0.75); border:1px solid rgba(130,0,30,0.3);
+      border-radius:.55rem; padding:.62rem .85rem .62rem 2.4rem; color:var(--text);
+      font-size:.88rem; font-family:'Inter',sans-serif; outline:none; transition:border-color .2s, box-shadow .2s;
+    }
+    .dark-input:focus { border-color:var(--crimson); box-shadow:0 0 14px rgba(181,0,42,.2); }
+    .dark-input.has-toggle { padding-right:2.8rem; }
+    .pw-toggle { position:absolute; right:.6rem; background:none; border:none; color:var(--muted); cursor:pointer; display:flex; padding:.2rem; transition:color .18s; }
+    .pw-toggle:hover { color:var(--text); }
+    .alert { display:none; align-items:flex-start; gap:.5rem; padding:.65rem .8rem; border-radius:.55rem; font-size:.78rem; margin-bottom:.85rem; }
+    .alert.show { display:flex; }
+    .alert-error   { background:rgba(140,0,20,.25); border:1px solid rgba(180,0,30,.5); color:#fca5a5; }
+    .alert-success { background:rgba(0,80,20,.25);  border:1px solid rgba(0,180,40,.4); color:#86efac; }
+    .btn-primary {
+      width:100%; margin-top:.25rem; padding:.72rem 1rem; border:none; border-radius:.55rem;
+      background:linear-gradient(135deg,#6a0018,var(--crimson)); color:#fff;
+      font-size:.88rem; font-weight:700; letter-spacing:.06em; cursor:pointer;
+      box-shadow:0 0 22px rgba(181,0,42,.35); transition:box-shadow .2s, transform .15s;
+    }
+    .btn-primary:hover:not(:disabled) { box-shadow:0 0 38px rgba(181,0,42,.5); transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+    .back-link { display:block; text-align:center; margin-top:.85rem; font-size:.74rem; color:var(--muted); text-decoration:none; transition:color .18s; }
+    .back-link:hover { color:var(--text); }
+    .invalid-msg { text-align:center; padding:1.5rem 0; }
+    .invalid-msg svg { display:block; margin:0 auto .75rem; color:#fca5a5; }
+    .invalid-msg p { color:#fca5a5; font-size:.88rem; }
+    .pw-strength { margin-top:.4rem; }
+    .pw-strength-bar { height:4px; background:rgba(255,255,255,.08); border-radius:2px; overflow:hidden; }
+    .pw-strength-fill { height:100%; border-radius:2px; transition:width .3s,background .3s; width:0; }
+    .pw-strength-label { font-size:.62rem; color:var(--muted); margin-top:.2rem; }
+  </style>
+</head>
+<body>
+<canvas id="stars-canvas"></canvas>
+<div class="wrap">
+  <div class="card">
+    <div class="logo" id="site-logo">V RISING</div>
+    <h2>— Сброс пароля —</h2>
+
+    <div id="invalid-wrap" class="invalid-msg" style="display:none;">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <p>Ссылка недействительна или истекла.<br>Запросите новый сброс пароля.</p>
+      <a href="/login.html#forgot" class="back-link" style="margin-top:1rem;display:inline-block;">← На страницу входа</a>
+    </div>
+
+    <form id="reset-form" onsubmit="submitReset(event)" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Новый пароль</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <input id="new-password" type="password" required autocomplete="new-password"
+            placeholder="Минимум 6 символов" class="dark-input has-toggle" oninput="onPwInput()" />
+          <button type="button" class="pw-toggle" onclick="togglePw('new-password',this)" tabindex="-1">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="pw-strength" id="pw-strength" style="display:none;">
+          <div class="pw-strength-bar"><div class="pw-strength-fill" id="pw-fill"></div></div>
+          <div class="pw-strength-label" id="pw-label"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Повторите пароль</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </span>
+          <input id="confirm-password" type="password" required autocomplete="new-password"
+            placeholder="Повторите пароль" class="dark-input has-toggle" oninput="checkConfirm()" />
+          <button type="button" class="pw-toggle" onclick="togglePw('confirm-password',this)" tabindex="-1">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="confirm-hint" id="confirm-hint" style="font-size:.68rem;margin-top:.32rem;min-height:1em;"></div>
+      </div>
+      <div id="reset-error" class="alert alert-error">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="reset-error-text"></span>
+      </div>
+      <button type="submit" id="reset-btn" class="btn-primary">Сохранить пароль</button>
+      <a href="/login.html" class="back-link">← Вернуться ко входу</a>
+    </form>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+const token = new URLSearchParams(location.search).get('token');
+
+// Stars
+(function() {
+  const c = document.getElementById('stars-canvas');
+  const ctx = c.getContext('2d');
+  let stars = [];
+  function resize() { c.width = window.innerWidth; c.height = window.innerHeight; }
+  function init() {
+    resize();
+    stars = Array.from({length:60}, () => ({x:Math.random()*c.width,y:Math.random()*c.height,r:Math.random()*1+.2,o:Math.random()*.5+.2,s:Math.random()*.008+.003,d:Math.random()>.5?1:-1}));
+  }
+  function draw() {
+    ctx.clearRect(0,0,c.width,c.height);
+    stars.forEach(s => { s.o+=s.s*s.d; if(s.o>.75||s.o<.1)s.d*=-1; ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fillStyle=`rgba(212,196,224,${s.o})`;ctx.fill(); });
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', resize);
+  init(); draw();
+})();
+
+// Load site title
+(async function() {
+  try {
+    const d = await fetch(`${API}/settings/public`).then(r => r.json());
+    const title = (d.site_title || 'V Rising').trim();
+    document.title = `Сброс пароля — ${title}`;
+    document.getElementById('site-logo').textContent = title;
+  } catch {}
+})();
+
+// Validate token
+(async function() {
+  if (!token) { showInvalid(); return; }
+  try {
+    const res = await fetch(`${API}/auth/reset-password/${encodeURIComponent(token)}`);
+    if (!res.ok) { showInvalid(); return; }
+    document.getElementById('reset-form').style.display = 'block';
+    document.getElementById('new-password').focus();
+  } catch { showInvalid(); }
+})();
+
+function showInvalid() {
+  document.getElementById('invalid-wrap').style.display = '';
+}
+
+const eyeOpen  = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
+const eyeClosed = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+
+function togglePw(id, btn) {
+  const inp = document.getElementById(id);
+  inp.type = inp.type === 'text' ? 'password' : 'text';
+  btn.innerHTML = inp.type === 'text' ? eyeClosed : eyeOpen;
+}
+
+function onPwInput() {
+  const pw = document.getElementById('new-password').value;
+  const bar = document.getElementById('pw-strength');
+  const fill = document.getElementById('pw-fill');
+  const label = document.getElementById('pw-label');
+  if (!pw) { bar.style.display = 'none'; return; }
+  bar.style.display = 'block';
+  let score = 0;
+  if (pw.length >= 6) score++;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  const levels = [
+    {w:'20%',color:'#ef4444',text:'Очень слабый'},
+    {w:'40%',color:'#f97316',text:'Слабый'},
+    {w:'60%',color:'#eab308',text:'Средний'},
+    {w:'80%',color:'#84cc16',text:'Хороший'},
+    {w:'100%',color:'#22c55e',text:'Надёжный'},
+  ];
+  const lvl = levels[Math.min(score, 4)];
+  fill.style.width = lvl.w; fill.style.background = lvl.color;
+  label.textContent = lvl.text; label.style.color = lvl.color;
+  checkConfirm();
+}
+
+function checkConfirm() {
+  const pw = document.getElementById('new-password').value;
+  const cf = document.getElementById('confirm-password').value;
+  const hint = document.getElementById('confirm-hint');
+  const inp = document.getElementById('confirm-password');
+  if (!cf) { hint.textContent = ''; inp.style.borderColor = ''; inp.style.boxShadow = ''; return; }
+  const ok = pw === cf;
+  hint.textContent = ok ? '✔ Пароли совпадают' : '✘ Пароли не совпадают';
+  hint.style.color = ok ? '#86efac' : '#fca5a5';
+  inp.style.borderColor = ok ? 'rgba(0,180,40,.5)' : 'rgba(180,0,30,.6)';
+  inp.style.boxShadow   = ok ? '0 0 8px rgba(0,180,40,.18)' : '0 0 8px rgba(180,0,30,.18)';
+}
+
+async function submitReset(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('reset-error');
+  const errTxt = document.getElementById('reset-error-text');
+  errEl.classList.remove('show');
+
+  const pw = document.getElementById('new-password').value;
+  const cf = document.getElementById('confirm-password').value;
+  if (pw !== cf) {
+    errTxt.textContent = 'Пароли не совпадают';
+    errEl.classList.add('show');
+    return;
+  }
+
+  const btn = document.getElementById('reset-btn');
+  btn.disabled = true; btn.textContent = 'Сохранение…';
+  try {
+    const res = await fetch(`${API}/auth/reset-password/${encodeURIComponent(token)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ new_password: pw }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      errTxt.textContent = data.detail || 'Ошибка';
+      errEl.classList.add('show');
+      return;
+    }
+    // Success — redirect to login
+    btn.textContent = '✔ Готово! Перенаправление…';
+    setTimeout(() => { window.location.href = '/login.html'; }, 1500);
+  } catch (err) {
+    errTxt.textContent = 'Нет связи с сервером: ' + err.message;
+    errEl.classList.add('show');
+  } finally {
+    if (btn.textContent !== '✔ Готово! Перенаправление…') {
+      btn.disabled = false; btn.textContent = 'Сохранить пароль';
+    }
+  }
+}
+</script>
+</body>
+</html>

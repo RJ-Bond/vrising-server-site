@@ -226,6 +226,7 @@
       <button id="btn-players"   onclick="showSection('players')"   class="sidebar-btn">🎮 Игроки</button>
       <button id="btn-files"     onclick="showSection('files')"     class="sidebar-btn">📁 Файлы</button>
       <button id="btn-log"       onclick="showSection('log')"       class="sidebar-btn">📋 Лог</button>
+      <button id="btn-resets"   onclick="showSection('resets')"   class="sidebar-btn">🔑 Сброс паролей</button>
     </div>
   </aside>
 
@@ -788,6 +789,18 @@
       <div id="files-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1rem;"></div>
     </div>
 
+    <!-- PASSWORD RESETS -->
+    <div id="section-resets" class="hidden">
+      <div class="flex items-center justify-between mb-5">
+        <h1 class="section-title">Запросы сброса пароля</h1>
+        <button onclick="loadPasswordResets()" class="btn-ghost">↺ Обновить</button>
+      </div>
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:1.25rem;">Когда пользователь нажимает «Забыли пароль?» — здесь появляется запись. Скопируйте ссылку и отправьте пользователю (например, в Discord).</p>
+      <div id="resets-table" class="glass-card rounded-xl overflow-hidden">
+        <p class="p-6" style="color:var(--muted);font-size:.85rem;">Загрузка...</p>
+      </div>
+    </div>
+
     <!-- LOG -->
     <div id="section-log" class="hidden">
       <div class="flex items-center justify-between mb-5">
@@ -813,20 +826,20 @@ const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>
 let adminNewsPage = 1;
 let quill = null;
 
-function getToken() { return localStorage.getItem('token'); }
+function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
 function authH()   { return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' }; }
-function logout()  { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login.html'; }
+function logout()  { ['token','user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); }); window.location.href = '/login.html'; }
 
 (function() {
   const token = getToken();
-  const user = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
+  const user = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
   if (!token || !user || user.role !== 'admin') { window.location.href = '/login.html'; return; }
   document.getElementById('nav-username').textContent = user.username;
 })();
 
 // ─── Sections ─────────────────────────────────────────────────────────────
 function showSection(name) {
-  ['dashboard','news','editor','settings','users','comments','players','files','log'].forEach(s => {
+  ['dashboard','news','editor','settings','users','comments','players','files','log','resets'].forEach(s => {
     document.getElementById(`section-${s}`).classList.toggle('hidden', s !== name);
     const btn = document.getElementById(`btn-${s}`);
     if (btn) btn.className = 'sidebar-btn' + (s === name ? ' active' : '');
@@ -840,6 +853,7 @@ function showSection(name) {
   if (name === 'players')    loadAdminPlayers();
   if (name === 'files')      loadAdminFiles();
   if (name === 'log')        loadAuditLog(1);
+  if (name === 'resets')     loadPasswordResets();
 }
 
 // ─── News list ────────────────────────────────────────────────────────────
@@ -1118,7 +1132,7 @@ async function saveSetting(key) {
 
 // ─── Users ─────────────────────────────────────────────────────────────────
 async function loadUsers() {
-  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } })();
+  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
   const res = await fetch(`${API}/admin/users`, { headers: authH() });
   if (!res.ok) { handleAuth(res); return; }
   const users = await res.json();
@@ -1596,6 +1610,61 @@ async function deleteWipe(id) {
   if (!confirm('Удалить запись о вайпе?')) return;
   await fetch(`${API}/admin/wipes/${id}`, { method: 'DELETE', headers: authH() });
   loadWipeHistory();
+}
+
+// ─── Password resets ─────────────────────────────────────────────────────
+async function loadPasswordResets() {
+  const el = document.getElementById('resets-table');
+  if (!el) return;
+  el.innerHTML = '<p class="p-6" style="color:var(--muted);font-size:.85rem;">Загрузка...</p>';
+  try {
+    const res = await fetch(`${API}/admin/password-resets`, { headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const items = await res.json();
+    if (!items.length) {
+      el.innerHTML = '<p class="p-6" style="color:var(--muted);font-size:.85rem;">Нет активных запросов на сброс пароля.</p>';
+      return;
+    }
+    el.innerHTML = `
+      <table>
+        <thead><tr><th>Пользователь</th><th>Email</th><th>Создан</th><th>Истекает</th><th>Ссылка для сброса</th></tr></thead>
+        <tbody>
+          ${items.map(r => {
+            const resetUrl = window.location.origin + '/reset.html?token=' + encodeURIComponent(r.token);
+            const created  = new Date(r.created_at).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+            const expires  = new Date(r.expires_at).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+            const expired  = new Date(r.expires_at) < new Date();
+            return `<tr>
+              <td style="font-weight:600;">${esc(r.username)}</td>
+              <td style="color:var(--muted);font-size:.8rem;">${esc(r.email)}</td>
+              <td style="color:var(--muted);font-size:.78rem;white-space:nowrap;">${created}</td>
+              <td style="font-size:.78rem;white-space:nowrap;${expired ? 'color:#f87171;' : 'color:#86efac;'}">${expires}${expired ? ' (истёк)' : ''}</td>
+              <td>
+                ${expired
+                  ? `<span style="color:var(--muted);font-size:.75rem;">истёк</span>`
+                  : `<div style="display:flex;gap:.4rem;align-items:center;">
+                      <input readonly value="${esc(resetUrl)}" style="flex:1;min-width:0;background:rgba(8,0,16,.6);border:1px solid rgba(110,0,150,.2);border-radius:.35rem;padding:.3rem .55rem;font-size:.7rem;color:var(--muted);font-family:'Courier New',monospace;outline:none;" onclick="this.select()">
+                      <button onclick="copyResetLink(this,'${resetUrl.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')"
+                        style="flex-shrink:0;background:rgba(40,0,80,.3);border:1px solid rgba(110,0,150,.3);color:var(--muted);border-radius:.35rem;padding:.3rem .65rem;font-size:.72rem;cursor:pointer;white-space:nowrap;transition:all .2s;"
+                        onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'"
+                      >Копировать</button>
+                    </div>`
+                }
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+  } catch (err) {
+    el.innerHTML = `<p class="p-6" style="color:#fca5a5;font-size:.85rem;">Ошибка загрузки: ${esc(err.message)}</p>`;
+  }
+}
+
+function copyResetLink(btn, url) {
+  navigator.clipboard.writeText(url).then(() => {
+    btn.textContent = '✔ Скопировано';
+    setTimeout(() => { btn.textContent = 'Копировать'; }, 1800);
+  }).catch(() => { btn.textContent = 'Ошибка'; });
 }
 
 showSection('dashboard');

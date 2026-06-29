@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, text
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset
 from .auth import (
     verify_password,
     get_password_hash,
@@ -65,6 +65,8 @@ from .schemas import (
     WipeCreate,
     WipeOut,
     PlayerRecordOut,
+    ForgotPasswordRequest,
+    ResetPasswordBody,
 )
 
 OVERSEER_PROMPT = """Ты — Тёмный Управляющий Замком, древний вампирский дух, хранитель этого сервера V Rising.
@@ -358,6 +360,83 @@ async def change_password(
     user.hashed_password = get_password_hash(new)
     await db.commit()
     return {"ok": True}
+
+
+@app.post("/api/auth/forgot-password")
+async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
+    from datetime import timedelta
+    result = await db.execute(select(User).where(User.email == body.email, User.is_active == True))
+    user = result.scalar_one_or_none()
+    if user:
+        # Delete old unused tokens for this user
+        await db.execute(
+            delete(PasswordReset).where(PasswordReset.user_id == user.id, PasswordReset.used == False)
+        )
+        token = uuid.uuid4().hex
+        db.add(PasswordReset(
+            user_id=user.id,
+            token=token,
+            expires_at=datetime.utcnow() + timedelta(hours=24),
+        ))
+        await db.commit()
+    # Always return success to prevent email enumeration
+    return {"message": "Если аккаунт с таким email существует, запрос создан. Обратитесь к администратору."}
+
+
+@app.get("/api/auth/reset-password/{token}")
+async def validate_reset_token(token: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(PasswordReset).where(
+            PasswordReset.token == token,
+            PasswordReset.used == False,
+            PasswordReset.expires_at > datetime.utcnow(),
+        )
+    )
+    if not result.scalar_one_or_none():
+        raise HTTPException(400, "Ссылка недействительна или истекла")
+    return {"valid": True}
+
+
+@app.post("/api/auth/reset-password/{token}")
+async def do_reset_password(token: str, body: ResetPasswordBody, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(PasswordReset).where(
+            PasswordReset.token == token,
+            PasswordReset.used == False,
+            PasswordReset.expires_at > datetime.utcnow(),
+        )
+    )
+    reset = result.scalar_one_or_none()
+    if not reset:
+        raise HTTPException(400, "Ссылка недействительна или истекла")
+    user_result = await db.execute(select(User).where(User.id == reset.user_id))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(400, "Пользователь не найден")
+    user.hashed_password = get_password_hash(body.new_password)
+    reset.used = True
+    await db.commit()
+    return {"message": "Пароль успешно изменён"}
+
+
+@app.get("/api/admin/password-resets")
+async def list_password_resets(_: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(PasswordReset, User.username, User.email)
+        .join(User, PasswordReset.user_id == User.id)
+        .where(PasswordReset.used == False, PasswordReset.expires_at > datetime.utcnow())
+        .order_by(PasswordReset.created_at.desc())
+    )
+    return [
+        {
+            "token": row[0].token,
+            "username": row[1],
+            "email": row[2],
+            "created_at": row[0].created_at.isoformat(),
+            "expires_at": row[0].expires_at.isoformat(),
+        }
+        for row in result.all()
+    ]
 
 
 @app.post("/api/auth/avatar")

@@ -217,6 +217,21 @@ class ChatRequest(BaseModel):
     history: list[ChatHistoryItem] = []
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordBody(BaseModel):
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def pw_length(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("Минимум 6 символов")
+        return v
+
+
 class SetupComplete(BaseModel):
     username: str
     email: EmailStr

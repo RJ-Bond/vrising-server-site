@@ -1593,9 +1593,9 @@ function countUpPct(el, value, duration) {
 })();
 
 // ── Nav ────────────────────────────────────────────────────────────────────
-function getToken() { return localStorage.getItem('token'); }
-function getUser()  { try { return JSON.parse(localStorage.getItem('user')); } catch { return null; } }
-function doLogout() { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.reload(); }
+function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
+function getUser()  { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } }
+function doLogout() { ['token','user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); }); window.location.reload(); }
 
 let _isAdmin = false;
 

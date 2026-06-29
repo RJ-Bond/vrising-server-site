@@ -121,3 +121,13 @@ class AuditLog(Base):
     action = Column(String(128), nullable=False)
     detail = Column(Text, nullable=True, default="")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+class PasswordReset(Base):
+    __tablename__ = "password_resets"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token = Column(String(64), unique=True, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False, nullable=False)
