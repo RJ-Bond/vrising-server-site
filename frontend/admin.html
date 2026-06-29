@@ -1185,7 +1185,7 @@ async function sseRun(url, logId, btnId) {
   btnEl.disabled = true;
   btnEl.style.opacity = '.5';
 
-  const token = localStorage.getItem('vrising_token');
+  const token = getToken();
   let done = false;
   try {
     const res = await fetch(`${API}${url}`, {

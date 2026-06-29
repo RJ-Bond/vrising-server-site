@@ -799,6 +799,37 @@
     }
     .rule-text { font-size:.76rem; color:#ccc8da; line-height:1.45; flex:1; }
 
+    /* severity tints */
+    .rule-item[data-level="warning"]::before { background:linear-gradient(180deg,var(--gold),rgba(200,160,0,0.55)); }
+    .rule-item[data-level="warning"] .rule-num { color:rgba(201,169,74,0.8); }
+    .rule-item[data-level="warning"] .rule-icon { background:rgba(180,140,0,0.13); border-color:rgba(200,160,0,0.2); }
+    .rule-item[data-level="warning"]:hover .rule-icon { box-shadow:0 0 10px rgba(200,160,0,0.3); border-color:rgba(200,160,0,0.5); }
+    .rule-item[data-level="info"]::before { background:linear-gradient(180deg,#7c3aed,rgba(109,40,217,0.55)); }
+    .rule-item[data-level="info"] .rule-num { color:#a78bfa; }
+    .rule-item[data-level="info"] .rule-icon { background:rgba(109,40,217,0.13); border-color:rgba(109,40,217,0.2); }
+    .rule-item[data-level="info"]:hover .rule-icon { box-shadow:0 0 10px rgba(124,58,237,0.3); border-color:rgba(124,58,237,0.5); }
+
+    /* rules progress bar */
+    .rules-progress-wrap { padding:.5rem 1.15rem .4rem; border-bottom:1px solid rgba(110,0,20,0.12); }
+    .rules-progress-track { height:3px; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden; }
+    .rules-progress-fill { height:100%; width:0%; background:linear-gradient(90deg,var(--crimson),var(--gold)); border-radius:2px; transition:width .4s ease; }
+    .rules-progress-label { font-size:.62rem; color:var(--muted); text-align:right; margin-top:.3rem; letter-spacing:.02em; }
+
+    /* accept button */
+    .rules-accept-wrap { padding:.65rem 1.15rem .8rem; }
+    .rules-accept-btn {
+      width:100%; padding:.48rem 1rem; border-radius:.5rem;
+      border:1px solid rgba(180,0,30,0.18); background:rgba(80,0,20,0.08);
+      color:rgba(255,255,255,0.22); font-size:.78rem; font-family:inherit;
+      cursor:not-allowed; pointer-events:none; transition:all .28s ease; text-align:center;
+    }
+    .rules-accept-btn.ready {
+      border-color:rgba(200,0,40,0.45); background:rgba(120,0,20,0.18);
+      color:var(--text); cursor:pointer; pointer-events:auto;
+    }
+    .rules-accept-btn.ready:hover { background:rgba(160,0,30,0.28); border-color:var(--crimson); box-shadow:0 0 12px rgba(180,0,30,0.2); }
+    .rules-accept-btn.accepted { border-color:rgba(0,180,80,0.35); background:rgba(0,60,20,0.14); color:#4ade80; cursor:default; pointer-events:none; }
+
     /* ── Blood Vial ── */
     .vial-fill { will-change:transform; }
 
@@ -1229,7 +1260,14 @@
         </span>
       </div>
       <div class="rules-body" id="rules-body">
+        <div class="rules-progress-wrap" id="rules-progress-wrap" style="display:none">
+          <div class="rules-progress-track"><div class="rules-progress-fill" id="rules-progress-fill"></div></div>
+          <div class="rules-progress-label" id="rules-progress-label">0 / 0 прочитано</div>
+        </div>
         <div id="rules-list"></div>
+        <div class="rules-accept-wrap" id="rules-accept-wrap" style="display:none">
+          <button class="rules-accept-btn" id="rules-accept-btn" onclick="acceptRules()">✓ Я ознакомился с правилами</button>
+        </div>
       </div>
     </div>
 
@@ -2443,6 +2481,37 @@ function toggleRules() {
 function initRulesReveal() {
   const items = document.querySelectorAll('.rule-item');
   if (!items.length) return;
+
+  const total = items.length;
+  let seen = 0;
+  const seenSet = new Set();
+
+  const progressWrap  = document.getElementById('rules-progress-wrap');
+  const progressFill  = document.getElementById('rules-progress-fill');
+  const progressLabel = document.getElementById('rules-progress-label');
+  const acceptWrap    = document.getElementById('rules-accept-wrap');
+  const acceptBtn     = document.getElementById('rules-accept-btn');
+
+  if (progressWrap) progressWrap.style.display = '';
+  if (acceptWrap)   acceptWrap.style.display = '';
+
+  // Restore previously accepted state
+  const savedDate = localStorage.getItem('rules_accepted');
+  if (savedDate && acceptBtn) {
+    acceptBtn.textContent = '✓ Принято ' + savedDate;
+    acceptBtn.classList.add('accepted');
+  }
+
+  function updateProgress() {
+    const pct = total ? Math.round((seen / total) * 100) : 0;
+    if (progressFill)  progressFill.style.width = pct + '%';
+    if (progressLabel) progressLabel.textContent = seen + ' / ' + total + ' прочитано';
+    if (!savedDate && acceptBtn && seen >= total) {
+      acceptBtn.classList.add('ready');
+    }
+  }
+  updateProgress();
+
   const observer = new IntersectionObserver(entries => {
     entries.forEach(entry => {
       if (!entry.isIntersecting) return;
@@ -2450,9 +2519,24 @@ function initRulesReveal() {
       const delay = parseInt(el.dataset.delay) || 0;
       setTimeout(() => el.classList.add('revealed'), delay);
       observer.unobserve(el);
+      if (!seenSet.has(el)) {
+        seenSet.add(el);
+        seen++;
+        updateProgress();
+      }
     });
   }, { threshold: 0.1, rootMargin: '0px 0px -30px 0px' });
   items.forEach(el => observer.observe(el));
+}
+
+function acceptRules() {
+  const btn = document.getElementById('rules-accept-btn');
+  if (!btn || btn.classList.contains('accepted')) return;
+  const date = new Date().toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
+  localStorage.setItem('rules_accepted', date);
+  btn.textContent = '✓ Принято ' + date;
+  btn.classList.remove('ready');
+  btn.classList.add('accepted');
 }
 
 // ── Site settings ──────────────────────────────────────────────────────────
@@ -2590,7 +2674,7 @@ async function loadSiteSettings() {
         const rules = JSON.parse(d.rules || '[]');
         if (rules.length) {
           rulesList.innerHTML = rules.map((r, i) =>
-            `<div class="rule-item" data-delay="${i * 60}">
+            `<div class="rule-item" data-delay="${i * 60}" data-level="${esc(r.level || 'danger')}">
               <span class="rule-num">${String(i + 1).padStart(2, '0')}</span>
               <div class="rule-icon">${esc(r.icon)}</div>
               <div class="rule-text">${esc(r.text)}</div>
