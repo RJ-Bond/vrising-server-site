@@ -1976,7 +1976,7 @@ async function loadNews(page = 1) {
   }
   data.items.forEach((n, idx) => {
     const thumbImg = n.thumbnail_url
-      ? `<div style="width:140px;flex-shrink:0;overflow:hidden;align-self:stretch;"><img src="${esc(n.thumbnail_url)}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"></div>`
+      ? `<div style="width:140px;flex-shrink:0;overflow:hidden;align-self:stretch;background:#0a0212;display:flex;align-items:center;justify-content:center;"><img src="${esc(n.thumbnail_url)}" alt="" style="width:100%;height:100%;object-fit:contain;display:block;"></div>`
       : `<div style="width:4px;flex-shrink:0;align-self:stretch;background:linear-gradient(180deg,rgba(180,0,35,0.7),rgba(100,0,180,0.5));border-radius:0;" class="news-card-accent"></div>`;
     const tagsHtml = (n.tags || '').split(',').map(t => t.trim()).filter(Boolean)
       .map(t => `<span class="news-tag" onclick="event.stopPropagation();setTag('${esc(t)}')">${esc(t)}</span>`).join('');
