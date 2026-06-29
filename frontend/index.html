@@ -1319,6 +1319,7 @@
     <div id="modal-author" style="display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem;"></div>
     <h3 id="modal-title" class="gothic" style="font-size:1.2rem;font-weight:700;color:#d4c4e0;margin-bottom:.75rem;"></h3>
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(180,0,30,0.5),transparent);margin-bottom:1rem;"></div>
+    <div id="modal-thumb" style="display:none;margin-bottom:1rem;border-radius:8px;overflow:hidden;max-height:320px;"><img id="modal-thumb-img" src="" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;max-height:320px;"></div>
     <div id="modal-content" class="rich-content"></div>
     <div class="comments-section">
       <div style="font-size:.75rem;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:.75rem;">Комментарии</div>
@@ -2073,6 +2074,15 @@ async function openNews(slug) {
         </div>
         <span style="font-size:.68rem;color:var(--muted);">${fmtDate(n.created_at)}</span>
       </div>`;
+    const thumbWrap = document.getElementById('modal-thumb');
+    const thumbImg  = document.getElementById('modal-thumb-img');
+    if (n.thumbnail_url) {
+      thumbImg.src = esc(n.thumbnail_url);
+      thumbWrap.style.display = 'block';
+    } else {
+      thumbWrap.style.display = 'none';
+      thumbImg.src = '';
+    }
     document.getElementById('modal-content').innerHTML = DOMPurify.sanitize(n.content || '');
     document.getElementById('modal-bg').classList.add('open');
     document.body.style.overflow = 'hidden';
