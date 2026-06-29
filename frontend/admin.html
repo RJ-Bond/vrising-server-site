@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <style>
     :root {
       --accent: #b5002a; --accent-glow: rgba(181,0,42,0.4);
@@ -175,6 +176,23 @@
     .s-status-http { background:rgba(60,60,60,.3); border:1px solid rgba(100,100,100,.35); color:var(--muted); }
     .s-status-https { background:rgba(0,70,15,.3); border:1px solid rgba(0,160,35,.4); color:#86efac; }
     @media(max-width:960px) { .s-row { grid-template-columns:1fr; } }
+
+    /* ── Mobile admin tables ── */
+    @media(max-width:768px) {
+      .sidebar-btn { font-size:.7rem; padding:.6rem .75rem; }
+      aside { width:9rem !important; }
+      .glass-card table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+      .section-title { font-size:1rem; }
+      #files-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)) !important; }
+    }
+    @media(max-width:560px) {
+      .relative.z-10 { flex-direction:column; }
+      aside { width:100% !important; }
+      .glass-card.rounded-xl.overflow-hidden { border-radius:.5rem; }
+      aside .glass-card { display:flex; flex-direction:row; flex-wrap:wrap; }
+      .sidebar-btn { flex:1; min-width:4.5rem; text-align:center; border-left:none !important; border-bottom:2px solid transparent; }
+      .sidebar-btn.active { border-bottom-color:var(--accent) !important; }
+    }
   </style>
 </head>
 <body>
@@ -1463,7 +1481,7 @@ function previewNews() {
   document.getElementById('preview-summary').textContent  = summary;
   const img = document.getElementById('preview-thumb');
   if (thumb) { img.src = thumb; img.style.display = ''; } else { img.style.display = 'none'; }
-  document.getElementById('preview-content').innerHTML = content;
+  document.getElementById('preview-content').innerHTML = DOMPurify.sanitize(content);
   modal.style.display = 'flex';
 }
 
@@ -1487,14 +1505,24 @@ async function exportSettings() {
   } catch (err) { alert('Ошибка экспорта: ' + err.message); }
 }
 
+const _ALLOWED_SETTING_KEYS = new Set([
+  'setup_completed','server_ip','server_port','server_name',
+  'server2_name','server2_ip','server2_port',
+  'site_title','site_logo_url','discord_url','discord_server_id',
+  'bg_image_url','wipe_date','wipe_type','wipe_date2','wipe_type2',
+  'event_active','event_title','event_text','event_color',
+  'rules','https_domain','https_email',
+]);
+
 async function importSettings(input) {
   const file = input.files[0]; if (!file) return;
   try {
     const text = await file.text();
     const obj  = JSON.parse(text);
     if (typeof obj !== 'object' || Array.isArray(obj)) throw new Error('Неверный формат файла');
+    const filtered = Object.fromEntries(Object.entries(obj).filter(([k]) => _ALLOWED_SETTING_KEYS.has(k)));
     const res = await fetch(`${API}/admin/settings/import`, {
-      method: 'POST', headers: authH(), body: JSON.stringify(obj),
+      method: 'POST', headers: authH(), body: JSON.stringify(filtered),
     });
     if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
     const d = await res.json();

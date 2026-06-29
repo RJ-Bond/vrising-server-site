@@ -1,9 +1,13 @@
 import asyncio
+import ipaddress
+import logging
 import socket
 import struct
 import time
 from collections import deque
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 _cache: dict = {}  # key: (ip, port) -> {"data": ..., "timestamp": ...}
 _history: dict = {}  # key: (ip, port) -> deque of (ts, player_count)
@@ -12,7 +16,21 @@ HISTORY_INTERVAL = 300  # record every 5 min
 HISTORY_MAX = 288       # 24h at 5-min intervals
 
 
+def _validate_ip(ip: str) -> None:
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        raise ValueError(f"Invalid IP address: {ip}")
+    if addr.is_loopback:
+        raise ValueError(f"Loopback address not allowed: {ip}")
+
+
 async def query_server(ip: str, port: int) -> Optional[dict]:
+    try:
+        _validate_ip(ip)
+    except ValueError as e:
+        logger.warning("query_server blocked: %s", e)
+        return None
     A2S_INFO = b"\xFF\xFF\xFF\xFFTSource Engine Query\x00"
     loop = asyncio.get_event_loop()
 
@@ -68,6 +86,10 @@ async def query_server(ip: str, port: int) -> Optional[dict]:
 
 
 async def query_players(ip: str, port: int) -> list:
+    try:
+        _validate_ip(ip)
+    except ValueError:
+        return []
     loop = asyncio.get_event_loop()
 
     def _udp_query() -> Optional[bytes]:

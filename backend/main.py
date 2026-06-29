@@ -1,3 +1,4 @@
+import logging
 import os
 import math
 import re
@@ -10,9 +11,18 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import FastAPI, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, Request, status, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = Path("/data/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -27,6 +37,7 @@ from .auth import (
     create_access_token,
     get_current_user,
     get_admin_user,
+    revoke_token,
 )
 from .schemas import (
     UserRegister,
@@ -128,14 +139,21 @@ async def lifespan(app: FastAPI):
     yield
 
 
+limiter = Limiter(key_func=get_remote_address, default_limits=[])
+
 app = FastAPI(title="V Rising Server Site", version="1.0.0", lifespan=lifespan)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+_raw_origins = os.getenv("ALLOWED_ORIGINS", "*")
+_origins = [o.strip() for o in _raw_origins.split(",")] if _raw_origins != "*" else ["*"]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
@@ -147,6 +165,25 @@ async def get_version():
     if version_file.exists():
         return {"version": version_file.read_text().strip()}
     return {"version": None}
+
+
+# ─── Sitemap ─────────────────────────────────────────────────────────────────
+
+@app.get("/api/sitemap.xml", response_class=__import__("fastapi.responses", fromlist=["Response"]).Response)
+async def sitemap(request: Request, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(News.slug, News.updated_at).where(News.published == True).order_by(News.updated_at.desc())
+    )
+    slugs = result.all()
+    base = str(request.base_url).rstrip("/")
+    urls = [f"  <url><loc>{base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>"]
+    for slug, updated_at in slugs:
+        lastmod = updated_at.strftime("%Y-%m-%d") if updated_at else ""
+        urls.append(f"  <url><loc>{base}/news/{slug}</loc><lastmod>{lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>")
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    xml += "\n".join(urls) + "\n</urlset>"
+    from fastapi.responses import Response
+    return Response(content=xml, media_type="application/xml")
 
 
 # ─── Setup ──────────────────────────────────────────────────────────────────
@@ -207,7 +244,8 @@ async def setup_complete(body: SetupComplete, db: AsyncSession = Depends(get_db)
 # ─── Castle Overseer Chat ────────────────────────────────────────────────────
 
 @app.post("/api/chat")
-async def castle_overseer_chat(body: ChatRequest):
+@limiter.limit("20/minute")
+async def castle_overseer_chat(request: Request, body: ChatRequest):
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
     if not api_key:
         raise HTTPException(status_code=503, detail="Управляющий замком сейчас недоступен. Добавьте ANTHROPIC_API_KEY в .env")
@@ -247,7 +285,8 @@ async def castle_overseer_chat(body: ChatRequest):
 # ─── Auth ───────────────────────────────────────────────────────────────────
 
 @app.post("/api/auth/register", response_model=TokenOut, status_code=201)
-async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def register(request: Request, body: UserRegister, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(
         (User.username == body.username) | (User.email == body.email)
     ))
@@ -267,7 +306,8 @@ async def register(body: UserRegister, db: AsyncSession = Depends(get_db)):
 
 
 @app.post("/api/auth/login", response_model=TokenOut)
-async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def login(request: Request, body: UserLogin, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == body.username))
     user = result.scalar_one_or_none()
     if user is None or not verify_password(body.password, user.hashed_password):
@@ -276,6 +316,13 @@ async def login(body: UserLogin, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=403, detail="Ваш аккаунт был заблокирован.")
     token = create_access_token({"sub": str(user.id)})
     return TokenOut(access_token=token, user=UserOut.model_validate(user))
+
+
+@app.post("/api/auth/logout", status_code=204)
+async def logout(current_user: User = Depends(get_current_user), request: Request = None):
+    auth_header = request.headers.get("Authorization", "") if request else ""
+    if auth_header.startswith("Bearer "):
+        revoke_token(auth_header[7:])
 
 
 @app.get("/api/auth/me", response_model=UserOut)
@@ -543,11 +590,15 @@ async def list_news(
     page: int = Query(1, ge=1),
     per_page: int = Query(5, ge=1, le=50),
     tag: str = Query(None),
+    search: str = Query(None, max_length=100),
     db: AsyncSession = Depends(get_db),
 ):
     base_filter = News.published == True
     if tag:
         base_filter = base_filter & News.tags.contains(tag)
+    if search:
+        term = f"%{search}%"
+        base_filter = base_filter & (News.title.ilike(term) | News.summary.ilike(term))
 
     total_result = await db.execute(
         select(func.count()).select_from(News).where(base_filter)
@@ -785,19 +836,30 @@ async def delete_news(
 
 # ─── File upload ─────────────────────────────────────────────────────────────
 
+_ALLOWED_UPLOAD_EXT = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico"}
+_ALLOWED_UPLOAD_MIME = {
+    "image/png", "image/jpeg", "image/gif", "image/svg+xml",
+    "image/webp", "image/x-icon", "image/vnd.microsoft.icon",
+}
+_MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+
+
 @app.post("/api/admin/upload")
 async def upload_file(
     file: UploadFile = File(...),
     _: User = Depends(get_admin_user),
 ):
-    allowed = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico"}
     suffix = Path(file.filename or "").suffix.lower()
-    if suffix not in allowed:
+    if suffix not in _ALLOWED_UPLOAD_EXT:
         raise HTTPException(400, detail="Допустимые форматы: PNG, JPG, GIF, SVG, WebP, ICO")
+    if file.content_type and file.content_type.split(";")[0].strip() not in _ALLOWED_UPLOAD_MIME:
+        raise HTTPException(400, detail="Недопустимый MIME-тип файла")
+    content = await file.read()
+    if len(content) > _MAX_UPLOAD_BYTES:
+        raise HTTPException(400, detail="Файл слишком большой (максимум 10 МБ)")
     filename = f"{uuid.uuid4().hex}{suffix}"
     dest = UPLOAD_DIR / filename
-    with open(dest, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    dest.write_bytes(content)
     return {"url": f"/api/uploads/{filename}"}
 
 
@@ -823,6 +885,15 @@ async def get_public_settings(db: AsyncSession = Depends(get_db)):
 
 # ─── Settings (admin) ────────────────────────────────────────────────────────
 
+ALLOWED_SETTING_KEYS = {
+    "setup_completed", "server_ip", "server_port", "server_name",
+    "server2_name", "server2_ip", "server2_port",
+    "site_title", "site_logo_url", "discord_url", "discord_server_id",
+    "bg_image_url", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2",
+    "event_active", "event_title", "event_text", "event_color",
+    "rules", "https_domain", "https_email",
+}
+
 @app.get("/api/admin/settings", response_model=list[SettingOut])
 async def get_settings(
     db: AsyncSession = Depends(get_db),
@@ -839,6 +910,8 @@ async def update_setting(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
+    if key not in ALLOWED_SETTING_KEYS:
+        raise HTTPException(400, f"Unknown setting key: {key}")
     result = await db.execute(select(Setting).where(Setting.key == key))
     setting = result.scalar_one_or_none()
     if setting is None:

@@ -4,9 +4,18 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>V Rising — Замок</title>
+  <meta name="description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="V Rising — Замок" />
+  <meta property="og:description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
+  <meta property="og:site_name" content="V Rising" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="V Rising — Замок" />
+  <meta name="twitter:description" content="Официальный сайт игрового сервера V Rising." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <style>
     :root {
       --bg:       #06000f;
@@ -1009,9 +1018,14 @@
 
   <!-- ── CENTER: News ── -->
   <main id="news-section" style="flex:1;min-width:0;min-height:55vh;">
-    <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:1.1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:.75rem;">
       <h2 class="gothic" style="font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;">— Новости —</h2>
-      <div id="tag-filters" style="display:flex;gap:.4rem;flex-wrap:wrap;"></div>
+      <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+        <input id="news-search" type="search" placeholder="Поиск..." oninput="onSearchInput(this.value)"
+          style="background:rgba(8,0,16,0.7);border:1px solid rgba(110,0,150,0.3);color:#e2d8f0;border-radius:.4rem;padding:.3rem .65rem;font-size:.75rem;width:130px;outline:none;transition:border-color .2s;"
+          onfocus="this.style.borderColor='rgba(180,0,35,0.5)'" onblur="this.style.borderColor='rgba(110,0,150,0.3)'" />
+        <div id="tag-filters" style="display:flex;gap:.4rem;flex-wrap:wrap;"></div>
+      </div>
     </div>
     <!-- Event banner (shown if event_active=1) -->
     <div id="event-banner" style="display:none;"></div>
@@ -1782,10 +1796,19 @@ function setTag(tag) {
 }
 
 // ── News ───────────────────────────────────────────────────────────────────
+let _searchTerm = '';
+let _searchTimer = null;
+function onSearchInput(val) {
+  clearTimeout(_searchTimer);
+  _searchTerm = val.trim();
+  _searchTimer = setTimeout(() => loadNews(1), 350);
+}
+
 async function loadNews(page = 1) {
-  const url = _activeTag
-    ? `${API}/news?page=${page}&per_page=9&tag=${encodeURIComponent(_activeTag)}`
-    : `${API}/news?page=${page}&per_page=9`;
+  const params = new URLSearchParams({ page, per_page: 9 });
+  if (_activeTag) params.set('tag', _activeTag);
+  if (_searchTerm) params.set('search', _searchTerm);
+  const url = `${API}/news?${params}`;
   const data = await fetch(url).then(r => r.json());
   const list = document.getElementById('news-list');
   list.innerHTML = '';
@@ -1873,7 +1896,7 @@ async function openNews(slug) {
         </div>
         <span style="font-size:.68rem;color:var(--muted);">${fmtDate(n.created_at)}</span>
       </div>`;
-    document.getElementById('modal-content').innerHTML = n.content || '';
+    document.getElementById('modal-content').innerHTML = DOMPurify.sanitize(n.content || '');
     document.getElementById('modal-bg').classList.add('open');
     document.body.style.overflow = 'hidden';
     loadComments(slug);

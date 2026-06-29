@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
 from pydantic import BaseModel, EmailStr, field_validator
 import re
 
@@ -189,7 +189,7 @@ class PaginatedNews(BaseModel):
 
 
 class ChatHistoryItem(BaseModel):
-    role: str
+    role: Literal["user", "assistant"]
     content: str
 
 
