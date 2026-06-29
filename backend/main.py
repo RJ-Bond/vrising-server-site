@@ -7,6 +7,7 @@ import uuid
 import shutil
 import time
 import asyncio
+import httpx
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
