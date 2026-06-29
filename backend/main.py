@@ -1182,61 +1182,86 @@ async def ssl_install(
         raise HTTPException(400, "Заполните домен и email в настройках HTTPS")
 
     async def stream():
+        import shutil
+
         def sse(msg: str) -> str:
             return f"data: {msg}\n\n"
 
-        yield sse(f"🔐 Запрашиваем сертификат Let's Encrypt для {domain}...")
-
-        rc = 0
-        async for line in _stream_cmd(
-            "docker", "run", "--rm",
-            "-v", "vrising_letsencrypt:/etc/letsencrypt",
-            "-v", "vrising_certbot_webroot:/var/www/certbot",
-            "certbot/certbot",
-            "certonly", "--webroot",
-            "--webroot-path=/var/www/certbot",
-            "-d", domain,
-            "--email", email,
-            "--agree-tos", "--non-interactive", "--no-eff-email",
-        ):
-            if line.startswith("__rc__"):
-                rc = int(line[6:])
-            else:
-                yield sse(line)
-
-        if rc != 0:
-            yield sse("❌ Ошибка получения сертификата. Проверьте что A-запись домена указывает на этот сервер.")
-            yield sse("DONE:error")
-            return
-
-        yield sse("📝 Обновляем конфигурацию nginx...")
         try:
-            workspace = "/workspace"
-            with open(f"{workspace}/nginx/nginx-ssl.conf") as f:
-                ssl_conf = f.read().replace("DOMAIN", domain)
-            with open(f"{workspace}/nginx/nginx.conf", "w") as f:
-                f.write(ssl_conf)
-            yield sse(f"✅ nginx.conf обновлён для домена {domain}")
+            yield sse(f"🔐 Запрашиваем сертификат Let's Encrypt для {domain}...")
+
+            if not shutil.which("docker"):
+                yield sse("❌ docker не найден в PATH контейнера")
+                yield sse("DONE:error")
+                return
+
+            rc = 0
+            try:
+                async for line in _stream_cmd(
+                    "docker", "run", "--rm",
+                    "-v", "vrising_letsencrypt:/etc/letsencrypt",
+                    "-v", "vrising_certbot_webroot:/var/www/certbot",
+                    "certbot/certbot",
+                    "certonly", "--webroot",
+                    "--webroot-path=/var/www/certbot",
+                    "-d", domain,
+                    "--email", email,
+                    "--agree-tos", "--non-interactive", "--no-eff-email",
+                ):
+                    if line.startswith("__rc__"):
+                        rc = int(line[6:])
+                    else:
+                        yield sse(line)
+            except Exception as exc:
+                yield sse(f"❌ Ошибка запуска certbot: {exc}")
+                yield sse("DONE:error")
+                return
+
+            if rc != 0:
+                yield sse("❌ Ошибка получения сертификата. Проверьте что A-запись домена указывает на этот сервер.")
+                yield sse("DONE:error")
+                return
+
+            yield sse("📝 Обновляем конфигурацию nginx...")
+            try:
+                workspace = "/workspace"
+                with open(f"{workspace}/nginx/nginx-ssl.conf") as f:
+                    ssl_conf = f.read().replace("DOMAIN", domain)
+                with open(f"{workspace}/nginx/nginx.conf", "w") as f:
+                    f.write(ssl_conf)
+                yield sse(f"✅ nginx.conf обновлён для домена {domain}")
+            except Exception as exc:
+                yield sse(f"❌ Ошибка записи конфига: {exc}")
+                yield sse("DONE:error")
+                return
+
+            yield sse("🔄 Перезапускаем nginx...")
+            rc2 = 0
+            try:
+                async for line in _stream_cmd("docker", "exec", "vrising_nginx", "nginx", "-s", "reload"):
+                    if line.startswith("__rc__"):
+                        rc2 = int(line[6:])
+                    else:
+                        yield sse(line)
+            except Exception as exc:
+                yield sse(f"❌ Ошибка перезапуска nginx: {exc}")
+                yield sse("DONE:error")
+                return
+
+            if rc2 != 0:
+                try:
+                    async for line in _stream_cmd("docker", "restart", "vrising_nginx"):
+                        if not line.startswith("__rc__"):
+                            yield sse(line)
+                except Exception as exc:
+                    yield sse(f"⚠ docker restart nginx: {exc}")
+
+            yield sse("🎉 HTTPS успешно настроен! Сайт теперь доступен по https://" + domain)
+            yield sse("DONE:ok")
+
         except Exception as exc:
-            yield sse(f"❌ Ошибка записи конфига: {exc}")
+            yield sse(f"❌ Неожиданная ошибка: {exc}")
             yield sse("DONE:error")
-            return
-
-        yield sse("🔄 Перезапускаем nginx...")
-        rc2 = 0
-        async for line in _stream_cmd("docker", "exec", "vrising_nginx", "nginx", "-s", "reload"):
-            if line.startswith("__rc__"):
-                rc2 = int(line[6:])
-            else:
-                yield sse(line)
-
-        if rc2 != 0:
-            async for line in _stream_cmd("docker", "restart", "vrising_nginx"):
-                if not line.startswith("__rc__"):
-                    yield sse(line)
-
-        yield sse("🎉 HTTPS успешно настроен! Сайт теперь доступен по https://" + domain)
-        yield sse("DONE:ok")
 
     return StreamingResponse(stream(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
