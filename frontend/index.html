@@ -759,8 +759,11 @@
     .comment-author { font-size:.75rem; color:#d4c4e0; font-weight:600; font-family:'Philosopher',serif; }
     .comment-time { font-size:.63rem; color:var(--muted); }
     .comment-text { font-size:.8rem; color:var(--text); line-height:1.5; word-break:break-word; }
-    .comment-del { margin-left:auto; background:none; border:none; color:rgba(180,0,30,0.45); cursor:pointer; font-size:.8rem; padding:.1rem .3rem; border-radius:4px; flex-shrink:0; }
+    .comment-actions { display:flex; align-items:center; gap:.25rem; margin-left:auto; flex-shrink:0; }
+    .comment-del { background:none; border:none; color:rgba(180,0,30,0.45); cursor:pointer; font-size:.8rem; padding:.1rem .3rem; border-radius:4px; transition:color .15s; }
     .comment-del:hover { color:rgba(220,0,40,0.85); }
+    .comment-edit-btn { background:none; border:none; color:rgba(130,90,200,0.45); cursor:pointer; font-size:.88rem; padding:.1rem .3rem; border-radius:4px; transition:color .15s; line-height:1; }
+    .comment-edit-btn:hover { color:rgba(170,130,240,0.9); }
     .comment-form { display:flex; gap:.5rem; margin-top:.9rem; }
     .comment-form textarea { flex:1; background:rgba(12,2,20,0.7); border:1px solid rgba(110,0,20,0.35); border-radius:8px; color:var(--text); font-size:.8rem; font-family:'Inter',sans-serif; padding:.5rem .65rem; resize:none; height:60px; outline:none; transition:border-color .2s; }
     .comment-form textarea:focus { border-color:rgba(180,0,30,0.6); }
@@ -2107,21 +2110,91 @@ async function loadComments(slug) {
     const user = getUser();
     el.innerHTML = comments.map(c => {
       const name = c.author ? esc(c.author.username) : 'Удалённый пользователь';
-      const canDel = user && (user.role === 'admin' || (c.author && user.id === c.author.id));
+      const isOwn = user && c.author && user.id === c.author.id;
+      const canDel = user && (user.role === 'admin' || isOwn);
+      const actions = canDel ? `<div class="comment-actions" id="ca-${c.id}">
+        ${isOwn ? `<button class="comment-edit-btn" onclick="editComment(${c.id})" title="Редактировать">✎</button>` : ''}
+        <button class="comment-del" onclick="startDeleteConfirm(${c.id},'${slug}')" title="Удалить">✕</button>
+      </div>` : '';
       return `<div class="comment-item" data-id="${c.id}">
         ${commentAvatar(c.author)}
         <div class="comment-body">
           <div class="comment-meta">
             <span class="comment-author">${name}</span>
             <span class="comment-time">${fmtDate(c.created_at)}</span>
-            ${canDel ? `<button class="comment-del" onclick="deleteComment(${c.id},'${slug}')" title="Удалить">✕</button>` : ''}
+            ${actions}
           </div>
-          <div class="comment-text">${esc(c.content)}</div>
+          <div class="comment-text" id="ct-${c.id}">${esc(c.content)}</div>
         </div>
       </div>`;
     }).join('');
   } catch {
     el.innerHTML = `<div style="color:var(--muted);font-size:.75rem;">Ошибка загрузки комментариев.</div>`;
+  }
+}
+
+function startDeleteConfirm(id, slug) {
+  const ca = document.getElementById(`ca-${id}`);
+  if (!ca) return;
+  ca.innerHTML = `
+    <span style="font-size:.68rem;color:#f87171;white-space:nowrap;">Удалить?</span>
+    <button id="cdel-yes-${id}" style="padding:.1rem .45rem;background:rgba(140,0,18,0.75);border:1px solid rgba(200,0,30,0.45);color:#fca5a5;border-radius:4px;font-size:.68rem;cursor:pointer;">Да</button>
+    <button id="cdel-no-${id}"  style="padding:.1rem .4rem;background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.25);color:var(--muted);border-radius:4px;font-size:.68rem;cursor:pointer;">Нет</button>`;
+  document.getElementById(`cdel-yes-${id}`).onclick = () => doDeleteComment(id, slug);
+  document.getElementById(`cdel-no-${id}`).onclick  = () => loadComments(slug);
+}
+
+async function doDeleteComment(id, slug) {
+  const token = getToken();
+  try {
+    const r = await fetch(`${API}/comments/${id}`, { method:'DELETE', headers:{'Authorization':`Bearer ${token}`} });
+    if (r.ok) loadComments(slug);
+    else showToast('Ошибка удаления', 'error');
+  } catch { showToast('Ошибка удаления', 'error'); }
+}
+
+function editComment(id) {
+  const textEl = document.getElementById(`ct-${id}`);
+  const ca = document.getElementById(`ca-${id}`);
+  if (!textEl) return;
+  const currentText = textEl.textContent;
+  if (ca) ca.style.display = 'none';
+  textEl.innerHTML = `
+    <textarea id="cedit-${id}" style="width:100%;background:rgba(12,2,20,0.75);border:1px solid rgba(110,0,20,0.4);border-radius:6px;color:var(--text);font-size:.8rem;font-family:'Inter',sans-serif;padding:.45rem .6rem;resize:vertical;min-height:64px;outline:none;transition:border-color .2s;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(180,0,30,0.65)'" onblur="this.style.borderColor='rgba(110,0,20,0.4)'">${esc(currentText)}</textarea>
+    <div style="display:flex;gap:.4rem;margin-top:.35rem;">
+      <button id="csave-${id}" style="padding:.28rem .7rem;background:rgba(120,0,22,0.75);border:1px solid rgba(180,0,30,0.45);color:#f0ddd8;font-size:.72rem;font-family:'Inter',sans-serif;border-radius:6px;cursor:pointer;transition:background .18s;" onmouseover="this.style.background='rgba(160,0,28,0.9)'" onmouseout="this.style.background='rgba(120,0,22,0.75)'">Сохранить</button>
+      <button id="ccancel-${id}" style="padding:.28rem .65rem;background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.22);color:var(--muted);font-size:.72rem;font-family:'Inter',sans-serif;border-radius:6px;cursor:pointer;">Отмена</button>
+    </div>`;
+  document.getElementById(`csave-${id}`).onclick   = () => saveComment(id);
+  document.getElementById(`ccancel-${id}`).onclick = () => loadComments(_modalSlug);
+  const ta = document.getElementById(`cedit-${id}`);
+  if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+}
+
+async function saveComment(id) {
+  const ta = document.getElementById(`cedit-${id}`);
+  if (!ta) return;
+  const content = ta.value.trim();
+  if (!content) return;
+  const btn = document.getElementById(`csave-${id}`);
+  if (btn) { btn.disabled = true; btn.textContent = 'Сохранение…'; }
+  const token = getToken();
+  try {
+    const r = await fetch(`${API}/comments/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ content }),
+    });
+    if (!r.ok) {
+      const e = await r.json();
+      showToast(e.detail || 'Ошибка', 'error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Сохранить'; }
+      return;
+    }
+    loadComments(_modalSlug);
+  } catch {
+    showToast('Ошибка сохранения', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Сохранить'; }
   }
 }
 
@@ -2157,17 +2230,6 @@ async function submitComment(slug) {
   } catch { alert('Ошибка отправки комментария.'); }
 }
 
-async function deleteComment(id, slug) {
-  if (!confirm('Удалить комментарий?')) return;
-  const token = getToken();
-  try {
-    const r = await fetch(`${API}/comments/${id}`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` },
-    });
-    if (r.ok) loadComments(slug);
-  } catch {}
-}
 
 // ── Site settings ──────────────────────────────────────────────────────────
 async function loadSiteSettings() {

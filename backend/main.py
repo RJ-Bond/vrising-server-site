@@ -54,6 +54,7 @@ from .schemas import (
     SetupComplete,
     ChatRequest,
     CommentCreate,
+    CommentUpdate,
     CommentOut,
     WipeCreate,
     WipeOut,
@@ -676,6 +677,25 @@ async def add_comment(
     await db.refresh(comment)
     # eager load author
     await db.refresh(comment, ["author"])
+    return CommentOut.model_validate(comment)
+
+
+@app.patch("/api/comments/{comment_id}", response_model=CommentOut)
+async def update_comment(
+    comment_id: int,
+    body: CommentUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(select(Comment).where(Comment.id == comment_id))
+    comment = result.scalar_one_or_none()
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    if current_user.role != "admin" and comment.author_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    comment.content = body.content
+    await db.commit()
+    await db.refresh(comment)
     return CommentOut.model_validate(comment)
 
 
