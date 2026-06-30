@@ -11,13 +11,20 @@
   <style>
     :root {
       --bg:      #06000f;
-      --card:    rgba(14,5,22,0.88);
+      --card:    rgba(16,7,23,0.92);
+      --panel:   rgba(255,255,255,0.035);
       --border:  rgba(110,0,150,0.22);
-      --text:    #e2d8f0;
-      --muted:   #9488a8;
+      --text:    #f5f0fb;
+      --muted:   #b6a8d2;
+      --label:   #d6c9ee;
       --gold:    #c9a94a;
       --crimson: #c8002a;
       --purple:  #7c3aed;
+      --pink-a:  #c2218a;
+      --pink-b:  #9233ea;
+      --green:   #2ee69b;
+      --yellow:  #ffcf5c;
+      --red:     #ff5d7e;
     }
     * { box-sizing:border-box; margin:0; padding:0; }
     html { scroll-behavior:smooth; }
@@ -52,67 +59,78 @@
     @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
     .g-card { animation:fade-up .4s ease both; }
 
-    .srv-head { display:flex; align-items:center; gap:.7rem; margin-bottom:1.1rem; flex-wrap:wrap; }
+    .srv-head { display:flex; align-items:center; gap:.6rem; margin-bottom:1.1rem; flex-wrap:wrap; }
     .srv-icon { width:1.7rem; height:1.7rem; object-fit:contain; filter:drop-shadow(0 0 8px var(--accent)); flex-shrink:0; }
-    .srv-name { font-family:'Philosopher',serif; font-weight:700; font-size:1.05rem; color:#d4c4e0; flex:1; min-width:0; }
-    .srv-badge { font-size:.65rem; font-weight:700; letter-spacing:.06em; padding:.22rem .65rem; border-radius:9999px; display:inline-flex; align-items:center; gap:.35rem; flex-shrink:0; }
-    .srv-badge.on  { background:rgba(0,160,60,0.18); border:1px solid rgba(0,200,80,0.4); color:#4ade80; }
-    .srv-badge.off { background:rgba(150,0,20,0.18); border:1px solid rgba(200,0,30,0.4); color:#f87171; }
-    .srv-dot { width:.45rem; height:.45rem; border-radius:50%; background:currentColor; box-shadow:0 0 8px currentColor; }
+    .srv-name { font-family:'Philosopher',serif; font-weight:700; font-size:1.05rem; color:#ece3f7; flex:1; min-width:0; }
+    .srv-badge-group { display:flex; align-items:center; gap:.35rem; flex-shrink:0; flex-wrap:wrap; }
+    .srv-badge { font-size:.6rem; font-weight:700; letter-spacing:.04em; padding:.16rem .5rem; border-radius:9999px; display:inline-flex; align-items:center; gap:.3rem; }
+    .srv-badge.on  { background:rgba(46,230,155,0.14); border:1px solid rgba(46,230,155,0.4); color:var(--green); }
+    .srv-badge.off { background:rgba(255,93,126,0.14); border:1px solid rgba(255,93,126,0.4); color:var(--red); }
+    .srv-dot { width:.4rem; height:.4rem; border-radius:50%; background:currentColor; box-shadow:0 0 8px currentColor; }
     .srv-dot.pulse { animation:srv-pulse 1.6s ease-in-out infinite; }
     @keyframes srv-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
 
     .srv-vac-badge {
-      font-size:.65rem; font-weight:700; letter-spacing:.06em; padding:.22rem .65rem; border-radius:9999px;
-      display:inline-flex; align-items:center; gap:.35rem; flex-shrink:0;
-      background:rgba(0,160,60,0.14); border:1px solid rgba(0,200,80,0.3); color:#86efac;
+      font-size:.6rem; font-weight:700; letter-spacing:.04em; padding:.16rem .5rem; border-radius:9999px;
+      display:inline-flex; align-items:center; gap:.3rem;
+      background:rgba(46,230,155,0.1); border:1px solid rgba(46,230,155,0.3); color:var(--green);
     }
-    .srv-vac-badge.off { background:rgba(110,0,20,0.14); border-color:rgba(150,0,20,0.25); color:var(--muted); }
+    .srv-vac-badge.off { background:rgba(255,255,255,0.04); border-color:rgba(255,255,255,0.1); color:var(--muted); }
 
-    .srv-capacity-track { height:5px; background:rgba(255,255,255,0.07); border-radius:9999px; overflow:hidden; margin-top:.35rem; }
+    .srv-capacity-track { height:5px; background:rgba(255,255,255,0.08); border-radius:9999px; overflow:hidden; margin-top:.4rem; }
     .srv-capacity-fill { height:100%; border-radius:9999px; background:var(--accent); transition:width .6s ease; }
 
     .srv-record {
       font-size:.72rem; color:var(--gold); display:flex; align-items:center; gap:.4rem;
-      margin-bottom:1.25rem; padding:.5rem .75rem; background:rgba(8,0,16,0.4);
-      border:1px solid rgba(200,160,0,0.18); border-radius:.5rem;
+      margin-bottom:1.25rem; padding:.5rem .75rem; background:var(--panel);
+      border:1px solid rgba(201,169,74,0.2); border-radius:.5rem;
     }
 
     @keyframes skel-pulse { 0%,100%{opacity:.35} 50%{opacity:.85} }
     .skel { animation:skel-pulse 1.3s ease-in-out infinite; }
 
     .srv-wipe-chip {
-      font-size:.65rem; font-weight:600; color:var(--muted); background:rgba(8,0,16,0.5);
-      border:1px solid rgba(110,0,20,0.25); border-radius:9999px; padding:.2rem .6rem;
+      font-size:.65rem; font-weight:600; color:var(--muted); background:var(--panel);
+      border:1px solid rgba(255,255,255,0.1); border-radius:9999px; padding:.2rem .6rem;
       display:inline-flex; align-items:center; gap:.3rem; margin-bottom:1rem;
     }
-    .srv-wipe-chip.urgent { color:#f87171; border-color:rgba(200,0,30,0.4); background:rgba(150,0,20,0.15); }
+    .srv-wipe-chip.urgent { color:var(--red); border-color:rgba(255,93,126,0.4); background:rgba(255,93,126,0.1); }
 
     .srv-connect-row { display:flex; gap:.6rem; margin-bottom:1.25rem; }
     .srv-connect-btn {
-      flex:1; background:linear-gradient(135deg,#7a001c,var(--accent)); border:none; color:#fff;
-      font-size:.78rem; font-weight:700; padding:.55rem 1rem; border-radius:.55rem; cursor:pointer;
-      box-shadow:0 0 16px rgba(0,0,0,0.3); transition:transform .15s, box-shadow .2s;
-      display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
+      flex:1; background:linear-gradient(135deg,var(--pink-a),var(--pink-b)); border:none; color:#fff;
+      font-size:.78rem; font-weight:700; padding:.6rem 1rem; border-radius:.55rem; cursor:pointer;
+      box-shadow:0 2px 16px rgba(194,33,138,0.35); transition:transform .15s, box-shadow .2s;
+      display:inline-flex; align-items:center; justify-content:center; gap:.45rem;
     }
-    .srv-connect-btn:hover { transform:translateY(-1px); box-shadow:0 0 22px var(--accent); }
+    .srv-connect-btn:hover { transform:translateY(-1px); box-shadow:0 2px 26px rgba(194,33,138,0.55); }
     .srv-copy-btn {
-      background:rgba(40,0,80,0.3); border:1px solid rgba(110,0,150,0.35); color:var(--muted);
-      border-radius:.55rem; padding:.55rem .9rem; font-size:.78rem; cursor:pointer; transition:all .2s;
+      background:var(--panel); border:1px solid rgba(255,255,255,0.12); color:var(--muted);
+      border-radius:.55rem; padding:.6rem .9rem; font-size:.78rem; cursor:pointer; transition:all .2s;
     }
     .srv-copy-btn:hover { color:var(--text); border-color:rgba(150,50,200,0.5); }
 
-    .srv-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.7rem; margin-bottom:1.25rem; }
-    .srv-stat-box { background:rgba(8,0,16,0.55); border:1px solid rgba(110,0,20,0.2); border-radius:.6rem; padding:.7rem .5rem; text-align:center; }
-    .srv-stat-val { font-family:'Oswald',sans-serif; font-size:1.3rem; font-weight:600; color:var(--accent); line-height:1; }
-    .srv-stat-lbl { font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-top:.3rem; }
+    .srv-metrics {
+      display:grid; grid-template-columns:repeat(4,1fr);
+      background:var(--panel); border:1px solid rgba(255,255,255,0.08);
+      border-radius:.75rem; margin-bottom:1.25rem; overflow:hidden;
+    }
+    .srv-metric { text-align:center; padding:.85rem .4rem; border-right:1px solid rgba(255,255,255,0.07); border-bottom:1px solid rgba(255,255,255,0.07); }
+    .srv-metric:nth-child(4n) { border-right:none; }
+    .srv-metric:nth-child(n+5) { border-bottom:none; }
+    .srv-metric-val { font-family:'Oswald',sans-serif; font-size:1.2rem; font-weight:600; color:#fff; line-height:1; font-variant-numeric:tabular-nums; }
+    .srv-metric-lbl { font-size:.58rem; color:var(--label); font-weight:600; text-transform:uppercase; letter-spacing:.07em; margin-top:.35rem; }
 
-    .srv-pill-row { display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; margin-bottom:1.25rem; }
-    .srv-pill { background:rgba(8,0,16,0.4); border:1px solid rgba(110,0,20,0.15); border-radius:.5rem; padding:.55rem .4rem; text-align:center; }
-    .srv-pill-val { font-family:'Cinzel',serif; font-size:1rem; font-weight:700; color:var(--gold); }
-    .srv-pill-lbl { font-size:.58rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:.2rem; }
+    @media (max-width:680px) {
+      .srv-metrics { grid-template-columns:repeat(2,1fr); }
+      .srv-metric:nth-child(4n) { border-right:1px solid rgba(255,255,255,0.07); }
+      .srv-metric:nth-child(2n) { border-right:none; }
+      .srv-metric:nth-child(n+5) { border-bottom:1px solid rgba(255,255,255,0.07); }
+      .srv-metric:nth-last-child(-n+2) { border-bottom:none; }
+    }
 
     .srv-section-title { font-family:'Cinzel',serif; font-size:.68rem; letter-spacing:.14em; color:var(--gold); text-transform:uppercase; margin-bottom:.6rem; }
+    .srv-divider { height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,0.1),transparent); margin:1.25rem 0; }
 
     .srv-graph-card { margin-bottom:1.25rem; }
     .srv-graph-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:.6rem; }
@@ -136,17 +154,21 @@
     .srv-heatbar.peak { background:var(--gold); opacity:.95; box-shadow:0 0 8px var(--gold); }
     .srv-heat-labels { display:flex; justify-content:space-between; font-size:.55rem; color:var(--muted); margin-top:.25rem; margin-bottom:1.25rem; }
 
-    .srv-players-row { display:flex; align-items:center; justify-content:space-between; padding:.4rem 0; border-bottom:1px solid rgba(110,0,20,0.1); font-size:.82rem; }
+    .srv-players-list { columns:1; column-gap:1.5rem; }
+    @media (min-width:481px) { .srv-players-list { columns:2; } }
+    @media (min-width:700px) { .srv-players-list { columns:3; } }
+    .srv-players-row {
+      display:flex; align-items:center; justify-content:space-between; gap:.5rem;
+      padding:.4rem 0; border-bottom:1px solid rgba(255,255,255,0.06); font-size:.82rem;
+      break-inside:avoid;
+    }
     .srv-players-row:last-child { border-bottom:none; }
     .srv-player-dot { width:.4rem; height:.4rem; border-radius:50%; flex-shrink:0; }
-    .srv-player-link { text-decoration:none; display:flex; align-items:center; gap:.5rem; min-width:0; }
+    .srv-player-link { text-decoration:none; display:flex; align-items:center; gap:.5rem; min-width:0; flex:1; }
     .srv-player-link:hover .srv-player-name { color:#fff; text-decoration:underline; }
+    .srv-player-time { font-family:'Oswald',sans-serif; font-size:.72rem; color:var(--muted); white-space:nowrap; flex-shrink:0; text-align:right; }
 
-    .srv-empty { color:var(--muted); font-size:.78rem; font-style:italic; text-align:center; padding:1rem 0; }
-
-    @media (max-width:680px) {
-      .srv-stat-grid, .srv-pill-row { grid-template-columns:repeat(2,1fr); }
-    }
+    .srv-empty { color:var(--muted); font-size:.78rem; font-style:italic; text-align:center; padding:1rem 0; column-span:all; }
 
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
@@ -171,7 +193,11 @@
 
 <div style="max-width:780px;margin:2.5rem auto 3.5rem;padding:0 1rem;">
   <div style="text-align:center;margin-bottom:1.75rem;">
-    <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;margin-bottom:.4rem;">Мониторинг серверов</h1>
+    <div style="display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:.5rem;">
+      <span style="height:1px;width:36px;background:linear-gradient(90deg,transparent,var(--gold));"></span>
+      <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;">Мониторинг серверов</h1>
+      <span style="height:1px;width:36px;background:linear-gradient(90deg,var(--gold),transparent);"></span>
+    </div>
     <p style="font-size:.8rem;color:var(--muted);">Статус, онлайн игроков и активность за последние 7 дней</p>
   </div>
 
@@ -265,6 +291,8 @@ const SERVER_THEMES = {
   2: { accent: '#9955ee', accentRgb: '153,85,238' },
 };
 
+const STEAM_ICON_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.497 1.009 2.452-.397.957-1.494 1.411-2.455 1.015zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.252 0-2.265-1.014-2.265-2.265z"/></svg>';
+
 function srvCardSkeleton(num) {
   const t = SERVER_THEMES[num];
   return `
@@ -272,29 +300,29 @@ function srvCardSkeleton(num) {
     <div class="srv-head">
       <img src="/icon-vrising.png" alt="" class="srv-icon">
       <div class="srv-name" id="srv-name-${num}">Сервер ${num}</div>
-      <span class="srv-badge off skel" id="srv-badge-${num}"><span class="srv-dot"></span>Загрузка</span>
-      <span class="srv-vac-badge" id="srv-vac-${num}" style="display:none;">🛡 VAC</span>
+      <div class="srv-badge-group">
+        <span class="srv-badge off skel" id="srv-badge-${num}"><span class="srv-dot"></span>Загрузка</span>
+        <span class="srv-vac-badge" id="srv-vac-${num}" style="display:none;">🛡 VAC</span>
+      </div>
     </div>
     <span class="srv-wipe-chip" id="srv-wipe-${num}" style="display:none;"></span>
     <div class="srv-record" id="srv-record-${num}" style="display:none;"></div>
     <div class="srv-connect-row" id="srv-connect-${num}" style="display:none;">
-      <button class="srv-connect-btn" onclick="connectServer(${num})">Подключиться через <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.497 1.009 2.452-.397.957-1.494 1.411-2.455 1.015zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.252 0-2.265-1.014-2.265-2.265z"/></svg></button>
+      <button class="srv-connect-btn" onclick="connectServer(${num})">Подключиться через ${STEAM_ICON_SVG}</button>
       <button class="srv-copy-btn" onclick="copyServerAddr(${num},this)">📋 IP</button>
     </div>
-    <div class="srv-stat-grid">
-      <div class="srv-stat-box">
-        <div class="srv-stat-val skel" id="srv-players-${num}">—</div><div class="srv-stat-lbl">Игроков</div>
+    <div class="srv-metrics">
+      <div class="srv-metric">
+        <div class="srv-metric-val skel" id="srv-players-${num}">—</div><div class="srv-metric-lbl">Игроков</div>
         <div class="srv-capacity-track"><div class="srv-capacity-fill" id="srv-capacity-${num}" style="width:0%;"></div></div>
       </div>
-      <div class="srv-stat-box"><div class="srv-stat-val skel" id="srv-ping-${num}" style="font-size:1.1rem;">—</div><div class="srv-stat-lbl">Пинг</div></div>
-      <div class="srv-stat-box"><div class="srv-stat-val skel" id="srv-map-${num}" style="font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div><div class="srv-stat-lbl">Карта</div></div>
-      <div class="srv-stat-box"><div class="srv-stat-val skel" id="srv-version-${num}" style="font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div><div class="srv-stat-lbl">Версия</div></div>
-    </div>
-    <div class="srv-pill-row">
-      <div class="srv-pill"><div class="srv-pill-val skel" id="srv-uptime24-${num}">—</div><div class="srv-pill-lbl">Аптайм 24ч</div></div>
-      <div class="srv-pill"><div class="srv-pill-val skel" id="srv-uptime7d-${num}">—</div><div class="srv-pill-lbl">Аптайм 7д</div></div>
-      <div class="srv-pill"><div class="srv-pill-val skel" id="srv-peak24-${num}">—</div><div class="srv-pill-lbl">Пик 24ч</div></div>
-      <div class="srv-pill"><div class="srv-pill-val skel" id="srv-peak7d-${num}">—</div><div class="srv-pill-lbl">Пик 7д</div></div>
+      <div class="srv-metric"><div class="srv-metric-val skel" id="srv-ping-${num}">—</div><div class="srv-metric-lbl">Пинг</div></div>
+      <div class="srv-metric"><div class="srv-metric-val skel" id="srv-map-${num}" style="font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div><div class="srv-metric-lbl">Карта</div></div>
+      <div class="srv-metric"><div class="srv-metric-val skel" id="srv-version-${num}" style="font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div><div class="srv-metric-lbl">Версия</div></div>
+      <div class="srv-metric"><div class="srv-metric-val skel" id="srv-uptime24-${num}">—</div><div class="srv-metric-lbl">Аптайм 24ч</div></div>
+      <div class="srv-metric"><div class="srv-metric-val skel" id="srv-uptime7d-${num}">—</div><div class="srv-metric-lbl">Аптайм 7д</div></div>
+      <div class="srv-metric"><div class="srv-metric-val skel" id="srv-peak24-${num}">—</div><div class="srv-metric-lbl">Пик 24ч</div></div>
+      <div class="srv-metric"><div class="srv-metric-val skel" id="srv-peak7d-${num}">—</div><div class="srv-metric-lbl">Пик 7д</div></div>
     </div>
     <div class="srv-graph-card">
       <div class="srv-graph-head">
@@ -320,9 +348,10 @@ function srvCardSkeleton(num) {
       </div>
       <div class="srv-heat-labels"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
     </div>
+    <div class="srv-divider"></div>
     <div>
       <div class="srv-section-title">Игроки онлайн</div>
-      <div id="srv-players-list-${num}"><p class="srv-empty skel">Загрузка…</p></div>
+      <div class="srv-players-list" id="srv-players-list-${num}"><p class="srv-empty skel">Загрузка…</p></div>
     </div>
   </div>`;
 }
@@ -331,11 +360,26 @@ let _serverEnabled = { 1: true, 2: true };
 
 let _connectInfo = {};
 
-function setStat(id, text) {
+function setStat(id, text, color) {
   const el = document.getElementById(id);
   if (!el) return;
   el.textContent = text;
   el.classList.remove('skel');
+  el.style.color = color || '';
+}
+
+function pingColor(ms) {
+  if (ms == null) return null;
+  if (ms <= 80) return 'var(--green)';
+  if (ms <= 150) return 'var(--yellow)';
+  return 'var(--red)';
+}
+
+function uptimeColor(pct) {
+  if (pct == null) return null;
+  if (pct >= 95) return 'var(--green)';
+  if (pct >= 80) return 'var(--yellow)';
+  return 'var(--red)';
 }
 
 async function loadServer(num) {
@@ -359,7 +403,7 @@ async function loadServer(num) {
       badge.innerHTML = `<span class="srv-dot${d.online ? ' pulse' : ''}"></span>${d.online ? 'Онлайн' : 'Офлайн'}`;
     }
     setStat(`srv-players-${num}`, `${d.players ?? 0}/${d.max_players ?? 0}`);
-    setStat(`srv-ping-${num}`, d.latency_ms != null ? `${d.latency_ms} мс` : '—');
+    setStat(`srv-ping-${num}`, d.latency_ms != null ? `${d.latency_ms} мс` : '—', pingColor(d.latency_ms));
     setStat(`srv-map-${num}`, d.map && d.map !== 'N/A' ? d.map : '—');
     setStat(`srv-version-${num}`, d.version && d.version !== 'N/A' ? d.version : '—');
 
@@ -424,10 +468,10 @@ function renderServerPlayers(num, players) {
     const hue = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 55 + 330;
     return `<div class="srv-players-row">
       <a class="srv-player-link" href="/user.html?u=${encodeURIComponent(name)}" title="Профиль игрока">
-        <span class="srv-player-dot" style="background:hsl(${hue},78%,42%);box-shadow:0 0 5px hsl(${hue},78%,42%);"></span>
-        <span class="srv-player-name" style="font-family:'Philosopher',serif;color:#d0ccd8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s;">${esc(name)}</span>
+        <span class="srv-player-dot" style="background:hsl(${hue},78%,55%);box-shadow:0 0 5px hsl(${hue},78%,55%);"></span>
+        <span class="srv-player-name" style="font-family:'Philosopher',serif;color:#e6def2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s;">${esc(name)}</span>
       </a>
-      <span style="font-family:'Oswald',sans-serif;font-size:.72rem;color:var(--muted);white-space:nowrap;flex-shrink:0;">${fmtDuration(p.duration)}</span>
+      <span class="srv-player-time">${fmtDuration(p.duration)}</span>
     </div>`;
   }).join('');
 }
@@ -435,8 +479,8 @@ function renderServerPlayers(num, players) {
 async function loadServerStats(num) {
   try {
     const s = await fetch(`${API}/monitor/stats?server=${num}`).then(r => r.json());
-    setStat(`srv-uptime24-${num}`, s.uptime_24h != null ? `${s.uptime_24h}%` : '—');
-    setStat(`srv-uptime7d-${num}`, s.uptime_7d != null ? `${s.uptime_7d}%` : '—');
+    setStat(`srv-uptime24-${num}`, s.uptime_24h != null ? `${s.uptime_24h}%` : '—', uptimeColor(s.uptime_24h));
+    setStat(`srv-uptime7d-${num}`, s.uptime_7d != null ? `${s.uptime_7d}%` : '—', uptimeColor(s.uptime_7d));
     setStat(`srv-peak24-${num}`, s.peak_24h ?? '—');
     setStat(`srv-peak7d-${num}`, s.peak_7d ?? '—');
 
@@ -494,11 +538,13 @@ function drawHeatmap(num) {
 
   const max = Math.max(...buckets.map(b => b.avg), 1);
   const peak = buckets.reduce((best, b) => b.avg > best.avg ? b : best, buckets[0]);
+  const accentRgb = SERVER_THEMES[num].accentRgb;
 
   el.innerHTML = buckets.map(b => {
     const h = Math.max(2, Math.round((b.avg / max) * 60));
     const isPeak = b.avg > 0 && b.hour === peak.hour;
-    return `<div class="srv-heatbar${isPeak ? ' peak' : ''}" data-hour="${b.hour}" data-avg="${b.avg.toFixed(1)}" data-count="${b.count}" style="height:${h}px;"></div>`;
+    const bg = isPeak ? '' : `background:linear-gradient(180deg, rgb(${accentRgb}), rgba(${accentRgb},0.25));`;
+    return `<div class="srv-heatbar${isPeak ? ' peak' : ''}" data-hour="${b.hour}" data-avg="${b.avg.toFixed(1)}" data-count="${b.count}" style="height:${h}px;${bg}"></div>`;
   }).join('');
 
   setupHeatmapHover(num);
@@ -603,32 +649,59 @@ function drawGraph(num) {
   setupGraphHover(num);
 }
 
+function smoothPathTo(ctx, pts) {
+  if (pts.length < 2) { if (pts.length === 1) ctx.lineTo(pts[0].x, pts[0].y); return; }
+  for (let i = 1; i < pts.length - 1; i++) {
+    const xc = (pts[i].x + pts[i + 1].x) / 2;
+    const yc = (pts[i].y + pts[i + 1].y) / 2;
+    ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
+  }
+  const last = pts.length - 1;
+  ctx.quadraticCurveTo(pts[last - 1].x, pts[last - 1].y, pts[last].x, pts[last].y);
+}
+
 function renderChart(num) {
   const canvas = document.getElementById(`srv-graph-${num}`);
   const geom = _graphGeom[num];
   if (!canvas || !geom) return;
   const ctx = canvas.getContext('2d');
-  const { snaps, x, y, padT, plotH, w, h, accent } = geom;
+  const { snaps, x, y, padL, padT, plotW, plotH, w, h, accent } = geom;
   ctx.clearRect(0, 0, w, h);
 
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  [0.25, 0.5, 0.75].forEach(f => {
+    const gy = padT + plotH * f;
+    ctx.beginPath();
+    ctx.moveTo(padL, gy);
+    ctx.lineTo(padL + plotW, gy);
+    ctx.stroke();
+  });
+
+  const pts = snaps.map(s => ({ x: x(s), y: y(s) }));
+
   ctx.beginPath();
-  ctx.moveTo(x(snaps[0]), padT + plotH);
-  snaps.forEach(s => ctx.lineTo(x(s), y(s)));
-  ctx.lineTo(x(snaps[snaps.length - 1]), padT + plotH);
+  ctx.moveTo(pts[0].x, padT + plotH);
+  ctx.lineTo(pts[0].x, pts[0].y);
+  smoothPathTo(ctx, pts);
+  ctx.lineTo(pts[pts.length - 1].x, padT + plotH);
   ctx.closePath();
   const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
-  grad.addColorStop(0, `rgba(${accent},0.35)`);
+  grad.addColorStop(0, `rgba(${accent},0.4)`);
   grad.addColorStop(1, `rgba(${accent},0.02)`);
   ctx.fillStyle = grad;
   ctx.fill();
 
   ctx.beginPath();
-  snaps.forEach((s, i) => i === 0 ? ctx.moveTo(x(s), y(s)) : ctx.lineTo(x(s), y(s)));
+  ctx.moveTo(pts[0].x, pts[0].y);
+  smoothPathTo(ctx, pts);
   ctx.strokeStyle = `rgb(${accent})`;
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
   ctx.stroke();
 
-  ctx.fillStyle = 'rgba(248,113,113,0.7)';
+  ctx.fillStyle = 'rgb(255,93,126)';
   snaps.forEach(s => { if (!s.online) { ctx.beginPath(); ctx.arc(x(s), padT + plotH - 1, 1.3, 0, Math.PI * 2); ctx.fill(); } });
 }
 
@@ -702,7 +775,7 @@ function handleGraphHover(num, clientX) {
   ctx.restore();
 
   const dateStr = new Date(nearest.ts * 1000).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  tip.innerHTML = `<b>${nearest.players}</b> игроков<span>${dateStr}</span>${!nearest.online ? '<span style="color:#f87171;">офлайн</span>' : ''}`;
+  tip.innerHTML = `<b>${nearest.players}</b> игроков<span>${dateStr}</span>${!nearest.online ? '<span style="color:var(--red);">офлайн</span>' : ''}`;
   tip.style.display = 'block';
   let left = px + 10;
   if (left + 120 > geom.w) left = px - 130;
