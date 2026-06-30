@@ -505,9 +505,6 @@
     .toast-error   { border-color: rgba(200,0,25,0.6); }
     @keyframes toast-out { to { opacity:0; transform:translateY(6px); } }
 
-    /* ── Sparkline ── */
-    .sparkline-wrap { padding: .25rem 0 .1rem; }
-
     /* ── Hunter rows (legacy, kept for server2) ── */
     .hunter-row {
       display: grid; grid-template-columns: 18px 1fr auto;
@@ -585,21 +582,6 @@
       transition:color .15s;
     }
     .hunters-toggle:hover { color:var(--text); }
-
-    /* ── Compact player row ── */
-    .p-row-c {
-      display:grid; grid-template-columns:8px 1fr auto;
-      align-items:center; gap:.5rem;
-      padding:.3rem 0; border-bottom:1px solid rgba(110,0,20,0.09);
-      line-height:1.4;
-    }
-    .p-row-c:last-child { border-bottom:none; }
-    .p-row-c span:nth-child(2) { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .p-row-c span:last-child {
-      font-variant-numeric: tabular-nums;
-      font-size:.68rem; color:var(--muted); min-width:44px; text-align:right;
-    }
-    .p-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
 
     /* ── Featured news ── */
     .featured-card {
@@ -1372,15 +1354,10 @@
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
     <div id="left-info" style="font-size:.78rem;display:flex;flex-direction:column;gap:.45rem;"></div>
 
-    <!-- Player list server 1 -->
-    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
-    <h3 class="gothic" style="font-size:.68rem;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-bottom:.6rem;">Игроки онлайн</h3>
-    <div id="players-list" style="font-size:.77rem;display:flex;flex-direction:column;gap:0;max-height:180px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(110,0,20,0.4) transparent;"></div>
-
     <!-- Latency + stats -->
     <div id="monitor-stats" style="display:none;margin-top:.6rem;">
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.6rem;"></div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;text-align:center;margin-bottom:.5rem;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;text-align:center;">
         <div>
           <div id="stat-uptime24" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
           <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Аптайм 24ч</div>
@@ -1394,26 +1371,6 @@
           <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Пик 7д</div>
         </div>
       </div>
-      <!-- Heatmap -->
-      <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem;">Активность по часам (7д)</div>
-      <div id="heatmap" style="display:flex;gap:2px;align-items:flex-end;height:28px;"></div>
-      <div style="display:flex;justify-content:space-between;margin-top:.2rem;">
-        <span style="font-size:.52rem;color:var(--muted);">00</span>
-        <span style="font-size:.52rem;color:var(--muted);">06</span>
-        <span style="font-size:.52rem;color:var(--muted);">12</span>
-        <span style="font-size:.52rem;color:var(--muted);">18</span>
-        <span style="font-size:.52rem;color:var(--muted);">23</span>
-      </div>
-    </div>
-
-    <!-- History sparkline -->
-    <div id="sparkline-wrap" style="display:none;margin-top:.75rem;">
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.65rem;"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;">
-        <h3 class="gothic" style="font-size:.65rem;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;">История онлайна · 7д</h3>
-        <span id="sparkline-hint" style="font-size:.6rem;color:var(--muted);"></span>
-      </div>
-      <div class="sparkline-wrap" id="sparkline"></div>
     </div>
 
     <!-- Server 2 (shown only when enabled) -->
@@ -1425,7 +1382,7 @@
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
       <div id="left-info2" style="font-size:.78rem;display:flex;flex-direction:column;gap:.45rem;"></div>
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;text-align:center;margin-bottom:.5rem;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;text-align:center;">
         <div>
           <div id="stat-uptime24-s2" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
           <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Аптайм 24ч</div>
@@ -1439,32 +1396,13 @@
           <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Пик 7д</div>
         </div>
       </div>
-      <!-- History sparkline server 2 -->
-      <div id="sparkline-wrap2" style="display:none;margin:.75rem 0 .25rem;">
-        <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.65rem;"></div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.3rem;">
-          <h3 class="gothic" style="font-size:.65rem;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;">История онлайна · 7д</h3>
-          <span id="sparkline-hint2" style="font-size:.6rem;color:var(--muted);"></span>
-        </div>
-        <div class="sparkline-wrap" id="sparkline2"></div>
-      </div>
-      <!-- Heatmap server 2 -->
-      <div id="heatmap-wrap2" style="display:none;margin:.75rem 0 .1rem;">
-        <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.65rem;"></div>
-        <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.3rem;">Активность по часам (7д)</div>
-        <div id="heatmap2" style="display:flex;gap:2px;align-items:flex-end;height:28px;"></div>
-        <div style="display:flex;justify-content:space-between;margin-top:.2rem;">
-          <span style="font-size:.52rem;color:var(--muted);">00</span>
-          <span style="font-size:.52rem;color:var(--muted);">06</span>
-          <span style="font-size:.52rem;color:var(--muted);">12</span>
-          <span style="font-size:.52rem;color:var(--muted);">18</span>
-          <span style="font-size:.52rem;color:var(--muted);">23</span>
-        </div>
-      </div>
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
-      <h3 class="gothic" style="font-size:.68rem;letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-bottom:.6rem;">Игроки онлайн</h3>
-      <div id="players-list2" style="font-size:.77rem;display:flex;flex-direction:column;gap:0;max-height:180px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(110,0,20,0.4) transparent;"></div>
     </div>
+
+    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:1rem 0 .85rem;"></div>
+    <a href="/servers.html" style="display:flex;align-items:center;justify-content:center;gap:.4rem;font-size:.72rem;font-weight:600;letter-spacing:.04em;color:var(--gold);text-decoration:none;transition:color .2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--gold)'">
+      Подробнее на странице сервера
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+    </a>
 
     <!-- Discord widget (hidden until discord_server_id is set) -->
     <div id="discord-widget-wrap" style="display:none;margin-top:1.1rem;">
@@ -1783,26 +1721,6 @@ function animateVials(container) {
   }, 60);
 }
 
-function renderPlayerList(players, elId) {
-  const el = document.getElementById(elId);
-  if (!el) return;
-  if (!players || players.length === 0) {
-    el.innerHTML = `<div style="color:var(--muted);font-size:.75rem;font-style:italic;padding:.4rem 0;">Нет игроков онлайн</div>`;
-    return;
-  }
-  const sorted = [...players].sort((a, b) => b.duration - a.duration);
-  el.innerHTML = sorted.map(p => {
-    const name = p.name || 'Аноним';
-    const hue = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 55 + 330;
-    const dot = `hsl(${hue},78%,42%)`;
-    return `<div class="p-row-c">
-      <div class="p-dot" style="background:${dot};box-shadow:0 0 5px ${dot};"></div>
-      <span style="font-family:'Philosopher',serif;color:#d0ccd8;font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name)}</span>
-      <span style="font-family:'Oswald',sans-serif;font-size:.7rem;font-weight:400;color:rgba(180,160,210,0.7);white-space:nowrap;font-variant-numeric:tabular-nums;">${fmtDuration(p.duration)}</span>
-    </div>`;
-  }).join('');
-}
-
 function renderServerBlock(d, sfx) {
   const pct = d.max_players > 0 ? Math.round(d.players / d.max_players * 100) : 0;
   const cls = d.online ? 'badge-on' : 'badge-off';
@@ -1812,9 +1730,6 @@ function renderServerBlock(d, sfx) {
 
   const statusEl = document.getElementById('left-status' + sfx);
   if (statusEl) statusEl.innerHTML = `
-    <div style="margin-bottom:.35rem;">
-      <span class="${cls}" style="font-size:.6rem;padding:.15rem .6rem;border-radius:9999px;font-weight:700;">${dot} ${badgeTxt}</span>
-    </div>
     <div style="font-size:.82rem;color:#d4c4e0;font-weight:600;line-height:1.3;margin-bottom:.45rem;word-break:break-word;">${esc(d.name)}</div>
     <div class="p-bar"><div class="p-fill" style="width:${pct}%"></div></div>`;
 
@@ -1827,8 +1742,6 @@ function renderServerBlock(d, sfx) {
     animateVials(circEl);
   }
 
-
-  renderPlayerList(d.players_list || [], 'players-list' + sfx);
   return { lbl, cls, name: d.name, players: d.players, max_players: d.max_players };
 }
 
@@ -1876,48 +1789,6 @@ function updateHunters(players) {
   el.innerHTML = podiumHtml + restHtml;
 }
 
-// ── Sparkline ──────────────────────────────────────────────────────────────
-function renderSparkline(history, sfx = '') {
-  const wrap = document.getElementById('sparkline-wrap' + sfx);
-  const ct = document.getElementById('sparkline' + sfx);
-  const hint = document.getElementById('sparkline-hint' + sfx);
-  if (!wrap || !ct) return;
-  if (!history || history.length < 2) { wrap.style.display = 'none'; return; }
-  wrap.style.display = '';
-  const W = 260, H = 44, pad = 3;
-  const maxP = Math.max(...history.map(h => h.players), 1);
-  if (hint) hint.textContent = `пик ${maxP}`;
-  const pts = history.map((h, i) => {
-    const x = pad + (i / (history.length - 1)) * (W - pad * 2);
-    const y = pad + ((maxP - h.players) / maxP) * (H - pad * 2);
-    return `${x.toFixed(1)},${y.toFixed(1)}`;
-  });
-  const uid = Math.random().toString(36).slice(2, 6);
-  ct.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;display:block;">
-    <defs>
-      <linearGradient id="sg${uid}" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stop-color="rgba(100,0,180,0.7)"/>
-        <stop offset="100%" stop-color="rgba(200,0,35,0.95)"/>
-      </linearGradient>
-    </defs>
-    <polyline points="${pts.join(' ')}" fill="none" stroke="url(#sg${uid})" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-  </svg>`;
-}
-
-async function loadHistory() {
-  try {
-    const d = await fetch(`${API}/monitor/snapshots?server=1`).then(r => r.json());
-    renderSparkline(d);
-  } catch {}
-}
-
-async function loadHistory2() {
-  try {
-    const d = await fetch(`${API}/monitor/snapshots?server=2`).then(r => r.json());
-    renderSparkline(d, '2');
-  } catch {}
-}
-
 async function loadStats() {
   try {
     const s = await fetch(`${API}/monitor/stats?server=1`).then(r => r.json());
@@ -1940,18 +1811,6 @@ async function loadStats() {
       if (!el || v === null) return;
       el.style.color = v >= 95 ? '#86efac' : v >= 80 ? '#fbbf24' : '#f87171';
     });
-
-    // heatmap
-    const hm = document.getElementById('heatmap');
-    if (hm && s.heatmap?.length === 24) {
-      const maxV = Math.max(...s.heatmap, 1);
-      hm.innerHTML = s.heatmap.map((v, h) => {
-        const pct = v / maxV;
-        const alpha = 0.08 + pct * 0.88;
-        const title = `${String(h).padStart(2,'0')}:00 — ср. ${v} игр.`;
-        return `<div title="${title}" style="flex:1;height:${Math.max(3, Math.round(pct * 26))}px;background:rgba(180,0,30,${alpha.toFixed(2)});border-radius:2px;align-self:flex-end;cursor:default;transition:opacity .2s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'"></div>`;
-      }).join('');
-    }
 
     const statsWrap = document.getElementById('monitor-stats');
     if (statsWrap) statsWrap.style.display = '';
@@ -1976,17 +1835,6 @@ async function loadStats() {
       if (!el || v === null) return;
       el.style.color = v >= 95 ? '#86efac' : v >= 80 ? '#fbbf24' : '#f87171';
     });
-    const hm2 = document.getElementById('heatmap2');
-    if (hm2 && s2.heatmap?.length === 24) {
-      const maxV = Math.max(...s2.heatmap, 1);
-      hm2.innerHTML = s2.heatmap.map((v, h) => {
-        const pct = v / maxV;
-        const alpha = 0.08 + pct * 0.88;
-        const title = `${String(h).padStart(2,'0')}:00 — ср. ${v} игр.`;
-        return `<div title="${title}" style="flex:1;height:${Math.max(3, Math.round(pct * 26))}px;background:rgba(180,0,30,${alpha.toFixed(2)});border-radius:2px;align-self:flex-end;cursor:default;transition:opacity .2s;" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'"></div>`;
-      }).join('');
-      document.getElementById('heatmap-wrap2').style.display = '';
-    }
   } catch {}
 }
 
@@ -2929,12 +2777,8 @@ loadSiteSettings();
 loadVersion();
 loadStatus();
 loadStatus2();
-loadHistory();
-loadHistory2();
 loadStats();
 setInterval(() => { loadStatus(); loadStatus2(); }, 30000);
-setInterval(loadHistory, 300000);
-setInterval(loadHistory2, 300000);
 setInterval(loadStats, 300000);
 loadFeatured();
 loadLatestNews();
