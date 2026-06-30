@@ -13,7 +13,14 @@
       --text:#e2d8f0; --muted:#9488a8; --gold:#c9a94a; --crimson:#c8002a;
     }
     *{box-sizing:border-box;margin:0;padding:0;}
-    body{background:var(--bg);font-family:'Inter',system-ui,sans-serif;color:var(--text);min-height:100vh;}
+    body{
+      background:var(--bg);
+      background-image:
+        radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
+      background-attachment:fixed;
+      font-family:'Inter',system-ui,sans-serif;color:var(--text);min-height:100vh;
+    }
     .gothic{font-family:'Cinzel',serif;}
     .glass-nav{background:rgba(8,0,14,0.9);border-bottom:1px solid rgba(110,0,20,0.35);backdrop-filter:blur(14px);position:sticky;top:0;z-index:40;}
     .profile-cover{
@@ -141,6 +148,21 @@
 
 <script>
 const API = '/api';
+
+function applySiteBackground(bg) {
+  bg = (bg || '').trim();
+  if (!bg) return;
+  document.body.style.backgroundImage = [
+    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
+    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
+    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
+    `url('${bg}')`,
+  ].join(',');
+  document.body.style.backgroundSize = 'auto,auto,auto,cover';
+  document.body.style.backgroundPosition = 'center,center,center,center';
+  document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
+}
+
 const RANKS = [
   {label:'⚰ Смертный',    min:0,      max:18000,   color:'#9488a8', next:'Охотник'},
   {label:'⚔ Охотник',     min:18000,  max:90000,   color:'#c8a84a', next:'Лорд крови'},
@@ -202,6 +224,7 @@ async function loadUser(){
       const s=await fetch(`${API}/settings/public`).then(r=>r.json());
       document.getElementById('nav-logo').textContent=s.site_title||'V RISING';
       document.getElementById('cover-subtitle').textContent='— '+(s.site_title||'V Rising')+' · Профиль игрока —';
+      applySiteBackground(s.bg_image_url);
     }catch{}
   }catch{
     document.getElementById('not-found').style.display='';

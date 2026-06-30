@@ -158,6 +158,20 @@ function fmtDuration(sec) {
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
 }
 
+function applySiteBackground(bg) {
+  bg = (bg || '').trim();
+  if (!bg) return;
+  document.body.style.backgroundImage = [
+    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
+    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
+    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
+    `url('${bg}')`,
+  ].join(',');
+  document.body.style.backgroundSize = 'auto,auto,auto,cover';
+  document.body.style.backgroundPosition = 'center,center,center,center';
+  document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
+}
+
 (function() {
   if (getToken()) {
     document.getElementById('nav-profile-link').style.display = '';
@@ -173,6 +187,7 @@ let _wipeSettings = {};
     const title = (d.site_title || 'V Rising').trim();
     document.title = `${title} — Сервера`;
     document.getElementById('nav-logo').textContent = '⚔ ' + title;
+    applySiteBackground(d.bg_image_url);
     _wipeSettings = {
       1: { date: (d.wipe_date || '').trim(), type: d.wipe_type || 'full' },
       2: { date: (d.wipe_date2 || '').trim(), type: d.wipe_type2 || 'full' },
