@@ -221,9 +221,8 @@
 <nav class="glass-nav sticky top-0 z-40 relative">
   <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <a href="/" class="gothic font-black text-lg tracking-widest glow-text" style="color:#e0c8d8;text-decoration:none;">⚔ V RISING</a>
-      <span style="color:rgba(150,0,28,0.5);">|</span>
-      <span class="gothic text-sm" style="color:var(--gold);">Администратор</span>
+      <a href="/" id="nav-logo" class="gothic font-black text-lg tracking-widest glow-text" style="color:#e0c8d8;text-decoration:none;">⚔ V RISING</a>
+      <span class="gothic" style="display:inline-flex;align-items:center;padding:.3rem .75rem;border-radius:9999px;background:rgba(150,0,28,0.15);border:1px solid rgba(200,0,45,0.35);color:var(--gold);font-size:.68rem;letter-spacing:.06em;">Админ</span>
     </div>
     <div class="flex items-center gap-3">
       <span id="nav-username" class="text-sm" style="color:var(--muted);"></span>
@@ -959,7 +958,13 @@ function applySiteBackground(bg) {
   document.getElementById('nav-username').textContent = user.username;
 })();
 
-fetch(`${API}/settings/public`).then(r => r.json()).then(d => applySiteBackground(d.bg_image_url)).catch(() => {});
+fetch(`${API}/settings/public`).then(r => r.json()).then(d => {
+  applySiteBackground(d.bg_image_url);
+  const title = (d.site_title || 'V Rising').trim();
+  document.title = `${title} — Администратор`;
+  const logo = document.getElementById('nav-logo');
+  if (logo) logo.textContent = '⚔ ' + title.toUpperCase();
+}).catch(() => {});
 
 // ─── Sidebar badges ─────────────────────────────────────────────────────────
 async function loadSidebarBadges() {
@@ -1437,7 +1442,7 @@ function renderUsersTable() {
           const actions = isSelf
             ? `<span style="color:var(--muted);font-size:.75rem;">— вы</span>`
             : `<div style="display:flex;gap:.4rem;flex-wrap:wrap;">
-                <button class="btn-ghost" onclick="toggleRole(${u.id},'${u.role}')">${u.role === 'admin' ? 'Снять admin' : 'В admin'}</button>
+                <button class="btn-ghost" onclick="toggleRole(${u.id},'${u.role}')">${u.role === 'admin' ? 'Снять админку' : 'Сделать админом'}</button>
                 <button class="btn-ghost" onclick="toggleActive(${u.id})">${u.is_active ? 'Заблок.' : 'Разблок.'}</button>
                 <button class="btn-ghost" onclick="deleteUser(${u.id},'${u.username}')" style="color:#f87171;border-color:rgba(248,113,113,0.3);">Удалить</button>
                </div>`;
@@ -1445,7 +1450,7 @@ function renderUsersTable() {
             <td style="color:var(--muted);">${u.id}</td>
             <td style="font-weight:600;">${esc(u.username)}</td>
             <td style="color:var(--muted);">${esc(u.email)}</td>
-            <td style="${roleColor}font-weight:700;">${u.role}</td>
+            <td style="${roleColor}font-weight:700;">${u.role === 'admin' ? 'Админ' : 'Игрок'}</td>
             <td style="${activeColor}font-weight:600;">${u.is_active ? 'Да' : 'Нет'}</td>
             <td style="color:var(--muted);">${new Date(u.created_at).toLocaleDateString('ru-RU')}</td>
             <td>${actions}</td>
@@ -1459,7 +1464,7 @@ async function toggleRole(userId, cur) {
   const newRole = cur === 'admin' ? 'user' : 'admin';
   showConfirm({
     title: 'Изменить роль?',
-    text: `Роль пользователя будет изменена на «${newRole}».`,
+    text: `Роль пользователя будет изменена на «${newRole === 'admin' ? 'Админ' : 'Игрок'}».`,
     icon: '🛡', okLabel: 'Изменить',
     onOk: async () => {
       const res = await fetch(`${API}/admin/users/${userId}/role?role=${newRole}`, { method: 'PUT', headers: authH() });
