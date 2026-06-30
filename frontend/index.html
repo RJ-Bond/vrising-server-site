@@ -1347,7 +1347,7 @@
     </div>
 
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
-    <div id="left-circles" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;text-align:center;"></div>
+    <div id="left-circles" style="text-align:center;"></div>
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
     <div id="left-info" style="font-size:.78rem;display:flex;flex-direction:column;gap:.45rem;"></div>
 
@@ -1375,7 +1375,7 @@
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.55),transparent);margin:1.25rem 0;"></div>
       <div id="left-status2" style="margin-bottom:1rem;"></div>
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
-      <div id="left-circles2" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;text-align:center;"></div>
+      <div id="left-circles2" style="text-align:center;"></div>
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
       <div id="left-info2" style="font-size:.78rem;display:flex;flex-direction:column;gap:.45rem;"></div>
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
@@ -1677,19 +1677,12 @@ function renderServerBlock(d, sfx) {
 
   const circEl = document.getElementById('left-circles' + sfx);
   if (circEl) {
-    const tipOnline = `Игроков онлайн: ${d.players} из ${d.max_players}`;
-    const tipFill   = `Заполненность: ${pct}%`;
+    const tip = `Заполненность: ${pct}%`;
     circEl.innerHTML = `
-      <div title="${tipOnline}">
-        <div id="left-players${sfx}" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">0</div>
-        <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Игроки</div>
-      </div>
-      <div title="${tipFill}">
-        <div id="left-fillpct${sfx}" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">0%</div>
-        <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Заполнен</div>
+      <div title="${tip}">
+        <div style="font-size:1.4rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">${d.players}<span style="color:var(--muted);font-size:1rem;">/${d.max_players}</span></div>
+        <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Игроков</div>
       </div>`;
-    countUp(document.getElementById('left-players' + sfx), d.players);
-    countUpPct(document.getElementById('left-fillpct' + sfx), pct);
   }
 
   return { lbl, cls, name: d.name, players: d.players, max_players: d.max_players };
