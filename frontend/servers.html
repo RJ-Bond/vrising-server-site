@@ -398,7 +398,7 @@ async function loadServer(num) {
 function connectServer(num) {
   const addr = _connectInfo[num];
   if (!addr) return;
-  window.location.href = `steam://connect/${addr}`;
+  window.location.href = `steam://rungameid/1604030//+connect%20${addr}`;
 }
 
 function copyServerAddr(num, btn) {
