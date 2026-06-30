@@ -50,25 +50,48 @@
     @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
     .g-card { animation:fade-up .4s ease both; }
 
-    .lb-controls { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:1.25rem; }
+    .lb-controls { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:1rem; }
     .lb-toggle { display:flex; gap:.2rem; background:var(--panel); border:1px solid rgba(255,255,255,0.08); border-radius:.5rem; padding:2px; }
     .lb-toggle-btn { background:none; border:none; color:var(--muted); font-size:.74rem; font-weight:600; padding:.4rem .8rem; border-radius:.4rem; cursor:pointer; transition:all .15s; font-family:'Inter',sans-serif; }
     .lb-toggle-btn:hover { color:var(--text); }
     .lb-toggle-btn.active { background:linear-gradient(135deg,#7a001c,var(--crimson)); color:#fff; }
 
+    .lb-search-row { display:flex; gap:.5rem; margin-bottom:1.25rem; }
+    .lb-search-input {
+      flex:1; background:var(--panel); border:1px solid rgba(255,255,255,0.1); border-radius:.5rem;
+      padding:.5rem .8rem; color:var(--text); font-size:.82rem; outline:none; font-family:'Inter',sans-serif; transition:border-color .2s;
+    }
+    .lb-search-input:focus { border-color:rgba(200,0,40,0.45); }
+    .lb-find-me-btn {
+      background:var(--panel); border:1px solid rgba(201,169,74,0.3); color:var(--gold);
+      border-radius:.5rem; padding:.5rem .9rem; font-size:.78rem; font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap;
+    }
+    .lb-find-me-btn:hover { background:rgba(201,169,74,0.12); }
+    .lb-find-me-btn:disabled { opacity:.4; cursor:not-allowed; }
+
     .lb-row {
       display:flex; align-items:center; gap:.9rem; padding:.65rem .5rem;
       border-bottom:1px solid rgba(255,255,255,0.06); text-decoration:none; color:inherit;
-      transition:background .15s;
+      transition:background .15s; border-radius:.4rem;
     }
     .lb-row:hover { background:rgba(255,255,255,0.03); }
     .lb-row:last-child { border-bottom:none; }
+    .lb-row.me { background:rgba(201,169,74,0.08); border:1px solid rgba(201,169,74,0.3); padding-left:.4rem; padding-right:.4rem; }
     .lb-rank { font-family:'Oswald',sans-serif; font-size:1rem; font-weight:600; color:var(--muted); width:2.2rem; text-align:center; flex-shrink:0; }
     .lb-rank.top1 { color:#ffd54a; text-shadow:0 0 10px rgba(255,213,74,0.6); }
     .lb-rank.top2 { color:#d6d6e8; text-shadow:0 0 8px rgba(214,214,232,0.4); }
     .lb-rank.top3 { color:#e0a361; text-shadow:0 0 8px rgba(224,163,97,0.4); }
-    .lb-avatar { width:2rem; height:2rem; border-radius:50%; flex-shrink:0; object-fit:cover; background:radial-gradient(circle at 38% 32%, rgba(80,0,150,0.6), rgba(120,0,20,0.5)); display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:.85rem; color:#d4c4e0; }
-    .lb-name { font-family:'Philosopher',serif; font-size:.92rem; color:#ece3f7; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .lb-medal { font-size:1.1rem; }
+    .lb-avatar-wrap { position:relative; flex-shrink:0; }
+    .lb-avatar { width:2rem; height:2rem; border-radius:50%; object-fit:cover; background:radial-gradient(circle at 38% 32%, rgba(80,0,150,0.6), rgba(120,0,20,0.5)); display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:.85rem; color:#d4c4e0; }
+    .lb-online-dot {
+      position:absolute; bottom:-1px; right:-1px; width:.55rem; height:.55rem; border-radius:50%;
+      background:#2ee69b; border:2px solid var(--card); box-shadow:0 0 5px #2ee69b; display:none;
+    }
+    .lb-online-dot.show { display:block; }
+    .lb-name-col { flex:1; min-width:0; }
+    .lb-name { font-family:'Philosopher',serif; font-size:.92rem; color:#ece3f7; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
+    .lb-last-session { font-size:.62rem; color:var(--muted); }
     .lb-time { font-family:'Oswald',sans-serif; font-size:.85rem; color:var(--gold); white-space:nowrap; flex-shrink:0; }
     .lb-seen { font-size:.66rem; color:var(--muted); white-space:nowrap; flex-shrink:0; min-width:5.5rem; text-align:right; }
 
@@ -129,8 +152,13 @@
       </div>
       <div class="lb-toggle" id="lb-period-toggle">
         <button class="lb-toggle-btn active" data-period="all" onclick="setPeriod('all',this)">Всё время</button>
+        <button class="lb-toggle-btn" data-period="month" onclick="setPeriod('month',this)">Месяц</button>
         <button class="lb-toggle-btn" data-period="week" onclick="setPeriod('week',this)">Неделя</button>
       </div>
+    </div>
+    <div class="lb-search-row">
+      <input id="lb-search" type="text" class="lb-search-input" placeholder="Поиск по нику…" oninput="onSearchInput()">
+      <button class="lb-find-me-btn" id="lb-find-me" onclick="findMe()" style="display:none;">📍 Найти себя</button>
     </div>
     <div id="lb-list"><p class="lb-empty">Загрузка…</p></div>
     <div class="lb-pagination" id="lb-pagination" style="display:none;">
@@ -145,8 +173,11 @@
 const API = '/api';
 const PER_PAGE = 25;
 let _server = 1, _period = 'all', _page = 1;
+let _onlineNames = new Set();
+let _searchTimer = null;
 
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
+function getUser() { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 function fmtPlaytime(sec) {
@@ -177,6 +208,7 @@ function applySiteBackground(bg) {
   if (getToken()) {
     document.getElementById('nav-profile-link').style.display = '';
     document.getElementById('nav-login-link').style.display = 'none';
+    document.getElementById('lb-find-me').style.display = '';
   }
 })();
 
@@ -211,26 +243,55 @@ function changePage(delta) {
   _page = Math.max(1, _page + delta);
   loadLeaderboard();
 }
+function onSearchInput() {
+  clearTimeout(_searchTimer);
+  _searchTimer = setTimeout(() => { _page = 1; loadLeaderboard(); }, 350);
+}
+
+async function loadOnlineStatus() {
+  _onlineNames = new Set();
+  try {
+    const url = _server === 1 ? `${API}/monitor/status` : `${API}/monitor/status2`;
+    const d = await fetch(url).then(r => r.json());
+    (d.players_list || []).forEach(p => _onlineNames.add(p.name));
+  } catch {}
+}
 
 async function loadLeaderboard() {
   const list = document.getElementById('lb-list');
   const pag = document.getElementById('lb-pagination');
   list.innerHTML = '<p class="lb-empty">Загрузка…</p>';
+  const searchQ = document.getElementById('lb-search').value.trim();
   try {
-    const items = await fetch(`${API}/leaderboard?server=${_server}&period=${_period}&page=${_page}&per_page=${PER_PAGE}`).then(r => r.json());
+    const [items] = await Promise.all([
+      fetch(`${API}/leaderboard?server=${_server}&period=${_period}&q=${encodeURIComponent(searchQ)}&page=${_page}&per_page=${PER_PAGE}`).then(r => r.json()),
+      loadOnlineStatus(),
+    ]);
+    const me = getUser();
     if (!items.length) {
-      list.innerHTML = `<p class="lb-empty">${_page > 1 ? 'Дальше игроков нет' : 'Нет данных за этот период'}</p>`;
+      const emptyMsg = _page > 1 ? 'Дальше игроков нет' : (searchQ ? 'Никого не найдено' : 'Нет данных за этот период');
+      list.innerHTML = `<p class="lb-empty">${emptyMsg}</p>`;
     } else {
       const offset = (_page - 1) * PER_PAGE;
       list.innerHTML = items.map((p, i) => {
         const rank = offset + i + 1;
         const rankCls = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
+        const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
         const name = p.player_name || 'Аноним';
         const initial = name.charAt(0).toUpperCase();
-        return `<a class="lb-row" href="/user.html?u=${encodeURIComponent(name)}">
-          <span class="lb-rank ${rankCls}">${rank}</span>
-          <span class="lb-avatar">${esc(initial)}</span>
-          <span class="lb-name">${esc(name)}</span>
+        const isOnline = _onlineNames.has(name);
+        const isMe = me && me.username === name;
+        const avatarHtml = p.avatar_url
+          ? `<img class="lb-avatar" src="${esc(p.avatar_url)}" alt="">`
+          : `<span class="lb-avatar">${esc(initial)}</span>`;
+        const lastSession = p.last_duration > 0 ? `<span class="lb-last-session">посл. сессия: ${fmtPlaytime(p.last_duration)}</span>` : '';
+        return `<a class="lb-row${isMe ? ' me' : ''}" href="/user.html?u=${encodeURIComponent(name)}">
+          <span class="lb-rank ${rankCls}">${medal ? `<span class="lb-medal">${medal}</span>` : rank}</span>
+          <span class="lb-avatar-wrap">${avatarHtml}<span class="lb-online-dot${isOnline ? ' show' : ''}"></span></span>
+          <span class="lb-name-col">
+            <span class="lb-name">${esc(name)}</span>
+            ${lastSession}
+          </span>
           <span class="lb-time">${fmtPlaytime(p.total_seconds)}</span>
           <span class="lb-seen">${fmtSeen(p.last_seen)}</span>
         </a>`;
@@ -242,6 +303,41 @@ async function loadLeaderboard() {
     document.getElementById('lb-next').disabled = items.length < PER_PAGE;
   } catch {
     list.innerHTML = '<p class="lb-empty">Ошибка загрузки.</p>';
+  }
+}
+
+async function findMe() {
+  const user = getUser();
+  if (!user) return;
+  const btn = document.getElementById('lb-find-me');
+  const original = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Ищем…';
+  try {
+    const searchPerPage = 100;
+    let found = false;
+    for (let p = 1; p <= 20; p++) {
+      const items = await fetch(`${API}/leaderboard?server=${_server}&period=${_period}&page=${p}&per_page=${searchPerPage}`).then(r => r.json());
+      const idx = items.findIndex(it => it.player_name === user.username);
+      if (idx !== -1) {
+        const globalRank = (p - 1) * searchPerPage + idx;
+        _page = Math.floor(globalRank / PER_PAGE) + 1;
+        document.getElementById('lb-search').value = '';
+        await loadLeaderboard();
+        const myRow = document.querySelector('.lb-row.me');
+        if (myRow) myRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        found = true;
+        break;
+      }
+      if (items.length < searchPerPage) break;
+    }
+    if (!found) { btn.textContent = 'Не найдено'; setTimeout(() => { btn.textContent = original; }, 2000); }
+  } catch {
+    btn.textContent = 'Ошибка';
+    setTimeout(() => { btn.textContent = original; }, 2000);
+  } finally {
+    btn.disabled = false;
+    if (btn.textContent === 'Ищем…') btn.textContent = original;
   }
 }
 

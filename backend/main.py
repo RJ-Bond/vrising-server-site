@@ -1264,19 +1264,36 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
 async def get_leaderboard(
     server: int = Query(1),
     period: str = Query("all"),
+    q: str = Query(""),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    q = select(PlayerRecord).where(PlayerRecord.server_num == server)
-    if period == "week":
+    from datetime import timedelta
+
+    query = select(PlayerRecord).where(PlayerRecord.server_num == server)
+    if period in ("week", "month"):
         cutoff = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-        from datetime import timedelta
-        cutoff -= timedelta(days=7)
-        q = q.where(PlayerRecord.last_seen >= cutoff)
-    q = q.order_by(PlayerRecord.total_seconds.desc()).offset((page - 1) * per_page).limit(per_page)
-    result = await db.execute(q)
-    return [PlayerRecordOut.model_validate(r) for r in result.scalars().all()]
+        cutoff -= timedelta(days=7 if period == "week" else 30)
+        query = query.where(PlayerRecord.last_seen >= cutoff)
+    if q.strip():
+        query = query.where(PlayerRecord.player_name.ilike(f"%{q.strip()}%"))
+    query = query.order_by(PlayerRecord.total_seconds.desc()).offset((page - 1) * per_page).limit(per_page)
+    result = await db.execute(query)
+    records = result.scalars().all()
+
+    avatar_map = {}
+    if records:
+        names = [r.player_name for r in records]
+        users_result = await db.execute(select(User.username, User.avatar_url).where(User.username.in_(names)))
+        avatar_map = {u.username: u.avatar_url for u in users_result.all()}
+
+    out = []
+    for r in records:
+        item = PlayerRecordOut.model_validate(r)
+        item.avatar_url = avatar_map.get(r.player_name)
+        out.append(item)
+    return out
 
 
 @app.delete("/api/admin/leaderboard/{record_id}", status_code=204)

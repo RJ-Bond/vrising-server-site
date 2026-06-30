@@ -115,6 +115,8 @@ class PlayerRecordOut(BaseModel):
     player_name: str
     total_seconds: int
     last_seen: Optional[datetime] = None
+    last_duration: int = 0
+    avatar_url: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
