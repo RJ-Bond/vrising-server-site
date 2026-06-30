@@ -426,7 +426,7 @@ async function loadProfile() {
     statusEl.textContent = u.is_active ? '✔ Активен' : '✘ Заблокирован';
     statusEl.style.color = u.is_active ? '#4ade80' : '#f87171';
 
-    const rulesDate = localStorage.getItem('rules_accepted');
+    const rulesDate = u.rules_accepted_at ? new Date(u.rules_accepted_at).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' }) : null;
     const rulesEl = document.getElementById('profile-rules');
     if (rulesEl) {
       if (rulesDate) {

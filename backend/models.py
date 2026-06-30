@@ -19,6 +19,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     avatar_url = Column(String(512), nullable=True)
     clan_id = Column(Integer, ForeignKey("clans.id", ondelete="SET NULL"), nullable=True)
+    rules_accepted_at = Column(DateTime, nullable=True)
 
 
 class Clan(Base):

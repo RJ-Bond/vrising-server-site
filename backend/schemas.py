@@ -38,6 +38,7 @@ class UserOut(BaseModel):
     is_active: bool
     created_at: datetime
     avatar_url: Optional[str] = None
+    rules_accepted_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 

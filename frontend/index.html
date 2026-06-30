@@ -2348,7 +2348,7 @@ function toggleRules() {
   chevron.classList.toggle('open', !collapsed);
 }
 
-function initRulesReveal() {
+async function initRulesReveal() {
   const items = document.querySelectorAll('.rule-item');
   if (!items.length) return;
 
@@ -2365,8 +2365,18 @@ function initRulesReveal() {
   if (progressWrap) progressWrap.style.display = '';
   if (acceptWrap)   acceptWrap.style.display = '';
 
-  // Restore previously accepted state (only for logged-in users)
-  const savedDate = getToken() ? localStorage.getItem('rules_accepted') : null;
+  // Acceptance state lives on the account server-side (not localStorage),
+  // so it survives browser data clears and follows the user across devices.
+  let savedDate = null;
+  const token = getToken();
+  if (token) {
+    try {
+      const me = await fetch(`${API}/auth/me`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.ok ? r.json() : null);
+      if (me && me.rules_accepted_at) {
+        savedDate = new Date(me.rules_accepted_at).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
+      }
+    } catch {}
+  }
   if (savedDate && acceptBtn) {
     acceptBtn.textContent = '✓ Принято ' + savedDate;
     acceptBtn.classList.add('accepted');
@@ -2402,18 +2412,25 @@ function initRulesReveal() {
   items.forEach(el => observer.observe(el));
 }
 
-function acceptRules() {
+async function acceptRules() {
   const btn = document.getElementById('rules-accept-btn');
   if (!btn || btn.classList.contains('accepted')) return;
-  if (!getToken()) {
+  const token = getToken();
+  if (!token) {
     window.location.href = '/login.html';
     return;
   }
-  const date = new Date().toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
-  localStorage.setItem('rules_accepted', date);
-  btn.textContent = '✓ Принято ' + date;
-  btn.classList.remove('ready');
-  btn.classList.add('accepted');
+  try {
+    const res = await fetch(`${API}/auth/accept-rules`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+    if (!res.ok) throw new Error();
+    const me = await res.json();
+    const date = new Date(me.rules_accepted_at).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
+    btn.textContent = '✓ Принято ' + date;
+    btn.classList.remove('ready');
+    btn.classList.add('accepted');
+  } catch {
+    alert('Не удалось сохранить принятие правил. Попробуйте ещё раз.');
+  }
 }
 
 // ── Site settings ──────────────────────────────────────────────────────────

@@ -151,6 +151,7 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE news ADD COLUMN views INTEGER DEFAULT 0 NOT NULL",
             "ALTER TABLE news ADD COLUMN pinned BOOLEAN DEFAULT 0 NOT NULL",
             "ALTER TABLE users ADD COLUMN clan_id INTEGER DEFAULT NULL",
+            "ALTER TABLE users ADD COLUMN rules_accepted_at DATETIME DEFAULT NULL",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -358,6 +359,19 @@ async def logout(current_user: User = Depends(get_current_user), request: Reques
 @app.get("/api/auth/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user)):
     return UserOut.model_validate(current_user)
+
+
+@app.post("/api/auth/accept-rules", response_model=UserOut)
+async def accept_rules(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one()
+    user.rules_accepted_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(user)
+    return UserOut.model_validate(user)
 
 
 @app.post("/api/auth/change-password")
