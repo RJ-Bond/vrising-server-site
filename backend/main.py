@@ -120,7 +120,7 @@ async def _seed_defaults(db: AsyncSession):
     await db.flush()
 
     # Если администратор уже существует — считаем настройку завершённой
-    admin_result = await db.execute(select(User).where(User.role == "admin"))
+    admin_result = await db.execute(select(User).where(User.role == "admin").limit(1))
     if admin_result.scalar_one_or_none():
         sc = await db.execute(select(Setting).where(Setting.key == "setup_completed"))
         sc_row = sc.scalar_one_or_none()
@@ -205,7 +205,7 @@ async def setup_status(db: AsyncSession = Depends(get_db)):
     s = result.scalar_one_or_none()
     if s and s.value == "true":
         return {"completed": True}
-    admin_result = await db.execute(select(User).where(User.role == "admin"))
+    admin_result = await db.execute(select(User).where(User.role == "admin").limit(1))
     if admin_result.scalar_one_or_none():
         return {"completed": True}
     return {"completed": False}
@@ -215,7 +215,7 @@ async def setup_status(db: AsyncSession = Depends(get_db)):
 async def setup_complete(body: SetupComplete, db: AsyncSession = Depends(get_db)):
     sc_result = await db.execute(select(Setting).where(Setting.key == "setup_completed"))
     sc = sc_result.scalar_one_or_none()
-    admin_result = await db.execute(select(User).where(User.role == "admin"))
+    admin_result = await db.execute(select(User).where(User.role == "admin").limit(1))
     if (sc and sc.value == "true") or admin_result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Setup already completed")
     existing = await db.execute(select(User).where(
