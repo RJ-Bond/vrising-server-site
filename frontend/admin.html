@@ -938,12 +938,28 @@ function getToken() { return localStorage.getItem('token') || sessionStorage.get
 function authH()   { return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' }; }
 function logout()  { ['token','user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); }); window.location.href = '/login.html'; }
 
+function applySiteBackground(bg) {
+  bg = (bg || '').trim();
+  if (!bg) return;
+  document.body.style.backgroundImage = [
+    'radial-gradient(ellipse at 20% 60%, rgba(80,0,120,0.16) 0%, transparent 55%)',
+    'radial-gradient(ellipse at 80% 20%, rgba(150,0,28,0.12) 0%, transparent 50%)',
+    'linear-gradient(rgba(8,0,16,0.78), rgba(8,0,16,0.78))',
+    `url('${bg}')`,
+  ].join(',');
+  document.body.style.backgroundSize = 'auto,auto,auto,cover';
+  document.body.style.backgroundPosition = 'center,center,center,center';
+  document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
+}
+
 (function() {
   const token = getToken();
   const user = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
   if (!token || !user || user.role !== 'admin') { window.location.href = '/login.html'; return; }
   document.getElementById('nav-username').textContent = user.username;
 })();
+
+fetch(`${API}/settings/public`).then(r => r.json()).then(d => applySiteBackground(d.bg_image_url)).catch(() => {});
 
 // ─── Sidebar badges ─────────────────────────────────────────────────────────
 async function loadSidebarBadges() {
