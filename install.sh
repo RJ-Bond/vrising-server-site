@@ -67,21 +67,27 @@ copy_project_files() {
   _ver=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "dev")
   echo "$_ver" > "$SCRIPT_DIR/VERSION"
 
+  if [[ "$(readlink -f "$SCRIPT_DIR")" == "$(readlink -f "$INSTALL_DIR")" ]]; then
+    ok "Исходники и $INSTALL_DIR — одна и та же директория, git pull уже обновил файлы на месте."
+    chmod +x "$INSTALL_DIR/enable-https.sh" "$INSTALL_DIR/install.sh"
+    return 0
+  fi
+
   for f in docker-compose.yml Dockerfile requirements.txt VERSION enable-https.sh install.sh; do
     [[ -f "$SCRIPT_DIR/$f" ]] || die "Файл не найден: $SCRIPT_DIR/$f"
     cp "$SCRIPT_DIR/$f" "$INSTALL_DIR/$f"
   done
   chmod +x "$INSTALL_DIR/enable-https.sh" "$INSTALL_DIR/install.sh"
 
-  for f in main.py models.py database.py auth.py monitor.py schemas.py __init__.py; do
-    [[ -f "$SCRIPT_DIR/backend/$f" ]] || die "Файл не найден: $SCRIPT_DIR/backend/$f"
-    cp "$SCRIPT_DIR/backend/$f" "$INSTALL_DIR/backend/$f"
-  done
+  shopt -s nullglob
+  backend_files=("$SCRIPT_DIR"/backend/*.py)
+  [[ ${#backend_files[@]} -gt 0 ]] || die "В $SCRIPT_DIR/backend нет .py файлов"
+  cp "${backend_files[@]}" "$INSTALL_DIR/backend/"
 
-  for f in index.html login.html admin.html setup.html profile.html; do
-    [[ -f "$SCRIPT_DIR/frontend/$f" ]] || die "Файл не найден: $SCRIPT_DIR/frontend/$f"
-    cp "$SCRIPT_DIR/frontend/$f" "$INSTALL_DIR/frontend/$f"
-  done
+  frontend_files=("$SCRIPT_DIR"/frontend/*.html "$SCRIPT_DIR"/frontend/robots.txt)
+  [[ ${#frontend_files[@]} -gt 0 ]] || die "В $SCRIPT_DIR/frontend нет файлов для копирования"
+  cp "${frontend_files[@]}" "$INSTALL_DIR/frontend/"
+  shopt -u nullglob
 
   [[ -f "$SCRIPT_DIR/nginx/nginx.conf" ]] || die "Файл не найден: $SCRIPT_DIR/nginx/nginx.conf"
   cp "$SCRIPT_DIR/nginx/nginx.conf" "$INSTALL_DIR/nginx/nginx.conf"
