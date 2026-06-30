@@ -124,7 +124,7 @@
   <div class="g-card">
     <div class="lb-controls">
       <div class="lb-toggle" id="lb-server-toggle">
-        <button class="lb-toggle-btn active" data-server="1" onclick="setServer(1,this)">Сервер 1</button>
+        <button class="lb-toggle-btn active" data-server="1" onclick="setServer(1,this)" id="lb-server1-btn">Сервер 1</button>
         <button class="lb-toggle-btn" data-server="2" onclick="setServer(2,this)" id="lb-server2-btn" style="display:none;">Сервер 2</button>
       </div>
       <div class="lb-toggle" id="lb-period-toggle">
@@ -187,8 +187,12 @@ function applySiteBackground(bg) {
     document.title = `${title} — Игроки (Топ)`;
     document.getElementById('nav-logo').textContent = '⚔ ' + title;
     applySiteBackground(d.bg_image_url);
-    if ((d.server2_name || '').trim()) {
-      document.getElementById('lb-server2-btn').style.display = '';
+    document.getElementById('lb-server1-btn').textContent = (d.server_name || '').trim() || 'Сервер 1';
+    const srv2Name = (d.server2_name || '').trim();
+    if (srv2Name) {
+      const btn2 = document.getElementById('lb-server2-btn');
+      btn2.textContent = srv2Name;
+      btn2.style.display = '';
     }
   } catch {}
 })();
