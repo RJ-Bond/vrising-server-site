@@ -95,6 +95,7 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="server_ip", value=os.getenv("VRISING_SERVER_IP", "127.0.0.1")),
         Setting(key="server_port", value=os.getenv("VRISING_SERVER_PORT", "27016")),
         Setting(key="server_game_port", value=""),
+        Setting(key="server_connect_ip", value=""),
         Setting(key="server_name", value="V Rising Server"),
         Setting(key="site_title", value="V RISING"),
         Setting(key="site_tagline", value="Замок"),
@@ -106,6 +107,7 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="server2_ip", value=""),
         Setting(key="server2_port", value="27016"),
         Setting(key="server2_game_port", value=""),
+        Setting(key="server2_connect_ip", value=""),
         Setting(key="discord_server_id", value=""),
         Setting(key="wipe_date", value=""),
         Setting(key="wipe_type", value="full"),
@@ -569,19 +571,20 @@ async def _save_snapshot(db: AsyncSession, data: dict, server_num: int):
 @app.get("/api/monitor/status")
 async def server_status(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(Setting).where(Setting.key.in_(["server_ip", "server_port", "server_name", "server_game_port"]))
+        select(Setting).where(Setting.key.in_(["server_ip", "server_port", "server_name", "server_game_port", "server_connect_ip"]))
     )
     cfg = {s.key: s.value for s in result.scalars().all()}
     ip = cfg.get("server_ip", "127.0.0.1")
     port = int(cfg.get("server_port", "27016"))
     admin_name = cfg.get("server_name", "").strip()
     game_port_str = cfg.get("server_game_port", "").strip()
+    connect_ip = cfg.get("server_connect_ip", "").strip() or ip
     data = await get_server_status(ip, port)
     if admin_name:
         data = {**data, "name": admin_name}
     elif not data.get("name") or data.get("name") == "Unknown":
         data = {**data, "name": "V Rising Server"}
-    data = {**data, "ip": ip, "game_port": int(game_port_str) if game_port_str.isdigit() else None}
+    data = {**data, "ip": connect_ip, "game_port": int(game_port_str) if game_port_str.isdigit() else None}
     await _track_players(db, data.get("players_list", []), 1)
     await _save_snapshot(db, data, 1)
     return data
@@ -675,7 +678,7 @@ async def get_monitor_stats(server: int = Query(1), db: AsyncSession = Depends(g
 @app.get("/api/monitor/status2")
 async def server_status2(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
-        select(Setting).where(Setting.key.in_(["server2_ip", "server2_port", "server2_name", "server2_game_port"]))
+        select(Setting).where(Setting.key.in_(["server2_ip", "server2_port", "server2_name", "server2_game_port", "server2_connect_ip"]))
     )
     cfg = {s.key: s.value for s in result.scalars().all()}
     ip = cfg.get("server2_ip", "").strip()
@@ -686,12 +689,13 @@ async def server_status2(db: AsyncSession = Depends(get_db)):
     port_str = cfg.get("server2_port", "27016")
     port = int(port_str) if port_str.isdigit() else 27016
     game_port_str = cfg.get("server2_game_port", "").strip()
+    connect_ip = cfg.get("server2_connect_ip", "").strip() or ip
     data = await get_server_status(ip, port)
     if admin_name:
         data = {**data, "name": admin_name}
     elif not data.get("name") or data.get("name") == "Unknown":
         data = {**data, "name": "Server 2"}
-    data = {**data, "ip": ip, "game_port": int(game_port_str) if game_port_str.isdigit() else None}
+    data = {**data, "ip": connect_ip, "game_port": int(game_port_str) if game_port_str.isdigit() else None}
     await _track_players(db, data.get("players_list", []), 2)
     await _save_snapshot(db, data, 2)
     return {"enabled": True, **data}
@@ -1111,8 +1115,8 @@ async def get_public_settings(db: AsyncSession = Depends(get_db)):
 # ─── Settings (admin) ────────────────────────────────────────────────────────
 
 ALLOWED_SETTING_KEYS = {
-    "setup_completed", "server_ip", "server_port", "server_game_port", "server_name",
-    "server2_name", "server2_ip", "server2_port", "server2_game_port",
+    "setup_completed", "server_ip", "server_port", "server_game_port", "server_connect_ip", "server_name",
+    "server2_name", "server2_ip", "server2_port", "server2_game_port", "server2_connect_ip",
     "site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id",
     "bg_image_url", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2",
     "event_active", "event_title", "event_text", "event_color",

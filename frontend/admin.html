@@ -451,7 +451,15 @@
               <input id="setting-server_game_port" type="number" min="1" max="65535" class="dark-input" placeholder="27015">
               <button class="s-save-btn" onclick="saveSetting('server_game_port')">Сохранить</button>
             </div>
-            <p class="s-desc">Порт, на который реально заходят игроки (обычно Query-порт − 1). Заполните, чтобы на странице «Сервера» появилась кнопка «Подключиться»</p>
+            <p class="s-desc">Порт, на который реально заходят игроки (обычно Query-порт − 1). Заполните, чтобы появилась кнопка «Подключиться»</p>
+          </div>
+          <div class="s-field">
+            <label>Внешний IP (для подключения)</label>
+            <div class="s-field-row">
+              <input id="setting-server_connect_ip" type="text" class="dark-input" placeholder="Пусто — берётся IP выше">
+              <button class="s-save-btn" onclick="saveSetting('server_connect_ip')">Сохранить</button>
+            </div>
+            <p class="s-desc">Заполните, если IP выше — локальный/внутренний (для опроса сайтом) и отличается от внешнего адреса, по которому подключаются игроки</p>
           </div>
           <div class="s-field">
             <label>Отображаемое название</label>
@@ -520,6 +528,14 @@
               <button class="s-save-btn" onclick="saveSetting('server2_game_port')">Сохранить</button>
             </div>
             <p class="s-desc">Порт, на который реально заходят игроки (обычно Query-порт − 1)</p>
+          </div>
+          <div class="s-field">
+            <label>Внешний IP (для подключения)</label>
+            <div class="s-field-row">
+              <input id="setting-server2_connect_ip" type="text" class="dark-input" placeholder="Пусто — берётся IP выше">
+              <button class="s-save-btn" onclick="saveSetting('server2_connect_ip')">Сохранить</button>
+            </div>
+            <p class="s-desc">Заполните, если IP выше — локальный/внутренний и отличается от внешнего адреса для игроков</p>
           </div>
           <div class="s-field">
             <label style="display:flex;align-items:center;gap:.4rem;">
@@ -1236,7 +1252,7 @@ async function submitEditor() {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
-const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_name','server2_name','server2_ip','server2_port','server2_game_port','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color'];
+const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color'];
 let _settingsBaseline = {};
 
 async function loadSettings() {
@@ -2013,8 +2029,8 @@ async function exportSettings() {
 }
 
 const _ALLOWED_SETTING_KEYS = new Set([
-  'setup_completed','server_ip','server_port','server_game_port','server_name',
-  'server2_name','server2_ip','server2_port','server2_game_port',
+  'setup_completed','server_ip','server_port','server_game_port','server_connect_ip','server_name',
+  'server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip',
   'site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id',
   'bg_image_url','wipe_date','wipe_type','wipe_date2','wipe_type2',
   'event_active','event_title','event_text','event_color',
