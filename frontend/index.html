@@ -324,9 +324,12 @@
       color:var(--muted); text-decoration:none; font-size:.82rem;
       transition:background .2s, border-color .2s, box-shadow .2s, color .2s;
       position:relative; overflow:hidden;
+      transform:translateZ(0);
+      background-clip:padding-box;
     }
     .nav-link-item::after {
       content:''; position:absolute; left:-100%; top:0; bottom:0; width:60%;
+      border-radius:inherit;
       background:linear-gradient(90deg, transparent, rgba(200,0,40,0.1), transparent);
       transition:left .45s ease; pointer-events:none;
     }
