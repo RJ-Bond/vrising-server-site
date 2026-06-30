@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>V Rising — Игроки (Топ)</title>
+  <title>V Rising — Игроки</title>
   <meta name="description" content="Рейтинг игроков V Rising по времени в игре — полный список лидеров сервера." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
@@ -100,7 +100,7 @@
     <div style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;">
       <a href="/" class="topnav-link">Главная</a>
       <a href="/servers.html" class="topnav-link">Сервера</a>
-      <a href="/leaderboard.html" class="topnav-link active">Игроки (Топ)</a>
+      <a href="/leaderboard.html" class="topnav-link active">Игроки</a>
       <a href="/clans.html" class="topnav-link">Кланы</a>
       <a href="/map.html" class="topnav-link">Карта</a>
       <a href="/bans.html" class="topnav-link">Баны</a>
@@ -115,7 +115,7 @@
   <div style="text-align:center;margin-bottom:1.75rem;">
     <div style="display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:.5rem;">
       <span style="height:1px;width:36px;background:linear-gradient(90deg,transparent,var(--gold));"></span>
-      <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;">Игроки (Топ)</h1>
+      <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;">Игроки</h1>
       <span style="height:1px;width:36px;background:linear-gradient(90deg,var(--gold),transparent);"></span>
     </div>
     <p style="font-size:.8rem;color:var(--muted);">Рейтинг по суммарному времени в игре</p>
@@ -184,7 +184,7 @@ function applySiteBackground(bg) {
   try {
     const d = await fetch(`${API}/settings/public`).then(r => r.json());
     const title = (d.site_title || 'V Rising').trim();
-    document.title = `${title} — Игроки (Топ)`;
+    document.title = `${title} — Игроки`;
     document.getElementById('nav-logo').textContent = '⚔ ' + title;
     applySiteBackground(d.bg_image_url);
     document.getElementById('lb-server1-btn').textContent = (d.server_name || '').trim() || 'Сервер 1';
