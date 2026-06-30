@@ -62,6 +62,30 @@
     .srv-dot.pulse { animation:srv-pulse 1.6s ease-in-out infinite; }
     @keyframes srv-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
 
+    @keyframes skel-pulse { 0%,100%{opacity:.35} 50%{opacity:.85} }
+    .skel { animation:skel-pulse 1.3s ease-in-out infinite; }
+
+    .srv-wipe-chip {
+      font-size:.65rem; font-weight:600; color:var(--muted); background:rgba(8,0,16,0.5);
+      border:1px solid rgba(110,0,20,0.25); border-radius:9999px; padding:.2rem .6rem;
+      display:inline-flex; align-items:center; gap:.3rem; margin-bottom:1rem;
+    }
+    .srv-wipe-chip.urgent { color:#f87171; border-color:rgba(200,0,30,0.4); background:rgba(150,0,20,0.15); }
+
+    .srv-connect-row { display:flex; gap:.6rem; margin-bottom:1.25rem; }
+    .srv-connect-btn {
+      flex:1; background:linear-gradient(135deg,#7a001c,var(--accent)); border:none; color:#fff;
+      font-size:.78rem; font-weight:700; padding:.55rem 1rem; border-radius:.55rem; cursor:pointer;
+      box-shadow:0 0 16px rgba(0,0,0,0.3); transition:transform .15s, box-shadow .2s;
+      display:inline-flex; align-items:center; justify-content:center; gap:.4rem;
+    }
+    .srv-connect-btn:hover { transform:translateY(-1px); box-shadow:0 0 22px var(--accent); }
+    .srv-copy-btn {
+      background:rgba(40,0,80,0.3); border:1px solid rgba(110,0,150,0.35); color:var(--muted);
+      border-radius:.55rem; padding:.55rem .9rem; font-size:.78rem; cursor:pointer; transition:all .2s;
+    }
+    .srv-copy-btn:hover { color:var(--text); border-color:rgba(150,50,200,0.5); }
+
     .srv-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.7rem; margin-bottom:1.25rem; }
     .srv-stat-box { background:rgba(8,0,16,0.55); border:1px solid rgba(110,0,20,0.2); border-radius:.6rem; padding:.7rem .5rem; text-align:center; }
     .srv-stat-val { font-family:'Oswald',sans-serif; font-size:1.3rem; font-weight:600; color:var(--accent); line-height:1; }
@@ -83,6 +107,8 @@
     .srv-players-row { display:flex; align-items:center; justify-content:space-between; padding:.4rem 0; border-bottom:1px solid rgba(110,0,20,0.1); font-size:.82rem; }
     .srv-players-row:last-child { border-bottom:none; }
     .srv-player-dot { width:.4rem; height:.4rem; border-radius:50%; flex-shrink:0; }
+    .srv-player-link { text-decoration:none; display:flex; align-items:center; gap:.5rem; min-width:0; }
+    .srv-player-link:hover .srv-player-name { color:#fff; text-decoration:underline; }
 
     .srv-empty { color:var(--muted); font-size:.78rem; font-style:italic; text-align:center; padding:1rem 0; }
 
@@ -139,14 +165,45 @@ function fmtDuration(sec) {
   }
 })();
 
+let _wipeSettings = {};
+
 (async function() {
   try {
     const d = await fetch(`${API}/settings/public`).then(r => r.json());
     const title = (d.site_title || 'V Rising').trim();
     document.title = `${title} — Сервера`;
     document.getElementById('nav-logo').textContent = '⚔ ' + title;
+    _wipeSettings = {
+      1: { date: (d.wipe_date || '').trim(), type: d.wipe_type || 'full' },
+      2: { date: (d.wipe_date2 || '').trim(), type: d.wipe_type2 || 'full' },
+    };
+    [1, 2].forEach(renderWipeChip);
+    setInterval(() => [1, 2].forEach(renderWipeChip), 60000);
   } catch {}
 })();
+
+const WIPE_TYPE_LABELS = { full: 'Полный вайп', map: 'Вайп карты', progress: 'Вайп прогресса' };
+
+function renderWipeChip(num) {
+  const el = document.getElementById(`srv-wipe-${num}`);
+  const w = _wipeSettings[num];
+  if (!el || !w || !w.date) { if (el) el.style.display = 'none'; return; }
+  const date = new Date(w.date);
+  if (isNaN(date)) { el.style.display = 'none'; return; }
+  const diff = date.getTime() - Date.now();
+  const label = WIPE_TYPE_LABELS[w.type] || 'Вайп';
+  if (diff <= 0) {
+    el.textContent = `🗡 ${label}: сервер сброшен`;
+    el.classList.remove('urgent');
+  } else {
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    el.textContent = `🗡 ${label} через ${d}д ${h}ч`;
+    el.classList.toggle('urgent', d < 7);
+  }
+  el.title = date.toLocaleDateString('ru-RU', { day:'numeric', month:'long', year:'numeric' });
+  el.style.display = 'inline-flex';
+}
 
 const SERVER_THEMES = {
   1: { accent: '#e05575', accentRgb: '224,85,117' },
@@ -160,19 +217,24 @@ function srvCardSkeleton(num) {
     <div class="srv-head">
       <img src="/icon-vrising.png" alt="" class="srv-icon">
       <div class="srv-name" id="srv-name-${num}">Сервер ${num}</div>
-      <span class="srv-badge off" id="srv-badge-${num}"><span class="srv-dot"></span>Загрузка</span>
+      <span class="srv-badge off skel" id="srv-badge-${num}"><span class="srv-dot"></span>Загрузка</span>
+    </div>
+    <span class="srv-wipe-chip" id="srv-wipe-${num}" style="display:none;"></span>
+    <div class="srv-connect-row" id="srv-connect-${num}" style="display:none;">
+      <button class="srv-connect-btn" onclick="connectServer(${num})">🎮 Подключиться</button>
+      <button class="srv-copy-btn" onclick="copyServerAddr(${num},this)">📋 IP</button>
     </div>
     <div class="srv-stat-grid">
-      <div class="srv-stat-box"><div class="srv-stat-val" id="srv-players-${num}">—</div><div class="srv-stat-lbl">Игроков</div></div>
-      <div class="srv-stat-box"><div class="srv-stat-val" id="srv-ping-${num}" style="font-size:1.1rem;">—</div><div class="srv-stat-lbl">Пинг</div></div>
-      <div class="srv-stat-box"><div class="srv-stat-val" id="srv-map-${num}" style="font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div><div class="srv-stat-lbl">Карта</div></div>
-      <div class="srv-stat-box"><div class="srv-stat-val" id="srv-version-${num}" style="font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div><div class="srv-stat-lbl">Версия</div></div>
+      <div class="srv-stat-box"><div class="srv-stat-val skel" id="srv-players-${num}">—</div><div class="srv-stat-lbl">Игроков</div></div>
+      <div class="srv-stat-box"><div class="srv-stat-val skel" id="srv-ping-${num}" style="font-size:1.1rem;">—</div><div class="srv-stat-lbl">Пинг</div></div>
+      <div class="srv-stat-box"><div class="srv-stat-val skel" id="srv-map-${num}" style="font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div><div class="srv-stat-lbl">Карта</div></div>
+      <div class="srv-stat-box"><div class="srv-stat-val skel" id="srv-version-${num}" style="font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div><div class="srv-stat-lbl">Версия</div></div>
     </div>
     <div class="srv-pill-row">
-      <div class="srv-pill"><div class="srv-pill-val" id="srv-uptime24-${num}">—</div><div class="srv-pill-lbl">Аптайм 24ч</div></div>
-      <div class="srv-pill"><div class="srv-pill-val" id="srv-uptime7d-${num}">—</div><div class="srv-pill-lbl">Аптайм 7д</div></div>
-      <div class="srv-pill"><div class="srv-pill-val" id="srv-peak24-${num}">—</div><div class="srv-pill-lbl">Пик 24ч</div></div>
-      <div class="srv-pill"><div class="srv-pill-val" id="srv-peak7d-${num}">—</div><div class="srv-pill-lbl">Пик 7д</div></div>
+      <div class="srv-pill"><div class="srv-pill-val skel" id="srv-uptime24-${num}">—</div><div class="srv-pill-lbl">Аптайм 24ч</div></div>
+      <div class="srv-pill"><div class="srv-pill-val skel" id="srv-uptime7d-${num}">—</div><div class="srv-pill-lbl">Аптайм 7д</div></div>
+      <div class="srv-pill"><div class="srv-pill-val skel" id="srv-peak24-${num}">—</div><div class="srv-pill-lbl">Пик 24ч</div></div>
+      <div class="srv-pill"><div class="srv-pill-val skel" id="srv-peak7d-${num}">—</div><div class="srv-pill-lbl">Пик 7д</div></div>
     </div>
     <div class="srv-graph-card">
       <div class="srv-section-title">Онлайн за 7 дней</div>
@@ -186,12 +248,21 @@ function srvCardSkeleton(num) {
     </div>
     <div>
       <div class="srv-section-title">Игроки онлайн</div>
-      <div id="srv-players-list-${num}"><p class="srv-empty">Загрузка…</p></div>
+      <div id="srv-players-list-${num}"><p class="srv-empty skel">Загрузка…</p></div>
     </div>
   </div>`;
 }
 
 let _serverEnabled = { 1: true, 2: true };
+
+let _connectInfo = {};
+
+function setStat(id, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  el.classList.remove('skel');
+}
 
 async function loadServer(num) {
   const statusUrl = num === 1 ? `${API}/monitor/status` : `${API}/monitor/status2`;
@@ -213,16 +284,42 @@ async function loadServer(num) {
       badge.className = 'srv-badge ' + (d.online ? 'on' : 'off');
       badge.innerHTML = `<span class="srv-dot${d.online ? ' pulse' : ''}"></span>${d.online ? 'Онлайн' : 'Офлайн'}`;
     }
-    document.getElementById(`srv-players-${num}`).textContent = `${d.players ?? 0}/${d.max_players ?? 0}`;
-    document.getElementById(`srv-ping-${num}`).textContent = d.latency_ms != null ? `${d.latency_ms} мс` : '—';
-    document.getElementById(`srv-map-${num}`).textContent = d.map && d.map !== 'N/A' ? d.map : '—';
-    document.getElementById(`srv-version-${num}`).textContent = d.version && d.version !== 'N/A' ? d.version : '—';
+    setStat(`srv-players-${num}`, `${d.players ?? 0}/${d.max_players ?? 0}`);
+    setStat(`srv-ping-${num}`, d.latency_ms != null ? `${d.latency_ms} мс` : '—');
+    setStat(`srv-map-${num}`, d.map && d.map !== 'N/A' ? d.map : '—');
+    setStat(`srv-version-${num}`, d.version && d.version !== 'N/A' ? d.version : '—');
+
+    const connectRow = document.getElementById(`srv-connect-${num}`);
+    if (connectRow) {
+      if (d.ip && d.game_port) {
+        _connectInfo[num] = `${d.ip}:${d.game_port}`;
+        connectRow.style.display = '';
+      } else {
+        connectRow.style.display = 'none';
+      }
+    }
 
     renderServerPlayers(num, d.players_list || []);
   } catch {
     const badge = document.getElementById(`srv-badge-${num}`);
     if (badge) { badge.className = 'srv-badge off'; badge.innerHTML = '<span class="srv-dot"></span>Ошибка'; }
   }
+}
+
+function connectServer(num) {
+  const addr = _connectInfo[num];
+  if (!addr) return;
+  window.location.href = `steam://connect/${addr}`;
+}
+
+function copyServerAddr(num, btn) {
+  const addr = _connectInfo[num];
+  if (!addr) return;
+  navigator.clipboard.writeText(addr).then(() => {
+    const original = btn.textContent;
+    btn.textContent = '✔ Скопировано';
+    setTimeout(() => { btn.textContent = original; }, 1500);
+  });
 }
 
 function renderServerPlayers(num, players) {
@@ -237,10 +334,10 @@ function renderServerPlayers(num, players) {
     const name = p.name || 'Аноним';
     const hue = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 55 + 330;
     return `<div class="srv-players-row">
-      <span style="display:flex;align-items:center;gap:.5rem;min-width:0;">
+      <a class="srv-player-link" href="/user.html?u=${encodeURIComponent(name)}" title="Профиль игрока">
         <span class="srv-player-dot" style="background:hsl(${hue},78%,42%);box-shadow:0 0 5px hsl(${hue},78%,42%);"></span>
-        <span style="font-family:'Philosopher',serif;color:#d0ccd8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name)}</span>
-      </span>
+        <span class="srv-player-name" style="font-family:'Philosopher',serif;color:#d0ccd8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s;">${esc(name)}</span>
+      </a>
       <span style="font-family:'Oswald',sans-serif;font-size:.72rem;color:var(--muted);white-space:nowrap;flex-shrink:0;">${fmtDuration(p.duration)}</span>
     </div>`;
   }).join('');
@@ -249,10 +346,10 @@ function renderServerPlayers(num, players) {
 async function loadServerStats(num) {
   try {
     const s = await fetch(`${API}/monitor/stats?server=${num}`).then(r => r.json());
-    document.getElementById(`srv-uptime24-${num}`).textContent = s.uptime_24h != null ? `${s.uptime_24h}%` : '—';
-    document.getElementById(`srv-uptime7d-${num}`).textContent = s.uptime_7d != null ? `${s.uptime_7d}%` : '—';
-    document.getElementById(`srv-peak24-${num}`).textContent = s.peak_24h ?? '—';
-    document.getElementById(`srv-peak7d-${num}`).textContent = s.peak_7d ?? '—';
+    setStat(`srv-uptime24-${num}`, s.uptime_24h != null ? `${s.uptime_24h}%` : '—');
+    setStat(`srv-uptime7d-${num}`, s.uptime_7d != null ? `${s.uptime_7d}%` : '—');
+    setStat(`srv-peak24-${num}`, s.peak_24h ?? '—');
+    setStat(`srv-peak7d-${num}`, s.peak_7d ?? '—');
     renderHeatmap(num, s.heatmap || []);
   } catch {}
 }
