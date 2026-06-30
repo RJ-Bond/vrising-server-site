@@ -1448,7 +1448,7 @@ function renderUsersTable() {
                </div>`;
           return `<tr>
             <td style="color:var(--muted);">${u.id}</td>
-            <td style="font-weight:600;">${esc(u.username)}</td>
+            <td><a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" style="font-weight:600;color:var(--text);text-decoration:none;transition:color .15s;" onmouseover="this.style.color='var(--gold)';this.style.textDecoration='underline'" onmouseout="this.style.color='var(--text)';this.style.textDecoration='none'">${esc(u.username)}</a></td>
             <td style="color:var(--muted);">${esc(u.email)}</td>
             <td style="${roleColor}font-weight:700;">${u.role === 'admin' ? 'Админ' : 'Игрок'}</td>
             <td style="${activeColor}font-weight:600;">${u.is_active ? 'Да' : 'Нет'}</td>
@@ -1722,7 +1722,7 @@ async function loadDashRecentUsers() {
     const recent = [...users].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
     el.innerHTML = recent.map(u => `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.3rem 0;">
-        <span style="font-size:.78rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(u.username)}</span>
+        <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" style="font-size:.78rem;font-weight:600;color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'">${esc(u.username)}</a>
         <span style="font-size:.68rem;color:var(--muted);white-space:nowrap;">${new Date(u.created_at).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit'})}</span>
       </div>`).join('');
   } catch { el.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Ошибка загрузки.</p>`; }
