@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V Rising — FAQ</title>
+  <meta name="description" content="Частые вопросы об игровом сервере V Rising — подключение, вайпы, правила, регистрация." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg:      #06000f;
+      --card:    rgba(16,7,23,0.92);
+      --panel:   rgba(255,255,255,0.035);
+      --border:  rgba(110,0,150,0.22);
+      --text:    #f5f0fb;
+      --muted:   #b6a8d2;
+      --gold:    #c9a94a;
+      --crimson: #c8002a;
+      --purple:  #7c3aed;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; }
+    body {
+      background:var(--bg);
+      background-image:
+        radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
+      background-attachment:fixed;
+      font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh;
+    }
+    .gothic { font-family:'Cinzel',serif; }
+    .glass-nav { background:rgba(8,0,14,0.9); border-bottom:1px solid rgba(110,0,20,0.35); backdrop-filter:blur(14px); position:sticky; top:0; z-index:40; }
+    .topnav-link {
+      font-size:.78rem; font-weight:600; color:var(--muted); text-decoration:none;
+      padding:.4rem .75rem; border-radius:.5rem; border:1px solid transparent; transition:all .2s;
+      background:none; cursor:pointer; font-family:'Inter',sans-serif;
+    }
+    .topnav-link:hover { color:var(--text); background:rgba(150,0,28,0.12); border-color:rgba(160,0,35,0.35); }
+    .topnav-link.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
+
+    .faq-item {
+      background:var(--card); border:1px solid var(--border); border-radius:.75rem;
+      margin-bottom:.7rem; overflow:hidden;
+    }
+    .faq-q {
+      display:flex; align-items:center; justify-content:space-between; gap:1rem;
+      padding:1rem 1.2rem; cursor:pointer; user-select:none;
+    }
+    .faq-q span:first-child { font-size:.88rem; font-weight:600; color:#ece3f7; }
+    .faq-arrow { color:var(--gold); transition:transform .25s; flex-shrink:0; }
+    .faq-item.open .faq-arrow { transform:rotate(180deg); }
+    .faq-a {
+      max-height:0; overflow:hidden; transition:max-height .3s ease, padding .3s ease;
+      font-size:.82rem; color:var(--muted); line-height:1.65; padding:0 1.2rem;
+    }
+    .faq-item.open .faq-a { padding:0 1.2rem 1.1rem; }
+    .faq-a a { color:var(--gold); }
+
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
+    ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="glass-nav">
+  <div style="max-width:1000px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
+    <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">⚔ V RISING</a>
+    <div style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;">
+      <a href="/" class="topnav-link">Главная</a>
+      <a href="/servers.html" class="topnav-link">Сервера</a>
+      <a href="/leaderboard.html" class="topnav-link">Игроки (Топ)</a>
+      <a href="/clans.html" class="topnav-link">Кланы</a>
+      <a href="/map.html" class="topnav-link">Карта</a>
+      <a href="/bans.html" class="topnav-link">Баны</a>
+      <a href="/faq.html" class="topnav-link active">FAQ</a>
+      <a id="nav-profile-link" href="/profile.html" class="topnav-link" style="display:none;">Профиль</a>
+      <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
+    </div>
+  </div>
+</nav>
+
+<div style="max-width:680px;margin:2.5rem auto 3.5rem;padding:0 1rem;">
+  <div style="text-align:center;margin-bottom:1.75rem;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:.5rem;">
+      <span style="height:1px;width:36px;background:linear-gradient(90deg,transparent,var(--gold));"></span>
+      <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;">Частые вопросы</h1>
+      <span style="height:1px;width:36px;background:linear-gradient(90deg,var(--gold),transparent);"></span>
+    </div>
+    <p style="font-size:.8rem;color:var(--muted);">Если ответа нет здесь — спросите в Discord</p>
+  </div>
+
+  <div id="faq-list"></div>
+</div>
+
+<script>
+const API = '/api';
+function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
+
+function applySiteBackground(bg) {
+  bg = (bg || '').trim();
+  if (!bg) return;
+  document.body.style.backgroundImage = [
+    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
+    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
+    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
+    `url('${bg}')`,
+  ].join(',');
+  document.body.style.backgroundSize = 'auto,auto,auto,cover';
+  document.body.style.backgroundPosition = 'center,center,center,center';
+  document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
+}
+
+(function() {
+  if (getToken()) {
+    document.getElementById('nav-profile-link').style.display = '';
+    document.getElementById('nav-login-link').style.display = 'none';
+  }
+})();
+
+(async function() {
+  try {
+    const d = await fetch(`${API}/settings/public`).then(r => r.json());
+    const title = (d.site_title || 'V Rising').trim();
+    document.title = `${title} — FAQ`;
+    document.getElementById('nav-logo').textContent = '⚔ ' + title;
+    applySiteBackground(d.bg_image_url);
+  } catch {}
+})();
+
+const FAQ = [
+  {
+    q: 'Как подключиться к серверу?',
+    a: 'Проще всего — кнопкой «Подключиться через Steam» на <a href="/servers.html">странице серверов</a> или в виджете мониторинга на главной: она сама откроет V Rising и подключит к нужному серверу. Если кнопки нет — спросите IP и порт у администрации в Discord и подключитесь вручную через меню «Прямое подключение» в игре.',
+  },
+  {
+    q: 'Что такое вайп и когда он будет?',
+    a: 'Вайп — это сброс прогресса сервера (полный или частичный, в зависимости от типа). Дата ближайшего вайпа и обратный отсчёт показаны на главной странице под статусом сервера.',
+  },
+  {
+    q: 'Можно ли атаковать других игроков?',
+    a: 'Зависит от настроек конкретного сервера — все правила перечислены в разделе «Правила» на главной странице. Если коротко: PvE-сервера запрещают атаки и гриферство построек других игроков.',
+  },
+  {
+    q: 'Зачем регистрироваться на сайте?',
+    a: 'Аккаунт на сайте даёт профиль с вашей статистикой, участие в комментариях к новостям и кланах. Чтобы время в игре подтягивалось автоматически, регистрируйте сайт-аккаунт с тем же именем, что и ваш игровой персонаж.',
+  },
+  {
+    q: 'Почему в профиле не отображается моё время в игре?',
+    a: 'Сайт сопоставляет статистику по точному совпадению имени персонажа и имени аккаунта на сайте. Проверьте, что ник в игре и логин на сайте написаны одинаково (включая регистр и пробелы).',
+  },
+  {
+    q: 'Забыл пароль — что делать?',
+    a: 'На <a href="/login.html">странице входа</a> нажмите «Забыли пароль?», укажите email и дождитесь, пока администратор вышлет ссылку для сброса через Discord.',
+  },
+  {
+    q: 'Как создать клан или вступить в существующий?',
+    a: 'На странице <a href="/clans.html">«Кланы»</a> залогиненные игроки могут создать свой клан (название + короткий тег) или вступить в один из уже существующих одной кнопкой.',
+  },
+  {
+    q: 'Где посмотреть, сколько игроков сейчас онлайн?',
+    a: 'На <a href="/servers.html">странице серверов</a> — список игроков, аптайм, пинг, история онлайна за выбранный период и пиковые значения для каждого сервера.',
+  },
+  {
+    q: 'Нашёл баг, читера или нарушение правил — куда сообщить?',
+    a: 'Через Discord сервера (ссылка в шапке/подвале сайта) — это самый быстрый способ связаться с администрацией.',
+  },
+];
+
+function renderFaq() {
+  const list = document.getElementById('faq-list');
+  list.innerHTML = FAQ.map((item, i) => `
+    <div class="faq-item" id="faq-${i}">
+      <div class="faq-q" onclick="toggleFaq(${i})">
+        <span>${item.q}</span>
+        <svg class="faq-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="faq-a">${item.a}</div>
+    </div>`).join('');
+}
+
+function toggleFaq(i) {
+  const el = document.getElementById(`faq-${i}`);
+  const isOpen = el.classList.contains('open');
+  el.classList.toggle('open', !isOpen);
+  const a = el.querySelector('.faq-a');
+  a.style.maxHeight = !isOpen ? a.scrollHeight + 24 + 'px' : '0';
+}
+
+renderFaq();
+</script>
+</body>
+</html>

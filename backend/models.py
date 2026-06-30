@@ -18,6 +18,18 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     avatar_url = Column(String(512), nullable=True)
+    clan_id = Column(Integer, ForeignKey("clans.id", ondelete="SET NULL"), nullable=True)
+
+
+class Clan(Base):
+    __tablename__ = "clans"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(32), unique=True, nullable=False, index=True)
+    tag = Column(String(6), unique=True, nullable=False, index=True)
+    description = Column(String(256), nullable=True, default="")
+    leader_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class News(Base):

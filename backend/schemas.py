@@ -251,3 +251,68 @@ class SetupComplete(BaseModel):
         if len(v) < 6:
             raise ValueError("Password must be at least 6 characters")
         return v
+
+
+class ClanCreate(BaseModel):
+    name: str
+    tag: str
+    description: Optional[str] = ""
+
+    @field_validator("name")
+    @classmethod
+    def name_valid(cls, v: str) -> str:
+        v = v.strip()
+        if not re.match(r"^[a-zA-Z0-9_а-яёА-ЯЁ \-]{3,32}$", v):
+            raise ValueError("Название клана: 3–32 символа, буквы, цифры, пробел, _ и -")
+        return v
+
+    @field_validator("tag")
+    @classmethod
+    def tag_valid(cls, v: str) -> str:
+        v = v.strip().upper()
+        if not re.match(r"^[A-ZА-ЯЁ0-9]{2,6}$", v):
+            raise ValueError("Тег клана: 2–6 латинских/кириллических букв или цифр")
+        return v
+
+    @field_validator("description")
+    @classmethod
+    def desc_len(cls, v: Optional[str]) -> str:
+        v = (v or "").strip()
+        if len(v) > 256:
+            raise ValueError("Описание клана: максимум 256 символов")
+        return v
+
+
+class ClanUpdate(BaseModel):
+    description: Optional[str] = ""
+
+    @field_validator("description")
+    @classmethod
+    def desc_len(cls, v: Optional[str]) -> str:
+        v = (v or "").strip()
+        if len(v) > 256:
+            raise ValueError("Описание клана: максимум 256 символов")
+        return v
+
+
+class ClanMemberOut(BaseModel):
+    id: int
+    username: str
+    avatar_url: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class ClanOut(BaseModel):
+    id: int
+    name: str
+    tag: str
+    description: Optional[str] = ""
+    leader_id: int
+    leader_username: str
+    member_count: int
+    created_at: datetime
+
+
+class ClanDetailOut(ClanOut):
+    members: list[ClanMemberOut] = []

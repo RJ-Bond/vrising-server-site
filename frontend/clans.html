@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V Rising — Кланы</title>
+  <meta name="description" content="Кланы сервера V Rising — список, состав, создание и вступление." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg:      #06000f;
+      --card:    rgba(16,7,23,0.92);
+      --panel:   rgba(255,255,255,0.035);
+      --border:  rgba(110,0,150,0.22);
+      --text:    #f5f0fb;
+      --muted:   #b6a8d2;
+      --label:   #d6c9ee;
+      --gold:    #c9a94a;
+      --crimson: #c8002a;
+      --purple:  #7c3aed;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; }
+    body {
+      background:var(--bg);
+      background-image:
+        radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
+      background-attachment:fixed;
+      font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh;
+    }
+    .gothic { font-family:'Cinzel',serif; }
+    .glass-nav { background:rgba(8,0,14,0.9); border-bottom:1px solid rgba(110,0,20,0.35); backdrop-filter:blur(14px); position:sticky; top:0; z-index:40; }
+    .topnav-link {
+      font-size:.78rem; font-weight:600; color:var(--muted); text-decoration:none;
+      padding:.4rem .75rem; border-radius:.5rem; border:1px solid transparent; transition:all .2s;
+      background:none; cursor:pointer; font-family:'Inter',sans-serif;
+    }
+    .topnav-link:hover { color:var(--text); background:rgba(150,0,28,0.12); border-color:rgba(160,0,35,0.35); }
+    .topnav-link.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
+
+    .g-card {
+      background:var(--card); border:1px solid var(--border);
+      border-radius:.875rem; backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+      position:relative; padding:1.25rem;
+    }
+    @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    .g-card { animation:fade-up .4s ease both; }
+
+    .btn { background:linear-gradient(135deg,#7a001c,var(--crimson)); border:none; color:#fff; font-size:.8rem; font-weight:700; padding:.55rem 1.1rem; border-radius:.55rem; cursor:pointer; transition:all .2s; box-shadow:0 0 14px rgba(181,0,42,0.3); }
+    .btn:hover { box-shadow:0 0 22px rgba(181,0,42,0.5); transform:translateY(-1px); }
+    .btn-ghost { background:var(--panel); border:1px solid rgba(255,255,255,0.12); color:var(--text); font-size:.78rem; font-weight:600; padding:.5rem .9rem; border-radius:.5rem; cursor:pointer; transition:all .2s; }
+    .btn-ghost:hover { border-color:rgba(150,50,200,0.5); }
+    .btn-danger { background:rgba(150,0,20,0.18); border:1px solid rgba(200,0,30,0.4); color:#ff8a9e; font-size:.78rem; font-weight:600; padding:.5rem .9rem; border-radius:.5rem; cursor:pointer; transition:all .2s; }
+    .btn-danger:hover { background:rgba(180,0,25,0.3); }
+    .btn:disabled, .btn-ghost:disabled { opacity:.4; cursor:not-allowed; transform:none; }
+
+    .field-label { display:block; font-size:.68rem; text-transform:uppercase; letter-spacing:.08em; color:var(--label); margin-bottom:.3rem; font-weight:600; }
+    .field-input {
+      width:100%; background:rgba(8,0,16,0.6); border:1px solid rgba(255,255,255,0.12); border-radius:.5rem;
+      padding:.6rem .8rem; color:var(--text); font-size:.85rem; outline:none; font-family:'Inter',sans-serif; transition:border-color .2s;
+    }
+    .field-input:focus { border-color:rgba(200,0,40,0.5); }
+
+    .clan-card { padding:1.1rem; }
+    .clan-head { display:flex; align-items:center; gap:.7rem; margin-bottom:.6rem; flex-wrap:wrap; }
+    .clan-tag {
+      font-family:'Cinzel',serif; font-weight:700; font-size:.78rem; color:var(--gold);
+      background:rgba(201,169,74,0.12); border:1px solid rgba(201,169,74,0.35); border-radius:.4rem;
+      padding:.25rem .55rem; flex-shrink:0;
+    }
+    .clan-name { font-family:'Philosopher',serif; font-weight:700; font-size:1.05rem; color:#ece3f7; flex:1; min-width:0; }
+    .clan-members-badge { font-size:.66rem; color:var(--muted); white-space:nowrap; flex-shrink:0; }
+    .clan-desc { font-size:.82rem; color:var(--muted); line-height:1.5; margin-bottom:.75rem; }
+    .clan-leader { font-size:.72rem; color:var(--label); margin-bottom:.85rem; }
+    .clan-leader b { color:var(--gold); font-weight:600; }
+    .clan-actions { display:flex; gap:.5rem; flex-wrap:wrap; }
+    .clan-members-list { display:none; margin-top:.85rem; padding-top:.85rem; border-top:1px solid rgba(255,255,255,0.08); }
+    .clan-member-row { display:flex; align-items:center; gap:.5rem; padding:.3rem 0; font-size:.8rem; }
+    .clan-member-row a { color:#e6def2; text-decoration:none; }
+    .clan-member-row a:hover { text-decoration:underline; }
+    .clan-empty { color:var(--muted); text-align:center; padding:2rem 0; font-style:italic; font-size:.85rem; }
+
+    #my-clan-banner {
+      display:none; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
+      padding:.9rem 1.1rem; margin-bottom:1.5rem; background:var(--panel); border:1px solid rgba(201,169,74,0.25); border-radius:.7rem;
+    }
+    #create-clan-card { display:none; margin-bottom:1.5rem; }
+    .error-box { background:rgba(140,0,20,0.25); border:1px solid rgba(180,0,30,0.5); color:#fca5a5; border-radius:.5rem; padding:.55rem .85rem; font-size:.8rem; margin-top:.6rem; display:none; }
+
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
+    ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="glass-nav">
+  <div style="max-width:1000px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
+    <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">⚔ V RISING</a>
+    <div style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;">
+      <a href="/" class="topnav-link">Главная</a>
+      <a href="/servers.html" class="topnav-link">Сервера</a>
+      <a href="/leaderboard.html" class="topnav-link">Игроки (Топ)</a>
+      <a href="/clans.html" class="topnav-link active">Кланы</a>
+      <a href="/map.html" class="topnav-link">Карта</a>
+      <a href="/bans.html" class="topnav-link">Баны</a>
+      <a href="/faq.html" class="topnav-link">FAQ</a>
+      <a id="nav-profile-link" href="/profile.html" class="topnav-link" style="display:none;">Профиль</a>
+      <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
+    </div>
+  </div>
+</nav>
+
+<div style="max-width:780px;margin:2.5rem auto 3.5rem;padding:0 1rem;">
+  <div style="text-align:center;margin-bottom:1.75rem;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:.5rem;">
+      <span style="height:1px;width:36px;background:linear-gradient(90deg,transparent,var(--gold));"></span>
+      <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;">Кланы</h1>
+      <span style="height:1px;width:36px;background:linear-gradient(90deg,var(--gold),transparent);"></span>
+    </div>
+    <p style="font-size:.8rem;color:var(--muted);">Объединяйтесь с другими игроками сервера</p>
+  </div>
+
+  <div id="my-clan-banner">
+    <span style="font-size:.84rem;">Вы состоите в клане: <b id="my-clan-label" style="color:var(--gold);"></b></span>
+    <button class="btn-danger" onclick="leaveClan()">Покинуть клан</button>
+  </div>
+
+  <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
+    <button class="btn-ghost" id="create-clan-toggle" onclick="toggleCreateForm()" style="display:none;">+ Создать клан</button>
+    <a href="/login.html" class="btn-ghost" id="create-clan-login" style="display:none;text-decoration:none;">Войдите, чтобы создать клан</a>
+  </div>
+
+  <div class="g-card" id="create-clan-card">
+    <h2 class="gothic" style="font-size:.85rem;letter-spacing:.08em;color:var(--gold);margin-bottom:1rem;">Новый клан</h2>
+    <div style="display:grid;grid-template-columns:1fr 7rem;gap:.7rem;margin-bottom:.7rem;">
+      <div>
+        <label class="field-label">Название</label>
+        <input id="clan-name" class="field-input" placeholder="Дети Драконы" maxlength="32">
+      </div>
+      <div>
+        <label class="field-label">Тег</label>
+        <input id="clan-tag" class="field-input" placeholder="DRGN" maxlength="6" style="text-transform:uppercase;">
+      </div>
+    </div>
+    <div style="margin-bottom:.9rem;">
+      <label class="field-label">Описание (необязательно)</label>
+      <input id="clan-desc" class="field-input" placeholder="Коротко о клане" maxlength="256">
+    </div>
+    <div style="display:flex;gap:.6rem;">
+      <button class="btn" onclick="createClan()">Создать</button>
+      <button class="btn-ghost" onclick="toggleCreateForm()">Отмена</button>
+    </div>
+    <div class="error-box" id="create-clan-error"></div>
+  </div>
+
+  <div id="clans-list"><p class="clan-empty">Загрузка…</p></div>
+</div>
+
+<script>
+const API = '/api';
+function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
+function authH() { return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' }; }
+function getUser() { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function applySiteBackground(bg) {
+  bg = (bg || '').trim();
+  if (!bg) return;
+  document.body.style.backgroundImage = [
+    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
+    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
+    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
+    `url('${bg}')`,
+  ].join(',');
+  document.body.style.backgroundSize = 'auto,auto,auto,cover';
+  document.body.style.backgroundPosition = 'center,center,center,center';
+  document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
+}
+
+let _myClanId = null;
+
+(function() {
+  const user = getUser();
+  if (getToken() && user) {
+    document.getElementById('nav-profile-link').style.display = '';
+    document.getElementById('nav-login-link').style.display = 'none';
+    document.getElementById('create-clan-toggle').style.display = '';
+  } else {
+    document.getElementById('create-clan-login').style.display = '';
+  }
+})();
+
+(async function() {
+  try {
+    const d = await fetch(`${API}/settings/public`).then(r => r.json());
+    const title = (d.site_title || 'V Rising').trim();
+    document.title = `${title} — Кланы`;
+    document.getElementById('nav-logo').textContent = '⚔ ' + title;
+    applySiteBackground(d.bg_image_url);
+  } catch {}
+})();
+
+function toggleCreateForm() {
+  const card = document.getElementById('create-clan-card');
+  card.style.display = card.style.display === 'block' ? 'none' : 'block';
+}
+
+async function createClan() {
+  const errEl = document.getElementById('create-clan-error');
+  errEl.style.display = 'none';
+  const name = document.getElementById('clan-name').value.trim();
+  const tag = document.getElementById('clan-tag').value.trim();
+  const description = document.getElementById('clan-desc').value.trim();
+  if (!name || !tag) {
+    errEl.textContent = 'Укажите название и тег клана';
+    errEl.style.display = 'block';
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/clans`, { method: 'POST', headers: authH(), body: JSON.stringify({ name, tag, description }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Ошибка создания клана');
+    document.getElementById('clan-name').value = '';
+    document.getElementById('clan-tag').value = '';
+    document.getElementById('clan-desc').value = '';
+    toggleCreateForm();
+    loadClans();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.style.display = 'block';
+  }
+}
+
+async function joinClan(id) {
+  try {
+    const res = await fetch(`${API}/clans/${id}/join`, { method: 'POST', headers: authH() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Ошибка');
+    loadClans();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function leaveClan() {
+  if (!confirm('Покинуть клан?')) return;
+  try {
+    const res = await fetch(`${API}/clans/leave`, { method: 'POST', headers: authH() });
+    if (!res.ok) { const d = await res.json(); throw new Error(d.detail || 'Ошибка'); }
+    loadClans();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function toggleMembers(id, el) {
+  const isOpen = el.style.display === 'block';
+  if (isOpen) { el.style.display = 'none'; return; }
+  if (el.dataset.loaded !== '1') {
+    try {
+      const clan = await fetch(`${API}/clans/${id}`).then(r => r.json());
+      el.innerHTML = (clan.members || []).map(m => `
+        <div class="clan-member-row">
+          <a href="/user.html?u=${encodeURIComponent(m.username)}">${esc(m.username)}${m.id === clan.leader_id ? ' 👑' : ''}</a>
+        </div>`).join('') || '<p class="clan-empty" style="padding:.5rem 0;">Нет участников</p>';
+      el.dataset.loaded = '1';
+    } catch {
+      el.innerHTML = '<p class="clan-empty" style="padding:.5rem 0;">Ошибка загрузки.</p>';
+    }
+  }
+  el.style.display = 'block';
+}
+
+async function loadClans() {
+  const list = document.getElementById('clans-list');
+  const banner = document.getElementById('my-clan-banner');
+  const user = getUser();
+  list.innerHTML = '<p class="clan-empty">Загрузка…</p>';
+
+  let myClan = null;
+  if (user && getToken()) {
+    try {
+      const profile = await fetch(`${API}/users/${encodeURIComponent(user.username)}`).then(r => r.ok ? r.json() : null);
+      myClan = profile?.clan || null;
+    } catch {}
+  }
+  _myClanId = myClan ? myClan.id : null;
+
+  if (myClan) {
+    banner.style.display = 'flex';
+    document.getElementById('my-clan-label').textContent = `[${myClan.tag}] ${myClan.name}`;
+  } else {
+    banner.style.display = 'none';
+  }
+
+  try {
+    const clans = await fetch(`${API}/clans`).then(r => r.json());
+    if (!clans.length) {
+      list.innerHTML = '<p class="clan-empty">Пока нет ни одного клана. Будьте первым!</p>';
+      return;
+    }
+    list.innerHTML = clans.map(c => {
+      const loggedIn = !!(user && getToken());
+      let joinBtn;
+      if (myClan && myClan.id === c.id) {
+        joinBtn = `<button class="btn-ghost" disabled>Вы здесь</button>`;
+      } else {
+        const reason = !loggedIn ? 'Войдите, чтобы вступить' : myClan ? 'Сначала покиньте текущий клан' : '';
+        joinBtn = `<button class="btn" onclick="joinClan(${c.id})" ${reason ? `disabled title="${reason}"` : ''}>Вступить</button>`;
+      }
+      return `<div class="g-card clan-card" style="margin-bottom:1rem;">
+        <div class="clan-head">
+          <span class="clan-tag">[${esc(c.tag)}]</span>
+          <span class="clan-name">${esc(c.name)}</span>
+          <span class="clan-members-badge">${c.member_count} ${_pluralMembers(c.member_count)}</span>
+        </div>
+        ${c.description ? `<p class="clan-desc">${esc(c.description)}</p>` : ''}
+        <p class="clan-leader">Лидер: <b>${esc(c.leader_username)}</b></p>
+        <div class="clan-actions">
+          <button class="btn-ghost" onclick="toggleMembers(${c.id}, this.parentElement.parentElement.querySelector('.clan-members-list'))">Состав</button>
+          ${joinBtn}
+        </div>
+        <div class="clan-members-list"></div>
+      </div>`;
+    }).join('');
+  } catch {
+    list.innerHTML = '<p class="clan-empty">Ошибка загрузки.</p>';
+  }
+}
+
+function _pluralMembers(n) {
+  const n10 = n % 10, n100 = n % 100;
+  if (n10 === 1 && n100 !== 11) return 'участник';
+  if ([2, 3, 4].includes(n10) && ![12, 13, 14].includes(n100)) return 'участника';
+  return 'участников';
+}
+
+loadClans();
+</script>
+</body>
+</html>

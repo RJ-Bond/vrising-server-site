@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V Rising — Карта мира</title>
+  <meta name="description" content="Регионы мира Вардоран в V Rising — краткий гайд по биомам, опасностям и особенностям." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg:      #06000f;
+      --card:    rgba(16,7,23,0.92);
+      --panel:   rgba(255,255,255,0.035);
+      --border:  rgba(110,0,150,0.22);
+      --text:    #f5f0fb;
+      --muted:   #b6a8d2;
+      --label:   #d6c9ee;
+      --gold:    #c9a94a;
+      --crimson: #c8002a;
+      --purple:  #7c3aed;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; }
+    body {
+      background:var(--bg);
+      background-image:
+        radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
+      background-attachment:fixed;
+      font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh;
+    }
+    .gothic { font-family:'Cinzel',serif; }
+    .glass-nav { background:rgba(8,0,14,0.9); border-bottom:1px solid rgba(110,0,20,0.35); backdrop-filter:blur(14px); position:sticky; top:0; z-index:40; }
+    .topnav-link {
+      font-size:.78rem; font-weight:600; color:var(--muted); text-decoration:none;
+      padding:.4rem .75rem; border-radius:.5rem; border:1px solid transparent; transition:all .2s;
+      background:none; cursor:pointer; font-family:'Inter',sans-serif;
+    }
+    .topnav-link:hover { color:var(--text); background:rgba(150,0,28,0.12); border-color:rgba(160,0,35,0.35); }
+    .topnav-link.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
+
+    .g-card {
+      background:var(--card); border:1px solid var(--border);
+      border-radius:.875rem; backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+      position:relative; padding:1.2rem;
+    }
+    @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    .g-card { animation:fade-up .4s ease both; }
+
+    .region-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    @media (max-width:600px) { .region-grid { grid-template-columns:1fr; } }
+
+    .region-head { display:flex; align-items:center; gap:.6rem; margin-bottom:.5rem; }
+    .region-icon { font-size:1.4rem; flex-shrink:0; }
+    .region-name { font-family:'Philosopher',serif; font-weight:700; font-size:1rem; color:#ece3f7; flex:1; min-width:0; }
+    .region-tier {
+      font-size:.6rem; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+      padding:.18rem .5rem; border-radius:9999px; flex-shrink:0; white-space:nowrap;
+    }
+    .region-tier.low    { background:rgba(46,230,155,0.14); border:1px solid rgba(46,230,155,0.4); color:#2ee69b; }
+    .region-tier.mid    { background:rgba(255,207,92,0.14); border:1px solid rgba(255,207,92,0.4); color:#ffcf5c; }
+    .region-tier.high   { background:rgba(255,93,126,0.14); border:1px solid rgba(255,93,126,0.4); color:#ff5d7e; }
+    .region-tier.end    { background:rgba(124,58,237,0.16); border:1px solid rgba(124,58,237,0.45); color:#b794f6; }
+    .region-desc { font-size:.8rem; color:var(--muted); line-height:1.55; }
+
+    .note-box {
+      font-size:.76rem; color:var(--muted); background:var(--panel); border:1px solid rgba(255,255,255,0.1);
+      border-radius:.6rem; padding:.85rem 1rem; margin-bottom:1.5rem; line-height:1.6;
+    }
+
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
+    ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="glass-nav">
+  <div style="max-width:1000px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
+    <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">⚔ V RISING</a>
+    <div style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;">
+      <a href="/" class="topnav-link">Главная</a>
+      <a href="/servers.html" class="topnav-link">Сервера</a>
+      <a href="/leaderboard.html" class="topnav-link">Игроки (Топ)</a>
+      <a href="/clans.html" class="topnav-link">Кланы</a>
+      <a href="/map.html" class="topnav-link active">Карта</a>
+      <a href="/bans.html" class="topnav-link">Баны</a>
+      <a href="/faq.html" class="topnav-link">FAQ</a>
+      <a id="nav-profile-link" href="/profile.html" class="topnav-link" style="display:none;">Профиль</a>
+      <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
+    </div>
+  </div>
+</nav>
+
+<div style="max-width:900px;margin:2.5rem auto 3.5rem;padding:0 1rem;">
+  <div style="text-align:center;margin-bottom:1.5rem;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:.5rem;">
+      <span style="height:1px;width:36px;background:linear-gradient(90deg,transparent,var(--gold));"></span>
+      <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;">Карта мира Вардоран</h1>
+      <span style="height:1px;width:36px;background:linear-gradient(90deg,var(--gold),transparent);"></span>
+    </div>
+    <p style="font-size:.8rem;color:var(--muted);">Краткий гид по регионам — куда идти и чего остерегаться</p>
+  </div>
+
+  <div class="note-box">
+    ℹ️ Это общий обзор регионов базовой карты V Rising для новичков. Точный уровень опасности, лут и события могут отличаться в зависимости от настроек и модов нашего сервера — актуальные правила смотрите на <a href="/#rules-section" style="color:var(--gold);">главной странице</a>.
+  </div>
+
+  <div class="region-grid">
+
+    <div class="g-card">
+      <div class="region-head">
+        <span class="region-icon">🌲</span>
+        <span class="region-name">Farbane Woods</span>
+        <span class="region-tier low">Старт</span>
+      </div>
+      <p class="region-desc">Стартовый регион почти всех персонажей. Леса, болота и первые поселения бандитов — здесь добывается базовый материал и проходятся первые боссы V крови.</p>
+    </div>
+
+    <div class="g-card">
+      <div class="region-head">
+        <span class="region-icon">🌾</span>
+        <span class="region-name">Dunley Farmlands</span>
+        <span class="region-tier mid">Средний</span>
+      </div>
+      <p class="region-desc">Фермерские земли с мельницами и церквями. Местные жители и охотники на нежить становятся серьёзнее — пригодится защита от серебра.</p>
+    </div>
+
+    <div class="g-card">
+      <div class="region-head">
+        <span class="region-icon">⛪</span>
+        <span class="region-name">Silverlight Hills</span>
+        <span class="region-tier mid">Средний</span>
+      </div>
+      <p class="region-desc">Святые холмы паладинов. Серебряное оружие наносит вампирам повышенный урон — заходите подготовленными и избегайте света без укрытия.</p>
+    </div>
+
+    <div class="g-card">
+      <div class="region-head">
+        <span class="region-icon">☠️</span>
+        <span class="region-name">Cursed Forest</span>
+        <span class="region-tier high">Опасно</span>
+      </div>
+      <p class="region-desc">Заражённый чумой лес. Враги наносят урон ядом и порчей — без сопротивления к чуме лучше не задерживаться надолго.</p>
+    </div>
+
+    <div class="g-card">
+      <div class="region-head">
+        <span class="region-icon">🏔️</span>
+        <span class="region-name">Hallowed Mountains</span>
+        <span class="region-tier high">Опасно</span>
+      </div>
+      <p class="region-desc">Заснеженные горы со священными орденами. Сильные противники и суровый климат — нужна тёплая экипировка и серьёзное снаряжение.</p>
+    </div>
+
+    <div class="g-card">
+      <div class="region-head">
+        <span class="region-icon">⚙️</span>
+        <span class="region-name">Gloomrot</span>
+        <span class="region-tier high">Опасно</span>
+      </div>
+      <p class="region-desc">Индустриальный регион с огнестрельным оружием и техникой. Враги бьют издалека — укрытия и мобильность решают больше, чем броня.</p>
+    </div>
+
+    <div class="g-card">
+      <div class="region-head">
+        <span class="region-icon">🏰</span>
+        <span class="region-name">Brighthaven</span>
+        <span class="region-tier end">Эндгейм</span>
+      </div>
+      <p class="region-desc">Город паладинов поздней игры — плотная застройка, сильные гарнизоны и одни из самых опасных охотников на вампиров во всём Вардоране.</p>
+    </div>
+
+    <div class="g-card">
+      <div class="region-head">
+        <span class="region-icon">🩸</span>
+        <span class="region-name">Руины и подземелья</span>
+        <span class="region-tier end">Эндгейм</span>
+      </div>
+      <p class="region-desc">Разбросанные по карте подземелья, крипты и руины с уникальным лутом и боссами V крови — основной источник прогрессии в позднем эндгейме.</p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = '/api';
+function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
+
+function applySiteBackground(bg) {
+  bg = (bg || '').trim();
+  if (!bg) return;
+  document.body.style.backgroundImage = [
+    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
+    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
+    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
+    `url('${bg}')`,
+  ].join(',');
+  document.body.style.backgroundSize = 'auto,auto,auto,cover';
+  document.body.style.backgroundPosition = 'center,center,center,center';
+  document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
+}
+
+(function() {
+  if (getToken()) {
+    document.getElementById('nav-profile-link').style.display = '';
+    document.getElementById('nav-login-link').style.display = 'none';
+  }
+})();
+
+(async function() {
+  try {
+    const d = await fetch(`${API}/settings/public`).then(r => r.json());
+    const title = (d.site_title || 'V Rising').trim();
+    document.title = `${title} — Карта мира`;
+    document.getElementById('nav-logo').textContent = '⚔ ' + title;
+    applySiteBackground(d.bg_image_url);
+  } catch {}
+})();
+</script>
+</body>
+</html>

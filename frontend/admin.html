@@ -248,6 +248,7 @@
 
       <div class="sidebar-group-label">Люди</div>
       <button id="btn-users"     onclick="showSection('users')"     class="sidebar-btn">👥 Пользователи<span id="badge-users" class="sidebar-badge" style="display:none;"></span></button>
+      <button id="btn-clans"     onclick="showSection('clans')"     class="sidebar-btn">🛡 Кланы</button>
       <button id="btn-players"   onclick="showSection('players')"   class="sidebar-btn">🎮 Игроки</button>
       <button id="btn-resets"    onclick="showSection('resets')"    class="sidebar-btn">🔑 Сброс паролей<span id="badge-resets" class="sidebar-badge" style="display:none;"></span></button>
 
@@ -856,6 +857,17 @@
       </div>
     </div>
 
+    <!-- CLANS -->
+    <div id="section-clans" class="hidden">
+      <div class="flex items-center justify-between mb-5">
+        <h1 class="section-title">Кланы</h1>
+        <span id="clans-total" style="font-size:.78rem;color:var(--muted);"></span>
+      </div>
+      <div id="clans-table" class="glass-card rounded-xl overflow-hidden">
+        <p class="p-6" style="color:var(--muted);font-size:.85rem;">Загрузка...</p>
+      </div>
+    </div>
+
     <!-- COMMENTS -->
     <div id="section-comments" class="hidden">
       <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
@@ -1006,7 +1018,7 @@ loadSidebarBadges();
 
 // ─── Sections ─────────────────────────────────────────────────────────────
 function showSection(name) {
-  ['dashboard','news','editor','settings','users','comments','players','files','log','resets'].forEach(s => {
+  ['dashboard','news','editor','settings','users','comments','players','files','log','resets','clans'].forEach(s => {
     document.getElementById(`section-${s}`).classList.toggle('hidden', s !== name);
     const btn = document.getElementById(`btn-${s}`);
     if (btn) btn.className = 'sidebar-btn' + (s === name ? ' active' : '');
@@ -1021,6 +1033,7 @@ function showSection(name) {
   if (name === 'files')      loadAdminFiles();
   if (name === 'log')        loadAuditLog(1);
   if (name === 'resets')     loadPasswordResets();
+  if (name === 'clans')      loadAdminClans();
 }
 
 // ─── News list ────────────────────────────────────────────────────────────
@@ -1410,6 +1423,47 @@ async function _doSaveSetting(key, value, opts = {}) {
 }
 
 // ─── Users ─────────────────────────────────────────────────────────────────
+async function loadAdminClans() {
+  const el = document.getElementById('clans-table');
+  const totalEl = document.getElementById('clans-total');
+  try {
+    const clans = await fetch(`${API}/clans`).then(r => r.json());
+    if (totalEl) totalEl.textContent = `Всего: ${clans.length}`;
+    if (!clans.length) {
+      el.innerHTML = '<p class="p-6" style="color:var(--muted);font-size:.85rem;">Кланов пока нет.</p>';
+      return;
+    }
+    el.innerHTML = `
+      <table>
+        <thead><tr><th>Тег</th><th>Название</th><th>Лидер</th><th>Участников</th><th>Создан</th><th>Действия</th></tr></thead>
+        <tbody>
+          ${clans.map(c => `<tr>
+            <td><code style="font-size:.75rem;background:rgba(40,0,60,.4);padding:.15rem .45rem;border-radius:.3rem;color:#c4b5fd;">${esc(c.tag)}</code></td>
+            <td style="font-weight:600;">${esc(c.name)}</td>
+            <td style="color:var(--muted);">${esc(c.leader_username)}</td>
+            <td style="color:var(--muted);">${c.member_count}</td>
+            <td style="color:var(--muted);">${new Date(c.created_at).toLocaleDateString('ru-RU')}</td>
+            <td><button class="btn-danger" onclick="deleteAdminClan(${c.id},'${esc(c.name).replace(/'/g,"\\'")}')">Удалить</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch {
+    el.innerHTML = '<p class="p-6" style="color:#fca5a5;font-size:.85rem;">Ошибка загрузки.</p>';
+  }
+}
+
+async function deleteAdminClan(id, name) {
+  showConfirm({
+    title: 'Удалить клан?',
+    text: `Клан «${name}» будет удалён, все участники потеряют членство.`,
+    onOk: async () => {
+      const res = await fetch(`${API}/admin/clans/${id}`, { method: 'DELETE', headers: authH() });
+      if (res.ok || res.status === 204) loadAdminClans();
+      else showToast('Ошибка удаления клана', 'error');
+    },
+  });
+}
+
 let _allUsers = [];
 let _usersSort = { field: 'created_at', dir: -1 };
 
