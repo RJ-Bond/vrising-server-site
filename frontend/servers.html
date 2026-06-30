@@ -53,7 +53,7 @@
     .g-card { animation:fade-up .4s ease both; }
 
     .srv-head { display:flex; align-items:center; gap:.7rem; margin-bottom:1.1rem; flex-wrap:wrap; }
-    .srv-icon { font-size:1.5rem; filter:drop-shadow(0 0 10px var(--accent)); flex-shrink:0; }
+    .srv-icon { width:1.7rem; height:1.7rem; object-fit:contain; filter:drop-shadow(0 0 8px var(--accent)); flex-shrink:0; }
     .srv-name { font-family:'Philosopher',serif; font-weight:700; font-size:1.05rem; color:#d4c4e0; flex:1; min-width:0; }
     .srv-badge { font-size:.65rem; font-weight:700; letter-spacing:.06em; padding:.22rem .65rem; border-radius:9999px; display:inline-flex; align-items:center; gap:.35rem; flex-shrink:0; }
     .srv-badge.on  { background:rgba(0,160,60,0.18); border:1px solid rgba(0,200,80,0.4); color:#4ade80; }
@@ -158,7 +158,7 @@ function srvCardSkeleton(num) {
   return `
   <div class="g-card" style="--accent:${t.accent};" id="srv-card-${num}">
     <div class="srv-head">
-      <div class="srv-icon">🗡️</div>
+      <img src="/icon-vrising.png" alt="" class="srv-icon">
       <div class="srv-name" id="srv-name-${num}">Сервер ${num}</div>
       <span class="srv-badge off" id="srv-badge-${num}"><span class="srv-dot"></span>Загрузка</span>
     </div>

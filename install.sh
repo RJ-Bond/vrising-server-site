@@ -84,7 +84,7 @@ copy_project_files() {
   [[ ${#backend_files[@]} -gt 0 ]] || die "В $SCRIPT_DIR/backend нет .py файлов"
   cp "${backend_files[@]}" "$INSTALL_DIR/backend/"
 
-  frontend_files=("$SCRIPT_DIR"/frontend/*.html "$SCRIPT_DIR"/frontend/robots.txt)
+  frontend_files=("$SCRIPT_DIR"/frontend/*)
   [[ ${#frontend_files[@]} -gt 0 ]] || die "В $SCRIPT_DIR/frontend нет файлов для копирования"
   cp "${frontend_files[@]}" "$INSTALL_DIR/frontend/"
   shopt -u nullglob
