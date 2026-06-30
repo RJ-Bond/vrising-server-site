@@ -1738,7 +1738,7 @@ function renderServerBlock(d, sfx) {
     const fillPct = d.max_players > 0 ? d.players / d.max_players * 100 : 0;
     const tipOnline = `Игроков онлайн: ${d.players} из ${d.max_players}`;
     const tipFill   = `Заполненность: ${pct}%`;
-    circEl.innerHTML = bloodVial(d.players, 'Онлайн', fillPct, tipOnline) + bloodVial(pct + '%', 'Заполнен', pct, tipFill);
+    circEl.innerHTML = bloodVial(d.players, 'Игроки', fillPct, tipOnline) + bloodVial(pct + '%', 'Заполнен', pct, tipFill);
     animateVials(circEl);
   }
 
