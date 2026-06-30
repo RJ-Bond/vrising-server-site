@@ -492,6 +492,24 @@
           </div>
 
           <div class="s-field">
+            <label>Подзаголовок (после названия)</label>
+            <div class="s-field-row">
+              <input id="setting-site_tagline" type="text" class="dark-input" placeholder="Замок">
+              <button class="s-save-btn" onclick="saveSetting('site_tagline')">Сохранить</button>
+            </div>
+            <p class="s-desc">Отображается в заголовке вкладки браузера: «Название — Подзаголовок»</p>
+          </div>
+
+          <div class="s-field">
+            <label>Описание сайта</label>
+            <div class="s-field-row">
+              <input id="setting-site_description" type="text" class="dark-input" placeholder="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила.">
+              <button class="s-save-btn" onclick="saveSetting('site_description')">Сохранить</button>
+            </div>
+            <p class="s-desc">Используется в превью ссылки при шаринге (Discord, Telegram, поиск). Меняется сразу в браузере, но боты соцсетей кешируют старую версию — для них нужна серверная отдача (см. примечание в README).</p>
+          </div>
+
+          <div class="s-field">
             <label>Логотип сайта</label>
             <div class="s-field-row" style="margin-bottom:.5rem;">
               <input id="setting-site_logo_url" type="text" class="dark-input" placeholder="https://example.com/logo.png" oninput="previewLogo(this.value)">
@@ -1059,7 +1077,7 @@ async function loadSettings() {
   const settings = await res.json();
   const map = {};
   settings.forEach(s => { map[s.key] = s.value; });
-  ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color'].forEach(key => {
+  ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color'].forEach(key => {
     const el = document.getElementById(`setting-${key}`);
     if (el && map[key] !== undefined) el.value = map[key];
   });
@@ -1522,7 +1540,7 @@ async function exportSettings() {
 const _ALLOWED_SETTING_KEYS = new Set([
   'setup_completed','server_ip','server_port','server_name',
   'server2_name','server2_ip','server2_port',
-  'site_title','site_logo_url','discord_url','discord_server_id',
+  'site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id',
   'bg_image_url','wipe_date','wipe_type','wipe_date2','wipe_type2',
   'event_active','event_title','event_text','event_color',
   'rules','https_domain','https_email',

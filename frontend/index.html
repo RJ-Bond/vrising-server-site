@@ -3,15 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>V Rising — Замок</title>
-  <meta name="description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
+  <title id="page-title">V Rising — Замок</title>
+  <meta id="meta-description" name="description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="V Rising — Замок" />
-  <meta property="og:description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
-  <meta property="og:site_name" content="V Rising" />
+  <meta id="meta-og-title" property="og:title" content="V Rising — Замок" />
+  <meta id="meta-og-description" property="og:description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
+  <meta id="meta-og-site-name" property="og:site_name" content="V Rising" />
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="V Rising — Замок" />
-  <meta name="twitter:description" content="Официальный сайт игрового сервера V Rising." />
+  <meta id="meta-tw-title" name="twitter:title" content="V Rising — Замок" />
+  <meta id="meta-tw-description" name="twitter:description" content="Официальный сайт игрового сервера V Rising." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -2583,7 +2583,9 @@ function acceptRules() {
 async function loadSiteSettings() {
   try {
     const d = await fetch(`${API}/settings/public`).then(r => r.json());
-    const title   = (d.site_title || '').trim() || 'V RISING';
+    const title       = (d.site_title || '').trim() || 'V RISING';
+    const tagline     = (d.site_tagline || '').trim() || 'Замок';
+    const description = (d.site_description || '').trim() || 'Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила.';
     const logo    = (d.site_logo_url || '').trim();
     const discord = (d.discord_url || '').trim();
     const bg      = (d.bg_image_url || '').trim();
@@ -2606,7 +2608,20 @@ async function loadSiteSettings() {
     }
 
     document.getElementById('hero-title').textContent = title;
-    document.title = title + ' — Замок';
+    const fullTitle = title + ' — ' + tagline;
+    document.title = fullTitle;
+    const descMeta = document.getElementById('meta-description');
+    if (descMeta) descMeta.setAttribute('content', description);
+    const ogTitle = document.getElementById('meta-og-title');
+    if (ogTitle) ogTitle.setAttribute('content', fullTitle);
+    const ogDesc = document.getElementById('meta-og-description');
+    if (ogDesc) ogDesc.setAttribute('content', description);
+    const ogSiteName = document.getElementById('meta-og-site-name');
+    if (ogSiteName) ogSiteName.setAttribute('content', title);
+    const twTitle = document.getElementById('meta-tw-title');
+    if (twTitle) twTitle.setAttribute('content', fullTitle);
+    const twDesc = document.getElementById('meta-tw-description');
+    if (twDesc) twDesc.setAttribute('content', description);
 
     const navLogo = document.getElementById('nav-logo');
     if (logo) {

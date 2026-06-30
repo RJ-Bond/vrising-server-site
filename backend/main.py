@@ -96,6 +96,8 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="server_port", value=os.getenv("VRISING_SERVER_PORT", "27016")),
         Setting(key="server_name", value="V Rising Server"),
         Setting(key="site_title", value="V RISING"),
+        Setting(key="site_tagline", value="Замок"),
+        Setting(key="site_description", value="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила."),
         Setting(key="site_logo_url", value=""),
         Setting(key="discord_url", value=""),
         Setting(key="bg_image_url", value=""),
@@ -1061,7 +1063,7 @@ async def serve_upload(filename: str):
 
 @app.get("/api/settings/public")
 async def get_public_settings(db: AsyncSession = Depends(get_db)):
-    keys = ["site_title", "site_logo_url", "discord_url", "discord_server_id", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules"]
+    keys = ["site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules"]
     result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
     settings = result.scalars().all()
     return {s.key: s.value for s in settings}
@@ -1072,7 +1074,7 @@ async def get_public_settings(db: AsyncSession = Depends(get_db)):
 ALLOWED_SETTING_KEYS = {
     "setup_completed", "server_ip", "server_port", "server_name",
     "server2_name", "server2_ip", "server2_port",
-    "site_title", "site_logo_url", "discord_url", "discord_server_id",
+    "site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id",
     "bg_image_url", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2",
     "event_active", "event_title", "event_text", "event_color",
     "rules", "https_domain", "https_email",
