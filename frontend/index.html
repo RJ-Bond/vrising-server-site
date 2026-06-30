@@ -812,9 +812,6 @@
     .rules-accept-btn.ready:hover { background:rgba(160,0,30,0.28); border-color:var(--crimson); box-shadow:0 0 12px rgba(180,0,30,0.2); }
     .rules-accept-btn.accepted { border-color:rgba(0,180,80,0.35); background:rgba(0,60,20,0.14); color:#4ade80; cursor:default; pointer-events:none; }
 
-    /* ── Blood Vial ── */
-    .vial-fill { will-change:transform; }
-
     /* ── Leaderboard tabs ── */
     .lb-tab { flex:1; padding:.28rem .2rem; background:rgba(12,2,20,0.5); border:1px solid rgba(110,0,20,0.2); border-radius:.4rem; color:var(--muted); font-size:.6rem; font-family:'Inter',sans-serif; letter-spacing:.06em; text-transform:uppercase; cursor:pointer; transition:all .18s; }
     .lb-tab:hover { border-color:rgba(160,0,30,0.4); color:var(--text); }
@@ -1662,65 +1659,6 @@ function row(k, v) {
   </div>`;
 }
 
-function bloodVial(centerText, label, fillPct, tooltip = '') {
-  const pct = Math.min(100, Math.max(0, fillPct));
-  const uid = Math.random().toString(36).slice(2, 8);
-  // SVG canvas 48×82; body: x=10,y=13,w=28,h=54; fill inner: x=11,y=14,w=26,h=52
-  const cx = 24, bodyBottom = 67;
-  return `<div style="display:flex;flex-direction:column;align-items:center;gap:.4rem;${tooltip ? 'cursor:help;' : ''}" ${tooltip ? `title="${tooltip}"` : ''}>
-    <svg width="48" height="82" viewBox="0 0 48 82" style="overflow:visible;">
-      <defs>
-        <linearGradient id="vbg${uid}" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0%" stop-color="#5a000f"/>
-          <stop offset="50%" stop-color="#99001e"/>
-          <stop offset="100%" stop-color="#cc0030"/>
-        </linearGradient>
-        <clipPath id="vc${uid}">
-          <rect x="11" y="14" width="26" height="52" rx="7"/>
-        </clipPath>
-        <filter id="vg${uid}" x="-60%" y="-60%" width="220%" height="220%">
-          <feGaussianBlur stdDeviation="3" result="b"/>
-          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-        </filter>
-      </defs>
-      <!-- Cork stopper -->
-      <rect x="17" y="1" width="14" height="5" rx="2" fill="#2c1003" stroke="rgba(80,25,0,0.7)" stroke-width="1"/>
-      <!-- Neck -->
-      <rect x="19" y="5" width="10" height="9" fill="rgba(7,0,3,0.95)" stroke="rgba(75,0,14,0.55)" stroke-width="1"/>
-      <!-- Glass body -->
-      <rect x="10" y="13" width="28" height="54" rx="8" fill="rgba(7,0,3,0.9)" stroke="rgba(80,0,15,0.5)" stroke-width="1.5"/>
-      <!-- Blood fill — scaleY from bottom -->
-      <g clip-path="url(#vc${uid})">
-        <rect x="11" y="14" width="26" height="52" rx="7"
-          fill="url(#vbg${uid})"
-          class="vial-fill"
-          data-pct="${(pct / 100).toFixed(4)}"
-          style="transform-origin:${cx}px ${bodyBottom}px;transform:scaleY(0);transition:transform 1.4s cubic-bezier(.25,.46,.45,.94);"/>
-      </g>
-      <!-- Left shine -->
-      <rect x="14" y="17" width="4" height="42" rx="2" fill="rgba(255,255,255,0.052)"/>
-      <!-- Right subtle shine -->
-      <rect x="30" y="20" width="3" height="34" rx="1.5" fill="rgba(255,255,255,0.022)"/>
-      <!-- Center label -->
-      <text x="${cx}" y="40" text-anchor="middle" dominant-baseline="central"
-        fill="#ecdce8" font-size="12" font-weight="700" font-family="'Inter',sans-serif"
-        style="text-shadow:0 1px 6px rgba(0,0,0,0.95),0 0 14px rgba(180,0,30,0.6);">${centerText}</text>
-      <!-- Bottom glow -->
-      ${pct > 5 ? `<ellipse cx="${cx}" cy="70" rx="12" ry="3.5" fill="rgba(170,0,25,0.2)" filter="url(#vg${uid})"/>` : ''}
-    </svg>
-    <p style="font-size:.57rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;text-align:center;">${label}</p>
-  </div>`;
-}
-
-function animateVials(container) {
-  if (!container) return;
-  setTimeout(() => {
-    container.querySelectorAll('.vial-fill').forEach(el => {
-      el.style.transform = `scaleY(${el.dataset.pct})`;
-    });
-  }, 60);
-}
-
 function renderServerBlock(d, sfx) {
   const pct = d.max_players > 0 ? Math.round(d.players / d.max_players * 100) : 0;
   const cls = d.online ? 'badge-on' : 'badge-off';
@@ -1735,11 +1673,19 @@ function renderServerBlock(d, sfx) {
 
   const circEl = document.getElementById('left-circles' + sfx);
   if (circEl) {
-    const fillPct = d.max_players > 0 ? d.players / d.max_players * 100 : 0;
     const tipOnline = `Игроков онлайн: ${d.players} из ${d.max_players}`;
     const tipFill   = `Заполненность: ${pct}%`;
-    circEl.innerHTML = bloodVial(d.players, 'Игроки', fillPct, tipOnline) + bloodVial(pct + '%', 'Заполнен', pct, tipFill);
-    animateVials(circEl);
+    circEl.innerHTML = `
+      <div title="${tipOnline}">
+        <div id="left-players${sfx}" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">0</div>
+        <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Игроки</div>
+      </div>
+      <div title="${tipFill}">
+        <div id="left-fillpct${sfx}" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">0%</div>
+        <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Заполнен</div>
+      </div>`;
+    countUp(document.getElementById('left-players' + sfx), d.players);
+    countUpPct(document.getElementById('left-fillpct' + sfx), pct);
   }
 
   return { lbl, cls, name: d.name, players: d.players, max_players: d.max_players };
