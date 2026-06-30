@@ -129,9 +129,11 @@
     .srv-graph-tooltip b { color:var(--accent); font-size:.88rem; }
     .srv-graph-tooltip span { color:var(--muted); font-size:.62rem; display:block; }
     .srv-graph-axis { display:flex; justify-content:space-between; margin-top:.35rem; font-size:.58rem; color:var(--muted); }
-    .srv-heatmap { display:flex; align-items:flex-end; gap:2px; height:60px; margin-bottom:1.25rem; }
+    .srv-heatmap-area { position:relative; }
+    .srv-heatmap { display:flex; align-items:flex-end; gap:2px; height:60px; cursor:crosshair; }
     .srv-heatbar { flex:1; background:var(--accent); border-radius:2px 2px 0 0; min-height:2px; opacity:.55; transition:opacity .15s; position:relative; }
     .srv-heatbar:hover { opacity:1; }
+    .srv-heatbar.peak { background:var(--gold); opacity:.95; box-shadow:0 0 8px var(--gold); }
     .srv-heat-labels { display:flex; justify-content:space-between; font-size:.55rem; color:var(--muted); margin-top:.25rem; margin-bottom:1.25rem; }
 
     .srv-players-row { display:flex; align-items:center; justify-content:space-between; padding:.4rem 0; border-bottom:1px solid rgba(110,0,20,0.1); font-size:.82rem; }
@@ -311,8 +313,11 @@ function srvCardSkeleton(num) {
       <p id="srv-graph-empty-${num}" class="srv-empty" style="display:none;">Нет данных за этот период.</p>
     </div>
     <div id="srv-heatmap-wrap-${num}">
-      <div class="srv-section-title">Активность по часам (UTC, среднее за 7 дней)</div>
-      <div class="srv-heatmap" id="srv-heatmap-${num}"></div>
+      <div class="srv-section-title" id="srv-heatmap-title-${num}">Активность по часам (UTC, среднее за 7 дней)</div>
+      <div class="srv-heatmap-area">
+        <div class="srv-heatmap" id="srv-heatmap-${num}"></div>
+        <div class="srv-graph-tooltip" id="srv-heat-tip-${num}" style="display:none;"></div>
+      </div>
       <div class="srv-heat-labels"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
     </div>
     <div>
@@ -434,7 +439,6 @@ async function loadServerStats(num) {
     setStat(`srv-uptime7d-${num}`, s.uptime_7d != null ? `${s.uptime_7d}%` : '—');
     setStat(`srv-peak24-${num}`, s.peak_24h ?? '—');
     setStat(`srv-peak7d-${num}`, s.peak_7d ?? '—');
-    renderHeatmap(num, s.heatmap || []);
 
     const record = document.getElementById(`srv-record-${num}`);
     if (record && s.peak_alltime > 0) {
@@ -456,18 +460,73 @@ function _pluralPlayers(n) {
   return 'игроков';
 }
 
-function renderHeatmap(num, heatmap) {
+const PERIOD_LABELS = { 1: 'сутки', 3: '3 дня', 7: '7 дней' };
+let _heatHoverSetup = {};
+
+function computeHourBuckets(snaps) {
+  const sums = Array(24).fill(0);
+  const counts = Array(24).fill(0);
+  snaps.forEach(s => {
+    const h = new Date(s.ts * 1000).getUTCHours();
+    sums[h] += s.players;
+    counts[h]++;
+  });
+  return sums.map((sum, hour) => ({ hour, count: counts[hour], avg: counts[hour] ? sum / counts[hour] : 0 }));
+}
+
+function drawHeatmap(num) {
+  const wrap = document.getElementById(`srv-heatmap-wrap-${num}`);
   const el = document.getElementById(`srv-heatmap-${num}`);
-  if (!el) return;
-  if (!heatmap.length || !heatmap.some(v => v > 0)) {
-    document.getElementById(`srv-heatmap-wrap-${num}`).style.display = 'none';
+  const titleEl = document.getElementById(`srv-heatmap-title-${num}`);
+  if (!wrap || !el) return;
+
+  const days = _graphPeriod[num] || 7;
+  const cutoff = Date.now() / 1000 - days * 86400;
+  const snaps = (_graphData[num] || []).filter(s => s.ts >= cutoff);
+  const buckets = computeHourBuckets(snaps);
+
+  if (!buckets.some(b => b.count > 0)) {
+    wrap.style.display = 'none';
     return;
   }
-  const max = Math.max(...heatmap, 1);
-  el.innerHTML = heatmap.map(v => {
-    const h = Math.max(2, Math.round((v / max) * 60));
-    return `<div class="srv-heatbar" style="height:${h}px;" title="${v} игроков в среднем"></div>`;
+  wrap.style.display = '';
+  if (titleEl) titleEl.textContent = `Активность по часам (UTC, среднее за ${PERIOD_LABELS[days] || '7 дней'})`;
+
+  const max = Math.max(...buckets.map(b => b.avg), 1);
+  const peak = buckets.reduce((best, b) => b.avg > best.avg ? b : best, buckets[0]);
+
+  el.innerHTML = buckets.map(b => {
+    const h = Math.max(2, Math.round((b.avg / max) * 60));
+    const isPeak = b.avg > 0 && b.hour === peak.hour;
+    return `<div class="srv-heatbar${isPeak ? ' peak' : ''}" data-hour="${b.hour}" data-avg="${b.avg.toFixed(1)}" data-count="${b.count}" style="height:${h}px;"></div>`;
   }).join('');
+
+  setupHeatmapHover(num);
+}
+
+function setupHeatmapHover(num) {
+  if (_heatHoverSetup[num]) return;
+  _heatHoverSetup[num] = true;
+  const el = document.getElementById(`srv-heatmap-${num}`);
+  const tip = document.getElementById(`srv-heat-tip-${num}`);
+  if (!el || !tip) return;
+
+  const show = (bar) => {
+    if (!bar) { tip.style.display = 'none'; return; }
+    const hour = String(bar.dataset.hour).padStart(2, '0');
+    tip.innerHTML = `<b>${bar.dataset.avg}</b> игроков<span>${hour}:00–${hour}:59 UTC</span>`;
+    tip.style.display = 'block';
+    const areaRect = el.parentElement.getBoundingClientRect();
+    const barRect = bar.getBoundingClientRect();
+    let left = barRect.left - areaRect.left + barRect.width / 2 - 50;
+    left = Math.max(0, Math.min(left, areaRect.width - 105));
+    tip.style.left = left + 'px';
+    tip.style.top = '-46px';
+  };
+
+  el.addEventListener('mousemove', e => show(e.target.closest('.srv-heatbar')));
+  el.addEventListener('mouseleave', () => show(null));
+  el.addEventListener('touchstart', e => { const bar = e.target.closest('.srv-heatbar'); if (bar) show(bar); }, { passive: true });
 }
 
 let _graphData = {};
@@ -484,6 +543,7 @@ async function loadServerGraph(num) {
     _graphData[num] = null;
   }
   drawGraph(num);
+  drawHeatmap(num);
 }
 
 function setGraphPeriod(num, days, btn) {
@@ -491,6 +551,7 @@ function setGraphPeriod(num, days, btn) {
   const wrap = document.getElementById(`srv-period-${num}`);
   if (wrap) wrap.querySelectorAll('.srv-period-btn').forEach(b => b.classList.toggle('active', b === btn));
   drawGraph(num);
+  drawHeatmap(num);
 }
 
 function drawGraph(num) {
