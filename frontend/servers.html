@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V Rising — Сервера</title>
+  <meta name="description" content="Мониторинг серверов V Rising в реальном времени — онлайн игроков, аптайм, пиковая нагрузка и история за неделю." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg:      #06000f;
+      --card:    rgba(14,5,22,0.88);
+      --border:  rgba(110,0,150,0.22);
+      --text:    #e2d8f0;
+      --muted:   #9488a8;
+      --gold:    #c9a94a;
+      --crimson: #c8002a;
+      --purple:  #7c3aed;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; }
+    body {
+      background:var(--bg);
+      background-image:
+        radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
+      background-attachment:fixed;
+      font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh;
+    }
+    .gothic { font-family:'Cinzel',serif; }
+    .glass-nav { background:rgba(8,0,14,0.9); border-bottom:1px solid rgba(110,0,20,0.35); backdrop-filter:blur(14px); position:sticky; top:0; z-index:40; }
+    .topnav-link {
+      font-size:.78rem; font-weight:600; color:var(--muted); text-decoration:none;
+      padding:.4rem .75rem; border-radius:.5rem; border:1px solid transparent; transition:all .2s;
+      background:none; cursor:pointer; font-family:'Inter',sans-serif;
+    }
+    .topnav-link:hover { color:var(--text); background:rgba(150,0,28,0.12); border-color:rgba(160,0,35,0.35); }
+    .topnav-link.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
+
+    .g-card {
+      background:var(--card); border:1px solid var(--border);
+      border-radius:.875rem; backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+      position:relative; padding:1.5rem;
+    }
+    .g-card::before {
+      content:''; position:absolute; top:0; left:12%; right:12%; height:1px;
+      background:linear-gradient(90deg,transparent,var(--accent,rgba(200,0,45,0.4)),transparent);
+    }
+    @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    .g-card { animation:fade-up .4s ease both; }
+
+    .srv-head { display:flex; align-items:center; gap:.7rem; margin-bottom:1.1rem; flex-wrap:wrap; }
+    .srv-icon { font-size:1.5rem; filter:drop-shadow(0 0 10px var(--accent)); flex-shrink:0; }
+    .srv-name { font-family:'Philosopher',serif; font-weight:700; font-size:1.05rem; color:#d4c4e0; flex:1; min-width:0; }
+    .srv-badge { font-size:.65rem; font-weight:700; letter-spacing:.06em; padding:.22rem .65rem; border-radius:9999px; display:inline-flex; align-items:center; gap:.35rem; flex-shrink:0; }
+    .srv-badge.on  { background:rgba(0,160,60,0.18); border:1px solid rgba(0,200,80,0.4); color:#4ade80; }
+    .srv-badge.off { background:rgba(150,0,20,0.18); border:1px solid rgba(200,0,30,0.4); color:#f87171; }
+    .srv-dot { width:.45rem; height:.45rem; border-radius:50%; background:currentColor; box-shadow:0 0 8px currentColor; }
+    .srv-dot.pulse { animation:srv-pulse 1.6s ease-in-out infinite; }
+    @keyframes srv-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    .srv-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.7rem; margin-bottom:1.25rem; }
+    .srv-stat-box { background:rgba(8,0,16,0.55); border:1px solid rgba(110,0,20,0.2); border-radius:.6rem; padding:.7rem .5rem; text-align:center; }
+    .srv-stat-val { font-family:'Oswald',sans-serif; font-size:1.3rem; font-weight:600; color:var(--accent); line-height:1; }
+    .srv-stat-lbl { font-size:.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-top:.3rem; }
+
+    .srv-pill-row { display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; margin-bottom:1.25rem; }
+    .srv-pill { background:rgba(8,0,16,0.4); border:1px solid rgba(110,0,20,0.15); border-radius:.5rem; padding:.55rem .4rem; text-align:center; }
+    .srv-pill-val { font-family:'Cinzel',serif; font-size:1rem; font-weight:700; color:var(--gold); }
+    .srv-pill-lbl { font-size:.58rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:.2rem; }
+
+    .srv-section-title { font-family:'Cinzel',serif; font-size:.68rem; letter-spacing:.14em; color:var(--gold); text-transform:uppercase; margin-bottom:.6rem; }
+
+    .srv-graph-card { margin-bottom:1.25rem; }
+    .srv-heatmap { display:flex; align-items:flex-end; gap:2px; height:60px; margin-bottom:1.25rem; }
+    .srv-heatbar { flex:1; background:var(--accent); border-radius:2px 2px 0 0; min-height:2px; opacity:.55; transition:opacity .15s; position:relative; }
+    .srv-heatbar:hover { opacity:1; }
+    .srv-heat-labels { display:flex; justify-content:space-between; font-size:.55rem; color:var(--muted); margin-top:.25rem; margin-bottom:1.25rem; }
+
+    .srv-players-row { display:flex; align-items:center; justify-content:space-between; padding:.4rem 0; border-bottom:1px solid rgba(110,0,20,0.1); font-size:.82rem; }
+    .srv-players-row:last-child { border-bottom:none; }
+    .srv-player-dot { width:.4rem; height:.4rem; border-radius:50%; flex-shrink:0; }
+
+    .srv-empty { color:var(--muted); font-size:.78rem; font-style:italic; text-align:center; padding:1rem 0; }
+
+    @media (max-width:680px) {
+      .srv-stat-grid, .srv-pill-row { grid-template-columns:repeat(2,1fr); }
+    }
+
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
+    ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="glass-nav">
+  <div style="max-width:1000px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
+    <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">⚔ V RISING</a>
+    <div style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;">
+      <a href="/" class="topnav-link">Главная</a>
+      <a href="/servers.html" class="topnav-link active">Сервера</a>
+      <a href="/bans.html" class="topnav-link">Баны</a>
+      <a id="nav-profile-link" href="/profile.html" class="topnav-link" style="display:none;">Профиль</a>
+      <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
+    </div>
+  </div>
+</nav>
+
+<div style="max-width:780px;margin:2.5rem auto 3.5rem;padding:0 1rem;">
+  <div style="text-align:center;margin-bottom:1.75rem;">
+    <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;margin-bottom:.4rem;">Мониторинг серверов</h1>
+    <p style="font-size:.8rem;color:var(--muted);">Статус, онлайн игроков и активность за последние 7 дней</p>
+  </div>
+
+  <div id="servers-wrap" style="display:flex;flex-direction:column;gap:1.5rem;">
+    <p style="color:var(--muted);text-align:center;font-size:.85rem;">Загрузка…</p>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function fmtDuration(sec) {
+  if (sec < 60) return `${sec}с`;
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+  return h > 0 ? `${h}ч ${m}м` : `${m}м`;
+}
+
+(function() {
+  if (getToken()) {
+    document.getElementById('nav-profile-link').style.display = '';
+    document.getElementById('nav-login-link').style.display = 'none';
+  }
+})();
+
+(async function() {
+  try {
+    const d = await fetch(`${API}/settings/public`).then(r => r.json());
+    const title = (d.site_title || 'V Rising').trim();
+    document.title = `${title} — Сервера`;
+    document.getElementById('nav-logo').textContent = '⚔ ' + title;
+  } catch {}
+})();
+
+const SERVER_THEMES = {
+  1: { accent: '#e05575', accentRgb: '224,85,117' },
+  2: { accent: '#9955ee', accentRgb: '153,85,238' },
+};
+
+function srvCardSkeleton(num) {
+  const t = SERVER_THEMES[num];
+  return `
+  <div class="g-card" style="--accent:${t.accent};" id="srv-card-${num}">
+    <div class="srv-head">
+      <div class="srv-icon">🗡️</div>
+      <div class="srv-name" id="srv-name-${num}">Сервер ${num}</div>
+      <span class="srv-badge off" id="srv-badge-${num}"><span class="srv-dot"></span>Загрузка</span>
+    </div>
+    <div class="srv-stat-grid">
+      <div class="srv-stat-box"><div class="srv-stat-val" id="srv-players-${num}">—</div><div class="srv-stat-lbl">Игроков</div></div>
+      <div class="srv-stat-box"><div class="srv-stat-val" id="srv-ping-${num}" style="font-size:1.1rem;">—</div><div class="srv-stat-lbl">Пинг</div></div>
+      <div class="srv-stat-box"><div class="srv-stat-val" id="srv-map-${num}" style="font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div><div class="srv-stat-lbl">Карта</div></div>
+      <div class="srv-stat-box"><div class="srv-stat-val" id="srv-version-${num}" style="font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div><div class="srv-stat-lbl">Версия</div></div>
+    </div>
+    <div class="srv-pill-row">
+      <div class="srv-pill"><div class="srv-pill-val" id="srv-uptime24-${num}">—</div><div class="srv-pill-lbl">Аптайм 24ч</div></div>
+      <div class="srv-pill"><div class="srv-pill-val" id="srv-uptime7d-${num}">—</div><div class="srv-pill-lbl">Аптайм 7д</div></div>
+      <div class="srv-pill"><div class="srv-pill-val" id="srv-peak24-${num}">—</div><div class="srv-pill-lbl">Пик 24ч</div></div>
+      <div class="srv-pill"><div class="srv-pill-val" id="srv-peak7d-${num}">—</div><div class="srv-pill-lbl">Пик 7д</div></div>
+    </div>
+    <div class="srv-graph-card">
+      <div class="srv-section-title">Онлайн за 7 дней</div>
+      <canvas id="srv-graph-${num}" height="100" style="width:100%;display:block;"></canvas>
+      <p id="srv-graph-empty-${num}" class="srv-empty" style="display:none;">Нет данных за этот период.</p>
+    </div>
+    <div id="srv-heatmap-wrap-${num}">
+      <div class="srv-section-title">Активность по часам (UTC, среднее за 7 дней)</div>
+      <div class="srv-heatmap" id="srv-heatmap-${num}"></div>
+      <div class="srv-heat-labels"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+    </div>
+    <div>
+      <div class="srv-section-title">Игроки онлайн</div>
+      <div id="srv-players-list-${num}"><p class="srv-empty">Загрузка…</p></div>
+    </div>
+  </div>`;
+}
+
+let _serverEnabled = { 1: true, 2: true };
+
+async function loadServer(num) {
+  const statusUrl = num === 1 ? `${API}/monitor/status` : `${API}/monitor/status2`;
+  try {
+    const d = await fetch(statusUrl).then(r => r.json());
+    if (num === 2 && d.enabled === false) {
+      _serverEnabled[2] = false;
+      const card = document.getElementById(`srv-card-${num}`);
+      if (card) card.style.display = 'none';
+      return;
+    }
+    _serverEnabled[num] = true;
+    const card = document.getElementById(`srv-card-${num}`);
+    if (card) card.style.display = '';
+
+    document.getElementById(`srv-name-${num}`).textContent = d.name || `Сервер ${num}`;
+    const badge = document.getElementById(`srv-badge-${num}`);
+    if (badge) {
+      badge.className = 'srv-badge ' + (d.online ? 'on' : 'off');
+      badge.innerHTML = `<span class="srv-dot${d.online ? ' pulse' : ''}"></span>${d.online ? 'Онлайн' : 'Офлайн'}`;
+    }
+    document.getElementById(`srv-players-${num}`).textContent = `${d.players ?? 0}/${d.max_players ?? 0}`;
+    document.getElementById(`srv-ping-${num}`).textContent = d.latency_ms != null ? `${d.latency_ms} мс` : '—';
+    document.getElementById(`srv-map-${num}`).textContent = d.map && d.map !== 'N/A' ? d.map : '—';
+    document.getElementById(`srv-version-${num}`).textContent = d.version && d.version !== 'N/A' ? d.version : '—';
+
+    renderServerPlayers(num, d.players_list || []);
+  } catch {
+    const badge = document.getElementById(`srv-badge-${num}`);
+    if (badge) { badge.className = 'srv-badge off'; badge.innerHTML = '<span class="srv-dot"></span>Ошибка'; }
+  }
+}
+
+function renderServerPlayers(num, players) {
+  const el = document.getElementById(`srv-players-list-${num}`);
+  if (!el) return;
+  if (!players.length) {
+    el.innerHTML = `<p class="srv-empty">Нет игроков онлайн</p>`;
+    return;
+  }
+  const sorted = [...players].sort((a, b) => b.duration - a.duration);
+  el.innerHTML = sorted.map(p => {
+    const name = p.name || 'Аноним';
+    const hue = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 55 + 330;
+    return `<div class="srv-players-row">
+      <span style="display:flex;align-items:center;gap:.5rem;min-width:0;">
+        <span class="srv-player-dot" style="background:hsl(${hue},78%,42%);box-shadow:0 0 5px hsl(${hue},78%,42%);"></span>
+        <span style="font-family:'Philosopher',serif;color:#d0ccd8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name)}</span>
+      </span>
+      <span style="font-family:'Oswald',sans-serif;font-size:.72rem;color:var(--muted);white-space:nowrap;flex-shrink:0;">${fmtDuration(p.duration)}</span>
+    </div>`;
+  }).join('');
+}
+
+async function loadServerStats(num) {
+  try {
+    const s = await fetch(`${API}/monitor/stats?server=${num}`).then(r => r.json());
+    document.getElementById(`srv-uptime24-${num}`).textContent = s.uptime_24h != null ? `${s.uptime_24h}%` : '—';
+    document.getElementById(`srv-uptime7d-${num}`).textContent = s.uptime_7d != null ? `${s.uptime_7d}%` : '—';
+    document.getElementById(`srv-peak24-${num}`).textContent = s.peak_24h ?? '—';
+    document.getElementById(`srv-peak7d-${num}`).textContent = s.peak_7d ?? '—';
+    renderHeatmap(num, s.heatmap || []);
+  } catch {}
+}
+
+function renderHeatmap(num, heatmap) {
+  const el = document.getElementById(`srv-heatmap-${num}`);
+  if (!el) return;
+  if (!heatmap.length || !heatmap.some(v => v > 0)) {
+    document.getElementById(`srv-heatmap-wrap-${num}`).style.display = 'none';
+    return;
+  }
+  const max = Math.max(...heatmap, 1);
+  el.innerHTML = heatmap.map(v => {
+    const h = Math.max(2, Math.round((v / max) * 60));
+    return `<div class="srv-heatbar" style="height:${h}px;" title="${v} игроков в среднем"></div>`;
+  }).join('');
+}
+
+async function loadServerGraph(num) {
+  const canvas = document.getElementById(`srv-graph-${num}`);
+  const empty  = document.getElementById(`srv-graph-empty-${num}`);
+  if (!canvas) return;
+  try {
+    const snaps = await fetch(`${API}/monitor/snapshots?server=${num}`).then(r => r.ok ? r.json() : []);
+    if (!snaps.length) {
+      canvas.style.display = 'none';
+      if (empty) empty.style.display = '';
+      return;
+    }
+    canvas.style.display = '';
+    if (empty) empty.style.display = 'none';
+
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth || canvas.parentElement.clientWidth;
+    const h = 100;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    const accent = SERVER_THEMES[num].accentRgb;
+    const maxPlayers = Math.max(1, ...snaps.map(s => s.players));
+    const padL = 4, padR = 4, padT = 8, padB = 4;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+    const tMin = snaps[0].ts, tMax = snaps[snaps.length - 1].ts;
+    const tSpan = Math.max(1, tMax - tMin);
+    const x = s => padL + ((s.ts - tMin) / tSpan) * plotW;
+    const y = s => padT + plotH - (s.players / maxPlayers) * plotH;
+
+    ctx.beginPath();
+    ctx.moveTo(x(snaps[0]), padT + plotH);
+    snaps.forEach(s => ctx.lineTo(x(s), y(s)));
+    ctx.lineTo(x(snaps[snaps.length - 1]), padT + plotH);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
+    grad.addColorStop(0, `rgba(${accent},0.35)`);
+    grad.addColorStop(1, `rgba(${accent},0.02)`);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.beginPath();
+    snaps.forEach((s, i) => i === 0 ? ctx.moveTo(x(s), y(s)) : ctx.lineTo(x(s), y(s)));
+    ctx.strokeStyle = `rgb(${accent})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgba(248,113,113,0.7)';
+    snaps.forEach(s => { if (!s.online) { ctx.beginPath(); ctx.arc(x(s), padT + plotH - 1, 1.3, 0, Math.PI * 2); ctx.fill(); } });
+  } catch {
+    canvas.style.display = 'none';
+    if (empty) { empty.style.display = ''; empty.textContent = 'Ошибка загрузки графика.'; }
+  }
+}
+
+async function refreshAll() {
+  await Promise.all([1, 2].map(loadServer));
+}
+
+async function init() {
+  const wrap = document.getElementById('servers-wrap');
+  wrap.innerHTML = srvCardSkeleton(1) + srvCardSkeleton(2);
+  await refreshAll();
+  [1, 2].filter(n => _serverEnabled[n]).forEach(num => { loadServerStats(num); loadServerGraph(num); });
+}
+
+init();
+setInterval(refreshAll, 30000);
+setInterval(() => [1, 2].filter(n => _serverEnabled[n]).forEach(num => { loadServerStats(num); loadServerGraph(num); }), 300000);
+window.addEventListener('resize', () => [1, 2].filter(n => _serverEnabled[n]).forEach(loadServerGraph));
+</script>
+</body>
+</html>

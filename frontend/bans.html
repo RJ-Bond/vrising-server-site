@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>V Rising — Баны</title>
+  <meta name="description" content="Список банов сервера V Rising. Страница в разработке." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --bg:      #06000f;
+      --card:    rgba(14,5,22,0.88);
+      --border:  rgba(110,0,150,0.22);
+      --text:    #e2d8f0;
+      --muted:   #9488a8;
+      --gold:    #c9a94a;
+      --crimson: #c8002a;
+      --purple:  #7c3aed;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; }
+    body {
+      background:var(--bg);
+      background-image:
+        radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
+      background-attachment:fixed;
+      font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh;
+    }
+    .gothic { font-family:'Cinzel',serif; }
+    .glass-nav { background:rgba(8,0,14,0.9); border-bottom:1px solid rgba(110,0,20,0.35); backdrop-filter:blur(14px); position:sticky; top:0; z-index:40; }
+    .topnav-link {
+      font-size:.78rem; font-weight:600; color:var(--muted); text-decoration:none;
+      padding:.4rem .75rem; border-radius:.5rem; border:1px solid transparent; transition:all .2s;
+      background:none; cursor:pointer; font-family:'Inter',sans-serif;
+    }
+    .topnav-link:hover { color:var(--text); background:rgba(150,0,28,0.12); border-color:rgba(160,0,35,0.35); }
+    .topnav-link.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
+
+    .g-card {
+      background:var(--card); border:1px solid var(--border);
+      border-radius:.875rem; backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+      position:relative;
+    }
+    .g-card::before {
+      content:''; position:absolute; top:0; left:20%; right:20%; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(200,0,45,0.35),transparent);
+    }
+    @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    .g-card { animation:fade-up .4s ease both; }
+
+    .dev-icon-wrap {
+      width:88px; height:88px; border-radius:50%; margin:0 auto 1.25rem;
+      background:radial-gradient(circle at 38% 32%, rgba(150,0,28,0.35), rgba(80,0,130,0.25));
+      border:2px solid rgba(180,0,35,0.4);
+      box-shadow:0 0 32px rgba(180,0,30,0.25);
+      display:flex; align-items:center; justify-content:center;
+      animation:pulse-icon 2.6s ease-in-out infinite;
+    }
+    @keyframes pulse-icon { 0%,100%{box-shadow:0 0 24px rgba(180,0,30,0.2);} 50%{box-shadow:0 0 44px rgba(200,0,40,0.4);} }
+
+    .feature-item {
+      display:flex; align-items:center; gap:.6rem; padding:.55rem 0;
+      border-bottom:1px solid rgba(110,0,20,0.1); font-size:.82rem; color:var(--muted);
+    }
+    .feature-item:last-child { border-bottom:none; }
+    .feature-item svg { flex-shrink:0; color:rgba(200,0,45,0.6); }
+
+    ::-webkit-scrollbar { width:5px; }
+    ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
+    ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="glass-nav">
+  <div style="max-width:900px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
+    <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">⚔ V RISING</a>
+    <div style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;">
+      <a href="/" class="topnav-link">Главная</a>
+      <a href="/servers.html" class="topnav-link">Сервера</a>
+      <a href="/bans.html" class="topnav-link active">Баны</a>
+      <a id="nav-profile-link" href="/profile.html" class="topnav-link" style="display:none;">Профиль</a>
+      <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
+    </div>
+  </div>
+</nav>
+
+<div style="max-width:640px;margin:3rem auto;padding:0 1rem;">
+  <div class="g-card text-center" style="padding:2.75rem 2rem;">
+    <div class="dev-icon-wrap">
+      <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#e05575" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+    </div>
+    <h1 class="gothic" style="font-size:1.15rem; letter-spacing:.08em; color:var(--gold); margin-bottom:.6rem; text-transform:uppercase;">Раздел в разработке</h1>
+    <p style="font-size:.88rem; color:var(--muted); line-height:1.6; max-width:440px; margin:0 auto 1.75rem;">
+      Список банов появится здесь в ближайшем будущем. Данные будут автоматически подгружаться напрямую из игрового плагина сервера — без ручного ведения списка администрацией.
+    </p>
+
+    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:1.25rem;"></div>
+
+    <p class="gothic" style="font-size:.68rem; letter-spacing:.16em; color:var(--gold); text-transform:uppercase; margin-bottom:.5rem; text-align:left;">Что будет отображаться</p>
+    <div style="text-align:left;">
+      <div class="feature-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Никнейм забаненного игрока
+      </div>
+      <div class="feature-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        Причина и срок бана
+      </div>
+      <div class="feature-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Дата выдачи и дата окончания
+      </div>
+      <div class="feature-item">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Администратор, выдавший бан
+      </div>
+    </div>
+
+    <a href="/" style="display:inline-flex;align-items:center;gap:.4rem;margin-top:1.75rem;font-size:.78rem;color:var(--muted);text-decoration:none;transition:color .2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+      Вернуться на главную
+    </a>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
+
+(function() {
+  if (getToken()) {
+    document.getElementById('nav-profile-link').style.display = '';
+    document.getElementById('nav-login-link').style.display = 'none';
+  }
+})();
+
+(async function() {
+  try {
+    const d = await fetch(`${API}/settings/public`).then(r => r.json());
+    const title = (d.site_title || 'V Rising').trim();
+    document.title = `${title} — Баны`;
+    document.getElementById('nav-logo').textContent = '⚔ ' + title;
+  } catch {}
+})();
+</script>
+</body>
+</html>
