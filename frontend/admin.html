@@ -49,6 +49,18 @@
     }
     .sidebar-btn:hover { color: var(--text); background: rgba(150,0,28,0.1); }
     .sidebar-btn.active { color: var(--text); border-left-color: var(--accent); background: rgba(150,0,28,0.15); }
+    .sidebar-btn { display: flex; align-items: center; justify-content: space-between; gap: .4rem; }
+    .sidebar-group-label {
+      font-size: .6rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      color: #564a6a; padding: .65rem 1rem .25rem; margin-top: .2rem;
+      border-top: 1px solid rgba(150,0,28,0.12);
+    }
+    .sidebar-group-label:first-of-type { border-top: none; margin-top: 0; }
+    .sidebar-badge {
+      background: rgba(181,0,42,0.3); border: 1px solid rgba(200,0,45,0.4); color: #fca5a5;
+      font-size: .62rem; font-weight: 700; padding: .05rem .42rem; border-radius: 9999px;
+      flex-shrink: 0; line-height: 1.4;
+    }
     .dark-input {
       width: 100%; background: rgba(8,0,16,0.8); border: 1px solid rgba(120,0,24,0.4);
       color: var(--text); border-radius: .5rem; padding: .65rem .9rem; font-size: .9rem;
@@ -177,6 +189,13 @@
     .s-status-https { background:rgba(0,70,15,.3); border:1px solid rgba(0,160,35,.4); color:#86efac; }
     @media(max-width:960px) { .s-row { grid-template-columns:1fr; } }
 
+    /* ── Event banner preview (mirrors index.html .event-banner) ── */
+    .ev-preview { border-radius:.7rem; padding:.8rem 1rem; position:relative; overflow:hidden; display:flex; align-items:center; gap:.75rem; border:1px solid; }
+    .ev-preview-icon { font-size:1.3rem; flex-shrink:0; line-height:1; }
+    .ev-preview-body { flex:1; min-width:0; }
+    .ev-preview-title { font-family:'Cinzel',serif; font-size:.78rem; font-weight:700; letter-spacing:.06em; margin-bottom:.2rem; }
+    .ev-preview-text { font-size:.74rem; color:var(--muted); line-height:1.4; }
+
     /* ── Mobile admin tables ── */
     @media(max-width:768px) {
       .sidebar-btn { font-size:.7rem; padding:.6rem .75rem; }
@@ -219,14 +238,22 @@
   <aside style="width:12rem;flex-shrink:0;">
     <div class="glass-card rounded-xl overflow-hidden">
       <button id="btn-dashboard" onclick="showSection('dashboard')" class="sidebar-btn active">📊 Дашборд</button>
+
+      <div class="sidebar-group-label">Контент</div>
       <button id="btn-news"      onclick="showSection('news')"      class="sidebar-btn">📰 Новости</button>
+      <button id="btn-comments"  onclick="showSection('comments')"  class="sidebar-btn">💬 Комментарии<span id="badge-comments" class="sidebar-badge" style="display:none;"></span></button>
+
+      <div class="sidebar-group-label">Сайт</div>
       <button id="btn-settings"  onclick="showSection('settings')"  class="sidebar-btn">⚙ Настройки</button>
-      <button id="btn-users"     onclick="showSection('users')"     class="sidebar-btn">👥 Пользователи</button>
-      <button id="btn-comments"  onclick="showSection('comments')"  class="sidebar-btn">💬 Комментарии</button>
-      <button id="btn-players"   onclick="showSection('players')"   class="sidebar-btn">🎮 Игроки</button>
       <button id="btn-files"     onclick="showSection('files')"     class="sidebar-btn">📁 Файлы</button>
+
+      <div class="sidebar-group-label">Люди</div>
+      <button id="btn-users"     onclick="showSection('users')"     class="sidebar-btn">👥 Пользователи<span id="badge-users" class="sidebar-badge" style="display:none;"></span></button>
+      <button id="btn-players"   onclick="showSection('players')"   class="sidebar-btn">🎮 Игроки</button>
+      <button id="btn-resets"    onclick="showSection('resets')"    class="sidebar-btn">🔑 Сброс паролей<span id="badge-resets" class="sidebar-badge" style="display:none;"></span></button>
+
+      <div class="sidebar-group-label">Система</div>
       <button id="btn-log"       onclick="showSection('log')"       class="sidebar-btn">📋 Лог</button>
-      <button id="btn-resets"   onclick="showSection('resets')"   class="sidebar-btn">🔑 Сброс паролей</button>
     </div>
   </aside>
 
@@ -235,7 +262,18 @@
 
     <!-- DASHBOARD -->
     <div id="section-dashboard">
-      <h1 class="section-title mb-5">Дашборд</h1>
+      <div class="flex items-center justify-between mb-5">
+        <h1 class="section-title">Дашборд</h1>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <button onclick="openEditor(null)" class="btn-ghost" style="display:inline-flex;align-items:center;gap:.35rem;">+ Новость</button>
+          <button onclick="showSection('resets')" class="btn-ghost" style="display:inline-flex;align-items:center;gap:.35rem;">🔑 Сброс паролей</button>
+          <button onclick="showSection('users')" class="btn-ghost" style="display:inline-flex;align-items:center;gap:.35rem;">👥 Пользователи</button>
+        </div>
+      </div>
+
+      <!-- Server status -->
+      <div id="dash-server-status" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;"></div>
+
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;">
         <div class="glass-card rounded-xl p-4 text-center">
           <div id="dash-users" style="font-size:2rem;font-family:'Cinzel',serif;color:var(--gold);">—</div>
@@ -254,6 +292,25 @@
           <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Файлы</div>
         </div>
       </div>
+
+      <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:1rem;margin-bottom:1.5rem;align-items:stretch;">
+        <div class="glass-card rounded-xl p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="gothic" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;margin:0;">Онлайн за неделю</h2>
+            <select id="dash-graph-server" onchange="loadDashGraph()" class="dark-input" style="width:auto;padding:.25rem .55rem;font-size:.72rem;">
+              <option value="1">Сервер 1</option>
+              <option value="2">Сервер 2</option>
+            </select>
+          </div>
+          <canvas id="dash-graph-canvas" height="110" style="width:100%;display:block;"></canvas>
+          <div id="dash-graph-empty" style="display:none;color:var(--muted);font-size:.8rem;text-align:center;padding:2rem 0;">Нет данных за этот период.</div>
+        </div>
+        <div class="glass-card rounded-xl p-4">
+          <h2 class="gothic mb-3" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Новые регистрации</h2>
+          <div id="dash-recent-users" style="display:flex;flex-direction:column;gap:.5rem;"></div>
+        </div>
+      </div>
+
       <div class="glass-card rounded-xl p-4">
         <h2 class="gothic mb-4" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Последние комментарии</h2>
         <div id="dash-recent-comments"></div>
@@ -342,6 +399,7 @@
           <p style="font-size:.78rem;color:var(--muted);">Управление серверами, оформлением и безопасностью</p>
         </div>
         <div style="display:flex;align-items:center;gap:.6rem;">
+          <button id="save-all-btn" onclick="saveAllSettings()" class="btn-primary" style="font-size:.75rem;padding:.5rem 1rem;">💾 Сохранить все изменения</button>
           <button onclick="exportSettings()" class="btn-ghost" style="font-size:.75rem;display:inline-flex;align-items:center;gap:.35rem;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Экспорт
@@ -574,7 +632,7 @@
           <div class="s-field">
             <label class="s-label">Активен</label>
             <div class="s-field-row">
-              <select id="setting-event_active" class="dark-input" style="width:auto;">
+              <select id="setting-event_active" class="dark-input" style="width:auto;" oninput="updateEventPreview()">
                 <option value="0">Выключен</option>
                 <option value="1">Включён</option>
               </select>
@@ -584,27 +642,31 @@
           <div class="s-field">
             <label class="s-label">Заголовок</label>
             <div class="s-field-row">
-              <input id="setting-event_title" type="text" class="dark-input" placeholder="Сезон 3 начался!">
+              <input id="setting-event_title" type="text" class="dark-input" placeholder="Сезон 3 начался!" oninput="updateEventPreview()">
               <button class="s-save-btn" onclick="saveSetting('event_title')">Сохранить</button>
             </div>
           </div>
           <div class="s-field">
             <label class="s-label">Текст</label>
             <div class="s-field-row">
-              <input id="setting-event_text" type="text" class="dark-input" placeholder="Описание события или анонс">
+              <input id="setting-event_text" type="text" class="dark-input" placeholder="Описание события или анонс" oninput="updateEventPreview()">
               <button class="s-save-btn" onclick="saveSetting('event_text')">Сохранить</button>
             </div>
           </div>
           <div class="s-field">
             <label class="s-label">Цвет</label>
             <div class="s-field-row">
-              <select id="setting-event_color" class="dark-input" style="width:auto;">
+              <select id="setting-event_color" class="dark-input" style="width:auto;" oninput="updateEventPreview()">
                 <option value="crimson">Красный</option>
                 <option value="purple">Фиолетовый</option>
                 <option value="gold">Золотой</option>
               </select>
               <button class="s-save-btn" onclick="saveSetting('event_color')">Сохранить</button>
             </div>
+          </div>
+          <div class="s-field">
+            <label class="s-label">Превью</label>
+            <div id="event-banner-preview"></div>
           </div>
         </div>
 
@@ -754,7 +816,10 @@
 
     <!-- USERS -->
     <div id="section-users" class="hidden">
-      <h1 class="section-title mb-5">Пользователи</h1>
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <h1 class="section-title">Пользователи</h1>
+        <input id="users-search" type="text" class="dark-input" placeholder="Поиск по имени или email…" style="width:auto;max-width:260px;font-size:.82rem;padding:.4rem .7rem;" oninput="renderUsersTable()">
+      </div>
       <div id="users-table" class="glass-card rounded-xl overflow-hidden">
         <p class="p-6" style="color:var(--muted);font-size:.85rem;">Загрузка...</p>
       </div>
@@ -762,9 +827,12 @@
 
     <!-- COMMENTS -->
     <div id="section-comments" class="hidden">
-      <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h1 class="section-title">Комментарии</h1>
-        <span id="comments-total" style="font-size:.78rem;color:var(--muted);"></span>
+        <div style="display:flex;align-items:center;gap:.75rem;">
+          <input id="comments-search" type="text" class="dark-input" placeholder="Поиск по автору, тексту, новости…" style="width:auto;max-width:260px;font-size:.82rem;padding:.4rem .7rem;" oninput="_commentsSearchDebounced()">
+          <span id="comments-total" style="font-size:.78rem;color:var(--muted);white-space:nowrap;"></span>
+        </div>
       </div>
       <div class="glass-card rounded-xl overflow-hidden">
         <table>
@@ -821,9 +889,15 @@
 
     <!-- LOG -->
     <div id="section-log" class="hidden">
-      <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h1 class="section-title">Лог действий</h1>
-        <span id="log-total" style="font-size:.78rem;color:var(--muted);"></span>
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+          <input id="log-search" type="text" class="dark-input" placeholder="Поиск по админу или деталям…" style="width:auto;max-width:220px;font-size:.82rem;padding:.4rem .7rem;" oninput="_logSearchDebounced()">
+          <select id="log-action-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="loadAuditLog(1)">
+            <option value="">Все действия</option>
+          </select>
+          <span id="log-total" style="font-size:.78rem;color:var(--muted);white-space:nowrap;"></span>
+        </div>
       </div>
       <div class="glass-card rounded-xl overflow-hidden">
         <table>
@@ -854,6 +928,28 @@ function logout()  { ['token','user'].forEach(k => { localStorage.removeItem(k);
   if (!token || !user || user.role !== 'admin') { window.location.href = '/login.html'; return; }
   document.getElementById('nav-username').textContent = user.username;
 })();
+
+// ─── Sidebar badges ─────────────────────────────────────────────────────────
+async function loadSidebarBadges() {
+  const setBadge = (id, n) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (n > 0) { el.textContent = n > 99 ? '99+' : n; el.style.display = ''; }
+    else { el.style.display = 'none'; }
+  };
+  try {
+    const stats = await fetch(`${API}/admin/stats`, { headers: authH() }).then(r => r.ok ? r.json() : null);
+    if (stats) {
+      setBadge('badge-comments', stats.comment_count);
+      setBadge('badge-users', stats.user_count);
+    }
+  } catch {}
+  try {
+    const resets = await fetch(`${API}/admin/password-resets`, { headers: authH() }).then(r => r.ok ? r.json() : []);
+    setBadge('badge-resets', resets.length);
+  } catch {}
+}
+loadSidebarBadges();
 
 // ─── Sections ─────────────────────────────────────────────────────────────
 function showSection(name) {
@@ -913,6 +1009,38 @@ async function loadAdminNews(page = 1) {
   }
 }
 
+// ─── Toast notifications ──────────────────────────────────────────────────
+function showToast(message, type = 'info') {
+  let wrap = document.getElementById('toast-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'toast-wrap';
+    wrap.style.cssText = 'position:fixed;bottom:1.25rem;right:1.25rem;z-index:10000;display:flex;flex-direction:column;gap:.5rem;align-items:flex-end;';
+    document.body.appendChild(wrap);
+  }
+  const colors = {
+    success: { bg:'rgba(0,70,15,.92)', border:'rgba(0,160,35,.5)', color:'#86efac', icon:'✔' },
+    error:   { bg:'rgba(120,0,15,.92)', border:'rgba(200,0,30,.5)', color:'#fca5a5', icon:'✘' },
+    info:    { bg:'rgba(20,5,30,.92)', border:'rgba(150,0,28,.4)', color:'#d4c4e0', icon:'ℹ' },
+  };
+  const c = colors[type] || colors.info;
+  const el = document.createElement('div');
+  el.style.cssText = `display:flex;align-items:center;gap:.55rem;padding:.65rem 1rem;border-radius:.55rem;background:${c.bg};border:1px solid ${c.border};color:${c.color};font-size:.82rem;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.5);max-width:320px;animation:toast-in .25s ease;`;
+  el.innerHTML = `<span style="flex-shrink:0;">${c.icon}</span><span>${esc(message)}</span>`;
+  wrap.appendChild(el);
+  setTimeout(() => {
+    el.style.transition = 'opacity .25s, transform .25s';
+    el.style.opacity = '0'; el.style.transform = 'translateX(10px)';
+    setTimeout(() => el.remove(), 250);
+  }, 3500);
+}
+if (!document.getElementById('toast-keyframes')) {
+  const style = document.createElement('style');
+  style.id = 'toast-keyframes';
+  style.textContent = '@keyframes toast-in { from { opacity:0; transform:translateX(10px); } to { opacity:1; transform:translateX(0); } }';
+  document.head.appendChild(style);
+}
+
 function showConfirm({ title, text, icon = '🗑', okLabel = 'Удалить', onOk }) {
   document.getElementById('confirm-title').textContent = title;
   document.getElementById('confirm-text').textContent  = text;
@@ -935,7 +1063,7 @@ async function deleteNews(id) {
     onOk:  async () => {
       const res = await fetch(`${API}/admin/news/${id}`, { method: 'DELETE', headers: authH() });
       if (res.ok || res.status === 204) loadAdminNews(adminNewsPage);
-      else alert('Ошибка удаления');
+      else showToast('Ошибка удаления', 'error');
     },
   });
 }
@@ -978,7 +1106,7 @@ async function editorImageHandler() {
       const range = quill.getSelection(true);
       quill.insertEmbed(range.index, 'image', data.url);
       quill.setSelection(range.index + 1);
-    } catch (err) { alert('Ошибка загрузки: ' + err.message); }
+    } catch (err) { showToast('Ошибка загрузки: ' + err.message, 'error'); }
   };
 }
 
@@ -992,7 +1120,7 @@ async function uploadThumb(input) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Ошибка');
     document.getElementById('editor-news-thumb').value = data.url;
-  } catch (err) { alert('Ошибка загрузки: ' + err.message); }
+  } catch (err) { showToast('Ошибка загрузки: ' + err.message, 'error'); }
   input.value = '';
 }
 
@@ -1071,21 +1199,76 @@ async function submitEditor() {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
+const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color'];
+let _settingsBaseline = {};
+
 async function loadSettings() {
   const res = await fetch(`${API}/admin/settings`, { headers: authH() });
   if (!res.ok) { handleAuth(res); return; }
   const settings = await res.json();
   const map = {};
   settings.forEach(s => { map[s.key] = s.value; });
-  ['server_ip','server_port','server_name','server2_name','server2_ip','server2_port','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color'].forEach(key => {
+  SETTINGS_FIELD_KEYS.forEach(key => {
     const el = document.getElementById(`setting-${key}`);
     if (el && map[key] !== undefined) el.value = map[key];
   });
+  _settingsBaseline = Object.fromEntries(SETTINGS_FIELD_KEYS.map(k => [k, map[k] ?? '']));
   if (map['site_logo_url']) previewLogo(map['site_logo_url']);
   const badge = document.getElementById('https-badge');
   if (badge && map['https_domain']?.trim()) {
     badge.textContent = 'HTTPS'; badge.className = 's-status-badge s-status-https';
   }
+  updateEventPreview();
+}
+
+function getChangedSettings() {
+  return SETTINGS_FIELD_KEYS.filter(key => {
+    const el = document.getElementById(`setting-${key}`);
+    return el && el.value !== (_settingsBaseline[key] ?? '');
+  });
+}
+
+async function saveAllSettings() {
+  const changed = getChangedSettings();
+  const btn = document.getElementById('save-all-btn');
+  if (!changed.length) { showToast('Нет изменённых полей', 'info'); return; }
+  if (btn) { btn.disabled = true; btn.textContent = `Сохранение (0/${changed.length})…`; }
+  let done = 0, failed = 0;
+  for (const key of changed) {
+    const ok = await _doSaveSetting(key, document.getElementById(`setting-${key}`).value, { silent: true });
+    if (ok) done++; else failed++;
+    if (btn) btn.textContent = `Сохранение (${done + failed}/${changed.length})…`;
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '💾 Сохранить все изменения'; }
+  showToast(failed ? `Сохранено ${done}, ошибок: ${failed}` : `Сохранено полей: ${done}`, failed ? 'error' : 'success');
+}
+
+const EVENT_COLOR_MAP = {
+  crimson: { bg:'rgba(120,0,20,0.25)', border:'rgba(200,0,40,0.4)', top:'rgba(200,0,40,0.6)', text:'#f0c0c8', icon:'🩸' },
+  purple:  { bg:'rgba(60,0,120,0.25)', border:'rgba(130,0,220,0.4)', top:'rgba(130,0,220,0.6)', text:'#d8b8f8', icon:'🌙' },
+  gold:    { bg:'rgba(80,50,0,0.25)',  border:'rgba(200,155,0,0.4)', top:'rgba(200,155,0,0.6)', text:'#f8dca0', icon:'⚔' },
+};
+
+function updateEventPreview() {
+  const el = document.getElementById('event-banner-preview');
+  if (!el) return;
+  const active = document.getElementById('setting-event_active')?.value === '1';
+  const title  = document.getElementById('setting-event_title')?.value.trim() || '';
+  const text   = document.getElementById('setting-event_text')?.value.trim() || '';
+  const color  = document.getElementById('setting-event_color')?.value || 'crimson';
+  if (!active || !title) {
+    el.innerHTML = `<p style="font-size:.74rem;color:var(--muted);font-style:italic;">${!active ? 'Баннер выключен' : 'Укажите заголовок, чтобы баннер появился на сайте'}</p>`;
+    return;
+  }
+  const c = EVENT_COLOR_MAP[color] || EVENT_COLOR_MAP.crimson;
+  el.innerHTML = `<div class="ev-preview" style="background:${c.bg};border-color:${c.border};">
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,${c.top},transparent);"></div>
+    <div class="ev-preview-icon">${c.icon}</div>
+    <div class="ev-preview-body">
+      <div class="ev-preview-title" style="color:${c.text};">${esc(title)}</div>
+      ${text ? `<div class="ev-preview-text">${esc(text)}</div>` : ''}
+    </div>
+  </div>`;
 }
 
 function previewLogo(url) {
@@ -1135,30 +1318,85 @@ async function uploadBgFile(input) {
 
 async function saveSetting(key) {
   const value = document.getElementById(`setting-${key}`)?.value ?? '';
-  const res = await fetch(`${API}/admin/settings/${key}`, {
-    method: 'PUT', headers: authH(), body: JSON.stringify({ value }),
-  });
-  if (res.ok) {
-    const badge = document.getElementById('settings-saved');
-    if (badge) { badge.style.display = 'inline-flex'; setTimeout(() => { badge.style.display = 'none'; }, 2500); }
-    if (key === 'https_domain') {
-      const hb = document.getElementById('https-badge');
-      if (hb) { hb.textContent = value.trim() ? 'HTTPS' : 'HTTP'; hb.className = 's-status-badge ' + (value.trim() ? 's-status-https' : 's-status-http'); }
+  if ((key === 'wipe_date' || key === 'wipe_date2') && value && new Date(value) < new Date()) {
+    showConfirm({
+      title: 'Дата вайпа в прошлом',
+      text: 'Указанная дата уже прошла. Таймер на главной странице будет показывать просрочку. Сохранить всё равно?',
+      icon: '⏰',
+      okLabel: 'Сохранить',
+      onOk: () => _doSaveSetting(key, value),
+    });
+    return;
+  }
+  await _doSaveSetting(key, value);
+}
+
+async function _doSaveSetting(key, value, opts = {}) {
+  try {
+    const res = await fetch(`${API}/admin/settings/${key}`, {
+      method: 'PUT', headers: authH(), body: JSON.stringify({ value }),
+    });
+    if (res.ok) {
+      _settingsBaseline[key] = value;
+      if (!opts.silent) {
+        const badge = document.getElementById('settings-saved');
+        if (badge) { badge.style.display = 'inline-flex'; setTimeout(() => { badge.style.display = 'none'; }, 2500); }
+      }
+      if (key === 'https_domain') {
+        const hb = document.getElementById('https-badge');
+        if (hb) { hb.textContent = value.trim() ? 'HTTPS' : 'HTTP'; hb.className = 's-status-badge ' + (value.trim() ? 's-status-https' : 's-status-http'); }
+      }
+      return true;
     }
-  } else alert('Ошибка сохранения');
+    if (!opts.silent) showToast('Ошибка сохранения', 'error');
+    return false;
+  } catch {
+    if (!opts.silent) showToast('Ошибка сети', 'error');
+    return false;
+  }
 }
 
 // ─── Users ─────────────────────────────────────────────────────────────────
+let _allUsers = [];
+let _usersSort = { field: 'created_at', dir: -1 };
+
 async function loadUsers() {
-  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
   const res = await fetch(`${API}/admin/users`, { headers: authH() });
   if (!res.ok) { handleAuth(res); return; }
-  const users = await res.json();
+  _allUsers = await res.json();
+  renderUsersTable();
+}
+
+function sortUsersBy(field) {
+  if (_usersSort.field === field) _usersSort.dir *= -1;
+  else _usersSort = { field, dir: 1 };
+  renderUsersTable();
+}
+
+function renderUsersTable() {
+  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
   const el = document.getElementById('users-table');
-  if (!users.length) { el.innerHTML = '<p class="p-6" style="color:var(--muted);">Пользователей нет.</p>'; return; }
+  const q = (document.getElementById('users-search')?.value || '').trim().toLowerCase();
+  let users = _allUsers;
+  if (q) users = users.filter(u => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+  const { field, dir } = _usersSort;
+  users = [...users].sort((a, b) => {
+    let av = a[field], bv = b[field];
+    if (field === 'created_at') { av = new Date(av); bv = new Date(bv); }
+    if (typeof av === 'string') av = av.toLowerCase();
+    if (typeof bv === 'string') bv = bv.toLowerCase();
+    return av < bv ? -1 * dir : av > bv ? 1 * dir : 0;
+  });
+
+  if (!_allUsers.length) { el.innerHTML = '<p class="p-6" style="color:var(--muted);">Пользователей нет.</p>'; return; }
+  if (!users.length) { el.innerHTML = '<p class="p-6" style="color:var(--muted);">Ничего не найдено.</p>'; return; }
+
+  const sortArrow = f => _usersSort.field === f ? (_usersSort.dir === 1 ? ' ▲' : ' ▼') : '';
+  const sortTh = (f, label) => `<th onclick="sortUsersBy('${f}')" style="cursor:pointer;user-select:none;">${label}${sortArrow(f)}</th>`;
+
   el.innerHTML = `
     <table>
-      <thead><tr><th>ID</th><th>Имя</th><th>Email</th><th>Роль</th><th>Активен</th><th>Дата</th><th>Действия</th></tr></thead>
+      <thead><tr>${sortTh('id','ID')}${sortTh('username','Имя')}${sortTh('email','Email')}${sortTh('role','Роль')}${sortTh('is_active','Активен')}${sortTh('created_at','Дата')}<th>Действия</th></tr></thead>
       <tbody>
         ${users.map(u => {
           const isSelf = u.id === currentUser?.id;
@@ -1173,8 +1411,8 @@ async function loadUsers() {
                </div>`;
           return `<tr>
             <td style="color:var(--muted);">${u.id}</td>
-            <td style="font-weight:600;">${u.username}</td>
-            <td style="color:var(--muted);">${u.email}</td>
+            <td style="font-weight:600;">${esc(u.username)}</td>
+            <td style="color:var(--muted);">${esc(u.email)}</td>
             <td style="${roleColor}font-weight:700;">${u.role}</td>
             <td style="${activeColor}font-weight:600;">${u.is_active ? 'Да' : 'Нет'}</td>
             <td style="color:var(--muted);">${new Date(u.created_at).toLocaleDateString('ru-RU')}</td>
@@ -1187,20 +1425,31 @@ async function loadUsers() {
 
 async function toggleRole(userId, cur) {
   const newRole = cur === 'admin' ? 'user' : 'admin';
-  if (!confirm(`Изменить роль на "${newRole}"?`)) return;
-  const res = await fetch(`${API}/admin/users/${userId}/role?role=${newRole}`, { method: 'PUT', headers: authH() });
-  if (res.ok) loadUsers(); else alert('Ошибка изменения роли');
+  showConfirm({
+    title: 'Изменить роль?',
+    text: `Роль пользователя будет изменена на «${newRole}».`,
+    icon: '🛡', okLabel: 'Изменить',
+    onOk: async () => {
+      const res = await fetch(`${API}/admin/users/${userId}/role?role=${newRole}`, { method: 'PUT', headers: authH() });
+      if (res.ok) loadUsers(); else showToast('Ошибка изменения роли', 'error');
+    },
+  });
 }
 
 async function toggleActive(userId) {
   const res = await fetch(`${API}/admin/users/${userId}/toggle-active`, { method: 'PUT', headers: authH() });
-  if (res.ok) loadUsers(); else alert('Ошибка изменения статуса');
+  if (res.ok) loadUsers(); else showToast('Ошибка изменения статуса', 'error');
 }
 
 async function deleteUser(userId, username) {
-  if (!confirm(`Удалить пользователя "${username}"? Это действие нельзя отменить.`)) return;
-  const res = await fetch(`${API}/admin/users/${userId}`, { method: 'DELETE', headers: authH() });
-  if (res.ok) loadUsers(); else alert('Ошибка удаления пользователя');
+  showConfirm({
+    title: 'Удалить пользователя?',
+    text: `Пользователь «${username}» будет удалён без возможности восстановления.`,
+    onOk: async () => {
+      const res = await fetch(`${API}/admin/users/${userId}`, { method: 'DELETE', headers: authH() });
+      if (res.ok) { loadUsers(); loadSidebarBadges(); } else showToast('Ошибка удаления пользователя', 'error');
+    },
+  });
 }
 
 function handleAuth(res) {
@@ -1261,7 +1510,7 @@ async function sseRun(url, logId, btnId) {
 async function installSsl() {
   const domain = (document.getElementById('setting-https_domain')?.value || '').trim();
   const email  = (document.getElementById('setting-https_email')?.value  || '').trim();
-  if (!domain || !email) { alert('Заполните домен и email перед установкой'); return; }
+  if (!domain || !email) { showToast('Заполните домен и email перед установкой', 'error'); return; }
   await sseRun('/admin/ssl/install', 'ssl-log', 'ssl-install-btn');
 }
 
@@ -1273,11 +1522,15 @@ async function updateSite() {
 // ─── Rules editor ─────────────────────────────────────────────────────────
 let _rules = [];
 
+let _ruleDragIdx = null;
+
 function renderRulesEditor() {
   const el = document.getElementById('rules-editor');
   if (!el) return;
   el.innerHTML = _rules.map((r, i) => `
-    <div style="display:flex;align-items:center;gap:.5rem;">
+    <div draggable="true" ondragstart="_ruleDragStart(event,${i})" ondragover="_ruleDragOver(event)" ondrop="_ruleDrop(event,${i})" ondragend="_ruleDragEnd(event)"
+      style="display:flex;align-items:center;gap:.5rem;">
+      <span style="cursor:grab;color:var(--muted);font-size:.95rem;flex-shrink:0;user-select:none;line-height:1;" title="Перетащите, чтобы изменить порядок">⠿</span>
       <input value="${esc(r.icon)}" maxlength="4" oninput="_rules[${i}].icon=this.value"
         style="width:3rem;text-align:center;font-size:1.1rem;background:rgba(14,5,18,.6);border:1px solid rgba(110,0,150,.25);border-radius:.4rem;padding:.3rem .2rem;color:var(--text);outline:none;flex-shrink:0;">
       <input value="${esc(r.text)}" oninput="_rules[${i}].text=this.value"
@@ -1288,6 +1541,28 @@ function renderRulesEditor() {
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>`).join('');
+}
+
+function _ruleDragStart(e, i) {
+  _ruleDragIdx = i;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.style.opacity = '.4';
+}
+function _ruleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+function _ruleDrop(e, i) {
+  e.preventDefault();
+  if (_ruleDragIdx === null || _ruleDragIdx === i) return;
+  const [moved] = _rules.splice(_ruleDragIdx, 1);
+  _rules.splice(i, 0, moved);
+  _ruleDragIdx = null;
+  renderRulesEditor();
+}
+function _ruleDragEnd(e) {
+  e.currentTarget.style.opacity = '';
+  _ruleDragIdx = null;
 }
 
 function addRule() {
@@ -1327,7 +1602,7 @@ async function saveRules() {
   if (res.ok) {
     const badge = document.getElementById('settings-saved');
     if (badge) { badge.style.display = 'inline-flex'; setTimeout(() => { badge.style.display = 'none'; }, 2500); }
-  } else { alert('Ошибка сохранения'); }
+  } else { showToast('Ошибка сохранения', 'error'); }
 }
 
 // ─── Dashboard ────────────────────────────────────────────────────────────
@@ -1353,15 +1628,143 @@ async function loadDashboard() {
         <button onclick="deleteAdminComment(${c.id})" style="background:none;border:none;color:rgba(200,0,30,.45);cursor:pointer;font-size:.8rem;padding:0 .2rem;flex-shrink:0;" onmouseover="this.style.color='rgba(240,0,40,.9)'" onmouseout="this.style.color='rgba(200,0,30,.45)'">✕</button>
       </div>`).join('');
   } catch { }
+  loadDashServerStatus();
+  loadDashRecentUsers();
+  loadDashGraph();
+}
+
+// ─── Dashboard: server status cards ───────────────────────────────────────
+async function loadDashServerStatus() {
+  const wrap = document.getElementById('dash-server-status');
+  if (!wrap) return;
+  try {
+    const settings = await fetch(`${API}/admin/settings`, { headers: authH() }).then(r => r.json());
+    const smap = Object.fromEntries(settings.map(s => [s.key, s.value]));
+    const hasServer2 = (smap.server2_ip || '').trim().length > 0;
+
+    const reqs = [fetch(`${API}/monitor/status`).then(r => r.ok ? r.json() : null)];
+    if (hasServer2) reqs.push(fetch(`${API}/monitor/status2`).then(r => r.ok ? r.json() : null));
+    const results = await Promise.all(reqs);
+
+    const card = (data, name, accent) => {
+      if (!data) return `<div class="glass-card rounded-xl p-4" style="color:var(--muted);font-size:.8rem;">Нет данных</div>`;
+      const dot = data.online ? '#4ade80' : '#f87171';
+      const label = data.online ? 'Онлайн' : 'Оффлайн';
+      return `<div class="glass-card rounded-xl p-4">
+        <div class="flex items-center justify-between mb-2">
+          <span style="font-size:.78rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name || data.name || 'Сервер')}</span>
+          <span style="display:flex;align-items:center;gap:.35rem;font-size:.68rem;font-weight:700;color:${dot};">
+            <span style="width:.45rem;height:.45rem;border-radius:50%;background:${dot};box-shadow:0 0 8px ${dot};flex-shrink:0;"></span>${label}
+          </span>
+        </div>
+        <div style="display:flex;align-items:baseline;gap:.4rem;">
+          <span style="font-size:1.6rem;font-family:'Cinzel',serif;color:${accent};">${data.players ?? 0}</span>
+          <span style="font-size:.78rem;color:var(--muted);">/ ${data.max_players ?? 0} игроков</span>
+        </div>
+        ${data.map && data.map !== 'N/A' ? `<div style="font-size:.68rem;color:var(--muted);margin-top:.3rem;">Карта: ${esc(data.map)}</div>` : ''}
+      </div>`;
+    };
+
+    const srvName  = (smap.server_name  || '').trim() || 'Сервер 1';
+    const srvName2 = (smap.server2_name || '').trim() || 'Сервер 2';
+    wrap.innerHTML = card(results[0], srvName, '#e05575') + (hasServer2 ? card(results[1], srvName2, '#9955ee') : '');
+  } catch {
+    wrap.innerHTML = `<div class="glass-card rounded-xl p-4" style="color:var(--muted);font-size:.8rem;">Ошибка загрузки статуса.</div>`;
+  }
+}
+
+// ─── Dashboard: recent registrations ──────────────────────────────────────
+async function loadDashRecentUsers() {
+  const el = document.getElementById('dash-recent-users');
+  if (!el) return;
+  try {
+    const res = await fetch(`${API}/admin/users`, { headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const users = await res.json();
+    if (!users.length) { el.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Пользователей пока нет.</p>`; return; }
+    const recent = [...users].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
+    el.innerHTML = recent.map(u => `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.3rem 0;">
+        <span style="font-size:.78rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(u.username)}</span>
+        <span style="font-size:.68rem;color:var(--muted);white-space:nowrap;">${new Date(u.created_at).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit'})}</span>
+      </div>`).join('');
+  } catch { el.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Ошибка загрузки.</p>`; }
+}
+
+// ─── Dashboard: weekly online graph ───────────────────────────────────────
+async function loadDashGraph() {
+  const canvas = document.getElementById('dash-graph-canvas');
+  const empty  = document.getElementById('dash-graph-empty');
+  if (!canvas) return;
+  const server = document.getElementById('dash-graph-server')?.value || '1';
+  try {
+    const snaps = await fetch(`${API}/monitor/snapshots?server=${server}`).then(r => r.ok ? r.json() : []);
+    if (!snaps.length) {
+      canvas.style.display = 'none';
+      if (empty) empty.style.display = '';
+      return;
+    }
+    canvas.style.display = '';
+    if (empty) empty.style.display = 'none';
+
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth || canvas.parentElement.clientWidth;
+    const h = 110;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, w, h);
+
+    const maxPlayers = Math.max(1, ...snaps.map(s => s.players));
+    const padL = 4, padR = 4, padT = 8, padB = 4;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+    const tMin = snaps[0].ts, tMax = snaps[snaps.length - 1].ts;
+    const tSpan = Math.max(1, tMax - tMin);
+    const x = s => padL + ((s.ts - tMin) / tSpan) * plotW;
+    const y = s => padT + plotH - (s.players / maxPlayers) * plotH;
+
+    // filled area
+    ctx.beginPath();
+    ctx.moveTo(x(snaps[0]), padT + plotH);
+    snaps.forEach(s => ctx.lineTo(x(s), y(s)));
+    ctx.lineTo(x(snaps[snaps.length - 1]), padT + plotH);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
+    grad.addColorStop(0, 'rgba(181,0,42,0.35)');
+    grad.addColorStop(1, 'rgba(181,0,42,0.02)');
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // line
+    ctx.beginPath();
+    snaps.forEach((s, i) => i === 0 ? ctx.moveTo(x(s), y(s)) : ctx.lineTo(x(s), y(s)));
+    ctx.strokeStyle = '#e05575';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // offline markers
+    ctx.fillStyle = 'rgba(248,113,113,0.7)';
+    snaps.forEach(s => { if (!s.online) { ctx.beginPath(); ctx.arc(x(s), padT + plotH - 1, 1.3, 0, Math.PI * 2); ctx.fill(); } });
+  } catch {
+    canvas.style.display = 'none';
+    if (empty) { empty.style.display = ''; empty.textContent = 'Ошибка загрузки графика.'; }
+  }
 }
 
 // ─── Comments moderation ──────────────────────────────────────────────────
 let _commentsPage = 1;
 
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+const _commentsSearchDebounced = debounce(() => loadAdminComments(1), 350);
+
 async function loadAdminComments(page = 1) {
   _commentsPage = page;
+  const q = encodeURIComponent((document.getElementById('comments-search')?.value || '').trim());
   try {
-    const res = await fetch(`${API}/admin/comments?page=${page}&per_page=20`, { headers: authH() });
+    const res = await fetch(`${API}/admin/comments?page=${page}&per_page=20&q=${q}`, { headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const d = await res.json();
     document.getElementById('comments-total').textContent = `Всего: ${d.total}`;
@@ -1397,6 +1800,7 @@ async function deleteAdminComment(id) {
     onOk: async () => {
       await fetch(`${API}/comments/${id}`, { method: 'DELETE', headers: authH() });
       loadAdminComments(_commentsPage);
+      loadSidebarBadges();
     },
   });
 }
@@ -1425,11 +1829,14 @@ async function loadAdminPlayers() {
 }
 
 // ─── File manager ─────────────────────────────────────────────────────────
+let _allFiles = [];
+
 async function loadAdminFiles() {
   try {
     const res = await fetch(`${API}/admin/uploads`, { headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const files = await res.json();
+    _allFiles = files;
     document.getElementById('files-count').textContent = `Файлов: ${files.length}`;
     const grid = document.getElementById('files-grid');
     if (!files.length) {
@@ -1438,8 +1845,11 @@ async function loadAdminFiles() {
     }
     const fmtSize = b => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(1) + ' MB';
     const isImg = n => /\.(jpe?g|png|gif|webp|svg|ico)$/i.test(n);
-    grid.innerHTML = files.map(f => `
-      <div class="glass-card rounded-xl overflow-hidden" style="display:flex;flex-direction:column;">
+    grid.innerHTML = files.map(f => {
+      const used = f.used_by && f.used_by.length;
+      return `
+      <div class="glass-card rounded-xl overflow-hidden" style="display:flex;flex-direction:column;position:relative;">
+        ${used ? `<span title="${esc(f.used_by.map(u => u.label).join(', '))}" style="position:absolute;top:.35rem;left:.35rem;z-index:1;background:rgba(0,70,15,.75);border:1px solid rgba(0,160,35,.5);color:#86efac;font-size:.58rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;">используется</span>` : ''}
         <div style="height:90px;background:rgba(8,0,16,.7);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;" onclick="window.open('${esc(f.url)}','_blank')">
           ${isImg(f.filename)
             ? `<img src="${esc(f.url)}" alt="" style="width:100%;height:100%;object-fit:cover;">`
@@ -1453,14 +1863,20 @@ async function loadAdminFiles() {
             <button onclick="deleteUploadedFile('${esc(f.filename)}')" style="background:none;border:1px solid rgba(200,0,30,.25);color:rgba(248,113,113,.7);border-radius:.35rem;padding:.25rem .5rem;font-size:.7rem;cursor:pointer;" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(248,113,113,.7)'">✕</button>
           </div>
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   } catch { }
 }
 
 async function deleteUploadedFile(filename) {
+  const file = _allFiles.find(f => f.filename === filename);
+  const used = file?.used_by && file.used_by.length;
   showConfirm({
     title: 'Удалить файл?',
-    text: `Файл «${filename}» будет удалён. Ссылки на него перестанут работать.`,
+    text: used
+      ? `Файл «${filename}» сейчас используется: ${file.used_by.map(u => u.label).join(', ')}. Удаление сломает эти места на сайте. Продолжить?`
+      : `Файл «${filename}» будет удалён. Ссылки на него перестанут работать.`,
+    icon: used ? '⚠' : '🗑',
     onOk: async () => {
       await fetch(`${API}/admin/uploads/${encodeURIComponent(filename)}`, { method: 'DELETE', headers: authH() });
       loadAdminFiles();
@@ -1471,10 +1887,32 @@ async function deleteUploadedFile(filename) {
 // ─── Audit log ────────────────────────────────────────────────────────────
 let _logPage = 1;
 
+const _logSearchDebounced = debounce(() => loadAuditLog(1), 350);
+let _logActionsLoaded = false;
+
+async function loadLogActions() {
+  if (_logActionsLoaded) return;
+  try {
+    const actions = await fetch(`${API}/admin/audit-log/actions`, { headers: authH() }).then(r => r.ok ? r.json() : []);
+    const sel = document.getElementById('log-action-filter');
+    if (sel) {
+      actions.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a; opt.textContent = a;
+        sel.appendChild(opt);
+      });
+    }
+    _logActionsLoaded = true;
+  } catch {}
+}
+
 async function loadAuditLog(page = 1) {
   _logPage = page;
+  loadLogActions();
+  const q = encodeURIComponent((document.getElementById('log-search')?.value || '').trim());
+  const action = encodeURIComponent(document.getElementById('log-action-filter')?.value || '');
   try {
-    const res = await fetch(`${API}/admin/audit-log?page=${page}&per_page=50`, { headers: authH() });
+    const res = await fetch(`${API}/admin/audit-log?page=${page}&per_page=50&q=${q}&action=${action}`, { headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const d = await res.json();
     document.getElementById('log-total').textContent = `Всего записей: ${d.total}`;
@@ -1534,7 +1972,7 @@ async function exportSettings() {
     a.download = `vrising-settings-${new Date().toISOString().slice(0,10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
-  } catch (err) { alert('Ошибка экспорта: ' + err.message); }
+  } catch (err) { showToast('Ошибка экспорта: ' + err.message, 'error'); }
 }
 
 const _ALLOWED_SETTING_KEYS = new Set([
@@ -1561,7 +1999,8 @@ async function importSettings(input) {
     const badge = document.getElementById('settings-saved');
     if (badge) { badge.style.display = 'inline-flex'; setTimeout(() => { badge.style.display = 'none'; }, 2500); }
     loadSettings(); loadRules();
-  } catch (err) { alert('Ошибка импорта: ' + err.message); }
+    showToast('Настройки импортированы', 'success');
+  } catch (err) { showToast('Ошибка импорта: ' + err.message, 'error'); }
   input.value = '';
 }
 
@@ -1609,25 +2048,43 @@ async function addWipe() {
   const wipe_type  = document.getElementById('wf-type').value;
   const dateVal    = document.getElementById('wf-date').value;
   const note       = document.getElementById('wf-note').value.trim() || null;
-  if (!dateVal) { alert('Укажите дату вайпа'); return; }
+  if (!dateVal) { showToast('Укажите дату вайпа', 'error'); return; }
+  if (new Date(dateVal) < new Date()) {
+    showConfirm({
+      title: 'Дата в прошлом',
+      text: 'Указанная дата вайпа уже прошла. Добавить запись всё равно?',
+      icon: '⏰', okLabel: 'Добавить',
+      onOk: () => _doAddWipe(server_num, wipe_type, dateVal, note),
+    });
+    return;
+  }
+  await _doAddWipe(server_num, wipe_type, dateVal, note);
+}
+
+async function _doAddWipe(server_num, wipe_type, dateVal, note) {
   try {
     const r = await fetch(`${API}/admin/wipes`, {
       method: 'POST',
       headers: authH(),
       body: JSON.stringify({ server_num, wipe_type, wipe_date: new Date(dateVal).toISOString(), note }),
     });
-    if (!r.ok) { const e = await r.json(); alert(e.detail || 'Ошибка'); return; }
+    if (!r.ok) { const e = await r.json(); showToast(e.detail || 'Ошибка', 'error'); return; }
     document.getElementById('wipe-form').style.display = 'none';
     document.getElementById('wf-date').value = '';
     document.getElementById('wf-note').value = '';
     loadWipeHistory();
-  } catch { alert('Ошибка сохранения'); }
+  } catch { showToast('Ошибка сохранения', 'error'); }
 }
 
 async function deleteWipe(id) {
-  if (!confirm('Удалить запись о вайпе?')) return;
-  await fetch(`${API}/admin/wipes/${id}`, { method: 'DELETE', headers: authH() });
-  loadWipeHistory();
+  showConfirm({
+    title: 'Удалить запись о вайпе?',
+    text: 'Запись будет удалена без возможности восстановления.',
+    onOk: async () => {
+      await fetch(`${API}/admin/wipes/${id}`, { method: 'DELETE', headers: authH() });
+      loadWipeHistory();
+    },
+  });
 }
 
 // ─── Password resets ─────────────────────────────────────────────────────

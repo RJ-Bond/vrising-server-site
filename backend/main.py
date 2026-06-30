@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 UPLOAD_DIR = Path("/data/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete, text
+from sqlalchemy import select, func, delete, text, or_
 
 from .database import engine, get_db
 from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset
@@ -1494,15 +1494,22 @@ async def admin_stats(
 async def list_all_comments(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
+    q: str = Query(""),
     _: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    total = (await db.execute(select(func.count(Comment.id)))).scalar_one()
+    filters = []
+    if q.strip():
+        like = f"%{q.strip()}%"
+        filters.append(or_(Comment.content.ilike(like), User.username.ilike(like), News.title.ilike(like)))
+    count_q = select(func.count(Comment.id)).join(News, Comment.news_id == News.id).outerjoin(User, Comment.author_id == User.id).where(*filters)
+    total = (await db.execute(count_q)).scalar_one()
     rows = (await db.execute(
         select(Comment, News.title.label("ntitle"), News.slug.label("nslug"),
                User.username.label("uname"))
         .join(News, Comment.news_id == News.id)
         .outerjoin(User, Comment.author_id == User.id)
+        .where(*filters)
         .order_by(Comment.created_at.desc())
         .offset((page - 1) * per_page).limit(per_page)
     )).all()
@@ -1521,18 +1528,42 @@ async def list_all_comments(
 # ─── File manager ────────────────────────────────────────────────────────────
 
 @app.get("/api/admin/uploads")
-async def list_uploads(_: User = Depends(get_admin_user)):
+async def list_uploads(_: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
     files = []
-    if UPLOAD_DIR.exists():
-        for f in sorted(UPLOAD_DIR.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
-            if f.is_file():
-                st = f.stat()
-                files.append({
-                    "filename": f.name,
-                    "url": f"/api/uploads/{f.name}",
-                    "size": st.st_size,
-                    "created_at": datetime.fromtimestamp(st.st_mtime).isoformat(),
-                })
+    if not UPLOAD_DIR.exists():
+        return files
+
+    settings_rows = (await db.execute(
+        select(Setting).where(Setting.key.in_(["site_logo_url", "bg_image_url"]))
+    )).scalars().all()
+    settings_map = {s.key: s.value for s in settings_rows}
+    news_rows = (await db.execute(select(News.title, News.slug, News.thumbnail_url, News.content))).all()
+    avatar_rows = (await db.execute(select(User.username, User.avatar_url).where(User.avatar_url.isnot(None)))).all()
+
+    for f in sorted(UPLOAD_DIR.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
+        if not f.is_file():
+            continue
+        st = f.stat()
+        used_by = []
+        if settings_map.get("site_logo_url", "").endswith(f.name):
+            used_by.append({"type": "logo", "label": "Логотип сайта"})
+        if settings_map.get("bg_image_url", "").endswith(f.name):
+            used_by.append({"type": "background", "label": "Фон сайта"})
+        for title, slug, thumb, content in news_rows:
+            if (thumb or "").endswith(f.name):
+                used_by.append({"type": "news_thumb", "label": f"Миниатюра: {title}", "slug": slug})
+            elif f.name in (content or ""):
+                used_by.append({"type": "news_content", "label": f"В тексте: {title}", "slug": slug})
+        for username, avatar in avatar_rows:
+            if (avatar or "").endswith(f.name):
+                used_by.append({"type": "avatar", "label": f"Аватар: {username}"})
+        files.append({
+            "filename": f.name,
+            "url": f"/api/uploads/{f.name}",
+            "size": st.st_size,
+            "created_at": datetime.fromtimestamp(st.st_mtime).isoformat(),
+            "used_by": used_by,
+        })
     return files
 
 
@@ -1570,16 +1601,33 @@ async def import_settings(
 
 # ─── Audit log ───────────────────────────────────────────────────────────────
 
+@app.get("/api/admin/audit-log/actions")
+async def get_audit_log_actions(
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = (await db.execute(select(AuditLog.action).distinct().order_by(AuditLog.action))).scalars().all()
+    return rows
+
+
 @app.get("/api/admin/audit-log")
 async def get_audit_log(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
+    q: str = Query(""),
+    action: str = Query(""),
     _: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    total = (await db.execute(select(func.count(AuditLog.id)))).scalar_one()
+    filters = []
+    if q.strip():
+        like = f"%{q.strip()}%"
+        filters.append(or_(AuditLog.admin_username.ilike(like), AuditLog.detail.ilike(like)))
+    if action.strip():
+        filters.append(AuditLog.action == action.strip())
+    total = (await db.execute(select(func.count(AuditLog.id)).where(*filters))).scalar_one()
     rows = (await db.execute(
-        select(AuditLog).order_by(AuditLog.created_at.desc())
+        select(AuditLog).where(*filters).order_by(AuditLog.created_at.desc())
         .offset((page - 1) * per_page).limit(per_page)
     )).scalars().all()
     return {
