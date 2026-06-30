@@ -517,21 +517,41 @@ _last_snapshot: dict[int, float] = {}
 SNAPSHOT_INTERVAL = 300  # 5 minutes
 
 
+async def _upsert_setting(db: AsyncSession, key: str, value: str):
+    result = await db.execute(select(Setting).where(Setting.key == key))
+    setting = result.scalar_one_or_none()
+    if setting:
+        setting.value = value
+        setting.updated_at = datetime.utcnow()
+    else:
+        db.add(Setting(key=key, value=value))
+
+
 async def _save_snapshot(db: AsyncSession, data: dict, server_num: int):
     now_ts = time.time()
     if now_ts - _last_snapshot.get(server_num, 0) < SNAPSHOT_INTERVAL:
         return
     _last_snapshot[server_num] = now_ts
+    players = data.get("players", 0)
     snap = ServerSnapshot(
         server_num=server_num,
         recorded_at=datetime.utcnow(),
         online=data.get("online", False),
-        players=data.get("players", 0),
+        players=players,
         max_players=data.get("max_players", 0),
         latency_ms=data.get("latency_ms"),
         map_name=data.get("map"),
     )
     db.add(snap)
+
+    peak_key = f"peak_alltime_{server_num}"
+    result = await db.execute(select(Setting).where(Setting.key == peak_key))
+    peak_setting = result.scalar_one_or_none()
+    current_peak = int(peak_setting.value) if peak_setting and peak_setting.value.isdigit() else 0
+    if players > current_peak:
+        await _upsert_setting(db, peak_key, str(players))
+        await _upsert_setting(db, f"{peak_key}_date", datetime.utcnow().isoformat())
+
     await db.commit()
     # prune old snapshots (keep 8 days)
     cutoff = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -634,11 +654,20 @@ async def get_monitor_stats(server: int = Query(1), db: AsyncSession = Depends(g
         buckets[s.recorded_at.hour].append(s.players)
     heatmap = [round(sum(v) / len(v), 1) if v else 0 for _, v in sorted(buckets.items())]
 
+    peak_result = await db.execute(
+        select(Setting).where(Setting.key.in_([f"peak_alltime_{server}", f"peak_alltime_{server}_date"]))
+    )
+    peak_cfg = {s.key: s.value for s in peak_result.scalars().all()}
+    peak_alltime = peak_cfg.get(f"peak_alltime_{server}")
+    peak_alltime_date = peak_cfg.get(f"peak_alltime_{server}_date")
+
     return {
         "uptime_24h": uptime_pct(res_day),
         "uptime_7d":  uptime_pct(snaps_week),
         "peak_24h":   peak_24h,
         "peak_7d":    peak_7d,
+        "peak_alltime":      int(peak_alltime) if peak_alltime and peak_alltime.isdigit() else max(peak_7d, 0),
+        "peak_alltime_date": peak_alltime_date,
         "heatmap":    heatmap,
     }
 

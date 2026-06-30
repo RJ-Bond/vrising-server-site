@@ -62,6 +62,22 @@
     .srv-dot.pulse { animation:srv-pulse 1.6s ease-in-out infinite; }
     @keyframes srv-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
 
+    .srv-vac-badge {
+      font-size:.6rem; font-weight:700; letter-spacing:.04em; padding:.2rem .55rem; border-radius:9999px;
+      display:inline-flex; align-items:center; gap:.3rem; flex-shrink:0;
+      background:rgba(0,160,60,0.14); border:1px solid rgba(0,200,80,0.3); color:#86efac;
+    }
+    .srv-vac-badge.off { background:rgba(110,0,20,0.14); border-color:rgba(150,0,20,0.25); color:var(--muted); }
+
+    .srv-capacity-track { height:5px; background:rgba(255,255,255,0.07); border-radius:9999px; overflow:hidden; margin-top:.35rem; }
+    .srv-capacity-fill { height:100%; border-radius:9999px; background:var(--accent); transition:width .6s ease; }
+
+    .srv-record {
+      font-size:.72rem; color:var(--gold); display:flex; align-items:center; gap:.4rem;
+      margin-bottom:1.25rem; padding:.5rem .75rem; background:rgba(8,0,16,0.4);
+      border:1px solid rgba(200,160,0,0.18); border-radius:.5rem;
+    }
+
     @keyframes skel-pulse { 0%,100%{opacity:.35} 50%{opacity:.85} }
     .skel { animation:skel-pulse 1.3s ease-in-out infinite; }
 
@@ -180,12 +196,20 @@ function applySiteBackground(bg) {
 })();
 
 let _wipeSettings = {};
+let _baseTitle = 'V Rising — Сервера';
+let _onlineCounts = { 1: 0, 2: 0 };
+
+function updatePageTitle() {
+  const total = (_serverEnabled[1] ? _onlineCounts[1] : 0) + (_serverEnabled[2] ? _onlineCounts[2] : 0);
+  document.title = total > 0 ? `🟢 ${total} онлайн — ${_baseTitle}` : _baseTitle;
+}
 
 (async function() {
   try {
     const d = await fetch(`${API}/settings/public`).then(r => r.json());
     const title = (d.site_title || 'V Rising').trim();
-    document.title = `${title} — Сервера`;
+    _baseTitle = `${title} — Сервера`;
+    document.title = _baseTitle;
     document.getElementById('nav-logo').textContent = '⚔ ' + title;
     applySiteBackground(d.bg_image_url);
     _wipeSettings = {
@@ -233,14 +257,19 @@ function srvCardSkeleton(num) {
       <img src="/icon-vrising.png" alt="" class="srv-icon">
       <div class="srv-name" id="srv-name-${num}">Сервер ${num}</div>
       <span class="srv-badge off skel" id="srv-badge-${num}"><span class="srv-dot"></span>Загрузка</span>
+      <span class="srv-vac-badge" id="srv-vac-${num}" style="display:none;">🛡 VAC</span>
     </div>
     <span class="srv-wipe-chip" id="srv-wipe-${num}" style="display:none;"></span>
+    <div class="srv-record" id="srv-record-${num}" style="display:none;"></div>
     <div class="srv-connect-row" id="srv-connect-${num}" style="display:none;">
       <button class="srv-connect-btn" onclick="connectServer(${num})">🎮 Подключиться</button>
       <button class="srv-copy-btn" onclick="copyServerAddr(${num},this)">📋 IP</button>
     </div>
     <div class="srv-stat-grid">
-      <div class="srv-stat-box"><div class="srv-stat-val skel" id="srv-players-${num}">—</div><div class="srv-stat-lbl">Игроков</div></div>
+      <div class="srv-stat-box">
+        <div class="srv-stat-val skel" id="srv-players-${num}">—</div><div class="srv-stat-lbl">Игроков</div>
+        <div class="srv-capacity-track"><div class="srv-capacity-fill" id="srv-capacity-${num}" style="width:0%;"></div></div>
+      </div>
       <div class="srv-stat-box"><div class="srv-stat-val skel" id="srv-ping-${num}" style="font-size:1.1rem;">—</div><div class="srv-stat-lbl">Пинг</div></div>
       <div class="srv-stat-box"><div class="srv-stat-val skel" id="srv-map-${num}" style="font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div><div class="srv-stat-lbl">Карта</div></div>
       <div class="srv-stat-box"><div class="srv-stat-val skel" id="srv-version-${num}" style="font-size:.85rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div><div class="srv-stat-lbl">Версия</div></div>
@@ -304,6 +333,21 @@ async function loadServer(num) {
     setStat(`srv-map-${num}`, d.map && d.map !== 'N/A' ? d.map : '—');
     setStat(`srv-version-${num}`, d.version && d.version !== 'N/A' ? d.version : '—');
 
+    const capacity = document.getElementById(`srv-capacity-${num}`);
+    if (capacity) {
+      const pct = d.max_players > 0 ? Math.min(100, Math.round((d.players / d.max_players) * 100)) : 0;
+      capacity.style.width = `${pct}%`;
+    }
+
+    const vacBadge = document.getElementById(`srv-vac-${num}`);
+    if (vacBadge) {
+      vacBadge.style.display = '';
+      vacBadge.className = 'srv-vac-badge' + (d.vac ? '' : ' off');
+      vacBadge.textContent = d.vac ? '🛡 VAC' : '🛡 VAC выкл';
+    }
+
+    _onlineCounts[num] = d.online ? (d.players ?? 0) : 0;
+
     const connectRow = document.getElementById(`srv-connect-${num}`);
     if (connectRow) {
       if (d.ip && d.game_port) {
@@ -366,7 +410,25 @@ async function loadServerStats(num) {
     setStat(`srv-peak24-${num}`, s.peak_24h ?? '—');
     setStat(`srv-peak7d-${num}`, s.peak_7d ?? '—');
     renderHeatmap(num, s.heatmap || []);
+
+    const record = document.getElementById(`srv-record-${num}`);
+    if (record && s.peak_alltime > 0) {
+      const dateStr = s.peak_alltime_date
+        ? new Date(s.peak_alltime_date).toLocaleDateString('ru-RU', { day:'numeric', month:'long', year:'numeric' })
+        : null;
+      record.textContent = `🏆 Рекорд онлайна: ${s.peak_alltime} ${_pluralPlayers(s.peak_alltime)}${dateStr ? ' · ' + dateStr : ''}`;
+      record.style.display = 'flex';
+    } else if (record) {
+      record.style.display = 'none';
+    }
   } catch {}
+}
+
+function _pluralPlayers(n) {
+  const n10 = n % 10, n100 = n % 100;
+  if (n10 === 1 && n100 !== 11) return 'игрок';
+  if ([2, 3, 4].includes(n10) && ![12, 13, 14].includes(n100)) return 'игрока';
+  return 'игроков';
 }
 
 function renderHeatmap(num, heatmap) {
@@ -441,6 +503,7 @@ async function loadServerGraph(num) {
 
 async function refreshAll() {
   await Promise.all([1, 2].map(loadServer));
+  updatePageTitle();
 }
 
 async function init() {
