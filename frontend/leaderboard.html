@@ -16,13 +16,14 @@
       --border:  rgba(110,0,150,0.22);
       --text:    #f5f0fb;
       --muted:   #b6a8d2;
-      --label:   #d6c9ee;
       --gold:    #c9a94a;
       --crimson: #c8002a;
       --purple:  #7c3aed;
     }
     * { box-sizing:border-box; margin:0; padding:0; }
     html { scroll-behavior:smooth; }
+
+    /* ①  Background dot-grid noise */
     body {
       background:var(--bg);
       background-image:
@@ -31,8 +32,47 @@
       background-attachment:fixed;
       font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh;
     }
+    body::before {
+      content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+      background-image:radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1px);
+      background-size:28px 28px;
+    }
+
+    /* ③  Fetch progress bar */
+    #fetch-bar {
+      position:fixed; top:0; left:0; z-index:1001; height:2px; width:0%; opacity:0;
+      background:linear-gradient(90deg, var(--crimson), #a020f0, var(--crimson));
+      background-size:200% 100%;
+      pointer-events:none;
+      box-shadow:0 0 10px rgba(200,0,42,0.8), 0 0 4px rgba(160,32,240,0.6);
+      animation:bar-shimmer 1.5s linear infinite;
+    }
+    @keyframes bar-shimmer { 0%{background-position:0 0} 100%{background-position:200% 0} }
+
+    /* ⑨  CSS-only tooltips */
+    [data-tip] { position:relative; }
+    [data-tip]::after {
+      content:attr(data-tip);
+      position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%);
+      background:rgba(6,0,15,0.96); border:1px solid rgba(180,0,35,0.4);
+      color:#d4c4e0; font-size:.68rem; padding:.28rem .65rem; border-radius:.4rem;
+      white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .15s;
+      z-index:200; font-family:'Inter',sans-serif; letter-spacing:.01em;
+    }
+    [data-tip]:hover::after { opacity:1; }
+
     .gothic { font-family:'Cinzel',serif; }
-    .glass-nav { background:rgba(8,0,14,0.9); border-bottom:1px solid rgba(110,0,20,0.35); backdrop-filter:blur(14px); position:sticky; top:0; z-index:40; }
+
+    /* ── Nav ── */
+    .glass-nav {
+      background:rgba(8,0,14,0.9); border-bottom:1px solid rgba(110,0,20,0.35);
+      backdrop-filter:blur(14px); position:sticky; top:0; z-index:40;
+    }
+    .nav-inner {
+      max-width:1000px; margin:auto; padding:.7rem 1.5rem;
+      display:flex; align-items:center; justify-content:space-between; gap:.6rem;
+    }
+    .nav-links { display:flex; align-items:center; gap:.3rem; flex-wrap:wrap; }
     .topnav-link {
       font-size:.78rem; font-weight:600; color:var(--muted); text-decoration:none;
       padding:.4rem .75rem; border-radius:.5rem; border:1px solid transparent; transition:all .2s;
@@ -41,6 +81,41 @@
     .topnav-link:hover { color:var(--text); background:rgba(150,0,28,0.12); border-color:rgba(160,0,35,0.35); }
     .topnav-link.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
 
+    /* ⑥  Mobile hamburger */
+    .nav-burger {
+      display:none; align-items:center; justify-content:center;
+      width:2.2rem; height:2.2rem; border-radius:.5rem;
+      background:none; border:1px solid rgba(110,0,20,0.35);
+      color:var(--muted); cursor:pointer; transition:all .2s; flex-shrink:0;
+    }
+    .nav-burger:hover { border-color:rgba(180,0,35,0.5); color:var(--text); }
+    .mobile-overlay {
+      display:none; position:fixed; inset:0; z-index:49;
+      background:rgba(0,0,0,0.65); backdrop-filter:blur(3px);
+      opacity:0; transition:opacity .25s; pointer-events:none;
+    }
+    .mobile-overlay.open { opacity:1; pointer-events:auto; }
+    .mobile-drawer {
+      position:fixed; bottom:0; left:0; right:0; z-index:50;
+      background:rgba(8,0,14,0.98); border-top:1px solid rgba(110,0,20,0.5);
+      backdrop-filter:blur(20px); padding:1rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom));
+      transform:translateY(100%); transition:transform .3s cubic-bezier(.32,.72,0,1);
+      display:grid; grid-template-columns:1fr 1fr; gap:.5rem;
+    }
+    .mobile-drawer.open { transform:translateY(0); }
+    .mobile-drawer a {
+      font-size:.85rem; font-weight:600; color:var(--muted); text-decoration:none;
+      padding:.65rem .9rem; border-radius:.6rem; border:1px solid rgba(110,0,20,0.2);
+      transition:all .18s; text-align:center;
+    }
+    .mobile-drawer a:hover,.mobile-drawer a.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
+    @media (max-width:640px) {
+      .nav-links { display:none; }
+      .nav-burger { display:flex; }
+      .mobile-overlay { display:block; }
+    }
+
+    /* ── Card ── */
     .g-card {
       background:var(--card); border:1px solid var(--border);
       border-radius:.875rem; backdrop-filter:blur(16px) saturate(1.2);
@@ -50,6 +125,7 @@
     @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
     .g-card { animation:fade-up .4s ease both; }
 
+    /* ── Controls ── */
     .lb-controls { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; justify-content:space-between; margin-bottom:1rem; }
     .lb-toggle { display:flex; gap:.2rem; background:var(--panel); border:1px solid rgba(255,255,255,0.08); border-radius:.5rem; padding:2px; }
     .lb-toggle-btn { background:none; border:none; color:var(--muted); font-size:.74rem; font-weight:600; padding:.4rem .8rem; border-radius:.4rem; cursor:pointer; transition:all .15s; font-family:'Inter',sans-serif; }
@@ -64,50 +140,87 @@
     .lb-search-input:focus { border-color:rgba(200,0,40,0.45); }
     .lb-find-me-btn {
       background:var(--panel); border:1px solid rgba(201,169,74,0.3); color:var(--gold);
-      border-radius:.5rem; padding:.5rem .9rem; font-size:.78rem; font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap;
+      border-radius:.5rem; padding:.5rem .9rem; font-size:.78rem; font-weight:600;
+      cursor:pointer; transition:all .2s; white-space:nowrap;
     }
-    .lb-find-me-btn:hover { background:rgba(201,169,74,0.12); }
+    .lb-find-me-btn:hover { background:rgba(201,169,74,0.12); border-color:rgba(201,169,74,0.55); }
     .lb-find-me-btn:disabled { opacity:.4; cursor:not-allowed; }
 
+    /* ── Rows ── */
     .lb-row {
       display:flex; align-items:center; gap:.9rem; padding:.65rem .5rem;
       border-bottom:1px solid rgba(255,255,255,0.06); text-decoration:none; color:inherit;
-      transition:background .15s; border-radius:.4rem;
+      transition:background .15s, transform .15s; border-radius:.4rem;
     }
-    .lb-row:hover { background:rgba(255,255,255,0.03); }
+    .lb-row:hover { background:rgba(255,255,255,0.035); transform:translateX(2px); }
     .lb-row:last-child { border-bottom:none; }
     .lb-row.me { background:rgba(201,169,74,0.08); border:1px solid rgba(201,169,74,0.3); padding-left:.4rem; padding-right:.4rem; }
     .lb-rank { font-family:'Oswald',sans-serif; font-size:1rem; font-weight:600; color:var(--muted); width:2.2rem; text-align:center; flex-shrink:0; }
-    .lb-rank.top1 { color:#ffd54a; text-shadow:0 0 10px rgba(255,213,74,0.6); }
-    .lb-rank.top2 { color:#d6d6e8; text-shadow:0 0 8px rgba(214,214,232,0.4); }
-    .lb-rank.top3 { color:#e0a361; text-shadow:0 0 8px rgba(224,163,97,0.4); }
+    .lb-rank.top1 { color:#ffd54a; text-shadow:0 0 12px rgba(255,213,74,0.7); }
+    .lb-rank.top2 { color:#d6d6e8; text-shadow:0 0 8px rgba(214,214,232,0.5); }
+    .lb-rank.top3 { color:#e0a361; text-shadow:0 0 8px rgba(224,163,97,0.5); }
     .lb-medal { font-size:1.1rem; }
     .lb-avatar-wrap { position:relative; flex-shrink:0; }
-    .lb-avatar { width:2rem; height:2rem; border-radius:50%; object-fit:cover; background:radial-gradient(circle at 38% 32%, rgba(80,0,150,0.6), rgba(120,0,20,0.5)); display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:.85rem; color:#d4c4e0; }
-    .lb-online-dot {
-      position:absolute; bottom:-1px; right:-1px; width:.55rem; height:.55rem; border-radius:50%;
-      background:#2ee69b; border:2px solid var(--card); box-shadow:0 0 5px #2ee69b; display:none;
+    .lb-avatar {
+      width:2rem; height:2rem; border-radius:50%; object-fit:cover;
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Cinzel',serif; font-size:.85rem; color:#d4c4e0;
+      border:1px solid rgba(255,255,255,0.09);
     }
-    .lb-online-dot.show { display:block; }
+
+    /* ⑦  Online pulse ripple */
+    .lb-online-dot {
+      position:absolute; bottom:-1px; right:-1px; width:.55rem; height:.55rem;
+      border-radius:50%; background:#2ee69b; border:2px solid var(--card); display:none;
+    }
+    .lb-online-dot.show {
+      display:block;
+      animation:online-pulse 2.2s ease-in-out infinite;
+    }
+    @keyframes online-pulse {
+      0%,100% { box-shadow:0 0 0 0 rgba(46,230,155,0.7), 0 0 5px #2ee69b; }
+      55%      { box-shadow:0 0 0 5px rgba(46,230,155,0),  0 0 5px #2ee69b; }
+    }
+
     .lb-name-col { flex:1; min-width:0; }
     .lb-name { font-family:'Philosopher',serif; font-size:.92rem; color:#ece3f7; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
     .lb-last-session { font-size:.62rem; color:var(--muted); }
     .lb-time { font-family:'Oswald',sans-serif; font-size:.85rem; color:var(--gold); white-space:nowrap; flex-shrink:0; }
     .lb-seen { font-size:.66rem; color:var(--muted); white-space:nowrap; flex-shrink:0; min-width:5.5rem; text-align:right; }
 
-    .lb-empty { color:var(--muted); text-align:center; padding:2rem 0; font-style:italic; font-size:.85rem; }
+    /* ①  Skeleton rows */
+    @keyframes skel-shimmer {
+      0%   { background-position:-600px 0; }
+      100% { background-position: 600px 0; }
+    }
+    .skel-piece {
+      display:inline-block; border-radius:.4rem;
+      background:linear-gradient(90deg, rgba(28,8,42,0.8) 25%, rgba(70,20,90,0.5) 50%, rgba(28,8,42,0.8) 75%);
+      background-size:1200px 100%;
+      animation:skel-shimmer 1.6s ease-in-out infinite;
+    }
+    .lb-row.skel-row { pointer-events:none; }
+    .lb-row.skel-row:hover { background:none; transform:none; }
+
+    /* ⑤  Empty state */
+    .lb-empty-state {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:3rem 1rem; gap:.75rem; text-align:center;
+    }
+    .lb-empty-icon { font-size:2.5rem; opacity:.6; filter:drop-shadow(0 0 14px rgba(180,0,30,0.45)); }
+    .lb-empty-title { font-family:'Cinzel',serif; font-size:.82rem; letter-spacing:.16em; color:var(--gold); text-transform:uppercase; }
+    .lb-empty-sub { font-size:.76rem; color:var(--muted); max-width:260px; line-height:1.65; }
+
     .lb-pagination { display:flex; align-items:center; justify-content:center; gap:.75rem; margin-top:1.25rem; }
     .lb-page-btn {
       background:var(--panel); border:1px solid rgba(255,255,255,0.1); color:var(--text);
       border-radius:.5rem; padding:.5rem 1rem; font-size:.8rem; cursor:pointer; transition:all .2s;
     }
-    .lb-page-btn:hover:not(:disabled) { border-color:rgba(200,0,40,0.4); }
+    .lb-page-btn:hover:not(:disabled) { border-color:rgba(200,0,40,0.4); background:rgba(150,0,28,0.1); }
     .lb-page-btn:disabled { opacity:.35; cursor:not-allowed; }
     .lb-page-label { font-size:.78rem; color:var(--muted); }
 
-    @media (max-width:480px) {
-      .lb-seen { display:none; }
-    }
+    @media (max-width:480px) { .lb-seen { display:none; } }
 
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
@@ -116,11 +229,28 @@
 </head>
 <body>
 
+<!-- ③ Fetch bar -->
+<div id="fetch-bar"></div>
+
+<!-- ⑥ Mobile drawer -->
+<div class="mobile-overlay" id="mobile-overlay" onclick="toggleMobileNav()"></div>
+<div class="mobile-drawer" id="mobile-drawer">
+  <a href="/">Главная</a>
+  <a href="/servers.html">Сервера</a>
+  <a href="/leaderboard.html" class="active">Игроки</a>
+  <a href="/clans.html">Кланы</a>
+  <a href="/map.html">Карта</a>
+  <a href="/bans.html">Баны</a>
+  <a href="/faq.html">FAQ</a>
+  <a id="mob-profile" href="/profile.html" style="display:none;">Профиль</a>
+  <a id="mob-login" href="/login.html">Войти</a>
+</div>
+
 <!-- NAV -->
 <nav class="glass-nav">
-  <div style="max-width:1000px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
+  <div class="nav-inner">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">⚔ V RISING</a>
-    <div style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;">
+    <div class="nav-links">
       <a href="/" class="topnav-link">Главная</a>
       <a href="/servers.html" class="topnav-link">Сервера</a>
       <a href="/leaderboard.html" class="topnav-link active">Игроки</a>
@@ -131,10 +261,13 @@
       <a id="nav-profile-link" href="/profile.html" class="topnav-link" style="display:none;">Профиль</a>
       <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
     </div>
+    <button class="nav-burger" onclick="toggleMobileNav()" aria-label="Меню">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
   </div>
 </nav>
 
-<div style="max-width:780px;margin:2.5rem auto 3.5rem;padding:0 1rem;">
+<div style="max-width:780px;margin:2.5rem auto 3.5rem;padding:0 1rem;position:relative;z-index:1;">
   <div style="text-align:center;margin-bottom:1.75rem;">
     <div style="display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:.5rem;">
       <span style="height:1px;width:36px;background:linear-gradient(90deg,transparent,var(--gold));"></span>
@@ -151,16 +284,17 @@
         <button class="lb-toggle-btn" data-server="2" onclick="setServer(2,this)" id="lb-server2-btn" style="display:none;">Сервер 2</button>
       </div>
       <div class="lb-toggle" id="lb-period-toggle">
-        <button class="lb-toggle-btn active" data-period="all" onclick="setPeriod('all',this)">Всё время</button>
-        <button class="lb-toggle-btn" data-period="month" onclick="setPeriod('month',this)">Месяц</button>
-        <button class="lb-toggle-btn" data-period="week" onclick="setPeriod('week',this)">Неделя</button>
+        <button class="lb-toggle-btn active" data-period="all"   onclick="setPeriod('all',this)">Всё время</button>
+        <button class="lb-toggle-btn"        data-period="month" onclick="setPeriod('month',this)">Месяц</button>
+        <button class="lb-toggle-btn"        data-period="week"  onclick="setPeriod('week',this)">Неделя</button>
       </div>
     </div>
     <div class="lb-search-row">
       <input id="lb-search" type="text" class="lb-search-input" placeholder="Поиск по нику…" oninput="onSearchInput()">
-      <button class="lb-find-me-btn" id="lb-find-me" onclick="findMe()" style="display:none;">📍 Найти себя</button>
+      <button class="lb-find-me-btn" id="lb-find-me" onclick="findMe()"
+              style="display:none;" data-tip="Перейти к своей строке">📍 Найти себя</button>
     </div>
-    <div id="lb-list"><p class="lb-empty">Загрузка…</p></div>
+    <div id="lb-list"></div>
     <div class="lb-pagination" id="lb-pagination" style="display:none;">
       <button class="lb-page-btn" id="lb-prev" onclick="changePage(-1)">← Назад</button>
       <span class="lb-page-label" id="lb-page-label">Стр. 1</span>
@@ -175,10 +309,44 @@ const PER_PAGE = 25;
 let _server = 1, _period = 'all', _page = 1;
 let _onlineNames = new Set();
 let _searchTimer = null;
+let _fetchBarTimer = null;
 
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
-function getUser() { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function getUser()  { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } }
+function esc(s)     { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+/* ⑧ Gradient avatar from username hash */
+function nameGradient(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = Math.imul(h, 31) + name.charCodeAt(i) | 0;
+  const hue = Math.abs(h) % 360;
+  return `linear-gradient(135deg,hsl(${hue},60%,20%),hsl(${(hue+50)%360},45%,13%))`;
+}
+
+/* ③ Fetch progress bar */
+function showFetchBar() {
+  const bar = document.getElementById('fetch-bar');
+  clearTimeout(_fetchBarTimer);
+  bar.style.transition = 'width .3s ease, opacity .1s';
+  bar.style.opacity = '1';
+  bar.style.width = '72%';
+}
+function hideFetchBar() {
+  const bar = document.getElementById('fetch-bar');
+  bar.style.transition = 'width .2s ease';
+  bar.style.width = '100%';
+  _fetchBarTimer = setTimeout(() => {
+    bar.style.transition = 'opacity .35s ease';
+    bar.style.opacity = '0';
+    setTimeout(() => { bar.style.transition = 'none'; bar.style.width = '0%'; }, 380);
+  }, 180);
+}
+
+/* ⑥ Mobile nav */
+function toggleMobileNav() {
+  document.getElementById('mobile-drawer').classList.toggle('open');
+  document.getElementById('mobile-overlay').classList.toggle('open');
+}
 
 function fmtPlaytime(sec) {
   if (!sec) return '0ч';
@@ -209,6 +377,10 @@ function applySiteBackground(bg) {
     document.getElementById('nav-profile-link').style.display = '';
     document.getElementById('nav-login-link').style.display = 'none';
     document.getElementById('lb-find-me').style.display = '';
+    const mp = document.getElementById('mob-profile');
+    const ml = document.getElementById('mob-login');
+    if (mp) mp.style.display = '';
+    if (ml) ml.style.display = 'none';
   }
 })();
 
@@ -242,6 +414,7 @@ function setPeriod(period, btn) {
 function changePage(delta) {
   _page = Math.max(1, _page + delta);
   loadLeaderboard();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 function onSearchInput() {
   clearTimeout(_searchTimer);
@@ -257,10 +430,34 @@ async function loadOnlineStatus() {
   } catch {}
 }
 
+/* ① Skeleton placeholder rows */
+function renderSkeleton() {
+  return Array(8).fill(0).map(() => `
+    <div class="lb-row skel-row">
+      <span class="lb-rank skel-piece" style="width:2rem;height:.9rem;"></span>
+      <span class="skel-piece" style="width:2rem;height:2rem;border-radius:50%;flex-shrink:0;"></span>
+      <span style="flex:1;display:flex;flex-direction:column;gap:.35rem;">
+        <span class="skel-piece" style="width:55%;height:.72rem;display:block;"></span>
+        <span class="skel-piece" style="width:30%;height:.52rem;display:block;"></span>
+      </span>
+      <span class="skel-piece" style="width:4rem;height:.72rem;flex-shrink:0;"></span>
+    </div>`).join('');
+}
+
+/* ⑤ Empty state HTML */
+function emptyState(icon, title, sub) {
+  return `<div class="lb-empty-state">
+    <div class="lb-empty-icon">${icon}</div>
+    <p class="lb-empty-title">${title}</p>
+    <p class="lb-empty-sub">${sub}</p>
+  </div>`;
+}
+
 async function loadLeaderboard() {
   const list = document.getElementById('lb-list');
-  const pag = document.getElementById('lb-pagination');
-  list.innerHTML = '<p class="lb-empty">Загрузка…</p>';
+  const pag  = document.getElementById('lb-pagination');
+  list.innerHTML = renderSkeleton();
+  showFetchBar();
   const searchQ = document.getElementById('lb-search').value.trim();
   try {
     const [items] = await Promise.all([
@@ -269,22 +466,30 @@ async function loadLeaderboard() {
     ]);
     const me = getUser();
     if (!items.length) {
-      const emptyMsg = _page > 1 ? 'Дальше игроков нет' : (searchQ ? 'Никого не найдено' : 'Нет данных за этот период');
-      list.innerHTML = `<p class="lb-empty">${emptyMsg}</p>`;
+      if (searchQ) {
+        list.innerHTML = emptyState('🔍','Никого не найдено',`По запросу «${esc(searchQ)}» совпадений нет`);
+      } else if (_page > 1) {
+        list.innerHTML = emptyState('📜','Конец списка','Больше игроков нет на этой странице');
+      } else if (_period !== 'all') {
+        list.innerHTML = emptyState('📅','Нет данных за период','Попробуйте выбрать «Всё время»');
+      } else {
+        list.innerHTML = emptyState('🏹','Таблица пуста','На этом сервере статистика ещё не накоплена');
+      }
     } else {
       const offset = (_page - 1) * PER_PAGE;
       list.innerHTML = items.map((p, i) => {
-        const rank = offset + i + 1;
-        const rankCls = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
-        const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
-        const name = p.player_name || 'Аноним';
-        const initial = name.charAt(0).toUpperCase();
+        const rank     = offset + i + 1;
+        const rankCls  = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
+        const medal    = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
+        const name     = p.player_name || 'Аноним';
         const isOnline = _onlineNames.has(name);
-        const isMe = me && me.username === name;
+        const isMe     = me && me.username === name;
+        const grad     = nameGradient(name);
         const avatarHtml = p.avatar_url
           ? `<img class="lb-avatar" src="${esc(p.avatar_url)}" alt="">`
-          : `<span class="lb-avatar">${esc(initial)}</span>`;
-        const lastSession = p.last_duration > 0 ? `<span class="lb-last-session">посл. сессия: ${fmtPlaytime(p.last_duration)}</span>` : '';
+          : `<span class="lb-avatar" style="background:${grad}">${esc(name.charAt(0).toUpperCase())}</span>`;
+        const lastSession = p.last_duration > 0
+          ? `<span class="lb-last-session">посл. сессия: ${fmtPlaytime(p.last_duration)}</span>` : '';
         return `<a class="lb-row${isMe ? ' me' : ''}" href="/user.html?u=${encodeURIComponent(name)}">
           <span class="lb-rank ${rankCls}">${medal ? `<span class="lb-medal">${medal}</span>` : rank}</span>
           <span class="lb-avatar-wrap">${avatarHtml}<span class="lb-online-dot${isOnline ? ' show' : ''}"></span></span>
@@ -302,7 +507,9 @@ async function loadLeaderboard() {
     document.getElementById('lb-prev').disabled = _page <= 1;
     document.getElementById('lb-next').disabled = items.length < PER_PAGE;
   } catch {
-    list.innerHTML = '<p class="lb-empty">Ошибка загрузки.</p>';
+    list.innerHTML = emptyState('⚠','Ошибка загрузки','Не удалось получить данные — попробуйте обновить страницу');
+  } finally {
+    hideFetchBar();
   }
 }
 
@@ -331,14 +538,18 @@ async function findMe() {
       }
       if (items.length < searchPerPage) break;
     }
-    if (!found) { btn.textContent = 'Не найдено'; setTimeout(() => { btn.textContent = original; }, 2000); }
+    if (!found) {
+      btn.textContent = 'Не найдено';
+      setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
+      return;
+    }
   } catch {
     btn.textContent = 'Ошибка';
-    setTimeout(() => { btn.textContent = original; }, 2000);
-  } finally {
-    btn.disabled = false;
-    if (btn.textContent === 'Ищем…') btn.textContent = original;
+    setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 2000);
+    return;
   }
+  btn.disabled = false;
+  if (btn.textContent === 'Ищем…') btn.textContent = original;
 }
 
 loadLeaderboard();

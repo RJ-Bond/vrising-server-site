@@ -44,6 +44,12 @@
       color: var(--text);
       min-height: 100vh;
     }
+    /* ① Dot-grid noise texture */
+    body::before {
+      content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+      background-image:radial-gradient(rgba(255,255,255,0.045) 1px, transparent 1px);
+      background-size:28px 28px;
+    }
     .gothic { font-family: 'Cinzel', serif; }
 
     /* ── Fog ── */
@@ -919,6 +925,38 @@
     .wipe-cycle-fill { height:100%;border-radius:2px;transition:width .8s ease; }
     .wipe-cycle-lbl { font-size:.54rem;color:var(--muted);text-align:right;margin-top:.2rem;letter-spacing:.02em;opacity:.65; }
 
+    /* ③ Fetch progress bar */
+    #fetch-bar {
+      position:fixed; top:0; left:0; z-index:1001; height:2px; width:0%; opacity:0;
+      background:linear-gradient(90deg, var(--crimson), #a020f0, var(--crimson));
+      background-size:200% 100%; pointer-events:none;
+      box-shadow:0 0 10px rgba(200,0,42,0.8);
+      animation:bar-shimmer 1.5s linear infinite;
+    }
+    @keyframes bar-shimmer { 0%{background-position:0 0} 100%{background-position:200% 0} }
+
+    /* ⑨ CSS-only tooltips */
+    [data-tip] { position:relative; }
+    [data-tip]::after {
+      content:attr(data-tip); position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%);
+      background:rgba(6,0,15,0.96); border:1px solid rgba(180,0,35,0.4);
+      color:#d4c4e0; font-size:.68rem; padding:.28rem .65rem; border-radius:.4rem;
+      white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .15s; z-index:999;
+      font-family:'Inter',sans-serif; letter-spacing:.01em;
+    }
+    [data-tip]:hover::after { opacity:1; }
+
+    /* ⑦ Online dot pulse (hunters section) */
+    @keyframes online-pulse {
+      0%,100% { box-shadow:0 0 0 0 rgba(46,230,155,0.7), 0 0 5px #2ee69b; }
+      55%      { box-shadow:0 0 0 5px rgba(46,230,155,0),  0 0 5px #2ee69b; }
+    }
+    .h-online-dot {
+      display:inline-block; width:.45rem; height:.45rem; border-radius:50%;
+      background:#2ee69b; flex-shrink:0;
+      animation:online-pulse 2.2s ease-in-out infinite;
+    }
+
     /* ── Scroll progress bar ── */
     #scroll-progress {
       position:fixed; top:0; left:0; z-index:1000; height:2px; width:0%;
@@ -1016,6 +1054,7 @@
 </head>
 <body>
 <div id="scroll-progress"></div>
+<div id="fetch-bar"></div>
 <div class="fog"></div>
 
 <!-- ══ NAV ══════════════════════════════════════════════════════════════════ -->
@@ -1442,7 +1481,7 @@
 <div id="modal-bg" class="modal-bg">
   <div class="modal-box">
     <div style="position:absolute;top:.75rem;right:.75rem;display:flex;gap:.4rem;">
-      <button onclick="shareNews()" title="Поделиться" style="width:28px;height:28px;border-radius:50%;background:rgba(20,5,40,0.8);border:1px solid rgba(110,0,20,0.35);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .15s,border-color .15s;" onmouseover="this.style.color='#d4c4e0';this.style.borderColor='rgba(180,0,30,0.55)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='rgba(110,0,20,0.35)'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+      <button onclick="shareNews()" data-tip="Поделиться" style="width:28px;height:28px;border-radius:50%;background:rgba(20,5,40,0.8);border:1px solid rgba(110,0,20,0.35);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .15s,border-color .15s;" onmouseover="this.style.color='#d4c4e0';this.style.borderColor='rgba(180,0,30,0.55)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='rgba(110,0,20,0.35)'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
       <button onclick="closeModal()" class="modal-close-btn" title="Закрыть" style="position:static;">✕</button>
     </div>
     <div id="modal-author" style="display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem;"></div>
@@ -1562,6 +1601,31 @@ function countUpPct(el, value, duration) {
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
 function getUser()  { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } }
 function doLogout() { ['token','user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); }); window.location.reload(); }
+
+// ⑧ Gradient avatar from username hash
+function nameGradient(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = Math.imul(h, 31) + name.charCodeAt(i) | 0;
+  const hue = Math.abs(h) % 360;
+  return `linear-gradient(135deg,hsl(${hue},60%,20%),hsl(${(hue+50)%360},45%,13%))`;
+}
+
+// ③ Fetch progress bar
+let _fetchBarTimer = null;
+function showFetchBar() {
+  const bar = document.getElementById('fetch-bar');
+  clearTimeout(_fetchBarTimer);
+  bar.style.transition = 'width .3s ease, opacity .1s';
+  bar.style.opacity = '1'; bar.style.width = '72%';
+}
+function hideFetchBar() {
+  const bar = document.getElementById('fetch-bar');
+  bar.style.transition = 'width .2s ease'; bar.style.width = '100%';
+  _fetchBarTimer = setTimeout(() => {
+    bar.style.transition = 'opacity .35s ease'; bar.style.opacity = '0';
+    setTimeout(() => { bar.style.transition = 'none'; bar.style.width = '0%'; }, 380);
+  }, 180);
+}
 
 let _isAdmin = false;
 
@@ -1746,6 +1810,7 @@ function updateHunters(players) {
     <div class="hunters-rest">
       ${rest.map((p, i) => `<div class="hunter-row">
         <span style="font-size:.6rem;color:var(--muted);text-align:center;min-width:14px;">${i + 4}</span>
+        <span class="h-online-dot"></span>
         <span style="font-family:'Philosopher',serif;font-size:.78rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.name)}</span>
         <span style="font-size:.65rem;color:var(--muted);white-space:nowrap;">${fmtDuration(p.duration)}</span>
       </div>`).join('')}
@@ -1954,6 +2019,7 @@ function onSearchInput(val) {
 async function loadNews(page = 1, append = false) {
   if (_newsLoading) return;
   _newsLoading = true;
+  showFetchBar();
   const list = document.getElementById('news-list');
   const loadingMore = document.getElementById('news-loading-more');
   if (!append) {
@@ -2002,7 +2068,7 @@ async function loadNews(page = 1, append = false) {
       : '';
     const miniAvatar = n.author.avatar_url
       ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.25);flex-shrink:0;">`
-      : `<span style="width:22px;height:22px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(80,0,150,0.6),rgba(120,0,20,0.4));border:1px solid rgba(190,0,40,0.22);display:inline-flex;align-items:center;justify-content:center;font-size:.58rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
+      : `<span style="width:22px;height:22px;border-radius:50%;background:${nameGradient(n.author.username)};border:1px solid rgba(190,0,40,0.22);display:inline-flex;align-items:center;justify-content:center;font-size:.58rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
     const commentBadge = n.comment_count > 0
       ? `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.6rem;color:var(--muted);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${n.comment_count}</span>`
       : '';
@@ -2064,6 +2130,8 @@ async function loadNews(page = 1, append = false) {
   });
   } catch(e) {
     if (loadingMore) loadingMore.style.display = 'none';
+  } finally {
+    hideFetchBar();
   }
   _newsLoading = false;
 }

@@ -40,6 +40,20 @@
     }
     .topnav-link:hover { color:var(--text); background:rgba(150,0,28,0.12); border-color:rgba(160,0,35,0.35); }
     .topnav-link.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
+    body::before { content:''; position:fixed; inset:0; z-index:0; pointer-events:none; background-image:radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1px); background-size:28px 28px; }
+    .nav-links { display:flex; align-items:center; gap:.3rem; flex-wrap:wrap; }
+    .nav-burger { display:none; align-items:center; justify-content:center; width:2.2rem; height:2.2rem; border-radius:.5rem; background:none; border:1px solid rgba(110,0,20,0.35); color:var(--muted); cursor:pointer; transition:all .2s; flex-shrink:0; }
+    .nav-burger:hover { border-color:rgba(180,0,35,0.5); color:var(--text); }
+    .mobile-overlay { display:none; position:fixed; inset:0; z-index:49; background:rgba(0,0,0,0.65); backdrop-filter:blur(3px); opacity:0; transition:opacity .25s; pointer-events:none; }
+    .mobile-overlay.open { opacity:1; pointer-events:auto; }
+    .mobile-drawer { position:fixed; bottom:0; left:0; right:0; z-index:50; background:rgba(8,0,14,0.98); border-top:1px solid rgba(110,0,20,0.5); backdrop-filter:blur(20px); padding:1rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom)); transform:translateY(100%); transition:transform .3s cubic-bezier(.32,.72,0,1); display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
+    .mobile-drawer.open { transform:translateY(0); }
+    .mobile-drawer a { font-size:.85rem; font-weight:600; color:var(--muted); text-decoration:none; padding:.65rem .9rem; border-radius:.6rem; border:1px solid rgba(110,0,20,0.2); transition:all .18s; text-align:center; }
+    .mobile-drawer a:hover, .mobile-drawer a.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
+    @media (max-width:640px) { .nav-links { display:none; } .nav-burger { display:flex; } .mobile-overlay { display:block; } }
+    [data-tip] { position:relative; }
+    [data-tip]::after { content:attr(data-tip); position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%); background:rgba(6,0,15,0.96); border:1px solid rgba(180,0,35,0.4); color:#d4c4e0; font-size:.68rem; padding:.28rem .65rem; border-radius:.4rem; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .15s; z-index:999; font-family:'Inter',sans-serif; }
+    [data-tip]:hover::after { opacity:1; }
 
     .g-card {
       background:var(--card); border:1px solid var(--border);
@@ -79,10 +93,21 @@
 <body>
 
 <!-- NAV -->
+<div class="mobile-overlay" id="mob-overlay" onclick="toggleMobileNav()"></div>
+<div class="mobile-drawer" id="mob-drawer">
+  <a href="/">Главная</a>
+  <a href="/servers.html">Сервера</a>
+  <a href="/leaderboard.html">Игроки</a>
+  <a href="/clans.html">Кланы</a>
+  <a href="/map.html" class="active">Карта</a>
+  <a href="/bans.html">Баны</a>
+  <a href="/faq.html">FAQ</a>
+  <a href="/profile.html">Профиль</a>
+</div>
 <nav class="glass-nav">
   <div style="max-width:1000px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">⚔ V RISING</a>
-    <div style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;">
+    <div class="nav-links">
       <a href="/" class="topnav-link">Главная</a>
       <a href="/servers.html" class="topnav-link">Сервера</a>
       <a href="/leaderboard.html" class="topnav-link">Игроки</a>
@@ -93,6 +118,7 @@
       <a id="nav-profile-link" href="/profile.html" class="topnav-link" style="display:none;">Профиль</a>
       <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
     </div>
+    <button class="nav-burger" onclick="toggleMobileNav()">☰</button>
   </div>
 </nav>
 
@@ -221,6 +247,15 @@ function applySiteBackground(bg) {
     applySiteBackground(d.bg_image_url);
   } catch {}
 })();
+
+function toggleMobileNav() {
+  const overlay = document.getElementById('mob-overlay');
+  const drawer = document.getElementById('mob-drawer');
+  const isOpen = drawer.classList.contains('open');
+  drawer.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('open', !isOpen);
+  document.body.style.overflow = isOpen ? '' : 'hidden';
+}
 </script>
 </body>
 </html>

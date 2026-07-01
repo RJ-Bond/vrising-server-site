@@ -23,6 +23,10 @@
     }
     .gothic{font-family:'Cinzel',serif;}
     .glass-nav{background:rgba(8,0,14,0.9);border-bottom:1px solid rgba(110,0,20,0.35);backdrop-filter:blur(14px);position:sticky;top:0;z-index:40;}
+    body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(rgba(255,255,255,0.055) 1px,transparent 1px);background-size:28px 28px;}
+    [data-tip]{position:relative;}
+    [data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);background:rgba(6,0,15,0.96);border:1px solid rgba(180,0,35,0.4);color:#d4c4e0;font-size:.68rem;padding:.28rem .65rem;border-radius:.4rem;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:999;font-family:'Inter',sans-serif;}
+    [data-tip]:hover::after{opacity:1;}
     .profile-cover{
       position:relative;height:160px;overflow:hidden;
       background:linear-gradient(135deg,rgba(40,0,80,0.9),rgba(90,0,20,0.85),rgba(20,0,50,0.9));
