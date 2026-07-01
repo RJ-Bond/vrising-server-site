@@ -181,6 +181,22 @@
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">V RISING</a>
     <div style="display:flex;align-items:center;gap:.6rem;">
       <a href="/" class="btn btn-ghost" style="font-size:.72rem;">← Главная</a>
+      <div id="notif-bell-wrap" style="position:relative;display:none;">
+        <button id="notif-bell-btn" onclick="toggleNotifPanel()"
+          style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9488a8;transition:all .2s;position:relative;"
+          onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
+          onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">
+          🔔
+          <span id="notif-count" style="display:none;position:absolute;top:-4px;right:-4px;background:#c8002a;color:#fff;font-size:.55rem;font-weight:700;border-radius:9999px;min-width:14px;height:14px;line-height:14px;text-align:center;padding:0 3px;"></span>
+        </button>
+        <div id="notif-panel" style="display:none;position:absolute;top:calc(100% + .5rem);right:0;width:300px;background:rgba(10,2,18,0.98);border:1px solid rgba(150,0,28,0.3);border-radius:.75rem;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:200;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:.65rem 1rem;border-bottom:1px solid rgba(150,0,28,0.15);">
+            <span style="font-size:.75rem;font-weight:600;color:#e2d8f0;">Уведомления</span>
+            <button onclick="markAllNotifRead()" style="font-size:.65rem;color:#9488a8;background:none;border:none;cursor:pointer;">Прочитать все</button>
+          </div>
+          <div id="notif-list" style="max-height:320px;overflow-y:auto;"></div>
+        </div>
+      </div>
       <button onclick="doLogout()" class="btn btn-ghost" style="font-size:.72rem;">Выйти</button>
     </div>
   </div>
@@ -451,6 +467,8 @@ async function loadProfile() {
     const res = await fetch(`${API}/auth/me`, { credentials: 'include' });
     if (!res.ok) { document.getElementById('profile-error').style.display = ''; return; }
     const u = await res.json();
+    loadNotifications();
+    setInterval(loadNotifications, 60000);
 
     setAvatarEl(u.avatar_url||'', (u.username||'?').charAt(0).toUpperCase());
     document.getElementById('profile-name').textContent  = u.username;
@@ -507,6 +525,53 @@ async function loadProfile() {
 }
 
 loadProfile();
+
+// ── Notification bell ──────────────────────────────────────────────────────
+function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+let _notifOpen = false;
+async function loadNotifications() {
+  const res = await fetch('/api/notifications', {credentials:'include'});
+  if (!res.ok) return;
+  const d = await res.json();
+  const wrap = document.getElementById('notif-bell-wrap');
+  const cnt = document.getElementById('notif-count');
+  const list = document.getElementById('notif-list');
+  if (wrap) wrap.style.display = '';
+  if (cnt) { cnt.textContent = d.unread; cnt.style.display = d.unread > 0 ? '' : 'none'; }
+  if (list) {
+    if (!d.items || !d.items.length) {
+      list.innerHTML = '<div style="padding:1rem;text-align:center;font-size:.78rem;color:#9488a8;">Нет уведомлений</div>';
+    } else {
+      list.innerHTML = d.items.map(n => `
+        <div style="padding:.65rem 1rem;border-bottom:1px solid rgba(150,0,28,0.1);background:${n.read?'transparent':'rgba(200,0,40,0.05)'};">
+          <div style="font-size:.75rem;color:#e2d8f0;">
+            ${n.type==='reply'?`<strong>@${_esc(n.data?.from_username||'')}</strong> ответил на ваш комментарий`:'Новое уведомление'}
+          </div>
+          ${n.data?.preview ? `<div style="font-size:.68rem;color:#9488a8;margin-top:.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(n.data.preview)}</div>` : ''}
+          ${n.data?.news_slug ? `<a href="/?news=${_esc(n.data.news_slug)}" style="font-size:.65rem;color:#c8002a;text-decoration:none;">Перейти →</a>` : ''}
+        </div>`).join('');
+    }
+  }
+}
+function toggleNotifPanel() {
+  const panel = document.getElementById('notif-panel');
+  _notifOpen = !_notifOpen;
+  if (panel) panel.style.display = _notifOpen ? '' : 'none';
+  if (_notifOpen) loadNotifications();
+}
+async function markAllNotifRead() {
+  await fetch('/api/notifications/read-all', {method:'POST', credentials:'include'});
+  const cnt = document.getElementById('notif-count');
+  if (cnt) cnt.style.display = 'none';
+  loadNotifications();
+}
+document.addEventListener('click', e => {
+  if (_notifOpen && !e.target.closest('#notif-bell-wrap')) {
+    _notifOpen = false;
+    const panel = document.getElementById('notif-panel');
+    if (panel) panel.style.display = 'none';
+  }
+});
 </script>
 </body>
 </html>

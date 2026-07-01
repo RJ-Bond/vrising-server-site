@@ -690,6 +690,15 @@
             </div>
             <p class="s-desc">Числовой ID сервера Discord для встроенного виджета на главной странице. Включить виджет в настройках сервера Discord → Виджет</p>
           </div>
+
+          <div class="s-field">
+            <label>Discord Webhook URL (автопост новостей)</label>
+            <div class="s-field-row">
+              <input id="setting-discord_webhook_url" type="url" class="dark-input" placeholder="https://discord.com/api/webhooks/...">
+              <button class="s-save-btn" onclick="saveSetting('discord_webhook_url')">Сохранить</button>
+            </div>
+            <p class="s-desc">При публикации новости — автоматически отправит embed в Discord канал</p>
+          </div>
         </div>
 
         <!-- Event banner -->
@@ -866,12 +875,63 @@
 
           <div class="s-field">
             <p class="s-desc" style="margin-bottom:.6rem;">Frontend обновляется мгновенно. Backend перезагружается автоматически через uvicorn. Если обновлялись зависимости — пересоберите образ вручную.</p>
+            <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
             <button id="update-btn" onclick="updateSite()" style="display:inline-flex;align-items:center;gap:.45rem;padding:.5rem 1.1rem;background:linear-gradient(135deg,rgba(60,20,140,.35),rgba(40,10,100,.25));border:1px solid rgba(130,80,220,.4);color:#a78bfa;border-radius:.55rem;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.03em;" onmouseover="this.style.background='linear-gradient(135deg,rgba(80,30,160,.45),rgba(60,20,120,.35))'" onmouseout="this.style.background='linear-gradient(135deg,rgba(60,20,140,.35),rgba(40,10,100,.25))'">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
               Обновить сайт
             </button>
+            <a id="backup-btn" href="/api/admin/backup"
+              style="display:inline-flex;align-items:center;gap:.45rem;padding:.5rem 1.1rem;background:linear-gradient(135deg,rgba(0,60,140,.35),rgba(0,40,100,.25));border:1px solid rgba(0,120,220,.4);color:#60a5fa;border-radius:.55rem;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.03em;text-decoration:none;"
+              onmouseover="this.style.background='linear-gradient(135deg,rgba(0,80,160,.45),rgba(0,60,120,.35))'"
+              onmouseout="this.style.background='linear-gradient(135deg,rgba(0,60,140,.35),rgba(0,40,100,.25))'">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Скачать бэкап БД
+            </a>
+            </div>
             <div id="update-log" style="display:none;margin-top:.75rem;background:rgba(0,0,0,.55);border:1px solid rgba(100,60,200,.2);border-radius:.5rem;padding:.65rem .85rem;font-family:'Courier New',monospace;font-size:.72rem;color:#c4b5fd;line-height:1.7;max-height:220px;overflow-y:auto;white-space:pre-wrap;"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- RCON Console -->
+      <div class="s-row" style="margin-top:1.25rem;">
+        <div class="s-card s-card-blue">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(0,60,140,.18);border:1px solid rgba(0,120,220,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.8"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </div>
+            <div>
+              <h2>RCON Консоль</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Выполнение команд на игровом сервере</p>
+            </div>
+          </div>
+          <div class="s-field">
+            <label>RCON Пароль (Сервер 1)</label>
+            <div class="s-field-row">
+              <input id="setting-rcon_password" type="password" class="dark-input" placeholder="••••••">
+              <button class="s-save-btn" onclick="saveSetting('rcon_password')">Сохранить</button>
+            </div>
+          </div>
+          <div class="s-field">
+            <label>RCON Порт (Сервер 1)</label>
+            <div class="s-field-row">
+              <input id="setting-rcon_port" type="number" class="dark-input" placeholder="25575">
+              <button class="s-save-btn" onclick="saveSetting('rcon_port')">Сохранить</button>
+            </div>
+            <p class="s-desc">По умолчанию 25575. В V Rising включается в ServerHostSettings.json</p>
+          </div>
+          <div class="s-field">
+            <label>Команда</label>
+            <div class="s-field-row">
+              <select id="rcon-server-sel" class="dark-input" style="width:auto;flex-shrink:0;">
+                <option value="1">Сервер 1</option>
+                <option value="2">Сервер 2</option>
+              </select>
+              <input id="rcon-cmd-input" type="text" class="dark-input" placeholder="announcerestart 60" onkeydown="if(event.key==='Enter')execRcon()">
+              <button onclick="execRcon()" class="s-save-btn">▶ Выполнить</button>
+            </div>
+          </div>
+          <div id="rcon-output" style="display:none;background:rgba(0,0,0,.55);border:1px solid rgba(0,100,200,.2);border-radius:.5rem;padding:.65rem .85rem;font-family:'Courier New',monospace;font-size:.72rem;color:#93c5fd;line-height:1.7;max-height:200px;overflow-y:auto;white-space:pre-wrap;margin-top:.5rem;"></div>
         </div>
       </div>
 
@@ -1406,7 +1466,7 @@ async function submitEditor() {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
-const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format'];
+const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','discord_webhook_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port'];
 let _settingsBaseline = {};
 
 async function loadSettings() {
@@ -1931,6 +1991,30 @@ async function installSsl() {
 // ─── Site update ──────────────────────────────────────────────────────────
 async function updateSite() {
   await sseRun('/admin/update', 'update-log', 'update-btn');
+}
+
+// ─── RCON ─────────────────────────────────────────────────────────────────
+async function execRcon() {
+  const cmd = document.getElementById('rcon-cmd-input')?.value?.trim();
+  const srv = parseInt(document.getElementById('rcon-server-sel')?.value || '1');
+  const out = document.getElementById('rcon-output');
+  if (!cmd || !out) return;
+  out.style.display = '';
+  out.textContent = '⏳ Выполняется…';
+  try {
+    const res = await fetch(`${API}/admin/rcon`, {
+      method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json', ...authH()},
+      body: JSON.stringify({server: srv, command: cmd})
+    });
+    const d = await res.json();
+    if (!res.ok) { out.textContent = '❌ ' + (d.detail || 'Ошибка'); out.style.color='#fca5a5'; return; }
+    out.style.color = '#93c5fd';
+    out.textContent = '> ' + cmd + '\n' + (d.output || '(пустой ответ)');
+  } catch(e) {
+    out.textContent = '❌ Ошибка соединения';
+    out.style.color = '#fca5a5';
+  }
 }
 
 // ─── Rules editor ─────────────────────────────────────────────────────────
@@ -2475,10 +2559,11 @@ async function exportSettings() {
 const _ALLOWED_SETTING_KEYS = new Set([
   'setup_completed','server_ip','server_port','server_game_port','server_connect_ip','server_name',
   'server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip',
-  'site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id',
+  'site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','discord_webhook_url',
   'bg_image_url','wipe_date','wipe_type','wipe_date2','wipe_type2',
   'event_active','event_title','event_text','event_color',
   'rules','https_domain','https_email','timezone','time_format','date_format',
+  'rcon_password','rcon_port',
 ]);
 
 async function importSettings(input) {

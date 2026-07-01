@@ -1069,6 +1069,22 @@
       </button>
       <span id="nav-username" class="hidden" style="font-size:.8rem;color:var(--muted);"></span>
       <a id="nav-admin" href="/admin.html" class="hidden btn-sm gothic" style="font-size:.7rem;letter-spacing:.05em;text-decoration:none;">Админка</a>
+      <div id="notif-bell-wrap" style="position:relative;display:none;">
+        <button id="notif-bell-btn" onclick="toggleNotifPanel()"
+          style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9488a8;transition:all .2s;position:relative;"
+          onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
+          onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">
+          🔔
+          <span id="notif-count" style="display:none;position:absolute;top:-4px;right:-4px;background:#c8002a;color:#fff;font-size:.55rem;font-weight:700;border-radius:9999px;min-width:14px;height:14px;line-height:14px;text-align:center;padding:0 3px;"></span>
+        </button>
+        <div id="notif-panel" style="display:none;position:absolute;top:calc(100% + .5rem);right:0;width:300px;background:rgba(10,2,18,0.98);border:1px solid rgba(150,0,28,0.3);border-radius:.75rem;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:200;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:.65rem 1rem;border-bottom:1px solid rgba(150,0,28,0.15);">
+            <span style="font-size:.75rem;font-weight:600;color:#e2d8f0;">Уведомления</span>
+            <button onclick="markAllNotifRead()" style="font-size:.65rem;color:#9488a8;background:none;border:none;cursor:pointer;">Прочитать все</button>
+          </div>
+          <div id="notif-list" style="max-height:320px;overflow-y:auto;"></div>
+        </div>
+      </div>
       <a id="nav-login" href="/login.html" class="btn-sm">Войти</a>
       <button id="nav-logout" class="hidden pg-btn" style="font-size:.75rem;" onclick="doLogout()">Выйти</button>
     </div>
@@ -1712,6 +1728,8 @@ function toggleDrawer() {
         const store = localStorage.getItem('user') ? localStorage : sessionStorage;
         store.setItem('user', JSON.stringify(fresh));
         _applyUser(fresh);
+        loadNotifications();
+        setInterval(loadNotifications, 60000);
       });
     } else {
       localStorage.removeItem('user'); sessionStorage.removeItem('user');
@@ -2305,27 +2323,7 @@ async function loadComments(slug, page) {
       el.innerHTML = `<div style="color:var(--muted);font-size:.75rem;font-style:italic;padding:.3rem 0;">Комментариев пока нет. Будьте первым!</div>`;
       return;
     }
-    const user = getUser();
-    const rendered = comments.map(c => {
-      const name = c.author ? esc(c.author.username) : 'Удалённый пользователь';
-      const isOwn = user && c.author && user.id === c.author.id;
-      const canDel = user && (user.role === 'admin' || isOwn);
-      const actions = canDel ? `<div class="comment-actions" id="ca-${c.id}">
-        ${isOwn ? `<button class="comment-edit-btn" onclick="editComment(${c.id})" title="Редактировать">✎</button>` : ''}
-        <button class="comment-del" onclick="startDeleteConfirm(${c.id},'${slug}')" title="Удалить">✕</button>
-      </div>` : '';
-      return `<div class="comment-item" data-id="${c.id}">
-        ${commentAvatar(c.author)}
-        <div class="comment-body">
-          <div class="comment-meta">
-            <span class="comment-author">${name}</span>
-            <span class="comment-time">${fmtDate(c.created_at)}</span>
-            ${actions}
-          </div>
-          <div class="comment-text" id="ct-${c.id}">${esc(c.content)}</div>
-        </div>
-      </div>`;
-    }).join('');
+    const rendered = comments.map(c => renderSingleComment(c, true, slug)).join('');
     if (page === 1) {
       el.innerHTML = rendered;
     } else {
@@ -2423,6 +2421,101 @@ function renderCommentForm(slug) {
   </div>`;
 }
 
+// ── Reply support ──────────────────────────────────────────────────────────
+let _replyTo = null;
+function openReply(commentId, username) {
+  _replyTo = commentId;
+  const input = document.getElementById('comment-input');
+  if (input) {
+    input.focus();
+    input.placeholder = `Ответ для @${username}…`;
+  }
+  let indicator = document.getElementById('reply-indicator');
+  if (!indicator) {
+    indicator = document.createElement('div');
+    indicator.id = 'reply-indicator';
+    indicator.style.cssText = 'font-size:.75rem;color:#9488a8;padding:.3rem .6rem;background:rgba(150,0,28,0.1);border-radius:.3rem;display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem;';
+    input && input.parentNode.insertBefore(indicator, input);
+  }
+  indicator.innerHTML = `↩ Ответ для <strong style="color:#e2d8f0;">@${esc(username)}</strong> <button onclick="cancelReply()" style="background:none;border:none;color:#9488a8;cursor:pointer;font-size:.8rem;margin-left:.25rem;">✕</button>`;
+}
+function cancelReply() {
+  _replyTo = null;
+  const indicator = document.getElementById('reply-indicator');
+  if (indicator) indicator.remove();
+  const input = document.getElementById('comment-input');
+  if (input) input.placeholder = 'Написать комментарий…';
+}
+
+// ── Reactions ──────────────────────────────────────────────────────────────
+function renderReactions(commentId, reactions, userReaction) {
+  const emojis = ['👍','❤️','😂','😮','😢','👎'];
+  const btns = emojis.map(e => {
+    const cnt = reactions[e] || 0;
+    const active = userReaction === e;
+    return `<button onclick="toggleReaction(${commentId},'${e}',this)"
+      data-emoji="${e}"
+      style="background:${active?'rgba(200,0,40,0.2)':'rgba(255,255,255,0.04)'};border:1px solid ${active?'rgba(200,0,40,0.5)':'rgba(255,255,255,0.08)'};border-radius:9999px;padding:.2rem .5rem;cursor:pointer;font-size:.75rem;display:inline-flex;align-items:center;gap:.25rem;transition:all .15s;color:#c8c5d4;">
+      ${e}${cnt > 0 ? `<span style="font-size:.65rem;font-family:'Inter',sans-serif;">${cnt}</span>` : ''}
+    </button>`;
+  }).join('');
+  return `<div data-reactions style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.5rem;">${btns}</div>`;
+}
+
+async function toggleReaction(commentId, emoji, btn) {
+  const res = await fetch(`${API}/comments/${commentId}/react`, {
+    method:'POST', credentials:'include',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({emoji})
+  });
+  if (!res.ok) return;
+  const container = btn.closest('[data-reactions]');
+  if (container) {
+    const data = await res.json();
+    const newHtml = renderReactions(commentId, data.counts || {}, data.user_reaction || null);
+    const tmp = document.createElement('div');
+    tmp.innerHTML = newHtml;
+    const newDiv = tmp.firstElementChild;
+    container.replaceWith(newDiv);
+  }
+}
+
+// ── Single comment renderer ────────────────────────────────────────────────
+function renderSingleComment(c, topLevel, slug) {
+  const name = c.author ? esc(c.author.username) : 'Удалённый пользователь';
+  const user = getUser();
+  const isOwn = user && c.author && user.id === c.author.id;
+  const canDel = user && (user.role === 'admin' || isOwn);
+  const actions = canDel ? `<div class="comment-actions" id="ca-${c.id}">
+    ${isOwn ? `<button class="comment-edit-btn" onclick="editComment(${c.id})" title="Редактировать">✎</button>` : ''}
+    <button class="comment-del" onclick="startDeleteConfirm(${c.id},'${slug}')" title="Удалить">✕</button>
+  </div>` : '';
+  const replyBtn = user ? `<button onclick="openReply(${c.id}, '${esc(c.author?.username||'')}')"
+    style="font-size:.7rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0;margin-top:.3rem;">
+    ↩ Ответить
+  </button>` : '';
+  const reactionsHtml = renderReactions(c.id, c.reactions || {}, c.user_reaction || null);
+  let html = `<div class="comment-item" data-id="${c.id}">
+    ${commentAvatar(c.author)}
+    <div class="comment-body">
+      <div class="comment-meta">
+        <span class="comment-author">${name}</span>
+        <span class="comment-time">${fmtDate(c.created_at)}</span>
+        ${actions}
+      </div>
+      <div class="comment-text" id="ct-${c.id}">${esc(c.content)}</div>
+      ${replyBtn}
+      ${reactionsHtml}
+    </div>
+  </div>`;
+  if (topLevel && c.replies && c.replies.length) {
+    html += `<div style="margin-left:1.5rem;padding-left:.75rem;border-left:1px solid rgba(150,0,28,0.25);margin-top:.4rem;display:flex;flex-direction:column;gap:.5rem;">`;
+    c.replies.forEach(r => { html += renderSingleComment(r, false, slug); });
+    html += `</div>`;
+  }
+  return html;
+}
+
 async function submitComment(slug) {
   const input = document.getElementById('comment-input');
   if (!input) return;
@@ -2433,10 +2526,11 @@ async function submitComment(slug) {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content }),
+      body: JSON.stringify({ content, parent_id: _replyTo || null }),
     });
     if (!r.ok) { const e = await r.json(); alert(e.detail || 'Ошибка'); return; }
     input.value = '';
+    cancelReply();
     loadComments(slug);
   } catch { alert('Ошибка отправки комментария.'); }
 }
@@ -2882,6 +2976,53 @@ loadLatestNews();
 loadNews(1);
 loadTags();
 loadWipeHistory();
+
+// ── Notification bell ──────────────────────────────────────────────────────
+let _notifOpen = false;
+async function loadNotifications() {
+  const res = await fetch('/api/notifications', {credentials:'include'});
+  if (!res.ok) return;
+  const d = await res.json();
+  const wrap = document.getElementById('notif-bell-wrap');
+  const cnt = document.getElementById('notif-count');
+  const list = document.getElementById('notif-list');
+  if (wrap) wrap.style.display = '';
+  if (cnt) { cnt.textContent = d.unread; cnt.style.display = d.unread > 0 ? '' : 'none'; }
+  if (list) {
+    if (!d.items || !d.items.length) {
+      list.innerHTML = '<div style="padding:1rem;text-align:center;font-size:.78rem;color:#9488a8;">Нет уведомлений</div>';
+    } else {
+      list.innerHTML = d.items.map(n => `
+        <div style="padding:.65rem 1rem;border-bottom:1px solid rgba(150,0,28,0.1);background:${n.read?'transparent':'rgba(200,0,40,0.05)'};">
+          <div style="font-size:.75rem;color:#e2d8f0;">
+            ${n.type==='reply'?`<strong>@${esc(n.data?.from_username||'')}</strong> ответил на ваш комментарий`:'Новое уведомление'}
+          </div>
+          ${n.data?.preview ? `<div style="font-size:.68rem;color:#9488a8;margin-top:.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(n.data.preview)}</div>` : ''}
+          ${n.data?.news_slug ? `<a href="/news/${esc(n.data.news_slug)}" style="font-size:.65rem;color:#c8002a;text-decoration:none;">Перейти →</a>` : ''}
+        </div>`).join('');
+    }
+  }
+}
+function toggleNotifPanel() {
+  const panel = document.getElementById('notif-panel');
+  _notifOpen = !_notifOpen;
+  if (panel) panel.style.display = _notifOpen ? '' : 'none';
+  if (_notifOpen) loadNotifications();
+}
+async function markAllNotifRead() {
+  await fetch('/api/notifications/read-all', {method:'POST', credentials:'include'});
+  const cnt = document.getElementById('notif-count');
+  if (cnt) cnt.style.display = 'none';
+  loadNotifications();
+}
+document.addEventListener('click', e => {
+  if (_notifOpen && !e.target.closest('#notif-bell-wrap')) {
+    _notifOpen = false;
+    const panel = document.getElementById('notif-panel');
+    if (panel) panel.style.display = 'none';
+  }
+});
+
 // auto-open news from URL ?news=slug
 (function() {
   const qs = new URLSearchParams(location.search);
