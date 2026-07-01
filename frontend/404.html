@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>404 — Страница не найдена</title>
+  <meta property="og:title" content="V Rising — 404" />
+  <meta property="og:type" content="website" />
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/tailwind.min.css" />
+  <style>
+    :root { --bg:#06000f; --text:#e2d8f0; --muted:#9488a8; --gold:#c9a94a; --crimson:#c8002a; }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);background-image:radial-gradient(ellipse at 15% 50%,rgba(80,0,130,0.12) 0%,transparent 55%),radial-gradient(ellipse at 85% 20%,rgba(150,0,28,0.08) 0%,transparent 50%);background-attachment:fixed;font-family:'Inter',system-ui,sans-serif;color:var(--text);min-height:100vh;}
+    body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(rgba(255,255,255,0.055) 1px,transparent 1px);background-size:28px 28px;}
+    .gothic{font-family:'Cinzel',serif;}
+    .glass-nav{background:rgba(8,0,14,0.9);border-bottom:1px solid rgba(110,0,20,0.35);backdrop-filter:blur(14px);position:sticky;top:0;z-index:40;}
+    .btn-primary{background:linear-gradient(135deg,#6a001a,#a00022);border:none;border-radius:.55rem;padding:.6rem 1.3rem;color:#fff;font-size:.82rem;font-weight:700;cursor:pointer;box-shadow:0 0 14px rgba(180,0,30,0.45);transition:all .2s;text-decoration:none;display:inline-block;}
+    .btn-primary:hover{box-shadow:0 0 26px rgba(210,0,40,0.7);transform:translateY(-1px);}
+    .btn-ghost{background:rgba(80,0,15,0.3);border:1px solid rgba(150,0,20,0.35);box-shadow:none;color:var(--muted);border-radius:.55rem;padding:.6rem 1.1rem;font-size:.82rem;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-block;}
+    .btn-ghost:hover{background:rgba(100,0,20,0.4);color:var(--text);}
+    .star{position:fixed;border-radius:50%;background:#fff;pointer-events:none;z-index:0;}
+    @keyframes twinkle{0%{opacity:.1}100%{opacity:.6}}
+    @keyframes float-up{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+    .anim{animation:float-up .7s ease both;}
+  </style>
+</head>
+<body>
+<div id="stars"></div>
+<nav class="glass-nav" style="position:relative;z-index:40;">
+  <div style="max-width:900px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
+    <a href="/" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">⚔ V RISING</a>
+    <a href="/" class="btn-ghost" style="font-size:.75rem;">← На главную</a>
+  </div>
+</nav>
+
+<div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 56px);text-align:center;padding:2rem 1rem;gap:1.2rem;">
+  <div class="anim" style="animation-delay:.05s;font-size:4.5rem;line-height:1;filter:drop-shadow(0 0 24px rgba(200,0,40,0.6));">☠</div>
+  <h1 class="gothic anim" style="animation-delay:.15s;font-size:5rem;font-weight:900;color:var(--gold);letter-spacing:.05em;text-shadow:0 0 40px rgba(201,169,74,0.4);">404</h1>
+  <p class="gothic anim" style="animation-delay:.25s;font-size:.85rem;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;">— Страница не найдена —</p>
+  <p class="anim" style="animation-delay:.35s;font-size:.9rem;color:var(--muted);max-width:380px;line-height:1.65;">Эта страница исчезла во тьме. Возможно, она никогда не существовала — или растворилась в ночи.</p>
+  <div class="anim" style="animation-delay:.45s;display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;margin-top:.5rem;">
+    <a href="/" class="btn-primary">← На главную</a>
+    <button onclick="history.back()" class="btn-ghost">↩ Назад</button>
+  </div>
+</div>
+
+<script>
+const ct = document.getElementById('stars');
+for (let i = 0; i < 35; i++) {
+  const s = document.createElement('div');
+  s.className = 'star';
+  const sz = Math.random() * 1.8 + .5;
+  s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*100}vh;left:${Math.random()*100}vw;animation:twinkle ${2+Math.random()*4}s ease-in-out infinite alternate;animation-delay:${Math.random()*5}s;`;
+  ct.appendChild(s);
+}
+</script>
+</body>
+</html>
