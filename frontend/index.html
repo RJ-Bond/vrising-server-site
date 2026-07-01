@@ -919,12 +919,6 @@
     .wipe-cycle-fill { height:100%;border-radius:2px;transition:width .8s ease; }
     .wipe-cycle-lbl { font-size:.54rem;color:var(--muted);text-align:right;margin-top:.2rem;letter-spacing:.02em;opacity:.65; }
 
-    /* ── Right panel info rows ── */
-    .stat-row { display:flex; justify-content:space-between; align-items:center; padding:.3rem .45rem; border-radius:.35rem; transition:background .15s; }
-    .stat-row:hover { background:rgba(120,0,20,0.1); }
-    .stat-row-k { font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
-    .stat-row-v { color:#ddd8e8; font-weight:600; font-size:.78rem; }
-
     /* ── Scroll progress bar ── */
     #scroll-progress {
       position:fixed; top:0; left:0; z-index:1000; height:2px; width:0%;
@@ -1675,13 +1669,6 @@ function fmtDuration(sec) {
   if (sec < 60) return `${sec}с`;
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
-}
-
-function row(k, v) {
-  return `<div class="stat-row">
-    <span class="stat-row-k">${k}</span>
-    <span class="stat-row-v">${esc(v)}</span>
-  </div>`;
 }
 
 function renderServerBlock(d, sfx) {

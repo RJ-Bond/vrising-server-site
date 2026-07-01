@@ -4,7 +4,6 @@ import math
 import re
 import json
 import uuid
-import shutil
 import time
 import asyncio
 import httpx
@@ -13,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 from typing import Optional
-from fastapi import FastAPI, Depends, HTTPException, Request, status, Query, Header, UploadFile, File
+from fastapi import FastAPI, Depends, HTTPException, Request, Query, Header, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -44,7 +43,7 @@ from .auth import (
     ALGORITHM,
     revoked_tokens as _revoked_tokens,
 )
-from jose import JWTError, jwt as jose_jwt
+from jose import jwt as jose_jwt
 from .schemas import (
     UserRegister,
     UserLogin,
