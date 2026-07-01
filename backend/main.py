@@ -1991,8 +1991,9 @@ async def site_update(_: User = Depends(get_admin_user)):
             yield sse("DONE:error")
             return
 
-        yield sse("✅ Код обновлён. Frontend применён мгновенно.")
-        yield sse("🔄 Backend перезагружается автоматически через uvicorn --reload...")
+        yield sse("✅ Код обновлён.")
+        yield sse("🌐 Frontend обновлён мгновенно (nginx отдаёт файлы напрямую).")
+        yield sse("🔄 Backend перезагружается автоматически (uvicorn --reload отслеживает /app/backend)...")
         yield sse("DONE:ok")
 
     return StreamingResponse(stream(), media_type="text/event-stream",
