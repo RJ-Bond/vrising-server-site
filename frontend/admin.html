@@ -196,6 +196,28 @@
     .ev-preview-title { font-family:'Cinzel',serif; font-size:.78rem; font-weight:700; letter-spacing:.06em; margin-bottom:.2rem; }
     .ev-preview-text { font-size:.74rem; color:var(--muted); line-height:1.4; }
 
+    /* ── Settings card color tints ── */
+    .s-card-danger {
+      border-color: rgba(200,0,30,0.35) !important;
+      background: linear-gradient(rgba(80,0,15,0.07), rgba(80,0,15,0.07)), var(--card) !important;
+    }
+    .s-card-blue {
+      border-color: rgba(0,140,220,0.3) !important;
+      background: linear-gradient(rgba(0,50,100,0.06), rgba(0,50,100,0.06)), var(--card) !important;
+    }
+    .s-card-gold {
+      border-color: rgba(200,155,0,0.35) !important;
+      background: linear-gradient(rgba(80,55,0,0.07), rgba(80,55,0,0.07)), var(--card) !important;
+    }
+
+    /* ── Ban reason modal ── */
+    #ban-modal { display:none; position:fixed; inset:0; z-index:10000; align-items:center; justify-content:center; }
+    #ban-modal.open { display:flex; }
+
+    /* ── Dashboard stats grid responsive ── */
+    @media(max-width:900px) { #dash-stats-grid { grid-template-columns:repeat(3,1fr) !important; } }
+    @media(max-width:560px) { #dash-stats-grid { grid-template-columns:repeat(2,1fr) !important; } }
+
     /* ── Mobile admin tables ── */
     @media(max-width:768px) {
       .sidebar-btn { font-size:.7rem; padding:.6rem .75rem; }
@@ -274,7 +296,7 @@
       <!-- Server status -->
       <div id="dash-server-status" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;"></div>
 
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem;">
+      <div id="dash-stats-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:1rem;margin-bottom:1.5rem;">
         <div class="glass-card rounded-xl p-4 text-center">
           <div id="dash-users" style="font-size:2rem;font-family:'Cinzel',serif;color:var(--gold);">—</div>
           <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Пользователи</div>
@@ -290,6 +312,14 @@
         <div class="glass-card rounded-xl p-4 text-center">
           <div id="dash-files" style="font-size:2rem;font-family:'Cinzel',serif;color:var(--gold);">—</div>
           <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Файлы</div>
+        </div>
+        <div class="glass-card rounded-xl p-4 text-center">
+          <div id="dash-new7" style="font-size:2rem;font-family:'Cinzel',serif;color:#60c0f0;">—</div>
+          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Активны 7 дней</div>
+        </div>
+        <div class="glass-card rounded-xl p-4 text-center">
+          <div id="dash-resets" style="font-size:2rem;font-family:'Cinzel',serif;color:#fbbf24;">—</div>
+          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Сброс паролей</div>
         </div>
       </div>
 
@@ -703,7 +733,7 @@
         </div>
 
         <!-- HTTPS / SSL -->
-        <div class="s-card">
+        <div class="s-card s-card-danger">
           <div class="s-card-head">
             <div class="s-icon" style="background:rgba(0,80,30,.18);border:1px solid rgba(0,150,60,.3);">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="1.8"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -748,9 +778,71 @@
 
       </div>
 
+      <!-- Row 3: Date/time formatting -->
+      <div class="s-row" style="margin-top:1.25rem;">
+        <div class="s-card s-card-blue">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(0,80,120,.18);border:1px solid rgba(0,140,200,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60c0f0" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div>
+              <h2>Форматирование дат и времени</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Применяется ко всем страницам сайта</p>
+            </div>
+          </div>
+
+          <div class="s-field">
+            <label>Часовой пояс</label>
+            <div class="s-field-row">
+              <input id="setting-timezone" type="text" class="dark-input" placeholder="Europe/Moscow" list="tz-list">
+              <button class="s-save-btn" onclick="saveSetting('timezone')">Сохранить</button>
+            </div>
+            <datalist id="tz-list">
+              <option value="Europe/Moscow"/>
+              <option value="Europe/London"/>
+              <option value="Europe/Berlin"/>
+              <option value="Europe/Paris"/>
+              <option value="Europe/Kiev"/>
+              <option value="Europe/Minsk"/>
+              <option value="Asia/Yekaterinburg"/>
+              <option value="Asia/Novosibirsk"/>
+              <option value="Asia/Vladivostok"/>
+              <option value="UTC"/>
+              <option value="America/New_York"/>
+              <option value="America/Los_Angeles"/>
+            </datalist>
+            <p class="s-desc">Стандартный идентификатор IANA, например <code style="background:rgba(255,255,255,.07);padding:.1rem .35rem;border-radius:.3rem;">Europe/Moscow</code></p>
+          </div>
+
+          <div class="s-field">
+            <label>Формат времени</label>
+            <div class="s-field-row">
+              <select id="setting-time_format" class="dark-input" style="width:auto;">
+                <option value="24h">24 часа (14:30)</option>
+                <option value="12h">12 часов (2:30 PM)</option>
+              </select>
+              <button class="s-save-btn" onclick="saveSetting('time_format')">Сохранить</button>
+            </div>
+          </div>
+
+          <div class="s-field">
+            <label>Формат даты</label>
+            <div class="s-field-row">
+              <select id="setting-date_format" class="dark-input" style="width:auto;">
+                <option value="dd.mm.yyyy">15.01.2024</option>
+                <option value="dd.mm.yy">15.01.24</option>
+                <option value="d mmm yyyy">15 янв. 2024</option>
+                <option value="d mmmm yyyy">15 января 2024</option>
+              </select>
+              <button class="s-save-btn" onclick="saveSetting('date_format')">Сохранить</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- System operations -->
       <div class="s-row" style="margin-top:1.25rem;">
-        <div class="s-card">
+        <div class="s-card s-card-danger">
           <div class="s-card-head">
             <div class="s-icon" style="background:rgba(30,0,80,.22);border:1px solid rgba(100,50,200,.35);">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.8"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
@@ -776,7 +868,7 @@
 
       <!-- Rules editor -->
       <div class="s-row" style="margin-top:1.25rem;">
-        <div class="s-card">
+        <div class="s-card s-card-gold">
           <div class="s-card-head">
             <div class="s-icon" style="background:rgba(80,40,0,.18);border:1px solid rgba(200,155,0,.3);">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -850,7 +942,19 @@
     <div id="section-users" class="hidden">
       <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h1 class="section-title">Пользователи</h1>
-        <input id="users-search" type="text" class="dark-input" placeholder="Поиск по имени или email…" style="width:auto;max-width:260px;font-size:.82rem;padding:.4rem .7rem;" oninput="renderUsersTable()">
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+          <input id="users-search" type="text" class="dark-input" placeholder="Поиск по имени или email…" style="width:auto;max-width:220px;font-size:.82rem;padding:.4rem .7rem;" oninput="renderUsersTable()">
+          <select id="users-role-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="renderUsersTable()">
+            <option value="">Все роли</option>
+            <option value="admin">Админ</option>
+            <option value="player">Игрок</option>
+          </select>
+          <select id="users-status-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="renderUsersTable()">
+            <option value="">Все статусы</option>
+            <option value="active">Активен</option>
+            <option value="blocked">Заблокирован</option>
+          </select>
+        </div>
       </div>
       <div id="users-table" class="glass-card rounded-xl overflow-hidden">
         <p class="p-6" style="color:var(--muted);font-size:.85rem;">Загрузка...</p>
@@ -899,6 +1003,10 @@
             <option value="all">Всё время</option>
             <option value="week">Неделя</option>
           </select>
+          <button onclick="exportPlayersCsv()" class="btn-ghost" style="display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Скачать CSV
+          </button>
         </div>
       </div>
       <div class="glass-card rounded-xl overflow-hidden">
@@ -939,6 +1047,10 @@
           <select id="log-action-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="loadAuditLog(1)">
             <option value="">Все действия</option>
           </select>
+          <button onclick="exportLogCsv()" class="btn-ghost" style="display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Скачать CSV
+          </button>
           <span id="log-total" style="font-size:.78rem;color:var(--muted);white-space:nowrap;"></span>
         </div>
       </div>
@@ -995,12 +1107,25 @@ function applySiteBackground(bg) {
   }).catch(() => {});
 })();
 
+window.__TZ = 'Europe/Moscow';
+window.__H12 = false;
+window.__DATEFMT = 'dd.mm.yyyy';
+function _dateOpts() {
+  const m = {'dd.mm.yyyy':{day:'2-digit',month:'2-digit',year:'numeric'},'dd.mm.yy':{day:'2-digit',month:'2-digit',year:'2-digit'},'d mmm yyyy':{day:'numeric',month:'short',year:'numeric'},'d mmmm yyyy':{day:'numeric',month:'long',year:'numeric'}};
+  return { timeZone: window.__TZ||'Europe/Moscow', ...(m[window.__DATEFMT]||m['dd.mm.yyyy']) };
+}
+function fmtDate(iso) { if(!iso) return '—'; return new Date(iso).toLocaleDateString('ru-RU', _dateOpts()); }
+function fmtDateTime(iso) { if(!iso) return '—'; return new Date(iso).toLocaleString('ru-RU', {..._dateOpts(), hour:'2-digit', minute:'2-digit', hour12:!!(window.__H12) }); }
+
 fetch(`${API}/settings/public`).then(r => r.json()).then(d => {
   applySiteBackground(d.bg_image_url);
   const title = (d.site_title || 'V Rising').trim();
   document.title = `${title} — Администратор`;
   const logo = document.getElementById('nav-logo');
   if (logo) logo.textContent = '⚔ ' + title.toUpperCase();
+  window.__TZ = d.timezone || 'Europe/Moscow';
+  window.__H12 = (d.time_format || '24h') === '12h';
+  window.__DATEFMT = d.date_format || 'dd.mm.yyyy';
 }).catch(() => {});
 
 // ─── Sidebar badges ─────────────────────────────────────────────────────────
@@ -1046,8 +1171,6 @@ function showSection(name) {
 }
 
 // ─── News list ────────────────────────────────────────────────────────────
-function fmtDate(iso) { return new Date(iso).toLocaleDateString('ru-RU', { timeZone:'Europe/Moscow', day:'2-digit', month:'short', year:'numeric' }); }
-
 async function loadAdminNews(page = 1) {
   adminNewsPage = page;
   const res = await fetch(`${API}/admin/news?page=${page}&per_page=10`, { credentials: 'include', headers: authH() });
@@ -1274,7 +1397,7 @@ async function submitEditor() {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
-const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color'];
+const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format'];
 let _settingsBaseline = {};
 
 async function loadSettings() {
@@ -1431,6 +1554,68 @@ async function _doSaveSetting(key, value, opts = {}) {
   }
 }
 
+// ─── adminConfirm (custom modal Promise) ──────────────────────────────────
+function adminConfirm(title, desc) {
+  return new Promise(resolve => {
+    showConfirm({
+      title, text: desc, icon: '⚠', okLabel: 'Подтвердить',
+      onOk: () => resolve(true),
+    });
+    // patch cancel to resolve false
+    const cancelBtn = document.querySelector('#confirm-modal button:first-child');
+    if (cancelBtn) {
+      const oldOnclick = cancelBtn.onclick;
+      cancelBtn.onclick = () => { closeConfirm(); resolve(false); };
+    }
+  });
+}
+
+// ─── Ban reason modal ──────────────────────────────────────────────────────
+function showBanModal(username, onBan) {
+  let modal = document.getElementById('ban-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'ban-modal';
+    modal.innerHTML = `
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);" id="ban-modal-backdrop"></div>
+      <div style="position:relative;background:rgba(14,5,22,.97);border:1px solid rgba(180,0,35,.4);border-radius:1rem;padding:2rem;max-width:400px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,.7),0 0 32px rgba(180,0,35,.15);text-align:center;">
+        <div style="font-size:1.8rem;margin-bottom:.6rem;">⛔</div>
+        <h3 style="font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;margin-bottom:.4rem;" id="ban-modal-title">Забанить игрока</h3>
+        <p style="font-size:.8rem;color:#9488a8;margin-bottom:1rem;" id="ban-modal-sub"></p>
+        <input id="ban-reason-input" type="text" class="dark-input" placeholder="Причина бана…" style="margin-bottom:1rem;" maxlength="256">
+        <div style="display:flex;gap:.65rem;justify-content:center;">
+          <button id="ban-cancel-btn" style="background:rgba(40,10,60,.6);border:1px solid rgba(110,0,150,.3);border-radius:.55rem;padding:.5rem 1.2rem;color:#9488a8;font-size:.8rem;cursor:pointer;transition:all .2s;" onmouseover="this.style.color='#e2d8f0'" onmouseout="this.style.color='#9488a8'">Отмена</button>
+          <button id="ban-ok-btn" style="background:linear-gradient(135deg,#7a0015,#b8001e);border:none;border-radius:.55rem;padding:.5rem 1.4rem;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;box-shadow:0 0 16px rgba(180,0,30,.45);">Забанить</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+  modal.querySelector('#ban-modal-title').textContent = `Забанить: ${username}`;
+  modal.querySelector('#ban-modal-sub').textContent = 'Введите причину бана. Игрок будет добавлен в список банов.';
+  modal.querySelector('#ban-reason-input').value = '';
+  modal.classList.add('open');
+  modal.style.display = 'flex';
+  modal.style.position = 'fixed';
+  modal.style.inset = '0';
+  modal.style.zIndex = '10000';
+  modal.style.alignItems = 'center';
+  modal.style.justifyContent = 'center';
+
+  const close = () => { modal.style.display = 'none'; modal.classList.remove('open'); };
+  modal.querySelector('#ban-cancel-btn').onclick = close;
+  modal.querySelector('#ban-modal-backdrop').onclick = close;
+  modal.querySelector('#ban-ok-btn').onclick = () => {
+    const reason = modal.querySelector('#ban-reason-input').value.trim();
+    close();
+    onBan(reason || 'Нет причины');
+  };
+  modal.querySelector('#ban-reason-input').onkeydown = (e) => {
+    if (e.key === 'Enter') modal.querySelector('#ban-ok-btn').click();
+    if (e.key === 'Escape') close();
+  };
+  setTimeout(() => modal.querySelector('#ban-reason-input').focus(), 50);
+}
+
 // ─── Users ─────────────────────────────────────────────────────────────────
 async function loadAdminClans() {
   const el = document.getElementById('clans-table');
@@ -1475,11 +1660,22 @@ async function deleteAdminClan(id, name) {
 
 let _allUsers = [];
 let _usersSort = { field: 'created_at', dir: -1 };
+let _onlinePlayers = new Set();
+let _allBans = [];
 
 async function loadUsers() {
   const res = await fetch(`${API}/admin/users`, { credentials: 'include', headers: authH() });
   if (!res.ok) { handleAuth(res); return; }
   _allUsers = await res.json();
+  // Load online players and bans in parallel
+  try {
+    const [statusData, bansData] = await Promise.all([
+      fetch(`${API}/monitor/status`).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`${API}/admin/bans`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : []).catch(() => []),
+    ]);
+    _onlinePlayers = new Set((statusData?.players_list || []).map(p => (p.name || '').toLowerCase()));
+    _allBans = Array.isArray(bansData) ? bansData : [];
+  } catch {}
   renderUsersTable();
 }
 
@@ -1493,8 +1689,16 @@ function renderUsersTable() {
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
   const el = document.getElementById('users-table');
   const q = (document.getElementById('users-search')?.value || '').trim().toLowerCase();
+  const roleFilter = document.getElementById('users-role-filter')?.value || '';
+  const statusFilter = document.getElementById('users-status-filter')?.value || '';
   let users = _allUsers;
   if (q) users = users.filter(u => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+  // role filter: 'admin' | 'player' (treat anything not admin as player)
+  if (roleFilter === 'admin') users = users.filter(u => u.role === 'admin');
+  else if (roleFilter === 'player') users = users.filter(u => u.role !== 'admin');
+  if (statusFilter === 'active') users = users.filter(u => u.is_active);
+  else if (statusFilter === 'blocked') users = users.filter(u => !u.is_active);
+
   const { field, dir } = _usersSort;
   users = [...users].sort((a, b) => {
     let av = a[field], bv = b[field];
@@ -1512,27 +1716,44 @@ function renderUsersTable() {
 
   el.innerHTML = `
     <table>
-      <thead><tr>${sortTh('id','ID')}${sortTh('username','Имя')}${sortTh('email','Email')}${sortTh('role','Роль')}${sortTh('is_active','Активен')}${sortTh('created_at','Дата')}<th>Действия</th></tr></thead>
+      <thead><tr>${sortTh('id','ID')}${sortTh('username','Имя')}${sortTh('email','Email')}${sortTh('role','Роль')}<th>Статус</th>${sortTh('created_at','Дата')}<th>Действия</th></tr></thead>
       <tbody>
         ${users.map(u => {
           const isSelf = u.id === currentUser?.id;
-          const roleColor = u.role === 'admin' ? 'color:#f87171;' : 'color:var(--text);';
-          const activeColor = u.is_active ? 'color:#86efac;' : 'color:#f87171;';
-          const actions = isSelf
+          const isOnline = _onlinePlayers.has(u.username.toLowerCase());
+          const existingBan = _allBans.find(b => b.player_name === u.username);
+
+          const roleBadge = u.role === 'admin'
+            ? `<span style="background:rgba(180,0,30,.2);border:1px solid rgba(220,0,40,.4);color:#f87171;font-size:.62rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;">Админ</span>`
+            : `<span style="background:rgba(30,30,60,.2);border:1px solid rgba(80,80,150,.3);color:var(--muted);font-size:.62rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;">Игрок</span>`;
+
+          const onlineDot = isOnline
+            ? `<span style="display:inline-flex;align-items:center;gap:.3rem;background:rgba(0,70,15,.25);border:1px solid rgba(0,160,35,.4);color:#86efac;font-size:.62rem;font-weight:700;padding:.1rem .42rem;border-radius:9999px;"><span style="width:.4rem;height:.4rem;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;display:inline-block;"></span>Онлайн</span>`
+            : '';
+          const activeBadge = u.is_active
+            ? `<span style="background:rgba(0,60,10,.2);border:1px solid rgba(0,130,30,.3);color:#86efac;font-size:.62rem;font-weight:700;padding:.1rem .42rem;border-radius:9999px;">Актив</span>`
+            : `<span style="background:rgba(100,0,10,.2);border:1px solid rgba(180,0,25,.35);color:#f87171;font-size:.62rem;font-weight:700;padding:.1rem .42rem;border-radius:9999px;">Заблок</span>`;
+
+          const actionsHtml = isSelf
             ? `<span style="color:var(--muted);font-size:.75rem;">— вы</span>`
-            : `<div style="display:flex;gap:.4rem;flex-wrap:wrap;">
-                <button class="btn-ghost" onclick="toggleRole(${u.id},'${u.role}')">${u.role === 'admin' ? 'Снять админку' : 'Сделать админом'}</button>
-                <button class="btn-ghost" onclick="toggleActive(${u.id})">${u.is_active ? 'Заблок.' : 'Разблок.'}</button>
-                <button class="btn-ghost" onclick="deleteUser(${u.id},'${u.username}')" style="color:#f87171;border-color:rgba(248,113,113,0.3);">Удалить</button>
+            : `<div style="display:flex;gap:.35rem;flex-wrap:wrap;">
+                <button class="btn-ghost" style="font-size:.72rem;padding:.3rem .6rem;" onclick="toggleUserRole(${u.id},'${esc(u.username)}','${u.role}')">${u.role === 'admin' ? 'Убрать права' : 'Сделать админом'}</button>
+                <button class="btn-ghost" style="font-size:.72rem;padding:.3rem .6rem;${!u.is_active ? 'color:#86efac;border-color:rgba(0,160,35,.4);' : 'color:#fbbf24;border-color:rgba(251,191,36,.3);'}" onclick="toggleUserActive(${u.id},'${esc(u.username)}',${u.is_active})">${u.is_active ? 'Заблокировать' : 'Разблокировать'}</button>
+                ${existingBan
+                  ? `<button class="btn-ghost" style="font-size:.72rem;padding:.3rem .6rem;color:#86efac;border-color:rgba(0,160,35,.35);" onclick="unbanUserAction(${existingBan.id},'${esc(u.username)}')">Разбанить</button>`
+                  : `<button class="btn-ghost" style="font-size:.72rem;padding:.3rem .6rem;color:#f87171;border-color:rgba(248,113,113,.3);" onclick="banUserAction('${esc(u.username)}')">Забанить</button>`
+                }
+                <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" class="btn-ghost" style="font-size:.72rem;padding:.3rem .6rem;text-decoration:none;display:inline-flex;align-items:center;">Профиль</a>
+                <button class="btn-danger" style="font-size:.72rem;padding:.3rem .6rem;" onclick="deleteUser(${u.id},'${esc(u.username)}')">Удалить</button>
                </div>`;
           return `<tr>
             <td style="color:var(--muted);">${u.id}</td>
-            <td><a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" style="font-weight:600;color:var(--text);text-decoration:none;transition:color .15s;" onmouseover="this.style.color='var(--gold)';this.style.textDecoration='underline'" onmouseout="this.style.color='var(--text)';this.style.textDecoration='none'">${esc(u.username)}</a></td>
-            <td style="color:var(--muted);">${esc(u.email)}</td>
-            <td style="${roleColor}font-weight:700;">${u.role === 'admin' ? 'Админ' : 'Игрок'}</td>
-            <td style="${activeColor}font-weight:600;">${u.is_active ? 'Да' : 'Нет'}</td>
-            <td style="color:var(--muted);">${new Date(u.created_at).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow'})}</td>
-            <td>${actions}</td>
+            <td><span style="font-weight:600;color:var(--text);">${esc(u.username)}</span></td>
+            <td style="color:var(--muted);font-size:.78rem;">${esc(u.email)}</td>
+            <td>${roleBadge}</td>
+            <td><div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;">${onlineDot}${activeBadge}</div></td>
+            <td style="color:var(--muted);font-size:.78rem;">${fmtDate(u.created_at)}</td>
+            <td>${actionsHtml}</td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -1540,7 +1761,7 @@ function renderUsersTable() {
 }
 
 async function toggleRole(userId, cur) {
-  const newRole = cur === 'admin' ? 'user' : 'admin';
+  const newRole = cur === 'admin' ? 'player' : 'admin';
   showConfirm({
     title: 'Изменить роль?',
     text: `Роль пользователя будет изменена на «${newRole === 'admin' ? 'Админ' : 'Игрок'}».`,
@@ -1552,9 +1773,78 @@ async function toggleRole(userId, cur) {
   });
 }
 
+async function toggleUserRole(userId, username, curRole) {
+  const newRole = curRole === 'admin' ? 'player' : 'admin';
+  showConfirm({
+    title: curRole === 'admin' ? 'Убрать права администратора?' : 'Назначить администратором?',
+    text: `Роль пользователя «${username}» будет изменена на «${newRole === 'admin' ? 'Администратор' : 'Игрок'}».`,
+    icon: '🛡', okLabel: 'Изменить',
+    onOk: async () => {
+      const res = await fetch(`${API}/users/${encodeURIComponent(username)}`, {
+        method: 'PATCH', credentials: 'include', headers: authH(),
+        body: JSON.stringify({ role: newRole }),
+      });
+      if (res.ok) { showToast('Роль изменена', 'success'); loadUsers(); }
+      else {
+        // fallback to old endpoint
+        const res2 = await fetch(`${API}/admin/users/${userId}/role?role=${newRole}`, { method: 'PUT', credentials: 'include', headers: authH() });
+        if (res2.ok) { showToast('Роль изменена', 'success'); loadUsers(); }
+        else showToast('Ошибка изменения роли', 'error');
+      }
+    },
+  });
+}
+
+async function toggleUserActive(userId, username, isActive) {
+  showConfirm({
+    title: isActive ? 'Заблокировать пользователя?' : 'Разблокировать пользователя?',
+    text: isActive
+      ? `Пользователь «${username}» будет заблокирован и не сможет войти на сайт.`
+      : `Пользователь «${username}» будет разблокирован.`,
+    icon: isActive ? '🔒' : '🔓', okLabel: isActive ? 'Заблокировать' : 'Разблокировать',
+    onOk: async () => {
+      const res = await fetch(`${API}/users/${encodeURIComponent(username)}`, {
+        method: 'PATCH', credentials: 'include', headers: authH(),
+        body: JSON.stringify({ is_active: !isActive }),
+      });
+      if (res.ok) { showToast(isActive ? 'Пользователь заблокирован' : 'Пользователь разблокирован', 'success'); loadUsers(); }
+      else {
+        // fallback to old toggle endpoint
+        const res2 = await fetch(`${API}/admin/users/${userId}/toggle-active`, { method: 'PUT', credentials: 'include', headers: authH() });
+        if (res2.ok) { showToast('Статус изменён', 'success'); loadUsers(); }
+        else showToast('Ошибка изменения статуса', 'error');
+      }
+    },
+  });
+}
+
 async function toggleActive(userId) {
   const res = await fetch(`${API}/admin/users/${userId}/toggle-active`, { method: 'PUT', credentials: 'include', headers: authH() });
   if (res.ok) loadUsers(); else showToast('Ошибка изменения статуса', 'error');
+}
+
+async function banUserAction(username) {
+  showBanModal(username, async (reason) => {
+    const res = await fetch(`${API}/admin/bans`, {
+      method: 'POST', credentials: 'include', headers: authH(),
+      body: JSON.stringify({ player_name: username, reason: reason, server: 1 }),
+    });
+    if (res.ok) { showToast(`Игрок «${username}» забанен`, 'success'); loadUsers(); }
+    else { const d = await res.json().catch(() => {}); showToast(d?.detail || 'Ошибка бана', 'error'); }
+  });
+}
+
+async function unbanUserAction(banId, username) {
+  showConfirm({
+    title: `Разбанить «${username}»?`,
+    text: 'Бан будет снят. Игрок сможет снова заходить на сервер.',
+    icon: '✅', okLabel: 'Разбанить',
+    onOk: async () => {
+      const res = await fetch(`${API}/admin/bans/${banId}`, { method: 'DELETE', credentials: 'include', headers: authH() });
+      if (res.ok || res.status === 204) { showToast(`Бан снят: «${username}»`, 'success'); loadUsers(); }
+      else showToast('Ошибка снятия бана', 'error');
+    },
+  });
 }
 
 async function deleteUser(userId, username) {
@@ -1733,19 +2023,40 @@ async function loadDashboard() {
     const rc = document.getElementById('dash-recent-comments');
     if (!d.recent_comments.length) {
       rc.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Комментариев пока нет.</p>`;
-      return;
+    } else {
+      rc.innerHTML = d.recent_comments.map(c => `
+        <div style="padding:.55rem 0;border-bottom:1px solid rgba(150,0,28,.1);display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap;">
+          <span style="font-size:.7rem;font-weight:600;color:#c9a04a;white-space:nowrap;">${esc(c.author)}</span>
+          <span style="font-size:.7rem;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.content)}</span>
+          <a href="/news/${esc(c.news_slug)}" target="_blank" style="font-size:.65rem;color:var(--muted);white-space:nowrap;text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">${esc(c.news_title)}</a>
+          <button onclick="deleteAdminComment(${c.id})" style="background:none;border:none;color:rgba(200,0,30,.45);cursor:pointer;font-size:.8rem;padding:0 .2rem;flex-shrink:0;" onmouseover="this.style.color='rgba(240,0,40,.9)'" onmouseout="this.style.color='rgba(200,0,30,.45)'">✕</button>
+        </div>`).join('');
     }
-    rc.innerHTML = d.recent_comments.map(c => `
-      <div style="padding:.55rem 0;border-bottom:1px solid rgba(150,0,28,.1);display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap;">
-        <span style="font-size:.7rem;font-weight:600;color:#c9a04a;white-space:nowrap;">${esc(c.author)}</span>
-        <span style="font-size:.7rem;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.content)}</span>
-        <a href="/news/${esc(c.news_slug)}" target="_blank" style="font-size:.65rem;color:var(--muted);white-space:nowrap;text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">${esc(c.news_title)}</a>
-        <button onclick="deleteAdminComment(${c.id})" style="background:none;border:none;color:rgba(200,0,30,.45);cursor:pointer;font-size:.8rem;padding:0 .2rem;flex-shrink:0;" onmouseover="this.style.color='rgba(240,0,40,.9)'" onmouseout="this.style.color='rgba(200,0,30,.45)'">✕</button>
-      </div>`).join('');
   } catch { }
   loadDashServerStatus();
   loadDashRecentUsers();
   loadDashGraph();
+  loadDashExtraStats();
+}
+
+async function loadDashExtraStats() {
+  // "Активны 7 дней" — users registered in last 7 days
+  try {
+    const users = await fetch(`${API}/admin/users`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : []);
+    const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
+    const new7 = users.filter(u => new Date(u.created_at).getTime() >= cutoff).length;
+    const el7 = document.getElementById('dash-new7');
+    if (el7) el7.textContent = new7;
+  } catch {}
+  // "Сброс паролей"
+  try {
+    const resets = await fetch(`${API}/admin/password-resets`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : []);
+    const elR = document.getElementById('dash-resets');
+    if (elR) elR.textContent = resets.length;
+    // also sync sidebar badge
+    const sbR = document.getElementById('badge-resets');
+    if (sbR) { if (resets.length) { sbR.textContent = resets.length; sbR.style.display = ''; } else sbR.style.display = 'none'; }
+  } catch {}
 }
 
 // ─── Dashboard: server status cards ───────────────────────────────────────
@@ -1892,7 +2203,7 @@ async function loadAdminComments(page = 1) {
           <td style="font-weight:600;white-space:nowrap;">${esc(c.author)}</td>
           <td style="color:var(--muted);font-size:.78rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.news_title)}</td>
           <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.content)}</td>
-          <td style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${new Date(c.created_at).toLocaleString('ru-RU',{timeZone:'Europe/Moscow',hour12:false,day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+          <td style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${fmtDateTime(c.created_at)}</td>
           <td><button class="btn-danger" onclick="deleteAdminComment(${c.id})">Удалить</button></td>
         </tr>`).join('');
     }
@@ -1928,6 +2239,7 @@ async function loadAdminPlayers() {
     const res = await fetch(`${API}/leaderboard?server=${server}&period=${period}`);
     if (!res.ok) return;
     const items = await res.json();
+    _playersDataCache = items;
     const tbody = document.getElementById('players-table-body');
     if (!items.length) {
       tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);text-align:center;">Нет данных.</td></tr>`;
@@ -1938,7 +2250,7 @@ async function loadAdminPlayers() {
         <td style="color:var(--muted);">${i + 1}</td>
         <td style="font-weight:600;">${esc(p.player_name)}</td>
         <td style="color:var(--muted);">${Math.floor((p.total_seconds || 0) / 3600)}ч ${Math.floor(((p.total_seconds || 0) % 3600) / 60)}м</td>
-        <td style="color:var(--muted);font-size:.78rem;">${p.last_seen ? new Date(p.last_seen).toLocaleString('ru-RU',{timeZone:'Europe/Moscow',hour12:false,day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
+        <td style="color:var(--muted);font-size:.78rem;">${p.last_seen ? fmtDateTime(p.last_seen) : '—'}</td>
       </tr>`).join('');
   } catch { }
 }
@@ -1999,6 +2311,67 @@ async function deleteUploadedFile(filename) {
   });
 }
 
+// ─── CSV Exports ──────────────────────────────────────────────────────────
+function csvRow(fields) {
+  return fields.map(f => {
+    const s = String(f == null ? '' : f);
+    return '"' + s.replace(/"/g, '""') + '"';
+  }).join(',');
+}
+function downloadCsv(filename, header, rows) {
+  const lines = [csvRow(header), ...rows.map(r => csvRow(r))];
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function exportLogCsv() {
+  showToast('Загрузка лога…', 'info');
+  try {
+    const q = encodeURIComponent((document.getElementById('log-search')?.value || '').trim());
+    const action = encodeURIComponent(document.getElementById('log-action-filter')?.value || '');
+    // load all pages
+    let allItems = [];
+    let page = 1;
+    while (true) {
+      const res = await fetch(`${API}/admin/audit-log?page=${page}&per_page=500&q=${q}&action=${action}`, { credentials: 'include', headers: authH() });
+      if (!res.ok) break;
+      const d = await res.json();
+      allItems = allItems.concat(d.items || []);
+      if (page >= d.pages) break;
+      page++;
+    }
+    downloadCsv(
+      `audit-log-${new Date().toISOString().slice(0,10)}.csv`,
+      ['Время', 'Администратор', 'Действие', 'Детали'],
+      allItems.map(r => [fmtDateTime(r.created_at), r.admin, r.action, r.detail || '']),
+    );
+    showToast(`Экспортировано записей: ${allItems.length}`, 'success');
+  } catch (err) { showToast('Ошибка экспорта: ' + err.message, 'error'); }
+}
+
+let _playersDataCache = [];
+
+function exportPlayersCsv() {
+  const items = _playersDataCache;
+  if (!items.length) { showToast('Нет данных для экспорта', 'info'); return; }
+  downloadCsv(
+    `players-${new Date().toISOString().slice(0,10)}.csv`,
+    ['#', 'Имя игрока', 'Время в игре (ч)', 'Время в игре (м)', 'Последний раз онлайн'],
+    items.map((p, i) => [
+      i + 1,
+      p.player_name,
+      Math.floor((p.total_seconds || 0) / 3600),
+      Math.floor(((p.total_seconds || 0) % 3600) / 60),
+      p.last_seen ? fmtDateTime(p.last_seen) : '',
+    ]),
+  );
+  showToast(`Экспортировано игроков: ${items.length}`, 'success');
+}
+
 // ─── Audit log ────────────────────────────────────────────────────────────
 let _logPage = 1;
 
@@ -2037,7 +2410,7 @@ async function loadAuditLog(page = 1) {
     } else {
       tbody.innerHTML = d.items.map(r => `
         <tr>
-          <td style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${new Date(r.created_at).toLocaleString('ru-RU',{timeZone:'Europe/Moscow',hour12:false,day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+          <td style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${fmtDateTime(r.created_at)}</td>
           <td style="font-weight:600;white-space:nowrap;">${esc(r.admin)}</td>
           <td><code style="font-size:.75rem;background:rgba(40,0,60,.4);padding:.15rem .45rem;border-radius:.3rem;color:#c4b5fd;">${esc(r.action)}</code></td>
           <td style="color:var(--muted);font-size:.78rem;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.detail || '')}</td>
@@ -2096,7 +2469,7 @@ const _ALLOWED_SETTING_KEYS = new Set([
   'site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id',
   'bg_image_url','wipe_date','wipe_type','wipe_date2','wipe_type2',
   'event_active','event_title','event_text','event_color',
-  'rules','https_domain','https_email',
+  'rules','https_domain','https_email','timezone','time_format','date_format',
 ]);
 
 async function importSettings(input) {
@@ -2150,7 +2523,7 @@ async function loadWipeHistory() {
       return `<div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;background:rgba(14,5,18,0.5);border:1px solid rgba(110,0,20,.18);border-radius:.5rem;opacity:${isPast ? '.75' : '1'};">
         <span style="color:${srvColor};font-size:.65rem;font-weight:700;min-width:58px;">${srv}</span>
         <span style="color:${color};font-size:.68rem;font-weight:600;min-width:70px;">${label}</span>
-        <span style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${dt.toLocaleString('ru-RU',{timeZone:'Europe/Moscow',hour12:false,day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+        <span style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${fmtDateTime(new Date(dt).toISOString())}</span>
         ${w.note ? `<span style="color:#a09ab0;font-size:.7rem;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${w.note}</span>` : '<span style="flex:1"></span>'}
         <button onclick="deleteWipe(${w.id})" style="background:none;border:none;color:rgba(200,0,30,.45);cursor:pointer;font-size:.85rem;padding:.1rem .3rem;border-radius:4px;flex-shrink:0;" onmouseover="this.style.color='rgba(240,0,40,.9)'" onmouseout="this.style.color='rgba(200,0,30,.45)'">✕</button>
       </div>`;
@@ -2221,8 +2594,8 @@ async function loadPasswordResets() {
         <tbody>
           ${items.map(r => {
             const resetUrl = window.location.origin + '/reset.html?token=' + encodeURIComponent(r.token);
-            const created  = new Date(r.created_at).toLocaleString('ru-RU', {timeZone:'Europe/Moscow',hour12:false,day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-            const expires  = new Date(r.expires_at).toLocaleString('ru-RU', {timeZone:'Europe/Moscow',hour12:false,day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+            const created  = fmtDateTime(r.created_at);
+            const expires  = fmtDateTime(r.expires_at);
             const expired  = new Date(r.expires_at) < new Date();
             return `<tr>
               <td style="font-weight:600;">${esc(r.username)}</td>
