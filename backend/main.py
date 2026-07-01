@@ -750,7 +750,7 @@ async def get_snapshots(server: int = Query(1), db: AsyncSession = Depends(get_d
 
 @app.get("/api/monitor/stats")
 async def get_monitor_stats(server: int = Query(1), db: AsyncSession = Depends(get_db)):
-    now = datetime.now(timezone.utc)
+    now = datetime.utcnow()
     day_ago  = now - timedelta(hours=24)
     week_ago = now - timedelta(days=7)
 
@@ -760,7 +760,11 @@ async def get_monitor_stats(server: int = Query(1), db: AsyncSession = Depends(g
     )
     snaps_week = res_week.scalars().all()
 
-    res_day = [s for s in snaps_week if s.recorded_at >= day_ago]
+    def _naive(dt: datetime) -> datetime:
+        return dt.replace(tzinfo=None) if dt and dt.tzinfo else dt
+
+    day_ago_naive = _naive(day_ago)
+    res_day = [s for s in snaps_week if _naive(s.recorded_at) >= day_ago_naive]
 
     def uptime_pct(snaps):
         if not snaps:
