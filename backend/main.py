@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from typing import Optional
+from pydantic import BaseModel
 from fastapi import FastAPI, Depends, HTTPException, Request, Query, Header, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse, Response
@@ -28,10 +29,10 @@ logger = logging.getLogger(__name__)
 UPLOAD_DIR = Path("/data/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete, text, or_
+from sqlalchemy import select, func, delete, text, or_, update
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification
 from .auth import (
     verify_password,
     get_password_hash,
@@ -182,6 +183,11 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="time_format", value="24h"),
         Setting(key="date_format", value="dd.mm.yyyy"),
         Setting(key="rules", value='[{"icon":"🤝","text":"Уважай других игроков — оскорбления и токсичное поведение запрещены"},{"icon":"🚫","text":"Читы, эксплойты и стороннее ПО — бан без предупреждения"},{"icon":"⚔","text":"Сервер PvE — атаки на других игроков запрещены"},{"icon":"🏰","text":"Запрещено разрушать, красть из построек или гриферить базы других игроков"},{"icon":"🪨","text":"Не перекрывай ресурсные точки и пути прохода своими строениями"},{"icon":"🌱","text":"Помогай новичкам — каждый когда-то начинал с нуля"},{"icon":"🔧","text":"Баги и нарушения сообщай администрации — не используй их в свою пользу"},{"icon":"💬","text":"Спорные ситуации решай через чат или обращайся к администратору"}]'),
+        Setting(key="rcon_port", value="25575"),
+        Setting(key="rcon_password", value=""),
+        Setting(key="rcon2_port", value="25575"),
+        Setting(key="rcon2_password", value=""),
+        Setting(key="discord_webhook_url", value=""),
     ]
     for s in default_settings:
         existing = await db.execute(select(Setting).where(Setting.key == s.key))
@@ -212,6 +218,10 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE news ADD COLUMN pinned BOOLEAN DEFAULT 0 NOT NULL",
             "ALTER TABLE users ADD COLUMN clan_id INTEGER DEFAULT NULL",
             "ALTER TABLE users ADD COLUMN rules_accepted_at DATETIME DEFAULT NULL",
+            "ALTER TABLE comments ADD COLUMN parent_id INTEGER REFERENCES comments(id) ON DELETE CASCADE",
+            "CREATE TABLE IF NOT EXISTS comment_reactions (id INTEGER PRIMARY KEY, comment_id INTEGER REFERENCES comments(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, emoji VARCHAR(10) NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(comment_id, user_id, emoji))",
+            "CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, type VARCHAR(32) NOT NULL, data TEXT NOT NULL DEFAULT '{}', read BOOLEAN NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE INDEX IF NOT EXISTS ix_notifications_user ON notifications(user_id, read)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -983,28 +993,49 @@ async def get_comments(
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
+    from sqlalchemy.orm import selectinload
     news_res = await db.execute(select(News.id).where(News.slug == slug, News.published == True))
     news_id = news_res.scalar_one_or_none()
     if news_id is None:
         raise HTTPException(status_code=404, detail="News not found")
     total_res = await db.execute(
-        select(func.count()).select_from(Comment).where(Comment.news_id == news_id)
+        select(func.count()).select_from(Comment).where(
+            Comment.news_id == news_id, Comment.parent_id == None
+        )
     )
     total = total_res.scalar_one()
     pages = max(1, math.ceil(total / per_page))
     result = await db.execute(
         select(Comment)
-        .where(Comment.news_id == news_id)
+        .where(Comment.news_id == news_id, Comment.parent_id == None)
         .order_by(Comment.created_at.asc())
         .offset((page - 1) * per_page)
         .limit(per_page)
     )
-    return PaginatedComments(
-        items=[CommentOut.model_validate(c) for c in result.scalars().all()],
-        total=total,
-        page=page,
-        pages=pages,
-    )
+    items = result.scalars().all()
+    for c in items:
+        rr = await db.execute(
+            select(Comment)
+            .where(Comment.parent_id == c.id)
+            .order_by(Comment.created_at)
+            .options(selectinload(Comment.author))
+            .limit(50)
+        )
+        c._replies_list = rr.scalars().all()
+
+    def serialize_comment(c, replies=None):
+        return {
+            "id": c.id,
+            "content": c.content,
+            "parent_id": c.parent_id,
+            "created_at": c.created_at.isoformat(),
+            "author": {"id": c.author.id, "username": c.author.username, "avatar_url": c.author.avatar_url, "role": c.author.role, "is_active": c.author.is_active, "created_at": c.author.created_at.isoformat(), "email": ""} if c.author else None,
+            "replies": [serialize_comment(r) for r in (replies or [])],
+            "reactions": {},
+            "user_reaction": None,
+        }
+
+    return {"items": [serialize_comment(c, getattr(c, '_replies_list', [])) for c in items], "total": total, "page": page, "pages": pages}
 
 
 @app.post("/api/news/{slug}/comments", response_model=CommentOut, status_code=201)
@@ -1014,17 +1045,41 @@ async def add_comment(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    news_res = await db.execute(select(News.id).where(News.slug == slug, News.published == True))
-    news_id = news_res.scalar_one_or_none()
-    if news_id is None:
+    news_res = await db.execute(select(News).where(News.slug == slug, News.published == True))
+    news = news_res.scalar_one_or_none()
+    if news is None:
         raise HTTPException(status_code=404, detail="News not found")
-    comment = Comment(news_id=news_id, author_id=current_user.id, content=body.content)
+    comment = Comment(news_id=news.id, author_id=current_user.id, content=body.content, parent_id=body.parent_id)
     db.add(comment)
     await db.commit()
     await db.refresh(comment)
     # eager load author
     await db.refresh(comment, ["author"])
-    return CommentOut.model_validate(comment)
+    if body.parent_id:
+        parent_c = await db.get(Comment, body.parent_id)
+        if parent_c and parent_c.author_id and parent_c.author_id != current_user.id:
+            db.add(Notification(
+                user_id=parent_c.author_id,
+                type="reply",
+                data=json.dumps({
+                    "comment_id": comment.id,
+                    "news_slug": slug,
+                    "news_title": news.title,
+                    "from_username": current_user.username,
+                    "preview": body.content[:100]
+                }, ensure_ascii=False)
+            ))
+            await db.commit()
+    return {
+        "id": comment.id,
+        "content": comment.content,
+        "parent_id": comment.parent_id,
+        "created_at": comment.created_at.isoformat(),
+        "author": {"id": comment.author.id, "username": comment.author.username, "avatar_url": comment.author.avatar_url, "role": comment.author.role, "is_active": comment.author.is_active, "created_at": comment.author.created_at.isoformat(), "email": ""} if comment.author else None,
+        "replies": [],
+        "reactions": {},
+        "user_reaction": None,
+    }
 
 
 @app.patch("/api/comments/{comment_id}", response_model=CommentOut)
@@ -1062,6 +1117,100 @@ async def delete_comment(
     await db.commit()
 
 
+# ─── Comment reactions ───────────────────────────────────────────────────────
+
+ALLOWED_COMMENT_EMOJIS = {"👍", "❤️", "😂", "😮", "😢", "👎"}
+
+
+@app.post("/api/comments/{comment_id}/react")
+async def react_comment(comment_id: int, body: ReactBody, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    if body.emoji not in ALLOWED_COMMENT_EMOJIS:
+        raise HTTPException(400, "Invalid emoji")
+    existing = await db.execute(
+        select(CommentReaction).where(
+            CommentReaction.comment_id == comment_id,
+            CommentReaction.user_id == current_user.id,
+            CommentReaction.emoji == body.emoji
+        )
+    )
+    row = existing.scalar_one_or_none()
+    if row:
+        await db.delete(row)
+        await db.commit()
+        return {"toggled": False}
+    db.add(CommentReaction(comment_id=comment_id, user_id=current_user.id, emoji=body.emoji))
+    await db.commit()
+    return {"toggled": True}
+
+
+@app.get("/api/comments/{comment_id}/reactions")
+async def get_comment_reactions(comment_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    res = await db.execute(
+        select(CommentReaction.emoji, func.count(CommentReaction.id))
+        .where(CommentReaction.comment_id == comment_id)
+        .group_by(CommentReaction.emoji)
+    )
+    counts = {row[0]: row[1] for row in res.all()}
+    user_reaction = None
+    try:
+        token = request.cookies.get(COOKIE_NAME)
+        if token and token not in _revoked_tokens:
+            payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            uid = int(payload.get("sub", 0))
+            if uid:
+                ur = await db.execute(
+                    select(CommentReaction.emoji).where(
+                        CommentReaction.comment_id == comment_id,
+                        CommentReaction.user_id == uid
+                    )
+                )
+                user_reaction = ur.scalar_one_or_none()
+    except Exception:
+        pass
+    return {"counts": counts, "user_reaction": user_reaction}
+
+
+# ─── Notifications ────────────────────────────────────────────────────────────
+
+@app.get("/api/notifications")
+async def get_notifications(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    res = await db.execute(
+        select(Notification)
+        .where(Notification.user_id == current_user.id)
+        .order_by(Notification.created_at.desc())
+        .limit(50)
+    )
+    items = res.scalars().all()
+    unread = sum(1 for n in items if not n.read)
+    return {
+        "items": [
+            {"id": n.id, "type": n.type, "data": json.loads(n.data or "{}"), "read": n.read, "created_at": n.created_at.isoformat()}
+            for n in items
+        ],
+        "unread": unread
+    }
+
+
+@app.post("/api/notifications/read-all")
+async def mark_notifications_read(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    await db.execute(
+        update(Notification)
+        .where(Notification.user_id == current_user.id, Notification.read == False)
+        .values(read=True)
+    )
+    await db.commit()
+    return {"ok": True}
+
+
+@app.delete("/api/notifications/{notif_id}")
+async def delete_notification(notif_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    n = await db.get(Notification, notif_id)
+    if n and n.user_id == current_user.id:
+        await db.delete(n)
+        await db.commit()
+    return {"ok": True}
+
+
 # ─── Wipes ───────────────────────────────────────────────────────────────────
 
 @app.get("/api/wipes", response_model=list[WipeOut])
@@ -1095,6 +1244,21 @@ async def delete_wipe(
         raise HTTPException(status_code=404, detail="Wipe not found")
     await db.delete(wipe)
     await db.commit()
+
+
+# ─── Discord Webhook ─────────────────────────────────────────────────────────
+
+async def _discord_webhook_news(url: str, news_title: str, news_summary: str, news_slug: str, thumb_url: str = "") -> None:
+    if not url or not url.startswith("https://discord.com/api/webhooks/"):
+        return
+    try:
+        embed = {"title": news_title[:256], "description": news_summary[:512], "color": 0xB5002A, "footer": {"text": "V Rising News"}}
+        if thumb_url:
+            embed["thumbnail"] = {"url": thumb_url}
+        async with httpx.AsyncClient() as client:
+            await client.post(url, json={"embeds": [embed]}, timeout=5.0)
+    except Exception as e:
+        logger.warning("Discord webhook error: %s", e)
 
 
 # ─── News (admin) ────────────────────────────────────────────────────────────
@@ -1151,6 +1315,11 @@ async def create_news(
     await log_audit(db, current_user, "news.create", news.title)
     await db.commit()
     await db.refresh(news)
+    if news.published:
+        wh_res = await db.execute(select(Setting).where(Setting.key == "discord_webhook_url"))
+        wh = wh_res.scalar_one_or_none()
+        if wh and wh.value:
+            asyncio.create_task(_discord_webhook_news(wh.value, news.title, news.summary, news.slug, news.thumbnail_url or ""))
     result = await db.execute(select(News).where(News.id == news.id))
     return NewsOut.model_validate(result.scalar_one())
 
@@ -1256,6 +1425,7 @@ ALLOWED_SETTING_KEYS = {
     "event_active", "event_title", "event_text", "event_color",
     "rules", "https_domain", "https_email",
     "timezone", "time_format", "date_format",
+    "rcon_port", "rcon_password", "rcon2_port", "rcon2_password", "discord_webhook_url",
 }
 
 @app.get("/api/admin/settings", response_model=list[SettingOut])
@@ -1934,6 +2104,80 @@ async def import_settings(
         count += 1
     await db.commit()
     return {"imported": count}
+
+
+# ─── DB Backup ───────────────────────────────────────────────────────────────
+
+@app.get("/api/admin/backup")
+async def download_backup(current_user: User = Depends(get_admin_user)):
+    for candidate in [Path("backend/vrising.db"), Path("vrising.db"), Path("/app/backend/vrising.db")]:
+        if candidate.exists():
+            return FileResponse(
+                path=str(candidate),
+                media_type="application/octet-stream",
+                filename=f"vrising_backup_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.db"
+            )
+    raise HTTPException(404, "Database file not found")
+
+
+# ─── RCON ────────────────────────────────────────────────────────────────────
+
+import struct
+
+
+async def _rcon_exec(ip: str, port: int, password: str, command: str, timeout: float = 5.0) -> str:
+    def _pack(pid: int, ptype: int, body: str) -> bytes:
+        b = body.encode() + b"\x00\x00"
+        return struct.pack("<iii", 4 + 4 + len(b), pid, ptype) + b
+
+    async def _read(r) -> tuple:
+        sz = struct.unpack("<i", await asyncio.wait_for(r.readexactly(4), timeout))[0]
+        d = await asyncio.wait_for(r.readexactly(sz), timeout)
+        pid, pt = struct.unpack("<ii", d[:8])
+        return pid, pt, d[8:].rstrip(b"\x00").decode("utf-8", errors="replace")
+
+    reader, writer = await asyncio.wait_for(asyncio.open_connection(ip, port), timeout)
+    try:
+        writer.write(_pack(1, 3, password)); await writer.drain()
+        await _read(reader)
+        pid, _, _ = await _read(reader)
+        if pid == -1:
+            raise ValueError("RCON: неверный пароль")
+        writer.write(_pack(2, 2, command)); await writer.drain()
+        _, _, resp = await _read(reader)
+        return resp or "(пустой ответ)"
+    finally:
+        writer.close()
+        try: await writer.wait_closed()
+        except: pass
+
+
+class RconBody(BaseModel):
+    server: int = 1
+    command: str
+
+
+@app.post("/api/admin/rcon")
+async def admin_rcon(body: RconBody, current_user: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
+    if not body.command.strip():
+        raise HTTPException(400, "Empty command")
+    res = await db.execute(select(Setting).where(Setting.key.in_(["server_ip","rcon_port","rcon_password","server2_ip","rcon2_port","rcon2_password"])))
+    cfg = {s.key: s.value for s in res.scalars().all()}
+    if body.server == 2:
+        ip, port, pw = cfg.get("server2_ip","127.0.0.1"), int(cfg.get("rcon2_port") or 25575), cfg.get("rcon2_password","")
+    else:
+        ip, port, pw = cfg.get("server_ip","127.0.0.1"), int(cfg.get("rcon_port") or 25575), cfg.get("rcon_password","")
+    if not pw:
+        raise HTTPException(400, "RCON пароль не задан в настройках")
+    try:
+        result = await _rcon_exec(ip, port, pw, body.command)
+        await log_audit(db, current_user, "rcon_command", f"srv={body.server} cmd={body.command[:100]}")
+        await db.commit()
+        return {"output": result}
+    except ValueError as e:
+        raise HTTPException(401, str(e))
+    except Exception as e:
+        raise HTTPException(503, f"RCON ошибка: {e}")
 
 
 # ─── Audit log ───────────────────────────────────────────────────────────────

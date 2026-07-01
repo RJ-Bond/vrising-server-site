@@ -100,10 +100,12 @@ class Comment(Base):
     news_id = Column(Integer, ForeignKey("news.id", ondelete="CASCADE"), nullable=False)
     author_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     content = Column(Text, nullable=False)
+    parent_id = Column(Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     author = relationship("User", lazy="selectin")
     news = relationship("News", back_populates="comments")
+    replies = relationship("Comment", foreign_keys="[Comment.parent_id]", lazy="noload")
 
     __table_args__ = (Index("ix_comments_news_id", "news_id"),)
 
@@ -144,3 +146,24 @@ class PasswordReset(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False, nullable=False)
+
+
+class CommentReaction(Base):
+    __tablename__ = "comment_reactions"
+    id = Column(Integer, primary_key=True, index=True)
+    comment_id = Column(Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    emoji = Column(String(10), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("comment_id", "user_id", "emoji", name="uq_comment_reaction"),)
+
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    type = Column(String(32), nullable=False)  # "reply", "mention"
+    data = Column(Text, nullable=False, default="{}")  # JSON: {comment_id, news_slug, news_title, from_username, preview}
+    read = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    __table_args__ = (Index("ix_notifications_user", "user_id", "read"),)

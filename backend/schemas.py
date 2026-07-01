@@ -156,6 +156,7 @@ class WipeOut(BaseModel):
 
 class CommentCreate(BaseModel):
     content: str
+    parent_id: Optional[int] = None
 
     @field_validator("content")
     @classmethod
@@ -185,9 +186,22 @@ class CommentUpdate(BaseModel):
 class CommentOut(BaseModel):
     id: int
     content: str
+    parent_id: Optional[int] = None
     created_at: datetime
     author: Optional[UserOut] = None
+    replies: list["CommentOut"] = []
+    reactions: dict = {}
+    user_reaction: Optional[str] = None
 
+    model_config = {"from_attributes": True}
+
+
+class NotificationOut(BaseModel):
+    id: int
+    type: str
+    data: str  # JSON string
+    read: bool
+    created_at: datetime
     model_config = {"from_attributes": True}
 
 
