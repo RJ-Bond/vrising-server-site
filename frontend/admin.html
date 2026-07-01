@@ -2065,11 +2065,16 @@ async function updateSite() {
 // ─── Discord Webhook test ─────────────────────────────────────────────────
 async function testWebhook(btn) {
   const res = document.getElementById('webhook-test-result');
+  const urlInput = document.getElementById('setting-discord_webhook_url');
   const orig = btn.textContent;
   btn.textContent = '⏳'; btn.disabled = true;
   if (res) { res.style.color = ''; res.textContent = ''; }
   try {
-    const r = await fetch(`${API}/admin/test-webhook`, { method: 'POST', credentials: 'include', headers: authH() });
+    const r = await fetch(`${API}/admin/test-webhook`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...authH() },
+      body: JSON.stringify({ url: urlInput?.value?.trim() || null }),
+    });
     const d = await r.json();
     if (r.ok) {
       if (res) { res.style.color = '#4ade80'; res.textContent = '✅ Тестовое сообщение отправлено в Discord'; }
