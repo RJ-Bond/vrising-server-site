@@ -1971,16 +1971,45 @@ async def ssl_install(
                              headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
+async def _git_short_hash(repo: str) -> str:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "git", "-C", repo, "rev-parse", "--short", "HEAD",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+        )
+        out, _ = await proc.communicate()
+        return out.decode().strip() or "unknown"
+    except Exception:
+        return "unknown"
+
+
+async def _git_log_oneline(repo: str, old_hash: str, new_hash: str) -> list[str]:
+    """Returns commit messages between old and new hash."""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "git", "-C", repo, "log", "--oneline", f"{old_hash}..{new_hash}",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+        )
+        out, _ = await proc.communicate()
+        lines = [l for l in out.decode().strip().splitlines() if l]
+        return lines[:10]
+    except Exception:
+        return []
+
+
 @app.post("/api/admin/update")
 async def site_update(_: User = Depends(get_admin_user)):
     async def stream():
         def sse(msg: str) -> str:
             return f"data: {msg}\n\n"
 
-        yield sse("📦 Получаем обновления из репозитория...")
+        repo = "/opt/vrising-site"
+        old_hash = await _git_short_hash(repo)
+        yield sse(f"📦 Текущая версия: {old_hash}")
+        yield sse("⬇️ Получаем обновления из репозитория...")
 
         rc = 0
-        async for line in _stream_cmd("git", "-C", "/opt/vrising-site", "pull", "--ff-only"):
+        async for line in _stream_cmd("git", "-C", repo, "pull", "--ff-only"):
             if line.startswith("__rc__"):
                 rc = int(line[6:])
             else:
@@ -1991,9 +2020,20 @@ async def site_update(_: User = Depends(get_admin_user)):
             yield sse("DONE:error")
             return
 
-        yield sse("✅ Код обновлён.")
-        yield sse("🌐 Frontend обновлён мгновенно (nginx отдаёт файлы напрямую).")
-        yield sse("🔄 Backend перезагружается автоматически (uvicorn --reload отслеживает /app/backend)...")
+        new_hash = await _git_short_hash(repo)
+
+        if old_hash == new_hash:
+            yield sse(f"✅ Уже актуальная версия ({new_hash}). Обновлений нет.")
+        else:
+            yield sse(f"✅ Обновлено: {old_hash} → {new_hash}")
+            commits = await _git_log_oneline(repo, old_hash, new_hash)
+            if commits:
+                yield sse("📋 Что изменилось:")
+                for c in commits:
+                    yield sse(f"  • {c}")
+
+        yield sse("🌐 Frontend обновлён мгновенно.")
+        yield sse("🔄 Backend перезагружается автоматически (uvicorn --reload)...")
         yield sse("DONE:ok")
 
     return StreamingResponse(stream(), media_type="text/event-stream",
