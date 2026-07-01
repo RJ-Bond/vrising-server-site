@@ -296,6 +296,14 @@ function applySiteBackground(bg) {
 
 let _wipeSettings = {};
 let _baseTitle = 'V Rising — Сервера';
+window.__TZ = 'Europe/Moscow';
+window.__H12 = false;
+window.__DATEFMT = 'dd.mm.yyyy';
+function _dateOpts() {
+  const m = {'dd.mm.yyyy':{day:'2-digit',month:'2-digit',year:'numeric'},'dd.mm.yy':{day:'2-digit',month:'2-digit',year:'2-digit'},'d mmm yyyy':{day:'numeric',month:'short',year:'numeric'},'d mmmm yyyy':{day:'numeric',month:'long',year:'numeric'}};
+  return { timeZone: window.__TZ||'Europe/Moscow', ...(m[window.__DATEFMT]||m['dd.mm.yyyy']) };
+}
+function fmtDate(iso) { if(!iso) return '—'; return new Date(iso).toLocaleDateString('ru-RU', _dateOpts()); }
 let _onlineCounts = { 1: 0, 2: 0 };
 
 function updatePageTitle() {
@@ -317,6 +325,9 @@ function updatePageTitle() {
     };
     [1, 2].forEach(renderWipeChip);
     setInterval(() => [1, 2].forEach(renderWipeChip), 60000);
+    window.__TZ = d.timezone || 'Europe/Moscow';
+    window.__H12 = (d.time_format || '24h') === '12h';
+    window.__DATEFMT = d.date_format || 'dd.mm.yyyy';
   } catch {}
 })();
 
@@ -339,7 +350,7 @@ function renderWipeChip(num) {
     el.textContent = `🗡 ${label} через ${d}д ${h}ч`;
     el.classList.toggle('urgent', d < 7);
   }
-  el.title = date.toLocaleDateString('ru-RU', { timeZone:'Europe/Moscow', day:'numeric', month:'long', year:'numeric' });
+  el.title = fmtDate(date.toISOString());
   el.style.display = 'inline-flex';
 }
 
@@ -544,7 +555,7 @@ async function loadServerStats(num) {
     const record = document.getElementById(`srv-record-${num}`);
     if (record && s.peak_alltime > 0) {
       const dateStr = s.peak_alltime_date
-        ? new Date(s.peak_alltime_date).toLocaleDateString('ru-RU', { timeZone:'Europe/Moscow', day:'numeric', month:'long', year:'numeric' })
+        ? fmtDate(s.peak_alltime_date)
         : null;
       record.textContent = `🏆 Рекорд онлайна: ${s.peak_alltime} ${_pluralPlayers(s.peak_alltime)}${dateStr ? ' · ' + dateStr : ''}`;
       record.style.display = 'flex';
@@ -772,8 +783,8 @@ function renderAxisLabels(num, snaps, days) {
     const ts = tMin + (tMax - tMin) * (i / count);
     const d = new Date(ts * 1000);
     labels.push(days <= 1
-      ? d.toLocaleTimeString('ru-RU', { timeZone:'Europe/Moscow', hour12:false, hour: '2-digit', minute: '2-digit' })
-      : d.toLocaleDateString('ru-RU', { timeZone:'Europe/Moscow', day: '2-digit', month: '2-digit' }));
+      ? d.toLocaleTimeString('ru-RU', { timeZone:window.__TZ||'Europe/Moscow', hour12:!!(window.__H12), hour: '2-digit', minute: '2-digit' })
+      : d.toLocaleDateString('ru-RU', { timeZone:window.__TZ||'Europe/Moscow', day: '2-digit', month: '2-digit' }));
   }
   axis.innerHTML = labels.map(l => `<span>${esc(l)}</span>`).join('');
 }
@@ -831,7 +842,7 @@ function handleGraphHover(num, clientX) {
   ctx.fill();
   ctx.restore();
 
-  const dateStr = new Date(nearest.ts * 1000).toLocaleString('ru-RU', { timeZone:'Europe/Moscow', hour12:false, day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const dateStr = new Date(nearest.ts * 1000).toLocaleString('ru-RU', { timeZone:window.__TZ||'Europe/Moscow', hour12:!!(window.__H12), day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
   tip.innerHTML = `<b>${nearest.players}</b> игроков<span>${dateStr}</span>${!nearest.online ? '<span style="color:var(--red);">офлайн</span>' : ''}`;
   tip.style.display = 'block';
   let left = px + 10;

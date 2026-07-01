@@ -369,9 +369,16 @@ function fmtPlaytime(sec) {
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
 }
+window.__TZ = 'Europe/Moscow';
+window.__H12 = false;
+window.__DATEFMT = 'dd.mm.yyyy';
+function _dateOpts() {
+  const m = {'dd.mm.yyyy':{day:'2-digit',month:'2-digit',year:'numeric'},'dd.mm.yy':{day:'2-digit',month:'2-digit',year:'2-digit'},'d mmm yyyy':{day:'numeric',month:'short',year:'numeric'},'d mmmm yyyy':{day:'numeric',month:'long',year:'numeric'}};
+  return { timeZone: window.__TZ||'Europe/Moscow', ...(m[window.__DATEFMT]||m['dd.mm.yyyy']) };
+}
 function fmtSeen(iso) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('ru-RU', { timeZone:'Europe/Moscow', day:'2-digit', month:'2-digit', year:'2-digit' });
+  return new Date(iso).toLocaleDateString('ru-RU', { timeZone:window.__TZ||'Europe/Moscow', day:'2-digit', month:'2-digit', year:'2-digit' });
 }
 
 function applySiteBackground(bg) {
@@ -423,6 +430,9 @@ function applySiteBackground(bg) {
 (async function() {
   try {
     const d = await fetch(`${API}/settings/public`).then(r => r.json());
+    window.__TZ = d.timezone || 'Europe/Moscow';
+    window.__H12 = (d.time_format || '24h') === '12h';
+    window.__DATEFMT = d.date_format || 'dd.mm.yyyy';
     const title = (d.site_title || 'V Rising').trim();
     document.title = `${title} — Игроки`;
     document.getElementById('nav-logo').textContent = '⚔ ' + title;

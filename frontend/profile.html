@@ -315,7 +315,15 @@ async function doLogout() {
   localStorage.removeItem('token'); sessionStorage.removeItem('token');
   window.location.href = '/login.html';
 }
-function fmtDate(iso) { return new Date(iso).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'long',year:'numeric'}); }
+window.__TZ = 'Europe/Moscow';
+window.__H12 = false;
+window.__DATEFMT = 'dd.mm.yyyy';
+function _dateOpts() {
+  const m = {'dd.mm.yyyy':{day:'2-digit',month:'2-digit',year:'numeric'},'dd.mm.yy':{day:'2-digit',month:'2-digit',year:'2-digit'},'d mmm yyyy':{day:'numeric',month:'short',year:'numeric'},'d mmmm yyyy':{day:'numeric',month:'long',year:'numeric'}};
+  return { timeZone: window.__TZ||'Europe/Moscow', ...(m[window.__DATEFMT]||m['dd.mm.yyyy']) };
+}
+function fmtDate(iso) { if(!iso) return '—'; return new Date(iso).toLocaleDateString('ru-RU', _dateOpts()); }
+function fmtDateTime(iso) { if(!iso) return '—'; return new Date(iso).toLocaleString('ru-RU', {..._dateOpts(), hour:'2-digit', minute:'2-digit', hour12:!!(window.__H12) }); }
 function fmtSec(s) {
   const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
@@ -446,7 +454,7 @@ async function loadProfile() {
     statusEl.textContent = u.is_active ? '✔ Активен' : '✘ Заблокирован';
     statusEl.style.color = u.is_active ? '#4ade80' : '#f87171';
 
-    const rulesDate = u.rules_accepted_at ? new Date(u.rules_accepted_at).toLocaleDateString('ru-RU', { timeZone:'Europe/Moscow', day:'2-digit', month:'2-digit', year:'numeric' }) : null;
+    const rulesDate = u.rules_accepted_at ? fmtDate(u.rules_accepted_at) : null;
     const rulesEl = document.getElementById('profile-rules');
     if (rulesEl) {
       if (rulesDate) {
@@ -474,6 +482,9 @@ async function loadProfile() {
     // Site settings
     try {
       const s = await fetch(`${API}/settings/public`).then(r => r.json());
+      window.__TZ = s.timezone || 'Europe/Moscow';
+      window.__H12 = (s.time_format || '24h') === '12h';
+      window.__DATEFMT = s.date_format || 'dd.mm.yyyy';
       const logo = document.getElementById('nav-logo');
       if (s.site_logo_url) {
         logo.innerHTML = `<img src="${s.site_logo_url}" alt="${s.site_title||'V RISING'}" style="height:1.8rem;object-fit:contain;vertical-align:middle;">`;

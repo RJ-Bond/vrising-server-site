@@ -183,7 +183,14 @@ const RANKS = [
   {label:'☠ Повелитель',  min:360000, max:Infinity, color:'#b46ef0', next:null},
 ];
 
-function fmtDate(iso){return new Date(iso).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'long',year:'numeric'});}
+window.__TZ = 'Europe/Moscow';
+window.__H12 = false;
+window.__DATEFMT = 'dd.mm.yyyy';
+function _dateOpts() {
+  const m = {'dd.mm.yyyy':{day:'2-digit',month:'2-digit',year:'numeric'},'dd.mm.yy':{day:'2-digit',month:'2-digit',year:'2-digit'},'d mmm yyyy':{day:'numeric',month:'short',year:'numeric'},'d mmmm yyyy':{day:'numeric',month:'long',year:'numeric'}};
+  return { timeZone: window.__TZ||'Europe/Moscow', ...(m[window.__DATEFMT]||m['dd.mm.yyyy']) };
+}
+function fmtDate(iso){if(!iso) return '—'; return new Date(iso).toLocaleDateString('ru-RU',_dateOpts());}
 function fmtSec(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h>0?`${h}ч ${m}м`:`${m}м`;}
 
 function buildStars(){
@@ -235,6 +242,9 @@ async function loadUser(){
     renderRank(u.total_seconds||0);
     try{
       const s=await fetch(`${API}/settings/public`).then(r=>r.json());
+      window.__TZ = s.timezone || 'Europe/Moscow';
+      window.__H12 = (s.time_format || '24h') === '12h';
+      window.__DATEFMT = s.date_format || 'dd.mm.yyyy';
       document.getElementById('nav-logo').textContent=s.site_title||'V RISING';
       document.getElementById('cover-subtitle').textContent='— '+(s.site_title||'V Rising')+' · Профиль игрока —';
       applySiteBackground(s.bg_image_url);
