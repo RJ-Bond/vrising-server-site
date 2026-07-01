@@ -187,6 +187,19 @@
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
     ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
+    /* ── Mobile ── */
+    @media (max-width:640px) {
+      body { overflow-x:hidden; }
+      .g-card { padding:1.1rem; }
+      .srv-connect-btn, .srv-copy-btn { padding:.55rem .9rem; min-height:2.75rem; }
+      .srv-section-title { font-size:.62rem; letter-spacing:.12em; }
+      .glass-nav > div { padding:.6rem 1rem !important; }
+    }
+    @media (max-width:400px) {
+      .g-card { padding:.9rem; }
+      .srv-connect-btn { font-size:.72rem; }
+      .srv-metric-val { font-size:1.05rem; }
+    }
   </style>
 </head>
 <body>

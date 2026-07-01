@@ -88,6 +88,16 @@
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
     ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
+    /* ── Mobile ── */
+    @media (max-width:640px) {
+      body { overflow-x:hidden; }
+      .glass-nav > div { padding:.6rem 1rem !important; }
+    }
+    @media (max-width:480px) {
+      .g-card { padding:.85rem; }
+      .note-box { font-size:.8rem; padding:.75rem 1rem; }
+      .region-name { font-size:.88rem; }
+    }
   </style>
 </head>
 <body>
