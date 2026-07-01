@@ -1265,6 +1265,31 @@ async def _discord_webhook_news(url: str, news_title: str, news_summary: str, ne
         logger.warning("Discord webhook error: %s", e)
 
 
+@app.post("/api/admin/test-webhook")
+async def test_discord_webhook(current_user: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
+    res = await db.execute(select(Setting).where(Setting.key == "discord_webhook_url"))
+    setting = res.scalar_one_or_none()
+    url = setting.value if setting else ""
+    if not url or not url.startswith("https://discord.com/api/webhooks/"):
+        raise HTTPException(status_code=400, detail="Discord Webhook URL не настроен или некорректен")
+    try:
+        embed = {
+            "title": "✅ Тест вебхука — V Rising",
+            "description": "Вебхук настроен корректно. Уведомления о новостях будут появляться здесь.",
+            "color": 0x00B050,
+            "footer": {"text": "V Rising Admin Panel"},
+        }
+        async with httpx.AsyncClient() as client:
+            r = await client.post(url, json={"embeds": [embed]}, timeout=5.0)
+        if r.status_code not in (200, 204):
+            raise HTTPException(status_code=502, detail=f"Discord ответил {r.status_code}: {r.text[:200]}")
+        return {"ok": True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=str(e))
+
+
 # ─── News (admin) ────────────────────────────────────────────────────────────
 
 @app.get("/api/admin/news", response_model=PaginatedNews)

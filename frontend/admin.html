@@ -696,7 +696,9 @@
             <div class="s-field-row">
               <input id="setting-discord_webhook_url" type="url" class="dark-input" placeholder="https://discord.com/api/webhooks/...">
               <button class="s-save-btn" onclick="saveSetting('discord_webhook_url')">Сохранить</button>
+              <button onclick="testWebhook(this)" style="padding:.4rem .75rem;background:rgba(0,80,0,.25);border:1px solid rgba(0,160,60,.35);color:#4ade80;border-radius:.45rem;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s;" onmouseover="this.style.background='rgba(0,100,0,.35)'" onmouseout="this.style.background='rgba(0,80,0,.25)'">▶ Тест</button>
             </div>
+            <p class="s-desc" id="webhook-test-result" style="margin-top:.3rem;"></p>
             <p class="s-desc">При публикации новости — автоматически отправит embed в Discord канал</p>
           </div>
         </div>
@@ -1991,6 +1993,27 @@ async function installSsl() {
 // ─── Site update ──────────────────────────────────────────────────────────
 async function updateSite() {
   await sseRun('/admin/update', 'update-log', 'update-btn');
+}
+
+// ─── Discord Webhook test ─────────────────────────────────────────────────
+async function testWebhook(btn) {
+  const res = document.getElementById('webhook-test-result');
+  const orig = btn.textContent;
+  btn.textContent = '⏳'; btn.disabled = true;
+  if (res) { res.style.color = ''; res.textContent = ''; }
+  try {
+    const r = await fetch(`${API}/admin/test-webhook`, { method: 'POST', credentials: 'include', headers: authH() });
+    const d = await r.json();
+    if (r.ok) {
+      if (res) { res.style.color = '#4ade80'; res.textContent = '✅ Тестовое сообщение отправлено в Discord'; }
+    } else {
+      if (res) { res.style.color = '#f87171'; res.textContent = '❌ ' + (d.detail || 'Ошибка'); }
+    }
+  } catch {
+    if (res) { res.style.color = '#f87171'; res.textContent = '❌ Ошибка соединения'; }
+  } finally {
+    btn.textContent = orig; btn.disabled = false;
+  }
 }
 
 // ─── RCON ─────────────────────────────────────────────────────────────────
