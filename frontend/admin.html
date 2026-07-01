@@ -412,6 +412,41 @@
           <div id="quill-editor"></div>
         </div>
 
+        <!-- Discord embed preview -->
+        <div class="glass-card rounded-xl p-4" id="discord-preview-wrap">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+            <span style="font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;">Discord Embed Preview</span>
+            <span style="font-size:.65rem;color:#9488a8;">Отображается только при наличии Webhook URL</span>
+          </div>
+          <!-- Discord mock UI -->
+          <div style="background:#313338;border-radius:.5rem;padding:1rem 1rem 1rem 1.25rem;font-family:'Whitney','Helvetica Neue',Helvetica,Arial,sans-serif;max-width:520px;">
+            <!-- Bot row -->
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem;">
+              <div style="width:2rem;height:2rem;border-radius:50%;background:#b5002a;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;color:#fff;flex-shrink:0;">V</div>
+              <span style="font-size:.875rem;font-weight:600;color:#fff;">V Rising</span>
+              <span style="font-size:.6rem;background:#5865f2;color:#fff;padding:.1rem .3rem;border-radius:.2rem;font-weight:700;letter-spacing:.03em;">БОТ</span>
+              <span id="dp-timestamp" style="font-size:.7rem;color:#949ba4;"></span>
+            </div>
+            <!-- Embed box -->
+            <div style="display:flex;border-radius:.25rem;overflow:hidden;">
+              <!-- Left accent bar -->
+              <div style="width:4px;background:#b5002a;flex-shrink:0;border-radius:2px 0 0 2px;"></div>
+              <!-- Embed content -->
+              <div style="background:#2b2d31;padding:.625rem .75rem .75rem;flex:1;border-radius:0 .25rem .25rem 0;display:flex;gap:.75rem;align-items:flex-start;">
+                <div style="flex:1;min-width:0;">
+                  <div id="dp-title" style="font-size:.9375rem;font-weight:600;color:#00b0f4;word-break:break-word;margin-bottom:.25rem;">—</div>
+                  <div id="dp-desc" style="font-size:.875rem;color:#dbdee1;line-height:1.375;word-break:break-word;white-space:pre-wrap;margin-bottom:.5rem;max-height:100px;overflow:hidden;"></div>
+                  <div style="font-size:.75rem;color:#949ba4;display:flex;align-items:center;gap:.4rem;">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+                    V Rising News
+                  </div>
+                </div>
+                <img id="dp-thumb" src="" alt="" style="display:none;width:60px;height:60px;border-radius:.25rem;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'" onload="this.style.display=''">
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Footer controls -->
         <div class="glass-card rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
           <div class="flex items-center gap-2">
@@ -1340,6 +1375,7 @@ async function deleteNews(id) {
 // ─── Editor ───────────────────────────────────────────────────────────────
 function initQuill() {
   if (quill) return;
+  _initDiscordPreviewListeners();
   quill = new Quill('#quill-editor', {
     theme: 'snow',
     placeholder: 'Напишите текст новости...',
@@ -1425,11 +1461,42 @@ async function openEditor(news) {
     document.getElementById('editor-news-published').checked = true;
     setTimeout(() => quill.setText(''), 0);
   }
+  _updateDiscordPreview();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function closeEditor() {
   showSection('news');
+}
+
+// ─── Discord embed preview ─────────────────────────────────────────────────
+function _updateDiscordPreview() {
+  const title   = (document.getElementById('editor-news-title')?.value   || '').trim();
+  const summary = (document.getElementById('editor-news-summary')?.value || '').trim();
+  const thumb   = (document.getElementById('editor-news-thumb')?.value   || '').trim();
+
+  const dpTitle = document.getElementById('dp-title');
+  const dpDesc  = document.getElementById('dp-desc');
+  const dpThumb = document.getElementById('dp-thumb');
+  const dpTs    = document.getElementById('dp-timestamp');
+
+  if (dpTitle) dpTitle.textContent = title || '(заголовок не задан)';
+  if (dpDesc)  dpDesc.textContent  = summary ? (summary.length > 200 ? summary.slice(0, 197) + '…' : summary) : '(краткое описание не задано)';
+  if (dpThumb) {
+    if (thumb) { dpThumb.src = thumb; dpThumb.style.display = ''; }
+    else        { dpThumb.src = ''; dpThumb.style.display = 'none'; }
+  }
+  if (dpTs) {
+    const now = new Date();
+    dpTs.textContent = 'Сегодня в ' + now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: window.__TZ || 'Europe/Moscow' });
+  }
+}
+
+function _initDiscordPreviewListeners() {
+  ['editor-news-title', 'editor-news-summary', 'editor-news-thumb'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', _updateDiscordPreview);
+  });
 }
 
 async function submitEditor() {
