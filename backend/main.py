@@ -178,6 +178,9 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="event_title", value=""),
         Setting(key="event_text", value=""),
         Setting(key="event_color", value="crimson"),
+        Setting(key="timezone", value="Europe/Moscow"),
+        Setting(key="time_format", value="24h"),
+        Setting(key="date_format", value="dd.mm.yyyy"),
         Setting(key="rules", value='[{"icon":"🤝","text":"Уважай других игроков — оскорбления и токсичное поведение запрещены"},{"icon":"🚫","text":"Читы, эксплойты и стороннее ПО — бан без предупреждения"},{"icon":"⚔","text":"Сервер PvE — атаки на других игроков запрещены"},{"icon":"🏰","text":"Запрещено разрушать, красть из построек или гриферить базы других игроков"},{"icon":"🪨","text":"Не перекрывай ресурсные точки и пути прохода своими строениями"},{"icon":"🌱","text":"Помогай новичкам — каждый когда-то начинал с нуля"},{"icon":"🔧","text":"Баги и нарушения сообщай администрации — не используй их в свою пользу"},{"icon":"💬","text":"Спорные ситуации решай через чат или обращайся к администратору"}]'),
     ]
     for s in default_settings:
@@ -1237,7 +1240,7 @@ async def serve_upload(filename: str):
 
 @app.get("/api/settings/public")
 async def get_public_settings(db: AsyncSession = Depends(get_db)):
-    keys = ["site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules"]
+    keys = ["site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules", "timezone", "time_format", "date_format"]
     result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
     settings = result.scalars().all()
     return {s.key: s.value for s in settings}
@@ -1252,6 +1255,7 @@ ALLOWED_SETTING_KEYS = {
     "bg_image_url", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2",
     "event_active", "event_title", "event_text", "event_color",
     "rules", "https_domain", "https_email",
+    "timezone", "time_format", "date_format",
 }
 
 @app.get("/api/admin/settings", response_model=list[SettingOut])

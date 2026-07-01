@@ -1690,7 +1690,7 @@ function toggleDrawer() {
       if (u.created_at) {
         const d = new Date(u.created_at);
         const sinceEl = document.getElementById('nav-user-since-text');
-        if (sinceEl) sinceEl.textContent = `с ${d.toLocaleDateString('ru-RU', {timeZone:'Europe/Moscow',day:'2-digit',month:'2-digit',year:'numeric'})}`;
+        if (sinceEl) sinceEl.textContent = `с ${fmtDate(u.created_at)}`;
         document.getElementById('nav-user-since').style.display = 'flex';
       }
       // hide duplicate nav links — card now handles profile & logout
@@ -1750,7 +1750,15 @@ function showToast(msg, type = 'info', duration = 4500) {
 }
 
 // ── Status ─────────────────────────────────────────────────────────────────
-function fmtDate(iso) { return new Date(iso).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'short',year:'numeric'}); }
+window.__TZ = 'Europe/Moscow';
+window.__H12 = false;
+window.__DATEFMT = 'dd.mm.yyyy';
+function _dateOpts() {
+  const m = {'dd.mm.yyyy':{day:'2-digit',month:'2-digit',year:'numeric'},'dd.mm.yy':{day:'2-digit',month:'2-digit',year:'2-digit'},'d mmm yyyy':{day:'numeric',month:'short',year:'numeric'},'d mmmm yyyy':{day:'numeric',month:'long',year:'numeric'}};
+  return { timeZone: window.__TZ||'Europe/Moscow', ...(m[window.__DATEFMT]||m['dd.mm.yyyy']) };
+}
+function fmtDate(iso) { if(!iso) return '—'; return new Date(iso).toLocaleDateString('ru-RU', _dateOpts()); }
+function fmtDateTime(iso) { if(!iso) return '—'; return new Date(iso).toLocaleString('ru-RU', {..._dateOpts(), hour:'2-digit', minute:'2-digit', hour12:!!(window.__H12) }); }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function fmtDuration(sec) {
   if (sec < 60) return `${sec}с`;
@@ -2465,7 +2473,7 @@ async function initRulesReveal() {
   try {
     const me = await fetch(`${API}/auth/me`, { credentials: 'include' }).then(r => r.ok ? r.json() : null);
     if (me && me.rules_accepted_at) {
-      savedDate = new Date(me.rules_accepted_at).toLocaleDateString('ru-RU', { timeZone:'Europe/Moscow', day:'2-digit', month:'2-digit', year:'numeric' });
+      savedDate = fmtDate(me.rules_accepted_at);
     }
   } catch {}
   if (savedDate && acceptBtn) {
@@ -2514,7 +2522,7 @@ async function acceptRules() {
     const res = await fetch(`${API}/auth/accept-rules`, { method: 'POST', credentials: 'include' });
     if (!res.ok) throw new Error();
     const me = await res.json();
-    const date = new Date(me.rules_accepted_at).toLocaleDateString('ru-RU', { timeZone:'Europe/Moscow', day:'2-digit', month:'2-digit', year:'numeric' });
+    const date = fmtDate(me.rules_accepted_at);
     btn.textContent = '✓ Принято ' + date;
     btn.classList.remove('ready');
     btn.classList.add('accepted');
@@ -2692,6 +2700,10 @@ async function loadSiteSettings() {
       } catch {}
     }
 
+    window.__TZ = d.timezone || 'Europe/Moscow';
+    window.__H12 = (d.time_format || '24h') === '12h';
+    window.__DATEFMT = d.date_format || 'dd.mm.yyyy';
+
     // Event banner
     if (d.event_active === '1' && d.event_title) {
       const banner = document.getElementById('event-banner');
@@ -2800,7 +2812,7 @@ function _wipeCountdown(date, num) {
   dEl.textContent = d;
   hEl.textContent = String(h).padStart(2, '0');
   mEl.textContent = String(m).padStart(2, '0');
-  if (labelEl) labelEl.textContent = date.toLocaleDateString('ru-RU', { timeZone:'Europe/Moscow', day:'numeric', month:'long', year:'numeric' });
+  if (labelEl) labelEl.textContent = fmtDate(date.toISOString());
 
   // Urgency: < 7 days — card glows red, digits pulse
   if (cardEl) cardEl.classList.toggle('wipe-card-urgent', d < 7);
@@ -2843,7 +2855,7 @@ async function loadWipeHistory() {
       const srvColor = w.server_num === 2 ? 'rgba(154,174,240,0.7)' : 'rgba(126,207,154,0.7)';
       return `<div style="display:flex;align-items:center;gap:.5rem;font-size:.7rem;padding:.25rem 0;border-bottom:1px solid rgba(110,0,20,0.1);">
         <span style="color:${srvColor};font-size:.6rem;white-space:nowrap;">${srv}</span>
-        <span style="color:var(--muted);white-space:nowrap;">${dt.toLocaleDateString('ru-RU', {timeZone:'Europe/Moscow',day:'numeric',month:'short',year:'numeric'})}</span>
+        <span style="color:var(--muted);white-space:nowrap;">${fmtDate(dt.toISOString())}</span>
         <span style="color:#d4c4e0;">${label}</span>
         ${w.note ? `<span style="color:var(--muted);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(w.note)}</span>` : ''}
       </div>`;
