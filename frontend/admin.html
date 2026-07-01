@@ -2072,17 +2072,20 @@ async function testWebhook(btn) {
   try {
     const r = await fetch(`${API}/admin/test-webhook`, {
       method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json', ...authH() },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: urlInput?.value?.trim() || null }),
     });
-    const d = await r.json();
+    let d = null;
+    const rawText = await r.text();
+    try { d = JSON.parse(rawText); } catch { d = null; }
     if (r.ok) {
       if (res) { res.style.color = '#4ade80'; res.textContent = '✅ Тестовое сообщение отправлено в Discord'; }
     } else {
-      if (res) { res.style.color = '#f87171'; res.textContent = '❌ ' + (d.detail || 'Ошибка'); }
+      const detail = (d && (typeof d.detail === 'string' ? d.detail : JSON.stringify(d.detail))) || rawText || `HTTP ${r.status}`;
+      if (res) { res.style.color = '#f87171'; res.textContent = `❌ [${r.status}] ${detail}`; }
     }
-  } catch {
-    if (res) { res.style.color = '#f87171'; res.textContent = '❌ Ошибка соединения'; }
+  } catch (e) {
+    if (res) { res.style.color = '#f87171'; res.textContent = '❌ Ошибка соединения: ' + e.message; }
   } finally {
     btn.textContent = orig; btn.disabled = false;
   }

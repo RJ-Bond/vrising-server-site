@@ -1265,19 +1265,19 @@ async def _discord_webhook_news(url: str, news_title: str, news_summary: str, ne
         logger.warning("Discord webhook error: %s", e)
 
 
-class WebhookTestBody(BaseModel):
-    url: Optional[str] = None
-
-
 @app.post("/api/admin/test-webhook")
-async def test_discord_webhook(body: WebhookTestBody = WebhookTestBody(), current_user: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
-    url = (body.url or "").strip()
+async def test_discord_webhook(request: Request, current_user: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
+    try:
+        body_data = await request.json()
+        url = (body_data.get("url") or "").strip()
+    except Exception:
+        url = ""
     if not url:
         res = await db.execute(select(Setting).where(Setting.key == "discord_webhook_url"))
         setting = res.scalar_one_or_none()
         url = (setting.value or "").strip() if setting else ""
     if not url or "discord" not in url or "/api/webhooks/" not in url:
-        raise HTTPException(status_code=400, detail="Discord Webhook URL не настроен. Введите URL и сохраните настройку.")
+        raise HTTPException(status_code=400, detail="Discord Webhook URL не настроен — введите URL в поле выше")
     try:
         embed = {
             "title": "✅ Тест вебхука — V Rising",
@@ -1288,12 +1288,12 @@ async def test_discord_webhook(body: WebhookTestBody = WebhookTestBody(), curren
         async with httpx.AsyncClient() as client:
             r = await client.post(url, json={"embeds": [embed]}, timeout=10.0)
         if r.status_code not in (200, 204):
-            raise HTTPException(status_code=502, detail=f"Discord ответил {r.status_code}: {r.text[:300]}")
+            raise HTTPException(status_code=502, detail=f"Discord вернул {r.status_code}: {r.text[:300]}")
         return {"ok": True}
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=502, detail=f"Ошибка запроса: {type(e).__name__}: {e}")
 
 
 # ─── News (admin) ────────────────────────────────────────────────────────────
