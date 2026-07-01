@@ -183,7 +183,7 @@ const RANKS = [
   {label:'☠ Повелитель',  min:360000, max:Infinity, color:'#b46ef0', next:null},
 ];
 
-function fmtDate(iso){return new Date(iso).toLocaleDateString('ru-RU',{day:'2-digit',month:'long',year:'numeric'});}
+function fmtDate(iso){return new Date(iso).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'long',year:'numeric'});}
 function fmtSec(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h>0?`${h}ч ${m}м`:`${m}м`;}
 
 function buildStars(){

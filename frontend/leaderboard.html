@@ -371,7 +371,7 @@ function fmtPlaytime(sec) {
 }
 function fmtSeen(iso) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'2-digit' });
+  return new Date(iso).toLocaleDateString('ru-RU', { timeZone:'Europe/Moscow', day:'2-digit', month:'2-digit', year:'2-digit' });
 }
 
 function applySiteBackground(bg) {

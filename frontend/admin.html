@@ -1046,7 +1046,7 @@ function showSection(name) {
 }
 
 // ─── News list ────────────────────────────────────────────────────────────
-function fmtDate(iso) { return new Date(iso).toLocaleDateString('ru-RU', { day:'2-digit', month:'short', year:'numeric' }); }
+function fmtDate(iso) { return new Date(iso).toLocaleDateString('ru-RU', { timeZone:'Europe/Moscow', day:'2-digit', month:'short', year:'numeric' }); }
 
 async function loadAdminNews(page = 1) {
   adminNewsPage = page;
@@ -1451,7 +1451,7 @@ async function loadAdminClans() {
             <td style="font-weight:600;">${esc(c.name)}</td>
             <td style="color:var(--muted);">${esc(c.leader_username)}</td>
             <td style="color:var(--muted);">${c.member_count}</td>
-            <td style="color:var(--muted);">${new Date(c.created_at).toLocaleDateString('ru-RU')}</td>
+            <td style="color:var(--muted);">${new Date(c.created_at).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow'})}</td>
             <td><button class="btn-danger" onclick="deleteAdminClan(${c.id},'${esc(c.name).replace(/'/g,"\\'")}')">Удалить</button></td>
           </tr>`).join('')}
         </tbody>
@@ -1531,7 +1531,7 @@ function renderUsersTable() {
             <td style="color:var(--muted);">${esc(u.email)}</td>
             <td style="${roleColor}font-weight:700;">${u.role === 'admin' ? 'Админ' : 'Игрок'}</td>
             <td style="${activeColor}font-weight:600;">${u.is_active ? 'Да' : 'Нет'}</td>
-            <td style="color:var(--muted);">${new Date(u.created_at).toLocaleDateString('ru-RU')}</td>
+            <td style="color:var(--muted);">${new Date(u.created_at).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow'})}</td>
             <td>${actions}</td>
           </tr>`;
         }).join('')}
@@ -1801,7 +1801,7 @@ async function loadDashRecentUsers() {
     el.innerHTML = recent.map(u => `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.3rem 0;">
         <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" style="font-size:.78rem;font-weight:600;color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'">${esc(u.username)}</a>
-        <span style="font-size:.68rem;color:var(--muted);white-space:nowrap;">${new Date(u.created_at).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit'})}</span>
+        <span style="font-size:.68rem;color:var(--muted);white-space:nowrap;">${new Date(u.created_at).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'2-digit',year:'2-digit'})}</span>
       </div>`).join('');
   } catch { el.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Ошибка загрузки.</p>`; }
 }
@@ -1892,7 +1892,7 @@ async function loadAdminComments(page = 1) {
           <td style="font-weight:600;white-space:nowrap;">${esc(c.author)}</td>
           <td style="color:var(--muted);font-size:.78rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.news_title)}</td>
           <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.content)}</td>
-          <td style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${new Date(c.created_at).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+          <td style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${new Date(c.created_at).toLocaleString('ru-RU',{timeZone:'Europe/Moscow',hour12:false,day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
           <td><button class="btn-danger" onclick="deleteAdminComment(${c.id})">Удалить</button></td>
         </tr>`).join('');
     }
@@ -1938,7 +1938,7 @@ async function loadAdminPlayers() {
         <td style="color:var(--muted);">${i + 1}</td>
         <td style="font-weight:600;">${esc(p.player_name)}</td>
         <td style="color:var(--muted);">${Math.floor((p.total_seconds || 0) / 3600)}ч ${Math.floor(((p.total_seconds || 0) % 3600) / 60)}м</td>
-        <td style="color:var(--muted);font-size:.78rem;">${p.last_seen ? new Date(p.last_seen).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
+        <td style="color:var(--muted);font-size:.78rem;">${p.last_seen ? new Date(p.last_seen).toLocaleString('ru-RU',{timeZone:'Europe/Moscow',hour12:false,day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—'}</td>
       </tr>`).join('');
   } catch { }
 }
@@ -2037,7 +2037,7 @@ async function loadAuditLog(page = 1) {
     } else {
       tbody.innerHTML = d.items.map(r => `
         <tr>
-          <td style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${new Date(r.created_at).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
+          <td style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${new Date(r.created_at).toLocaleString('ru-RU',{timeZone:'Europe/Moscow',hour12:false,day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
           <td style="font-weight:600;white-space:nowrap;">${esc(r.admin)}</td>
           <td><code style="font-size:.75rem;background:rgba(40,0,60,.4);padding:.15rem .45rem;border-radius:.3rem;color:#c4b5fd;">${esc(r.action)}</code></td>
           <td style="color:var(--muted);font-size:.78rem;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(r.detail || '')}</td>
@@ -2150,7 +2150,7 @@ async function loadWipeHistory() {
       return `<div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;background:rgba(14,5,18,0.5);border:1px solid rgba(110,0,20,.18);border-radius:.5rem;opacity:${isPast ? '.75' : '1'};">
         <span style="color:${srvColor};font-size:.65rem;font-weight:700;min-width:58px;">${srv}</span>
         <span style="color:${color};font-size:.68rem;font-weight:600;min-width:70px;">${label}</span>
-        <span style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${dt.toLocaleString('ru-RU',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
+        <span style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${dt.toLocaleString('ru-RU',{timeZone:'Europe/Moscow',hour12:false,day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}</span>
         ${w.note ? `<span style="color:#a09ab0;font-size:.7rem;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${w.note}</span>` : '<span style="flex:1"></span>'}
         <button onclick="deleteWipe(${w.id})" style="background:none;border:none;color:rgba(200,0,30,.45);cursor:pointer;font-size:.85rem;padding:.1rem .3rem;border-radius:4px;flex-shrink:0;" onmouseover="this.style.color='rgba(240,0,40,.9)'" onmouseout="this.style.color='rgba(200,0,30,.45)'">✕</button>
       </div>`;
@@ -2221,8 +2221,8 @@ async function loadPasswordResets() {
         <tbody>
           ${items.map(r => {
             const resetUrl = window.location.origin + '/reset.html?token=' + encodeURIComponent(r.token);
-            const created  = new Date(r.created_at).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-            const expires  = new Date(r.expires_at).toLocaleString('ru-RU', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+            const created  = new Date(r.created_at).toLocaleString('ru-RU', {timeZone:'Europe/Moscow',hour12:false,day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+            const expires  = new Date(r.expires_at).toLocaleString('ru-RU', {timeZone:'Europe/Moscow',hour12:false,day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
             const expired  = new Date(r.expires_at) < new Date();
             return `<tr>
               <td style="font-weight:600;">${esc(r.username)}</td>

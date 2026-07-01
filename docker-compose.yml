@@ -17,6 +17,7 @@ services:
       - SMTP_USER=${SMTP_USER:-}
       - SMTP_PASS=${SMTP_PASS:-}
       - SMTP_FROM=${SMTP_FROM:-noreply@localhost}
+      - TZ=Europe/Moscow
     volumes:
       - db_data:/data
       - ./backend:/app/backend

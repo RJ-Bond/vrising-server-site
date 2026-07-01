@@ -315,7 +315,7 @@ async function doLogout() {
   localStorage.removeItem('token'); sessionStorage.removeItem('token');
   window.location.href = '/login.html';
 }
-function fmtDate(iso) { return new Date(iso).toLocaleDateString('ru-RU',{day:'2-digit',month:'long',year:'numeric'}); }
+function fmtDate(iso) { return new Date(iso).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'long',year:'numeric'}); }
 function fmtSec(s) {
   const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
@@ -446,7 +446,7 @@ async function loadProfile() {
     statusEl.textContent = u.is_active ? '✔ Активен' : '✘ Заблокирован';
     statusEl.style.color = u.is_active ? '#4ade80' : '#f87171';
 
-    const rulesDate = u.rules_accepted_at ? new Date(u.rules_accepted_at).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' }) : null;
+    const rulesDate = u.rules_accepted_at ? new Date(u.rules_accepted_at).toLocaleDateString('ru-RU', { timeZone:'Europe/Moscow', day:'2-digit', month:'2-digit', year:'numeric' }) : null;
     const rulesEl = document.getElementById('profile-rules');
     if (rulesEl) {
       if (rulesDate) {
