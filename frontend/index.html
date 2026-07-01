@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -14,7 +14,7 @@
   <meta id="meta-tw-description" name="twitter:description" content="Официальный сайт игрового сервера V Rising." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/tailwind.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <style>
     :root {
@@ -1601,7 +1601,12 @@ function countUpPct(el, value, duration) {
 // ── Nav ────────────────────────────────────────────────────────────────────
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
 function getUser()  { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } }
-function doLogout() { ['token','user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); }); window.location.reload(); }
+async function doLogout() {
+  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+  localStorage.removeItem('user'); sessionStorage.removeItem('user');
+  localStorage.removeItem('token'); sessionStorage.removeItem('token');
+  window.location.reload();
+}
 
 // ⑧ Gradient avatar from username hash
 function nameGradient(name) {
@@ -1648,8 +1653,8 @@ function toggleDrawer() {
   });
 
   // ── User card in sidebar ─────────────────────────────────────────────────
-  const u = getUser();
-  if (u && getToken()) {
+  function _applyUser(u) {
+    if (!u) return;
     document.getElementById('nav-username').textContent = u.username;
     document.getElementById('nav-username').classList.remove('hidden');
     document.getElementById('nav-login').classList.add('hidden');
@@ -1695,6 +1700,23 @@ function toggleDrawer() {
       if (loginLink) loginLink.style.display = 'none';
     }
   }
+  // Show cached user immediately for snappy UI
+  const u = getUser();
+  if (u) _applyUser(u);
+  // Verify with server (cookie may be expired)
+  fetch('/api/auth/me', { credentials: 'include' }).then(r => {
+    if (r.ok) {
+      r.json().then(fresh => {
+        // Update cached user with fresh data
+        const store = localStorage.getItem('user') ? localStorage : sessionStorage;
+        store.setItem('user', JSON.stringify(fresh));
+        _applyUser(fresh);
+      });
+    } else {
+      localStorage.removeItem('user'); sessionStorage.removeItem('user');
+      localStorage.removeItem('token'); sessionStorage.removeItem('token');
+    }
+  }).catch(() => {});
 })();
 
 async function loadLatestNews() {
@@ -2211,9 +2233,7 @@ function shareNews() {
 async function loadReactions(slug) {
   const el = document.getElementById('modal-reactions');
   if (!el) return;
-  const token = getToken();
-  const headers = token ? {Authorization: `Bearer ${token}`} : {};
-  const data = await fetch(`${API}/news/${slug}/reactions`, {headers}).then(r => r.json()).catch(() => ({counts:{}, user_reactions:[]}));
+  const data = await fetch(`${API}/news/${slug}/reactions`, { credentials: 'include' }).then(r => r.json()).catch(() => ({counts:{}, user_reactions:[]}));
   renderReactions(el, slug, data);
 }
 
@@ -2239,11 +2259,10 @@ function renderReactions(el, slug, data) {
 }
 
 async function toggleReaction(slug, emoji) {
-  const token = getToken();
-  if (!token) return;
   const data = await fetch(`${API}/news/${slug}/react`, {
     method: 'POST',
-    headers: {'Content-Type':'application/json','Authorization':`Bearer ${token}`},
+    credentials: 'include',
+    headers: {'Content-Type':'application/json'},
     body: JSON.stringify({emoji}),
   }).then(r => r.json()).catch(() => null);
   if (!data) return;
@@ -2261,18 +2280,24 @@ function commentAvatar(author) {
   return `<div class="comment-avatar">${esc(author.username.charAt(0).toUpperCase())}</div>`;
 }
 
-async function loadComments(slug) {
+let _commentsPage = 1;
+
+async function loadComments(slug, page) {
   const el = document.getElementById('modal-comments');
   if (!el) return;
-  el.innerHTML = `<div style="color:var(--muted);font-size:.75rem;padding:.3rem 0;">Загрузка…</div>`;
+  page = page || 1;
+  _commentsPage = page;
+  if (page === 1) el.innerHTML = `<div style="color:var(--muted);font-size:.75rem;padding:.3rem 0;">Загрузка…</div>`;
   try {
-    const comments = await fetch(`${API}/news/${slug}/comments`).then(r => r.json());
-    if (!comments.length) {
+    const resp = await fetch(`${API}/news/${slug}/comments?page=${page}&per_page=20`).then(r => r.json());
+    const comments = resp.items || [];
+    const totalPages = resp.pages || 1;
+    if (page === 1 && !comments.length) {
       el.innerHTML = `<div style="color:var(--muted);font-size:.75rem;font-style:italic;padding:.3rem 0;">Комментариев пока нет. Будьте первым!</div>`;
       return;
     }
     const user = getUser();
-    el.innerHTML = comments.map(c => {
+    const rendered = comments.map(c => {
       const name = c.author ? esc(c.author.username) : 'Удалённый пользователь';
       const isOwn = user && c.author && user.id === c.author.id;
       const canDel = user && (user.role === 'admin' || isOwn);
@@ -2292,6 +2317,20 @@ async function loadComments(slug) {
         </div>
       </div>`;
     }).join('');
+    if (page === 1) {
+      el.innerHTML = rendered;
+    } else {
+      // Remove existing "load more" button before appending
+      const existingBtn = el.querySelector('.comments-load-more');
+      if (existingBtn) existingBtn.remove();
+      el.insertAdjacentHTML('beforeend', rendered);
+    }
+    // Add "load more" button if there are more pages
+    if (page < totalPages) {
+      el.insertAdjacentHTML('beforeend', `<div class="comments-load-more" style="text-align:center;margin-top:.75rem;">
+        <button onclick="loadComments('${slug}', ${page + 1})" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;font-size:.75rem;cursor:pointer;font-family:'Inter',sans-serif;">Загрузить ещё</button>
+      </div>`);
+    }
   } catch {
     el.innerHTML = `<div style="color:var(--muted);font-size:.75rem;">Ошибка загрузки комментариев.</div>`;
   }
@@ -2309,9 +2348,8 @@ function startDeleteConfirm(id, slug) {
 }
 
 async function doDeleteComment(id, slug) {
-  const token = getToken();
   try {
-    const r = await fetch(`${API}/comments/${id}`, { method:'DELETE', headers:{'Authorization':`Bearer ${token}`} });
+    const r = await fetch(`${API}/comments/${id}`, { method:'DELETE', credentials: 'include' });
     if (r.ok) loadComments(slug);
     else showToast('Ошибка удаления', 'error');
   } catch { showToast('Ошибка удаления', 'error'); }
@@ -2342,11 +2380,11 @@ async function saveComment(id) {
   if (!content) return;
   const btn = document.getElementById(`csave-${id}`);
   if (btn) { btn.disabled = true; btn.textContent = 'Сохранение…'; }
-  const token = getToken();
   try {
     const r = await fetch(`${API}/comments/${id}`, {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),
     });
     if (!r.ok) {
@@ -2365,8 +2403,8 @@ async function saveComment(id) {
 function renderCommentForm(slug) {
   const el = document.getElementById('modal-comment-form');
   if (!el) return;
-  const token = getToken();
-  if (!token) {
+  const user = getUser();
+  if (!user) {
     el.innerHTML = `<p class="comment-login-hint"><a href="/login.html" style="color:rgba(180,0,30,0.8);">Войдите</a>, чтобы оставить комментарий.</p>`;
     return;
   }
@@ -2381,11 +2419,11 @@ async function submitComment(slug) {
   if (!input) return;
   const content = input.value.trim();
   if (!content) return;
-  const token = getToken();
   try {
     const r = await fetch(`${API}/news/${slug}/comments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),
     });
     if (!r.ok) { const e = await r.json(); alert(e.detail || 'Ошибка'); return; }
@@ -2424,15 +2462,12 @@ async function initRulesReveal() {
   // Acceptance state lives on the account server-side (not localStorage),
   // so it survives browser data clears and follows the user across devices.
   let savedDate = null;
-  const token = getToken();
-  if (token) {
-    try {
-      const me = await fetch(`${API}/auth/me`, { headers: { 'Authorization': `Bearer ${token}` } }).then(r => r.ok ? r.json() : null);
-      if (me && me.rules_accepted_at) {
-        savedDate = new Date(me.rules_accepted_at).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
-      }
-    } catch {}
-  }
+  try {
+    const me = await fetch(`${API}/auth/me`, { credentials: 'include' }).then(r => r.ok ? r.json() : null);
+    if (me && me.rules_accepted_at) {
+      savedDate = new Date(me.rules_accepted_at).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
+    }
+  } catch {}
   if (savedDate && acceptBtn) {
     acceptBtn.textContent = '✓ Принято ' + savedDate;
     acceptBtn.classList.add('accepted');
@@ -2444,7 +2479,7 @@ async function initRulesReveal() {
     if (progressLabel) progressLabel.textContent = seen + ' / ' + total + ' прочитано';
     if (!savedDate && acceptBtn && seen >= total) {
       acceptBtn.classList.add('ready');
-      if (!getToken()) {
+      if (!getUser()) {
         acceptBtn.textContent = '🔒 Войдите чтобы принять правила';
       }
     }
@@ -2471,13 +2506,12 @@ async function initRulesReveal() {
 async function acceptRules() {
   const btn = document.getElementById('rules-accept-btn');
   if (!btn || btn.classList.contains('accepted')) return;
-  const token = getToken();
-  if (!token) {
+  if (!getUser()) {
     window.location.href = '/login.html';
     return;
   }
   try {
-    const res = await fetch(`${API}/auth/accept-rules`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await fetch(`${API}/auth/accept-rules`, { method: 'POST', credentials: 'include' });
     if (!res.ok) throw new Error();
     const me = await res.json();
     const date = new Date(me.rules_accepted_at).toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });

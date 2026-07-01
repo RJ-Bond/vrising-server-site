@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -7,7 +7,7 @@
   <meta name="description" content="Рейтинг игроков V Rising по времени в игре — полный список лидеров сервера." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/tailwind.min.css" />
   <style>
     :root {
       --bg:      #06000f;
@@ -389,15 +389,35 @@ function applySiteBackground(bg) {
 }
 
 (function() {
-  if (getToken()) {
-    document.getElementById('nav-profile-link').style.display = '';
-    document.getElementById('nav-login-link').style.display = 'none';
-    document.getElementById('lb-find-me').style.display = '';
+  const cached = getUser();
+  if (cached) {
+    document.getElementById('nav-profile-link') && (document.getElementById('nav-profile-link').style.display = '');
+    document.getElementById('nav-login-link') && (document.getElementById('nav-login-link').style.display = 'none');
+    document.getElementById('lb-find-me') && (document.getElementById('lb-find-me').style.display = '');
     const mp = document.getElementById('mob-profile');
     const ml = document.getElementById('mob-login');
     if (mp) mp.style.display = '';
     if (ml) ml.style.display = 'none';
   }
+  fetch('/api/auth/me', { credentials: 'include' }).then(r => {
+    const profileLink = document.getElementById('nav-profile-link');
+    const loginLink = document.getElementById('nav-login-link');
+    const findMe = document.getElementById('lb-find-me');
+    if (r.ok) {
+      if (profileLink) profileLink.style.display = '';
+      if (loginLink) loginLink.style.display = 'none';
+      if (findMe) findMe.style.display = '';
+      const mp = document.getElementById('mob-profile');
+      const ml = document.getElementById('mob-login');
+      if (mp) mp.style.display = '';
+      if (ml) ml.style.display = 'none';
+    } else {
+      localStorage.removeItem('user'); sessionStorage.removeItem('user');
+      localStorage.removeItem('token'); sessionStorage.removeItem('token');
+      if (profileLink) profileLink.style.display = 'none';
+      if (loginLink) loginLink.style.display = '';
+    }
+  }).catch(() => {});
 })();
 
 (async function() {

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -6,7 +6,7 @@
   <title>V Rising — Профиль</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/tailwind.min.css" />
   <style>
     :root {
       --bg:      #06000f;
@@ -309,7 +309,12 @@ const RANKS = [
 
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
 function getUser()  { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } }
-function doLogout() { ['token','user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); }); window.location.href = '/login.html'; }
+async function doLogout() {
+  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+  localStorage.removeItem('user'); sessionStorage.removeItem('user');
+  localStorage.removeItem('token'); sessionStorage.removeItem('token');
+  window.location.href = '/login.html';
+}
 function fmtDate(iso) { return new Date(iso).toLocaleDateString('ru-RU',{day:'2-digit',month:'long',year:'numeric'}); }
 function fmtSec(s) {
   const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
@@ -375,12 +380,12 @@ async function uploadAvatar(input) {
   form.append('file', input.files[0]);
   try {
     const res = await fetch(`${API}/auth/avatar`, {
-      method:'POST', headers:{'Authorization':`Bearer ${getToken()}`}, body:form,
+      method:'POST', credentials:'include', body:form,
     });
     if (!res.ok) { const e = await res.json().catch(()=>({})); alert(e.detail||'Ошибка загрузки'); return; }
     const { avatar_url } = await res.json();
     const u = getUser();
-    if (u) { u.avatar_url = avatar_url; (localStorage.getItem('token') ? localStorage : sessionStorage).setItem('user', JSON.stringify(u)); }
+    if (u) { u.avatar_url = avatar_url; (localStorage.getItem('user') ? localStorage : sessionStorage).setItem('user', JSON.stringify(u)); }
     setAvatarEl(avatar_url, (getUser()?.username||'?').charAt(0).toUpperCase());
   } catch { alert('Ошибка загрузки аватара'); }
   finally { spinner.style.display = 'none'; input.value = ''; }
@@ -401,7 +406,8 @@ async function changePassword() {
   try {
     const res = await fetch(`${API}/auth/change-password`, {
       method:'POST',
-      headers:{'Authorization':`Bearer ${getToken()}`,'Content-Type':'application/json'},
+      credentials:'include',
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({old_password:old, new_password:newPw}),
     });
     const data = await res.json().catch(()=>({}));
@@ -425,10 +431,8 @@ function copyProfileLink(e) {
 
 async function loadProfile() {
   buildCoverStars();
-  const token = getToken();
-  if (!token) { document.getElementById('profile-error').style.display = ''; return; }
   try {
-    const res = await fetch(`${API}/auth/me`, { headers:{'Authorization':`Bearer ${token}`} });
+    const res = await fetch(`${API}/auth/me`, { credentials: 'include' });
     if (!res.ok) { document.getElementById('profile-error').style.display = ''; return; }
     const u = await res.json();
 

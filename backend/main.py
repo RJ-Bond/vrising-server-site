@@ -8,13 +8,13 @@ import time
 import asyncio
 import httpx
 from contextlib import asynccontextmanager
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, Request, Query, Header, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse, FileResponse, Response
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -41,6 +41,7 @@ from .auth import (
     revoke_token,
     SECRET_KEY,
     ALGORITHM,
+    COOKIE_NAME,
     revoked_tokens as _revoked_tokens,
 )
 from jose import jwt as jose_jwt
@@ -61,11 +62,14 @@ from .schemas import (
     CommentCreate,
     CommentUpdate,
     CommentOut,
+    PaginatedComments,
     WipeCreate,
     WipeOut,
     PlayerRecordOut,
     ForgotPasswordRequest,
     ResetPasswordBody,
+    ChangePasswordBody,
+    ReactBody,
     ClanCreate,
     ClanUpdate,
     ClanOut,
@@ -79,6 +83,26 @@ OVERSEER_PROMPT = """Ты — Тёмный Управляющий Замком, 
 Если не знаешь конкретных данных сервера — говори об этом честно, но оставайся в образе."""
 from .monitor import get_server_status, get_history
 
+# ─── Cookie helpers ──────────────────────────────────────────────────────────
+
+_COOKIE_MAX_AGE = 60 * 60 * 24 * 7  # 7 days
+
+
+def _set_auth_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=token,
+        max_age=_COOKIE_MAX_AGE,
+        httponly=True,
+        samesite="lax",
+        secure=False,  # True only with HTTPS; nginx handles TLS termination
+        path="/",
+    )
+
+
+def _clear_auth_cookie(response: Response) -> None:
+    response.delete_cookie(key=COOKIE_NAME, path="/")
+
 
 def slugify(text: str) -> str:
     text = text.lower().strip()
@@ -90,6 +114,40 @@ def slugify(text: str) -> str:
 
 async def log_audit(db: AsyncSession, admin: User, action: str, detail: str = "") -> None:
     db.add(AuditLog(admin_username=admin.username, action=action, detail=detail[:512]))
+
+
+async def _send_reset_email(to_email: str, reset_url: str) -> bool:
+    host = os.getenv("SMTP_HOST", "").strip()
+    if not host:
+        logger.info("SMTP not configured, skipping email to %s. Reset URL: %s", to_email, reset_url)
+        return False
+    try:
+        import aiosmtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        port = int(os.getenv("SMTP_PORT", "587"))
+        user = os.getenv("SMTP_USER", "")
+        password = os.getenv("SMTP_PASS", "")
+        from_addr = os.getenv("SMTP_FROM", "noreply@localhost")
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = "Сброс пароля"
+        msg["From"] = from_addr
+        msg["To"] = to_email
+        text = f"Для сброса пароля перейдите по ссылке:\n\n{reset_url}\n\nСсылка действительна 24 часа."
+        html = f"""<p>Для сброса пароля перейдите по ссылке:</p>
+<p><a href="{reset_url}">{reset_url}</a></p>
+<p>Ссылка действительна 24 часа.</p>"""
+        msg.attach(MIMEText(text, "plain", "utf-8"))
+        msg.attach(MIMEText(html, "html", "utf-8"))
+        await aiosmtplib.send(
+            msg, hostname=host, port=port,
+            username=user or None, password=password or None,
+            start_tls=(port == 587),
+        )
+        return True
+    except Exception as e:
+        logger.error("Failed to send reset email: %s", e)
+        return False
 
 
 async def _seed_defaults(db: AsyncSession):
@@ -158,6 +216,27 @@ async def lifespan(app: FastAPI):
                 pass  # column already exists
     async with AsyncSession(engine, expire_on_commit=False) as db:
         await _seed_defaults(db)
+        # Pre-populate monitor history from DB snapshots (last 24h)
+        from .monitor import init_history
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+        cfg_res = await db.execute(
+            select(Setting).where(Setting.key.in_(["server_ip", "server_port", "server2_ip", "server2_port"]))
+        )
+        srv_cfg = {s.key: s.value for s in cfg_res.scalars().all()}
+        for srv_num, ip_key, port_key in [(1, "server_ip", "server_port"), (2, "server2_ip", "server2_port")]:
+            ip = srv_cfg.get(ip_key, "").strip()
+            port_str = srv_cfg.get(port_key, "27016") or "27016"
+            if not ip or ip in ("127.0.0.1", "0.0.0.0"):
+                continue
+            port = int(port_str) if port_str.isdigit() else 27016
+            snaps_res = await db.execute(
+                select(ServerSnapshot)
+                .where(ServerSnapshot.server_num == srv_num, ServerSnapshot.recorded_at >= cutoff)
+                .order_by(ServerSnapshot.recorded_at.asc())
+            )
+            snaps = snaps_res.scalars().all()
+            if snaps:
+                init_history(ip, port, [(s.recorded_at.timestamp(), s.players) for s in snaps])
     yield
 
 
@@ -191,7 +270,7 @@ async def get_version():
 
 # ─── Sitemap ─────────────────────────────────────────────────────────────────
 
-@app.get("/api/sitemap.xml", response_class=__import__("fastapi.responses", fromlist=["Response"]).Response)
+@app.get("/api/sitemap.xml", response_class=Response)
 async def sitemap(request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(News.slug, News.updated_at).where(News.published == True).order_by(News.updated_at.desc())
@@ -212,7 +291,6 @@ async def sitemap(request: Request, db: AsyncSession = Depends(get_db)):
         urls.append(f"  <url><loc>{base}/news/{slug}</loc><lastmod>{lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>")
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     xml += "\n".join(urls) + "\n</urlset>"
-    from fastapi.responses import Response
     return Response(content=xml, media_type="application/xml")
 
 
@@ -231,7 +309,7 @@ async def setup_status(db: AsyncSession = Depends(get_db)):
 
 
 @app.post("/api/setup/complete", response_model=TokenOut, status_code=201)
-async def setup_complete(body: SetupComplete, db: AsyncSession = Depends(get_db)):
+async def setup_complete(body: SetupComplete, response: Response, db: AsyncSession = Depends(get_db)):
     sc_result = await db.execute(select(Setting).where(Setting.key == "setup_completed"))
     sc = sc_result.scalar_one_or_none()
     admin_result = await db.execute(select(User).where(User.role == "admin").limit(1))
@@ -252,7 +330,7 @@ async def setup_complete(body: SetupComplete, db: AsyncSession = Depends(get_db)
     await db.flush()
     if sc:
         sc.value = "true"
-        sc.updated_at = datetime.utcnow()
+        sc.updated_at = datetime.now(timezone.utc)
     else:
         db.add(Setting(key="setup_completed", value="true"))
     welcome = News(
@@ -268,6 +346,7 @@ async def setup_complete(body: SetupComplete, db: AsyncSession = Depends(get_db)
     await db.commit()
     await db.refresh(admin)
     token = create_access_token({"sub": str(admin.id)})
+    _set_auth_cookie(response, token)
     return TokenOut(access_token=token, user=UserOut.model_validate(admin))
 
 
@@ -316,7 +395,7 @@ async def castle_overseer_chat(request: Request, body: ChatRequest):
 
 @app.post("/api/auth/register", response_model=TokenOut, status_code=201)
 @limiter.limit("5/minute")
-async def register(request: Request, body: UserRegister, db: AsyncSession = Depends(get_db)):
+async def register(request: Request, body: UserRegister, response: Response, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(
         (User.username == body.username) | (User.email == body.email)
     ))
@@ -332,12 +411,13 @@ async def register(request: Request, body: UserRegister, db: AsyncSession = Depe
     await db.commit()
     await db.refresh(user)
     token = create_access_token({"sub": str(user.id)})
+    _set_auth_cookie(response, token)
     return TokenOut(access_token=token, user=UserOut.model_validate(user))
 
 
 @app.post("/api/auth/login", response_model=TokenOut)
 @limiter.limit("10/minute")
-async def login(request: Request, body: UserLogin, db: AsyncSession = Depends(get_db)):
+async def login(request: Request, body: UserLogin, response: Response, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.username == body.username))
     user = result.scalar_one_or_none()
     if user is None or not verify_password(body.password, user.hashed_password):
@@ -345,14 +425,18 @@ async def login(request: Request, body: UserLogin, db: AsyncSession = Depends(ge
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Ваш аккаунт был заблокирован.")
     token = create_access_token({"sub": str(user.id)})
+    _set_auth_cookie(response, token)
     return TokenOut(access_token=token, user=UserOut.model_validate(user))
 
 
 @app.post("/api/auth/logout", status_code=204)
-async def logout(current_user: User = Depends(get_current_user), request: Request = None):
+async def logout(response: Response, current_user: User = Depends(get_current_user), request: Request = None):
     auth_header = request.headers.get("Authorization", "") if request else ""
-    if auth_header.startswith("Bearer "):
-        revoke_token(auth_header[7:])
+    cookie_token = request.cookies.get(COOKIE_NAME, "") if request else ""
+    token = auth_header[7:] if auth_header.startswith("Bearer ") else cookie_token
+    if token:
+        revoke_token(token)
+    _clear_auth_cookie(response)
 
 
 @app.get("/api/auth/me", response_model=UserOut)
@@ -367,7 +451,7 @@ async def accept_rules(
 ):
     result = await db.execute(select(User).where(User.id == current_user.id))
     user = result.scalar_one()
-    user.rules_accepted_at = datetime.utcnow()
+    user.rules_accepted_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(user)
     return UserOut.model_validate(user)
@@ -375,16 +459,14 @@ async def accept_rules(
 
 @app.post("/api/auth/change-password")
 async def change_password(
-    body: dict,
+    body: ChangePasswordBody,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    old = (body.get("old_password") or "").strip()
-    new = (body.get("new_password") or "").strip()
-    if not old or not new:
+    old = body.old_password.strip()
+    new = body.new_password
+    if not old:
         raise HTTPException(400, "Заполните все поля")
-    if len(new) < 6:
-        raise HTTPException(400, "Новый пароль: минимум 6 символов")
     if not verify_password(old, current_user.hashed_password):
         raise HTTPException(400, "Неверный текущий пароль")
     result = await db.execute(select(User).where(User.id == current_user.id))
@@ -395,8 +477,7 @@ async def change_password(
 
 
 @app.post("/api/auth/forgot-password")
-async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
-    from datetime import timedelta
+async def forgot_password(request: Request, body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == body.email, User.is_active == True))
     user = result.scalar_one_or_none()
     if user:
@@ -408,9 +489,15 @@ async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depend
         db.add(PasswordReset(
             user_id=user.id,
             token=token,
-            expires_at=datetime.utcnow() + timedelta(hours=24),
+            expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
         ))
         await db.commit()
+        # Send reset email
+        base_url = str(request.base_url).rstrip("/")
+        reset_url = f"{base_url}/reset-password.html?token={token}"
+        email_sent = await _send_reset_email(user.email, reset_url)
+        if email_sent:
+            return {"message": "Ссылка для сброса пароля отправлена на ваш email."}
     # Always return success to prevent email enumeration
     return {"message": "Если аккаунт с таким email существует, запрос создан. Обратитесь к администратору."}
 
@@ -421,7 +508,7 @@ async def validate_reset_token(token: str, db: AsyncSession = Depends(get_db)):
         select(PasswordReset).where(
             PasswordReset.token == token,
             PasswordReset.used == False,
-            PasswordReset.expires_at > datetime.utcnow(),
+            PasswordReset.expires_at > datetime.now(timezone.utc),
         )
     )
     if not result.scalar_one_or_none():
@@ -435,7 +522,7 @@ async def do_reset_password(token: str, body: ResetPasswordBody, db: AsyncSessio
         select(PasswordReset).where(
             PasswordReset.token == token,
             PasswordReset.used == False,
-            PasswordReset.expires_at > datetime.utcnow(),
+            PasswordReset.expires_at > datetime.now(timezone.utc),
         )
     )
     reset = result.scalar_one_or_none()
@@ -456,7 +543,7 @@ async def list_password_resets(_: User = Depends(get_admin_user), db: AsyncSessi
     result = await db.execute(
         select(PasswordReset, User.username, User.email)
         .join(User, PasswordReset.user_id == User.id)
-        .where(PasswordReset.used == False, PasswordReset.expires_at > datetime.utcnow())
+        .where(PasswordReset.used == False, PasswordReset.expires_at > datetime.now(timezone.utc))
         .order_by(PasswordReset.created_at.desc())
     )
     return [
@@ -506,7 +593,7 @@ async def upload_avatar(
 async def _track_players(db: AsyncSession, players: list, server_num: int):
     if not players:
         return
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for p in players:
         name = (p.get("name") or "").strip()
         if not name:
@@ -546,7 +633,7 @@ async def _upsert_setting(db: AsyncSession, key: str, value: str):
     setting = result.scalar_one_or_none()
     if setting:
         setting.value = value
-        setting.updated_at = datetime.utcnow()
+        setting.updated_at = datetime.now(timezone.utc)
     else:
         db.add(Setting(key=key, value=value))
 
@@ -559,7 +646,7 @@ async def _save_snapshot(db: AsyncSession, data: dict, server_num: int):
     players = data.get("players", 0)
     snap = ServerSnapshot(
         server_num=server_num,
-        recorded_at=datetime.utcnow(),
+        recorded_at=datetime.now(timezone.utc),
         online=data.get("online", False),
         players=players,
         max_players=data.get("max_players", 0),
@@ -574,12 +661,11 @@ async def _save_snapshot(db: AsyncSession, data: dict, server_num: int):
     current_peak = int(peak_setting.value) if peak_setting and peak_setting.value.isdigit() else 0
     if players > current_peak:
         await _upsert_setting(db, peak_key, str(players))
-        await _upsert_setting(db, f"{peak_key}_date", datetime.utcnow().isoformat())
+        await _upsert_setting(db, f"{peak_key}_date", datetime.now(timezone.utc).isoformat())
 
     await db.commit()
     # prune old snapshots (keep 8 days)
-    cutoff = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    from datetime import timedelta
+    cutoff = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     cutoff -= timedelta(days=8)
     await db.execute(
         delete(ServerSnapshot).where(
@@ -639,8 +725,7 @@ async def server_history2(db: AsyncSession = Depends(get_db)):
 
 @app.get("/api/monitor/snapshots")
 async def get_snapshots(server: int = Query(1), db: AsyncSession = Depends(get_db)):
-    from datetime import timedelta
-    cutoff = datetime.utcnow() - timedelta(days=7)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
     result = await db.execute(
         select(ServerSnapshot)
         .where(ServerSnapshot.server_num == server, ServerSnapshot.recorded_at >= cutoff)
@@ -652,8 +737,7 @@ async def get_snapshots(server: int = Query(1), db: AsyncSession = Depends(get_d
 
 @app.get("/api/monitor/stats")
 async def get_monitor_stats(server: int = Query(1), db: AsyncSession = Depends(get_db)):
-    from datetime import timedelta
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     day_ago  = now - timedelta(hours=24)
     week_ago = now - timedelta(days=7)
 
@@ -810,6 +894,7 @@ _ALLOWED_EMOJIS = {"fire", "heart", "thumbs_up", "wow"}
 
 @app.get("/api/news/{slug}/reactions")
 async def get_reactions(
+    request: Request,
     slug: str,
     db: AsyncSession = Depends(get_db),
     authorization: Optional[str] = Header(None),
@@ -825,9 +910,14 @@ async def get_reactions(
     )
     counts = {row[0]: row[1] for row in counts_res.all()}
     user_reactions: list[str] = []
+    # Try Bearer header first, then cookie
+    token: Optional[str] = None
     if authorization and authorization.startswith("Bearer "):
+        token = authorization[7:]
+    else:
+        token = request.cookies.get(COOKIE_NAME)
+    if token:
         try:
-            token = authorization[7:]
             if token not in _revoked_tokens:
                 payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
                 uid = int(payload.get("sub", 0))
@@ -844,11 +934,11 @@ async def get_reactions(
 @app.post("/api/news/{slug}/react")
 async def toggle_reaction(
     slug: str,
-    body: dict,
+    body: ReactBody,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    emoji = body.get("emoji", "")
+    emoji = body.emoji
     if emoji not in _ALLOWED_EMOJIS:
         raise HTTPException(400, "Invalid emoji")
     news_res = await db.execute(select(News.id).where(News.slug == slug, News.published == True))
@@ -883,16 +973,35 @@ async def toggle_reaction(
 
 # ─── Comments ────────────────────────────────────────────────────────────────
 
-@app.get("/api/news/{slug}/comments", response_model=list[CommentOut])
-async def get_comments(slug: str, db: AsyncSession = Depends(get_db)):
+@app.get("/api/news/{slug}/comments", response_model=PaginatedComments)
+async def get_comments(
+    slug: str,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
     news_res = await db.execute(select(News.id).where(News.slug == slug, News.published == True))
     news_id = news_res.scalar_one_or_none()
     if news_id is None:
         raise HTTPException(status_code=404, detail="News not found")
-    result = await db.execute(
-        select(Comment).where(Comment.news_id == news_id).order_by(Comment.created_at.asc())
+    total_res = await db.execute(
+        select(func.count()).select_from(Comment).where(Comment.news_id == news_id)
     )
-    return [CommentOut.model_validate(c) for c in result.scalars().all()]
+    total = total_res.scalar_one()
+    pages = max(1, math.ceil(total / per_page))
+    result = await db.execute(
+        select(Comment)
+        .where(Comment.news_id == news_id)
+        .order_by(Comment.created_at.asc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    return PaginatedComments(
+        items=[CommentOut.model_validate(c) for c in result.scalars().all()],
+        total=total,
+        page=page,
+        pages=pages,
+    )
 
 
 @app.post("/api/news/{slug}/comments", response_model=CommentOut, status_code=201)
@@ -1062,7 +1171,7 @@ async def update_news(
     if 'tags'          in fields: news.tags          = body.tags
     if 'published'     in fields: news.published     = body.published
     if 'pinned'        in fields: news.pinned        = body.pinned
-    news.updated_at = datetime.utcnow()
+    news.updated_at = datetime.now(timezone.utc)
     await log_audit(db, admin_u, "news.update", news.title)
     await db.commit()
     await db.refresh(news)
@@ -1170,7 +1279,7 @@ async def update_setting(
         db.add(setting)
     else:
         setting.value = body.value
-        setting.updated_at = datetime.utcnow()
+        setting.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(setting)
     return SettingOut.model_validate(setting)
@@ -1282,11 +1391,9 @@ async def get_leaderboard(
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ):
-    from datetime import timedelta
-
     query = select(PlayerRecord).where(PlayerRecord.server_num == server)
     if period in ("week", "month"):
-        cutoff = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
+        cutoff = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
         cutoff -= timedelta(days=7 if period == "week" else 30)
         query = query.where(PlayerRecord.last_seen >= cutoff)
     if q.strip():
@@ -1817,7 +1924,7 @@ async def import_settings(
         s = r.scalar_one_or_none()
         if s:
             s.value = str(value)
-            s.updated_at = datetime.utcnow()
+            s.updated_at = datetime.now(timezone.utc)
         else:
             db.add(Setting(key=key, value=str(value)))
         count += 1

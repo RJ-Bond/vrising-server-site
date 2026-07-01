@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -7,7 +7,7 @@
   <meta name="description" content="Список банов сервера V Rising. Страница в разработке." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/tailwind.min.css" />
   <style>
     :root {
       --bg:      #06000f;
@@ -186,10 +186,24 @@ function applySiteBackground(bg) {
 }
 
 (function() {
-  if (getToken()) {
-    document.getElementById('nav-profile-link').style.display = '';
-    document.getElementById('nav-login-link').style.display = 'none';
+  const cached = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
+  if (cached) {
+    document.getElementById('nav-profile-link') && (document.getElementById('nav-profile-link').style.display = '');
+    document.getElementById('nav-login-link') && (document.getElementById('nav-login-link').style.display = 'none');
   }
+  fetch('/api/auth/me', { credentials: 'include' }).then(r => {
+    const profileLink = document.getElementById('nav-profile-link');
+    const loginLink = document.getElementById('nav-login-link');
+    if (r.ok) {
+      if (profileLink) profileLink.style.display = '';
+      if (loginLink) loginLink.style.display = 'none';
+    } else {
+      localStorage.removeItem('user'); sessionStorage.removeItem('user');
+      localStorage.removeItem('token'); sessionStorage.removeItem('token');
+      if (profileLink) profileLink.style.display = 'none';
+      if (loginLink) loginLink.style.display = '';
+    }
+  }).catch(() => {});
 })();
 
 (async function() {

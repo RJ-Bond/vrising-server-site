@@ -168,3 +168,11 @@ async def get_server_status(ip: str, port: int) -> dict:
 def get_history(ip: str, port: int) -> list:
     key = (ip, port)
     return [{"ts": int(ts), "players": p} for ts, p in _history.get(key, [])]
+
+
+def init_history(ip: str, port: int, entries: list) -> None:
+    """Pre-populate in-memory history from DB snapshots on startup."""
+    key = (ip, port)
+    hist = _history.setdefault(key, deque(maxlen=HISTORY_MAX))
+    for ts, players in entries:
+        hist.append((float(ts), int(players)))

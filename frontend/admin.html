@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/tailwind.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <style>
     :root {
@@ -962,8 +962,13 @@ let adminNewsPage = 1;
 let quill = null;
 
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
-function authH()   { return { 'Authorization': `Bearer ${getToken()}`, 'Content-Type': 'application/json' }; }
-function logout()  { ['token','user'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); }); window.location.href = '/login.html'; }
+function authH()   { return { 'Content-Type': 'application/json' }; }
+async function logout() {
+  await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
+  localStorage.removeItem('user'); sessionStorage.removeItem('user');
+  localStorage.removeItem('token'); sessionStorage.removeItem('token');
+  window.location.href = '/login.html';
+}
 
 function applySiteBackground(bg) {
   bg = (bg || '').trim();
@@ -980,10 +985,14 @@ function applySiteBackground(bg) {
 }
 
 (function() {
-  const token = getToken();
   const user = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
-  if (!token || !user || user.role !== 'admin') { window.location.href = '/login.html'; return; }
+  if (!user || user.role !== 'admin') { window.location.href = '/login.html'; return; }
   document.getElementById('nav-username').textContent = user.username;
+  // Verify session with server
+  fetch(`${API}/auth/me`, { credentials: 'include' }).then(r => {
+    if (!r.ok) { window.location.href = '/login.html'; }
+    else { r.json().then(u => { if (u.role !== 'admin') window.location.href = '/'; }); }
+  }).catch(() => {});
 })();
 
 fetch(`${API}/settings/public`).then(r => r.json()).then(d => {
@@ -1003,14 +1012,14 @@ async function loadSidebarBadges() {
     else { el.style.display = 'none'; }
   };
   try {
-    const stats = await fetch(`${API}/admin/stats`, { headers: authH() }).then(r => r.ok ? r.json() : null);
+    const stats = await fetch(`${API}/admin/stats`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : null);
     if (stats) {
       setBadge('badge-comments', stats.comment_count);
       setBadge('badge-users', stats.user_count);
     }
   } catch {}
   try {
-    const resets = await fetch(`${API}/admin/password-resets`, { headers: authH() }).then(r => r.ok ? r.json() : []);
+    const resets = await fetch(`${API}/admin/password-resets`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : []);
     setBadge('badge-resets', resets.length);
   } catch {}
 }
@@ -1041,7 +1050,7 @@ function fmtDate(iso) { return new Date(iso).toLocaleDateString('ru-RU', { day:'
 
 async function loadAdminNews(page = 1) {
   adminNewsPage = page;
-  const res = await fetch(`${API}/admin/news?page=${page}&per_page=10`, { headers: authH() });
+  const res = await fetch(`${API}/admin/news?page=${page}&per_page=10`, { credentials: 'include', headers: authH() });
   if (!res.ok) { handleAuth(res); return; }
   const data = await res.json();
   const list = document.getElementById('admin-news-list');
@@ -1127,7 +1136,7 @@ async function deleteNews(id) {
     title: 'Удалить новость?',
     text:  'Новость и все её комментарии будут удалены безвозвратно.',
     onOk:  async () => {
-      const res = await fetch(`${API}/admin/news/${id}`, { method: 'DELETE', headers: authH() });
+      const res = await fetch(`${API}/admin/news/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() });
       if (res.ok || res.status === 204) loadAdminNews(adminNewsPage);
       else showToast('Ошибка удаления', 'error');
     },
@@ -1165,7 +1174,7 @@ async function editorImageHandler() {
     const fd = new FormData(); fd.append('file', file);
     try {
       const res = await fetch(`${API}/admin/upload`, {
-        method: 'POST', headers: { 'Authorization': `Bearer ${getToken()}` }, body: fd,
+        method: 'POST', credentials: 'include', body: fd,
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || 'Ошибка');
@@ -1181,7 +1190,7 @@ async function uploadThumb(input) {
   const fd = new FormData(); fd.append('file', file);
   try {
     const res = await fetch(`${API}/admin/upload`, {
-      method: 'POST', headers: { 'Authorization': `Bearer ${getToken()}` }, body: fd,
+      method: 'POST', credentials: 'include', body: fd,
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Ошибка');
@@ -1253,7 +1262,7 @@ async function submitEditor() {
                     published: document.getElementById('editor-news-published').checked };
   try {
     const res = await fetch(id ? `${API}/admin/news/${id}` : `${API}/admin/news`, {
-      method: id ? 'PUT' : 'POST', headers: authH(), body: JSON.stringify(payload),
+      method: id ? 'PUT' : 'POST', credentials: 'include', headers: authH(), body: JSON.stringify(payload),
     });
     if (!res.ok) {
       const d = await res.json();
@@ -1269,7 +1278,7 @@ const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','serve
 let _settingsBaseline = {};
 
 async function loadSettings() {
-  const res = await fetch(`${API}/admin/settings`, { headers: authH() });
+  const res = await fetch(`${API}/admin/settings`, { credentials: 'include', headers: authH() });
   if (!res.ok) { handleAuth(res); return; }
   const settings = await res.json();
   const map = {};
@@ -1351,7 +1360,7 @@ async function uploadLogoFile(input) {
   const fd = new FormData(); fd.append('file', file);
   try {
     const res = await fetch(`${API}/admin/upload`, {
-      method: 'POST', headers: { 'Authorization': `Bearer ${getToken()}` }, body: fd,
+      method: 'POST', credentials: 'include', body: fd,
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки');
@@ -1370,7 +1379,7 @@ async function uploadBgFile(input) {
   const fd = new FormData(); fd.append('file', file);
   try {
     const res = await fetch(`${API}/admin/upload`, {
-      method: 'POST', headers: { 'Authorization': `Bearer ${getToken()}` }, body: fd,
+      method: 'POST', credentials: 'include', body: fd,
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки');
@@ -1400,7 +1409,7 @@ async function saveSetting(key) {
 async function _doSaveSetting(key, value, opts = {}) {
   try {
     const res = await fetch(`${API}/admin/settings/${key}`, {
-      method: 'PUT', headers: authH(), body: JSON.stringify({ value }),
+      method: 'PUT', credentials: 'include', headers: authH(), body: JSON.stringify({ value }),
     });
     if (res.ok) {
       _settingsBaseline[key] = value;
@@ -1457,7 +1466,7 @@ async function deleteAdminClan(id, name) {
     title: 'Удалить клан?',
     text: `Клан «${name}» будет удалён, все участники потеряют членство.`,
     onOk: async () => {
-      const res = await fetch(`${API}/admin/clans/${id}`, { method: 'DELETE', headers: authH() });
+      const res = await fetch(`${API}/admin/clans/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() });
       if (res.ok || res.status === 204) loadAdminClans();
       else showToast('Ошибка удаления клана', 'error');
     },
@@ -1468,7 +1477,7 @@ let _allUsers = [];
 let _usersSort = { field: 'created_at', dir: -1 };
 
 async function loadUsers() {
-  const res = await fetch(`${API}/admin/users`, { headers: authH() });
+  const res = await fetch(`${API}/admin/users`, { credentials: 'include', headers: authH() });
   if (!res.ok) { handleAuth(res); return; }
   _allUsers = await res.json();
   renderUsersTable();
@@ -1537,14 +1546,14 @@ async function toggleRole(userId, cur) {
     text: `Роль пользователя будет изменена на «${newRole === 'admin' ? 'Админ' : 'Игрок'}».`,
     icon: '🛡', okLabel: 'Изменить',
     onOk: async () => {
-      const res = await fetch(`${API}/admin/users/${userId}/role?role=${newRole}`, { method: 'PUT', headers: authH() });
+      const res = await fetch(`${API}/admin/users/${userId}/role?role=${newRole}`, { method: 'PUT', credentials: 'include', headers: authH() });
       if (res.ok) loadUsers(); else showToast('Ошибка изменения роли', 'error');
     },
   });
 }
 
 async function toggleActive(userId) {
-  const res = await fetch(`${API}/admin/users/${userId}/toggle-active`, { method: 'PUT', headers: authH() });
+  const res = await fetch(`${API}/admin/users/${userId}/toggle-active`, { method: 'PUT', credentials: 'include', headers: authH() });
   if (res.ok) loadUsers(); else showToast('Ошибка изменения статуса', 'error');
 }
 
@@ -1553,7 +1562,7 @@ async function deleteUser(userId, username) {
     title: 'Удалить пользователя?',
     text: `Пользователь «${username}» будет удалён без возможности восстановления.`,
     onOk: async () => {
-      const res = await fetch(`${API}/admin/users/${userId}`, { method: 'DELETE', headers: authH() });
+      const res = await fetch(`${API}/admin/users/${userId}`, { method: 'DELETE', credentials: 'include', headers: authH() });
       if (res.ok) { loadUsers(); loadSidebarBadges(); } else showToast('Ошибка удаления пользователя', 'error');
     },
   });
@@ -1573,12 +1582,11 @@ async function sseRun(url, logId, btnId) {
   btnEl.disabled = true;
   btnEl.style.opacity = '.5';
 
-  const token = getToken();
   let done = false;
   try {
     const res = await fetch(`${API}${url}`, {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token },
+      credentials: 'include',
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -1688,7 +1696,7 @@ function deleteRule(i) {
 
 async function loadRules() {
   try {
-    const res = await fetch(`${API}/admin/settings`, { headers: authH() });
+    const res = await fetch(`${API}/admin/settings`, { credentials: 'include', headers: authH() });
     if (!res.ok) return;
     const settings = await res.json();
     const raw = settings.find(s => s.key === 'rules')?.value || '[]';
@@ -1715,7 +1723,7 @@ async function saveRules() {
 // ─── Dashboard ────────────────────────────────────────────────────────────
 async function loadDashboard() {
   try {
-    const res = await fetch(`${API}/admin/stats`, { headers: authH() });
+    const res = await fetch(`${API}/admin/stats`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const d = await res.json();
     document.getElementById('dash-users').textContent    = d.user_count;
@@ -1745,7 +1753,7 @@ async function loadDashServerStatus() {
   const wrap = document.getElementById('dash-server-status');
   if (!wrap) return;
   try {
-    const settings = await fetch(`${API}/admin/settings`, { headers: authH() }).then(r => r.json());
+    const settings = await fetch(`${API}/admin/settings`, { credentials: 'include', headers: authH() }).then(r => r.json());
     const smap = Object.fromEntries(settings.map(s => [s.key, s.value]));
     const hasServer2 = (smap.server2_ip || '').trim().length > 0;
 
@@ -1785,7 +1793,7 @@ async function loadDashRecentUsers() {
   const el = document.getElementById('dash-recent-users');
   if (!el) return;
   try {
-    const res = await fetch(`${API}/admin/users`, { headers: authH() });
+    const res = await fetch(`${API}/admin/users`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const users = await res.json();
     if (!users.length) { el.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Пользователей пока нет.</p>`; return; }
@@ -1871,7 +1879,7 @@ async function loadAdminComments(page = 1) {
   _commentsPage = page;
   const q = encodeURIComponent((document.getElementById('comments-search')?.value || '').trim());
   try {
-    const res = await fetch(`${API}/admin/comments?page=${page}&per_page=20&q=${q}`, { headers: authH() });
+    const res = await fetch(`${API}/admin/comments?page=${page}&per_page=20&q=${q}`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const d = await res.json();
     document.getElementById('comments-total').textContent = `Всего: ${d.total}`;
@@ -1905,7 +1913,7 @@ async function deleteAdminComment(id) {
     title: 'Удалить комментарий?',
     text: 'Комментарий будет удалён без возможности восстановления.',
     onOk: async () => {
-      await fetch(`${API}/comments/${id}`, { method: 'DELETE', headers: authH() });
+      await fetch(`${API}/comments/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() });
       loadAdminComments(_commentsPage);
       loadSidebarBadges();
     },
@@ -1940,7 +1948,7 @@ let _allFiles = [];
 
 async function loadAdminFiles() {
   try {
-    const res = await fetch(`${API}/admin/uploads`, { headers: authH() });
+    const res = await fetch(`${API}/admin/uploads`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const files = await res.json();
     _allFiles = files;
@@ -1985,7 +1993,7 @@ async function deleteUploadedFile(filename) {
       : `Файл «${filename}» будет удалён. Ссылки на него перестанут работать.`,
     icon: used ? '⚠' : '🗑',
     onOk: async () => {
-      await fetch(`${API}/admin/uploads/${encodeURIComponent(filename)}`, { method: 'DELETE', headers: authH() });
+      await fetch(`${API}/admin/uploads/${encodeURIComponent(filename)}`, { method: 'DELETE', credentials: 'include', headers: authH() });
       loadAdminFiles();
     },
   });
@@ -2000,7 +2008,7 @@ let _logActionsLoaded = false;
 async function loadLogActions() {
   if (_logActionsLoaded) return;
   try {
-    const actions = await fetch(`${API}/admin/audit-log/actions`, { headers: authH() }).then(r => r.ok ? r.json() : []);
+    const actions = await fetch(`${API}/admin/audit-log/actions`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : []);
     const sel = document.getElementById('log-action-filter');
     if (sel) {
       actions.forEach(a => {
@@ -2019,7 +2027,7 @@ async function loadAuditLog(page = 1) {
   const q = encodeURIComponent((document.getElementById('log-search')?.value || '').trim());
   const action = encodeURIComponent(document.getElementById('log-action-filter')?.value || '');
   try {
-    const res = await fetch(`${API}/admin/audit-log?page=${page}&per_page=50&q=${q}&action=${action}`, { headers: authH() });
+    const res = await fetch(`${API}/admin/audit-log?page=${page}&per_page=50&q=${q}&action=${action}`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const d = await res.json();
     document.getElementById('log-total').textContent = `Всего записей: ${d.total}`;
@@ -2069,7 +2077,7 @@ function closePreview() {
 // ─── Settings export / import ─────────────────────────────────────────────
 async function exportSettings() {
   try {
-    const res = await fetch(`${API}/admin/settings`, { headers: authH() });
+    const res = await fetch(`${API}/admin/settings`, { credentials: 'include', headers: authH() });
     if (!res.ok) return;
     const arr = await res.json();
     const obj = Object.fromEntries(arr.map(s => [s.key, s.value]));
@@ -2099,7 +2107,7 @@ async function importSettings(input) {
     if (typeof obj !== 'object' || Array.isArray(obj)) throw new Error('Неверный формат файла');
     const filtered = Object.fromEntries(Object.entries(obj).filter(([k]) => _ALLOWED_SETTING_KEYS.has(k)));
     const res = await fetch(`${API}/admin/settings/import`, {
-      method: 'POST', headers: authH(), body: JSON.stringify(filtered),
+      method: 'POST', credentials: 'include', headers: authH(), body: JSON.stringify(filtered),
     });
     if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
     const d = await res.json();
@@ -2126,7 +2134,7 @@ async function loadWipeHistory() {
   try {
     const [wipes, settings] = await Promise.all([
       fetch(`${API}/wipes`).then(r => r.json()),
-      fetch(`${API}/admin/settings`, { headers: authH() }).then(r => r.json()),
+      fetch(`${API}/admin/settings`, { credentials: 'include', headers: authH() }).then(r => r.json()),
     ]);
     const smap = Object.fromEntries(settings.map(s => [s.key, s.value]));
     const srvName  = smap.server_name?.trim()  || 'Сервер 1';
@@ -2172,7 +2180,7 @@ async function _doAddWipe(server_num, wipe_type, dateVal, note) {
   try {
     const r = await fetch(`${API}/admin/wipes`, {
       method: 'POST',
-      headers: authH(),
+      credentials: 'include', headers: authH(),
       body: JSON.stringify({ server_num, wipe_type, wipe_date: new Date(dateVal).toISOString(), note }),
     });
     if (!r.ok) { const e = await r.json(); showToast(e.detail || 'Ошибка', 'error'); return; }
@@ -2188,7 +2196,7 @@ async function deleteWipe(id) {
     title: 'Удалить запись о вайпе?',
     text: 'Запись будет удалена без возможности восстановления.',
     onOk: async () => {
-      await fetch(`${API}/admin/wipes/${id}`, { method: 'DELETE', headers: authH() });
+      await fetch(`${API}/admin/wipes/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() });
       loadWipeHistory();
     },
   });
@@ -2200,7 +2208,7 @@ async function loadPasswordResets() {
   if (!el) return;
   el.innerHTML = '<p class="p-6" style="color:var(--muted);font-size:.85rem;">Загрузка...</p>';
   try {
-    const res = await fetch(`${API}/admin/password-resets`, { headers: authH() });
+    const res = await fetch(`${API}/admin/password-resets`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const items = await res.json();
     if (!items.length) {
@@ -2252,7 +2260,7 @@ function copyResetLink(btn, url) {
 showSection('dashboard');
 loadWipeHistory().then(() => {
   // update server select labels after names are known
-  fetch(`${API}/admin/settings`, { headers: authH() }).then(r => r.json()).then(settings => {
+  fetch(`${API}/admin/settings`, { credentials: 'include', headers: authH() }).then(r => r.json()).then(settings => {
     const smap = Object.fromEntries(settings.map(s => [s.key, s.value]));
     const s1 = document.querySelector('#wf-server option[value="1"]');
     const s2 = document.querySelector('#wf-server option[value="2"]');

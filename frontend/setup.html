@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -6,7 +6,7 @@
   <title>V Rising — Первичная настройка</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/tailwind.min.css" />
   <style>
     :root {
       --accent: #b5002a;
@@ -189,6 +189,7 @@ async function submitSetup(e) {
   try {
     const res = await fetch('/api/setup/complete', {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, email, password }),
     });
@@ -201,7 +202,7 @@ async function submitSetup(e) {
       errEl.classList.remove('hidden');
       return;
     }
-    localStorage.setItem('token', data.access_token);
+    // Token is set via httpOnly cookie by the server; save user info for UI
     localStorage.setItem('user', JSON.stringify(data.user));
     window.location.href = '/admin.html';
   } catch {

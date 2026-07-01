@@ -117,7 +117,7 @@ class PlayerRecordOut(BaseModel):
     total_seconds: int
     last_seen: Optional[datetime] = None
     last_duration: int = 0
-    avatar_url: Optional[str] = None
+    avatar_url: Optional[str] = None  # populated at runtime from User table, not stored in PlayerRecord
 
     model_config = {"from_attributes": True}
 
@@ -205,6 +205,29 @@ class SettingOut(BaseModel):
 
 class PaginatedNews(BaseModel):
     items: list[NewsListOut]
+    total: int
+    page: int
+    pages: int
+
+
+class ChangePasswordBody(BaseModel):
+    old_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def pw_min_length(cls, v: str) -> str:
+        if len(v.strip()) < 6:
+            raise ValueError("Минимум 6 символов")
+        return v.strip()
+
+
+class ReactBody(BaseModel):
+    emoji: str
+
+
+class PaginatedComments(BaseModel):
+    items: list[CommentOut]
     total: int
     page: int
     pages: int

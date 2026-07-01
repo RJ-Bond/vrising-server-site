@@ -6,3 +6,5 @@ __pycache__/
 venv/
 *.db
 *.sqlite3
+tailwindcss.exe
+src/
