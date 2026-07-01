@@ -1921,7 +1921,7 @@ async def ssl_install(
             # Update nginx config
             yield sse("📝 Обновляем конфигурацию nginx...")
             try:
-                workspace = "/workspace"
+                workspace = "/opt/vrising-site"
                 with open(f"{workspace}/nginx/nginx-ssl.conf") as f:
                     ssl_conf = f.read().replace("DOMAIN", domain)
                 with open(f"{workspace}/nginx/nginx.conf", "w") as f:
@@ -1974,7 +1974,7 @@ async def site_update(_: User = Depends(get_admin_user)):
         yield sse("📦 Получаем обновления из репозитория...")
 
         rc = 0
-        async for line in _stream_cmd("git", "-C", "/workspace", "pull", "--ff-only"):
+        async for line in _stream_cmd("git", "-C", "/opt/vrising-site", "pull", "--ff-only"):
             if line.startswith("__rc__"):
                 rc = int(line[6:])
             else:
