@@ -419,16 +419,16 @@
     .max-btn {
       display:flex; align-items:center; gap:.65rem;
       padding:.6rem .8rem; border-radius:.55rem;
-      background:linear-gradient(135deg,rgba(13,194,104,0.18),rgba(31,156,110,0.08));
-      border:1px solid rgba(13,194,104,0.35);
-      color:#6ee7b7; text-decoration:none; font-size:.82rem; font-weight:600;
-      box-shadow:0 0 16px rgba(13,194,104,0.1),inset 0 0 10px rgba(13,194,104,0.04);
+      background:linear-gradient(135deg,rgba(71,26,255,0.18),rgba(149,0,255,0.08));
+      border:1px solid rgba(110,26,255,0.38);
+      color:#c4a9ff; text-decoration:none; font-size:.82rem; font-weight:600;
+      box-shadow:0 0 16px rgba(100,26,255,0.1),inset 0 0 10px rgba(100,26,255,0.04);
       transition:all .22s;
     }
     .max-btn:hover {
-      background:linear-gradient(135deg,rgba(13,194,104,0.28),rgba(31,156,110,0.15));
-      border-color:rgba(13,194,104,0.58);
-      box-shadow:0 0 26px rgba(13,194,104,0.28),inset 0 0 14px rgba(13,194,104,0.1);
+      background:linear-gradient(135deg,rgba(71,26,255,0.28),rgba(149,0,255,0.16));
+      border-color:rgba(110,26,255,0.62);
+      box-shadow:0 0 26px rgba(100,26,255,0.28),inset 0 0 14px rgba(100,26,255,0.1);
       transform:translateY(-1px);
     }
     @media (max-width: 1024px) {
@@ -1306,16 +1306,15 @@
       </a>
       <!-- MAX messenger -->
       <a id="max-btn" href="#" target="_blank" rel="noopener noreferrer" class="max-btn" style="display:none;">
-        <!-- Official MAX (VK) icon -->
-        <svg width="20" height="20" viewBox="0 0 32 32" style="flex-shrink:0;" xmlns="http://www.w3.org/2000/svg">
+        <svg width="20" height="20" viewBox="0 0 42 42" style="flex-shrink:0;" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <linearGradient id="maxGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" style="stop-color:#1F9C6E"/>
-              <stop offset="100%" style="stop-color:#0DC268"/>
+            <linearGradient id="maxIconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#471AFF"/>
+              <stop offset="100%" stop-color="#9500FF"/>
             </linearGradient>
           </defs>
-          <rect width="32" height="32" rx="8" fill="url(#maxGrad)"/>
-          <text x="16" y="22" font-family="Arial Black, Arial" font-weight="900" font-size="13" fill="#fff" text-anchor="middle" letter-spacing="-0.5">MAX</text>
+          <path fill="url(#maxIconGrad)" fill-rule="evenodd" clip-rule="evenodd"
+            d="M21.47 41.88c-4.11 0-6.02-.6-9.34-3-2.1 2.7-8.75 4.81-9.04 1.2 0-2.71-.6-5-1.28-7.5C1 29.5.08 26.07.08 21.1.08 9.23 9.82.3 21.36.3c11.55 0 20.6 9.37 20.6 20.91a20.6 20.6 0 0 1-20.49 20.67m.17-31.32c-5.62-.29-10 3.6-10.97 9.7-.8 5.05.62 11.2 1.83 11.52.58.14 2.04-1.04 2.95-1.95a10.4 10.4 0 0 0 5.08 1.81 10.7 10.7 0 0 0 11.19-9.97 10.7 10.7 0 0 0-10.08-11.1Z"/>
         </svg>
         MAX
       </a>
