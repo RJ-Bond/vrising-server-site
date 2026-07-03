@@ -40,6 +40,7 @@ class UserOut(BaseModel):
     created_at: datetime
     avatar_url: Optional[str] = None
     rules_accepted_at: Optional[datetime] = None
+    game_nickname: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
