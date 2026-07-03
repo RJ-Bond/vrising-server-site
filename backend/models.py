@@ -21,6 +21,8 @@ class User(Base):
     clan_id = Column(Integer, ForeignKey("clans.id", ondelete="SET NULL"), nullable=True)
     rules_accepted_at = Column(DateTime, nullable=True)
     game_nickname = Column(String(64), nullable=True)
+    admin_title = Column(String(128), nullable=True)
+    last_active_at = Column(DateTime, nullable=True)
 
 
 class Clan(Base):

@@ -270,6 +270,8 @@ async def lifespan(app: FastAPI):
             "CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE, recipient_id INTEGER REFERENCES users(id) ON DELETE CASCADE, content TEXT NOT NULL, read BOOLEAN NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
             "CREATE INDEX IF NOT EXISTS ix_messages_recipient ON messages(recipient_id, read)",
             "CREATE INDEX IF NOT EXISTS ix_messages_sender ON messages(sender_id)",
+            "ALTER TABLE users ADD COLUMN admin_title VARCHAR(128) DEFAULT NULL",
+            "ALTER TABLE users ADD COLUMN last_active_at DATETIME DEFAULT NULL",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -547,7 +549,11 @@ async def logout(response: Response, current_user: User = Depends(get_current_us
 
 
 @app.get("/api/auth/me", response_model=UserOut)
-async def me(current_user: User = Depends(get_current_user)):
+async def me(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    now = datetime.utcnow()
+    if not current_user.last_active_at or (now - current_user.last_active_at).total_seconds() > 300:
+        current_user.last_active_at = now
+        await db.commit()
     return UserOut.model_validate(current_user)
 
 
@@ -2497,9 +2503,29 @@ async def get_team(db: AsyncSession = Depends(get_db)):
             "username": u.username,
             "avatar_url": u.avatar_url,
             "created_at": u.created_at.isoformat(),
+            "admin_title": u.admin_title,
+            "last_active_at": u.last_active_at.isoformat() if u.last_active_at else None,
         }
         for u in admins
     ]
+
+
+class AdminTitleBody(BaseModel):
+    title: str
+
+
+@app.put("/api/profile/admin-title")
+async def set_admin_title(
+    body: AdminTitleBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Только для администраторов")
+    title = body.title.strip()[:128]
+    current_user.admin_title = title or None
+    await db.commit()
+    return {"admin_title": current_user.admin_title}
 
 
 # ─── Direct Messages ─────────────────────────────────────────────────────────

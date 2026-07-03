@@ -41,6 +41,8 @@ class UserOut(BaseModel):
     avatar_url: Optional[str] = None
     rules_accepted_at: Optional[datetime] = None
     game_nickname: Optional[str] = None
+    admin_title: Optional[str] = None
+    last_active_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
