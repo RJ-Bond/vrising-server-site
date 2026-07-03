@@ -12,7 +12,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from fastapi import FastAPI, Depends, HTTPException, Request, Query, Header, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse, Response
@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, text, or_, update
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message
 from .auth import (
     verify_password,
     get_password_hash,
@@ -267,6 +267,9 @@ async def lifespan(app: FastAPI):
             "CREATE INDEX IF NOT EXISTS ix_page_views_date ON page_views(created_at)",
             "CREATE TABLE IF NOT EXISTS error_logs (id INTEGER PRIMARY KEY, path VARCHAR(256) NOT NULL, method VARCHAR(8) NOT NULL DEFAULT 'GET', status_code INTEGER NOT NULL, error TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
             "CREATE INDEX IF NOT EXISTS ix_error_logs_date ON error_logs(created_at)",
+            "CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE, recipient_id INTEGER REFERENCES users(id) ON DELETE CASCADE, content TEXT NOT NULL, read BOOLEAN NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE INDEX IF NOT EXISTS ix_messages_recipient ON messages(recipient_id, read)",
+            "CREATE INDEX IF NOT EXISTS ix_messages_sender ON messages(sender_id)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -2497,6 +2500,148 @@ async def get_team(db: AsyncSession = Depends(get_db)):
         }
         for u in admins
     ]
+
+
+# ─── Direct Messages ─────────────────────────────────────────────────────────
+
+class MessageSendBody(BaseModel):
+    recipient_username: str
+    content: str
+
+    @field_validator("content")
+    @classmethod
+    def content_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Сообщение не может быть пустым")
+        if len(v) > 2000:
+            raise ValueError("Максимум 2000 символов")
+        return v
+
+
+@app.post("/api/messages", status_code=201)
+@limiter.limit("30/minute")
+async def send_message(
+    request: Request,
+    body: MessageSendBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if body.recipient_username == current_user.username:
+        raise HTTPException(status_code=400, detail="Нельзя писать самому себе")
+    res = await db.execute(select(User).where(User.username == body.recipient_username, User.is_active == True))
+    recipient = res.scalar_one_or_none()
+    if recipient is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    msg = Message(sender_id=current_user.id, recipient_id=recipient.id, content=body.content.strip())
+    db.add(msg)
+    await db.commit()
+    await db.refresh(msg)
+    return {
+        "id": msg.id,
+        "sender": current_user.username,
+        "recipient": recipient.username,
+        "content": msg.content,
+        "created_at": msg.created_at.isoformat(),
+    }
+
+
+@app.get("/api/messages/unread-count")
+async def messages_unread_count(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    res = await db.execute(
+        select(func.count()).where(Message.recipient_id == current_user.id, Message.read == False)
+    )
+    return {"count": res.scalar_one() or 0}
+
+
+@app.get("/api/messages/inbox")
+async def messages_inbox(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    partner_ids_q = (
+        select(
+            func.coalesce(
+                func.nullif(Message.sender_id, current_user.id),
+                Message.recipient_id
+            ).label("partner_id"),
+            func.max(Message.id).label("last_msg_id"),
+        )
+        .where((Message.sender_id == current_user.id) | (Message.recipient_id == current_user.id))
+        .group_by("partner_id")
+        .order_by(func.max(Message.id).desc())
+    )
+    rows = (await db.execute(partner_ids_q)).all()
+
+    conversations = []
+    for row in rows:
+        partner_id = row.partner_id
+        last_msg_id = row.last_msg_id
+        partner_res = await db.execute(select(User).where(User.id == partner_id))
+        partner = partner_res.scalar_one_or_none()
+        if partner is None:
+            continue
+        msg_res = await db.execute(select(Message).where(Message.id == last_msg_id))
+        last_msg = msg_res.scalar_one_or_none()
+        unread_res = await db.execute(
+            select(func.count()).where(
+                Message.sender_id == partner_id,
+                Message.recipient_id == current_user.id,
+                Message.read == False,
+            )
+        )
+        unread = unread_res.scalar_one() or 0
+        conversations.append({
+            "partner": {"id": partner.id, "username": partner.username, "avatar_url": partner.avatar_url},
+            "last_message": {
+                "id": last_msg.id,
+                "content": last_msg.content,
+                "sender_id": last_msg.sender_id,
+                "created_at": last_msg.created_at.isoformat(),
+            } if last_msg else None,
+            "unread": unread,
+        })
+    return conversations
+
+
+@app.get("/api/messages/with/{username}")
+async def messages_conversation(
+    username: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    res = await db.execute(select(User).where(User.username == username, User.is_active == True))
+    partner = res.scalar_one_or_none()
+    if partner is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    msgs_res = await db.execute(
+        select(Message)
+        .where(
+            ((Message.sender_id == current_user.id) & (Message.recipient_id == partner.id))
+            | ((Message.sender_id == partner.id) & (Message.recipient_id == current_user.id))
+        )
+        .order_by(Message.created_at.asc())
+        .limit(200)
+    )
+    messages = msgs_res.scalars().all()
+
+    for m in messages:
+        if m.recipient_id == current_user.id and not m.read:
+            m.read = True
+    await db.commit()
+
+    return {
+        "partner": {"id": partner.id, "username": partner.username, "avatar_url": partner.avatar_url},
+        "messages": [
+            {
+                "id": m.id,
+                "sender": m.sender.username,
+                "content": m.content,
+                "read": m.read,
+                "created_at": m.created_at.isoformat(),
+                "is_mine": m.sender_id == current_user.id,
+            }
+            for m in messages
+        ],
+    }
 
 
 # ─── Reports ─────────────────────────────────────────────────────────────────

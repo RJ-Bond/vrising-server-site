@@ -172,6 +172,18 @@ class Notification(Base):
     __table_args__ = (Index("ix_notifications_user", "user_id", "read"),)
 
 
+class Message(Base):
+    __tablename__ = "messages"
+    id = Column(Integer, primary_key=True, index=True)
+    sender_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    recipient_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    content = Column(Text, nullable=False)
+    read = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    sender = relationship("User", foreign_keys=[sender_id], lazy="selectin")
+    recipient = relationship("User", foreign_keys=[recipient_id], lazy="selectin")
+
+
 class Report(Base):
     __tablename__ = "reports"
     id = Column(Integer, primary_key=True, index=True)

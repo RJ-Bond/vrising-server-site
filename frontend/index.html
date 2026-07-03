@@ -1056,23 +1056,72 @@
 
     /* ── Light theme ── */
     [data-theme="light"] {
-      --bg: #f0eaf6;
-      --bg2: #e8dff2;
-      --surface: rgba(240,234,246,0.95);
+      --bg: #f5f0fc;
+      --panel: rgba(255,252,255,0.9);
+      --border: rgba(120,0,160,0.13);
+      --border-r: rgba(160,0,30,0.22);
       --text: #1a0a2e;
       --muted: #6b5080;
-      --accent: #9b0021;
       --gold: #8a6500;
-      --border: rgba(100,0,150,0.15);
+      --green: #166534;
+      --green-s: rgba(22,101,52,0.12);
     }
-    [data-theme="light"] .glass-card {
-      background: rgba(255,255,255,0.75);
-      border-color: rgba(100,0,150,0.12);
+    [data-theme="light"] body {
+      background: var(--bg);
+      background-image:
+        radial-gradient(ellipse at 15% 50%, rgba(160,80,220,0.07) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(180,0,28,0.05) 0%, transparent 50%);
     }
-    [data-theme="light"] nav, [data-theme="light"] .glass-nav {
-      background: rgba(255,255,255,0.9);
-      border-bottom-color: rgba(100,0,150,0.12);
+    [data-theme="light"] body::before {
+      background-image: radial-gradient(rgba(100,0,120,0.04) 1px, transparent 1px);
     }
+    [data-theme="light"] .glass-nav,
+    [data-theme="light"] nav {
+      background: rgba(255,252,255,0.94);
+      border-bottom-color: rgba(120,0,160,0.12);
+    }
+    [data-theme="light"] #nav-logo { color: #6b0028; text-shadow: 0 0 12px rgba(160,0,40,0.25); }
+    [data-theme="light"] .g-panel {
+      background: rgba(255,252,255,0.88);
+      border-color: rgba(120,0,160,0.12);
+      box-shadow: 0 2px 20px rgba(100,0,150,0.07), 0 1px 4px rgba(0,0,0,0.04);
+    }
+    [data-theme="light"] .g-panel > .corner-tl,
+    [data-theme="light"] .g-panel > .corner-tr,
+    [data-theme="light"] .g-panel > .corner-bl,
+    [data-theme="light"] .g-panel > .corner-br {
+      color: rgba(160,0,30,0.4);
+      text-shadow: none;
+    }
+    [data-theme="light"] .status-bar {
+      background: rgba(255,250,255,0.92);
+      border-top-color: rgba(120,0,160,0.1);
+      border-bottom-color: rgba(120,0,160,0.1);
+    }
+    [data-theme="light"] .hero-bg {
+      background:
+        radial-gradient(ellipse at 50% 80%, rgba(160,0,30,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse at 50% 40%, rgba(80,0,140,0.1) 0%, transparent 55%),
+        linear-gradient(180deg, #e8dff5 0%, #f0e8fa 50%, #f5eaf0 100%);
+    }
+    [data-theme="light"] .nav-link-item:hover { background: rgba(120,0,160,0.07); }
+    [data-theme="light"] .nav-link-item.active { background: rgba(160,0,30,0.09); }
+    [data-theme="light"] .nav-user-card { background: rgba(120,0,160,0.07); border-color: rgba(120,0,160,0.15); }
+    [data-theme="light"] .fog { display: none; }
+    [data-theme="light"] .sb-row { border-color: rgba(120,0,160,0.1); }
+    [data-theme="light"] .sb-srv-tag { color: #5a1060; }
+    [data-theme="light"] .sb-icon { color: #8a0028; }
+    [data-theme="light"] .modal-box { background: rgba(250,246,255,0.98); border-color: rgba(120,0,160,0.18); }
+    [data-theme="light"] .comment-card { background: rgba(245,240,255,0.7); border-color: rgba(120,0,160,0.1); }
+    [data-theme="light"] .lb-row { border-color: rgba(120,0,160,0.08); }
+    [data-theme="light"] .lb-row:hover { background: rgba(120,0,160,0.05); }
+    [data-theme="light"] .news-card { background: rgba(252,248,255,0.9); border-color: rgba(120,0,160,0.1); }
+    [data-theme="light"] .news-card:hover { background: rgba(248,242,255,0.95); }
+    [data-theme="light"] #notif-panel,
+    [data-theme="light"] #dm-panel { background: rgba(252,248,255,0.98); border-color: rgba(120,0,160,0.18); }
+    [data-theme="light"] #dm-modal-box { background: rgba(250,246,255,0.99); border-color: rgba(120,0,160,0.18); }
+    [data-theme="light"] .dm-bubble-mine { background: rgba(150,0,30,0.12); }
+    [data-theme="light"] .dm-bubble-their { background: rgba(120,0,160,0.09); }
   </style>
 </head>
 <body>
@@ -1104,6 +1153,23 @@
             <button onclick="markAllNotifRead()" style="font-size:.65rem;color:#9488a8;background:none;border:none;cursor:pointer;">Прочитать все</button>
           </div>
           <div id="notif-list" style="max-height:320px;overflow-y:auto;"></div>
+        </div>
+      </div>
+      <!-- DM button (shown when logged in) -->
+      <div id="dm-bell-wrap" style="position:relative;display:none;">
+        <button id="dm-bell-btn" onclick="toggleDmPanel()" title="Личные сообщения"
+          style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9488a8;transition:all .2s;position:relative;"
+          onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
+          onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">
+          💬
+          <span id="dm-count" style="display:none;position:absolute;top:-4px;right:-4px;background:#c8002a;color:#fff;font-size:.55rem;font-weight:700;border-radius:9999px;min-width:14px;height:14px;line-height:14px;text-align:center;padding:0 3px;"></span>
+        </button>
+        <div id="dm-panel" style="display:none;position:absolute;top:calc(100% + .5rem);right:0;width:300px;background:rgba(10,2,18,0.98);border:1px solid rgba(150,0,28,0.3);border-radius:.75rem;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:200;overflow:hidden;">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:.65rem 1rem;border-bottom:1px solid rgba(150,0,28,0.15);">
+            <span style="font-size:.75rem;font-weight:600;color:var(--text);">Сообщения</span>
+            <button onclick="openDmCompose(null)" style="font-size:.65rem;color:var(--gold);background:none;border:none;cursor:pointer;font-weight:600;">+ Написать</button>
+          </div>
+          <div id="dm-inbox-list" style="max-height:320px;overflow-y:auto;"></div>
         </div>
       </div>
       <button id="theme-toggle-btn" onclick="toggleTheme()" title="Сменить тему"
@@ -1512,7 +1578,7 @@
     <div id="team-section" style="display:none;margin-top:1.1rem;">
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.85rem;"></div>
       <h3 style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;text-align:center;">— Наша команда —</h3>
-      <div id="team-list" style="display:flex;flex-direction:column;gap:.55rem;"></div>
+      <div id="team-list" style="display:flex;flex-direction:column;gap:.6rem;"></div>
     </div>
 
     <!-- Discord widget (hidden until discord_server_id is set) -->
@@ -1552,6 +1618,29 @@
       <div id="modal-comments"></div>
       <div id="modal-comment-form"></div>
     </div>
+  </div>
+</div>
+
+<!-- ══ DM MODAL ══════════════════════════════════════════════════════════════ -->
+<div id="dm-modal-bg" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(4,0,10,0.7);backdrop-filter:blur(4px);" onclick="closeDmModal()"></div>
+<div id="dm-modal-box" style="position:fixed;z-index:901;bottom:4.5rem;right:1rem;width:360px;max-height:80vh;background:rgba(10,2,18,0.98);border:1px solid rgba(150,0,28,0.35);border-radius:.875rem;box-shadow:0 8px 40px rgba(0,0,0,0.7);flex-direction:column;overflow:hidden;display:none;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:.7rem 1rem;border-bottom:1px solid rgba(150,0,28,0.18);flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:.55rem;">
+      <div id="dm-modal-avatar" style="width:26px;height:26px;border-radius:50%;background:rgba(110,0,20,0.4);border:1px solid rgba(180,0,30,0.3);display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0;overflow:hidden;"></div>
+      <span id="dm-modal-title" style="font-size:.82rem;font-weight:700;color:var(--text);font-family:'Philosopher',serif;"></span>
+    </div>
+    <button onclick="closeDmModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;padding:.2rem;">✕</button>
+  </div>
+  <div id="dm-messages" style="flex:1;overflow-y:auto;padding:.75rem;display:flex;flex-direction:column;gap:.5rem;min-height:0;max-height:50vh;scrollbar-width:thin;scrollbar-color:rgba(110,0,20,0.4) transparent;"></div>
+  <div style="padding:.6rem .75rem;border-top:1px solid rgba(150,0,28,0.15);display:flex;gap:.5rem;flex-shrink:0;">
+    <textarea id="dm-input" placeholder="Сообщение..." rows="1" maxlength="2000"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendDm();}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';"
+      style="flex:1;background:rgba(6,0,15,0.8);border:1px solid rgba(120,0,24,0.38);color:var(--text);border-radius:.45rem;padding:.45rem .65rem;font-size:.82rem;font-family:'Inter',sans-serif;resize:none;outline:none;min-height:32px;transition:border-color .2s;"
+      onfocus="this.style.borderColor='rgba(181,0,42,0.5)'" onblur="this.style.borderColor='rgba(120,0,24,0.38)'"></textarea>
+    <button onclick="sendDm()" style="background:rgba(150,0,28,0.4);border:1px solid rgba(200,0,40,0.4);color:#fff;border-radius:.45rem;padding:.45rem .75rem;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s;flex-shrink:0;" onmouseover="this.style.background='rgba(200,0,40,0.5)'" onmouseout="this.style.background='rgba(150,0,28,0.4)'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+    </button>
   </div>
 </div>
 
@@ -1715,6 +1804,10 @@ function toggleDrawer() {
     document.getElementById('nav-username').classList.remove('hidden');
     document.getElementById('nav-login').classList.add('hidden');
     document.getElementById('nav-logout').classList.remove('hidden');
+    const dmWrap = document.getElementById('dm-bell-wrap');
+    if (dmWrap) dmWrap.style.display = '';
+    const notifWrap = document.getElementById('notif-bell-wrap');
+    if (notifWrap) notifWrap.style.display = '';
     if (u.role === 'admin') {
       document.getElementById('nav-admin').classList.remove('hidden');
       _isAdmin = true;
@@ -1769,6 +1862,8 @@ function toggleDrawer() {
         _applyUser(fresh);
         loadNotifications();
         setInterval(loadNotifications, 60000);
+        loadDmUnread();
+        setInterval(loadDmUnread, 30000);
       });
     } else {
       localStorage.removeItem('user'); sessionStorage.removeItem('user');
@@ -3038,18 +3133,178 @@ async function loadTeam() {
     if (!wrap || !list) return;
     list.innerHTML = data.map(u => {
       const avatar = u.avatar_url
-        ? `<img src="${esc(u.avatar_url)}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;border:1px solid rgba(180,0,30,0.4);">`
-        : `<div style="width:30px;height:30px;border-radius:50%;background:rgba(110,0,20,0.4);border:1px solid rgba(180,0,30,0.3);display:flex;align-items:center;justify-content:center;font-size:.8rem;color:var(--gold);">${esc(u.username[0].toUpperCase())}</div>`;
-      return `<div style="display:flex;align-items:center;gap:.55rem;">
+        ? `<img src="${esc(u.avatar_url)}" style="width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid rgba(200,0,40,0.4);">`
+        : `<div style="width:38px;height:38px;border-radius:50%;background:rgba(110,0,20,0.5);border:2px solid rgba(180,0,30,0.4);display:flex;align-items:center;justify-content:center;font-size:.95rem;color:var(--gold);">${esc(u.username[0].toUpperCase())}</div>`;
+      return `<div style="display:flex;flex-direction:column;align-items:center;gap:.3rem;padding:.55rem .4rem;border-radius:.6rem;transition:background .18s;" onmouseover="this.style.background='rgba(120,0,160,0.07)'" onmouseout="this.style.background=''">
         ${avatar}
-        <div style="min-width:0;">
-          <div style="font-size:.78rem;color:var(--text);font-family:'Philosopher',serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(u.username)}</div>
-          <div style="font-size:.6rem;color:var(--gold);letter-spacing:.04em;">Администратор</div>
+        <a href="/profile.html?u=${encodeURIComponent(u.username)}" style="font-size:.8rem;color:var(--text);font-family:'Philosopher',serif;text-align:center;text-decoration:none;font-weight:600;transition:color .18s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'">${esc(u.username)}</a>
+        <div style="font-size:.6rem;color:var(--gold);letter-spacing:.04em;text-transform:uppercase;">Администратор</div>
+        <button onclick="openDmCompose('${esc(u.username)}')" style="margin-top:.15rem;padding:.25rem .65rem;background:rgba(150,0,28,0.2);border:1px solid rgba(180,0,30,0.35);color:var(--muted);border-radius:.4rem;font-size:.65rem;cursor:pointer;transition:all .18s;" onmouseover="this.style.background='rgba(180,0,30,0.3)';this.style.color='#e2d8f0'" onmouseout="this.style.background='rgba(150,0,28,0.2)';this.style.color='var(--muted)'">💬 Написать</button>
+      </div>`;
+    }).join('');
+    list.style.display = 'flex';
+    list.style.flexDirection = 'row';
+    list.style.flexWrap = 'wrap';
+    list.style.justifyContent = 'center';
+    list.style.gap = '.4rem';
+    wrap.style.display = '';
+  } catch {}
+}
+
+// ── Direct Messages ──────────────────────────────────────────────────────────
+let _dmPartner = null;
+let _dmPanelOpen = false;
+let _dmPollInterval = null;
+
+function toggleDmPanel() {
+  _dmPanelOpen = !_dmPanelOpen;
+  const panel = document.getElementById('dm-panel');
+  if (!panel) return;
+  panel.style.display = _dmPanelOpen ? 'block' : 'none';
+  if (_dmPanelOpen) { loadDmInbox(); document.addEventListener('click', _closeDmPanelOutside, true); }
+  else document.removeEventListener('click', _closeDmPanelOutside, true);
+}
+
+function _closeDmPanelOutside(e) {
+  const wrap = document.getElementById('dm-bell-wrap');
+  if (wrap && !wrap.contains(e.target)) {
+    _dmPanelOpen = false;
+    const p = document.getElementById('dm-panel');
+    if (p) p.style.display = 'none';
+    document.removeEventListener('click', _closeDmPanelOutside, true);
+  }
+}
+
+async function loadDmInbox() {
+  const list = document.getElementById('dm-inbox-list');
+  if (!list) return;
+  try {
+    const data = await fetch('/api/messages/inbox', {credentials:'include'}).then(r => r.ok ? r.json() : []);
+    if (!data.length) {
+      list.innerHTML = `<div style="padding:1.5rem;text-align:center;font-size:.78rem;color:var(--muted);">Нет переписок</div>`;
+      return;
+    }
+    list.innerHTML = data.map(c => {
+      const p = c.partner;
+      const lm = c.last_message;
+      const av = p.avatar_url
+        ? `<img src="${esc(p.avatar_url)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
+        : `<div style="width:32px;height:32px;border-radius:50%;background:rgba(110,0,20,0.5);display:flex;align-items:center;justify-content:center;font-size:.8rem;color:var(--gold);flex-shrink:0;">${esc(p.username[0].toUpperCase())}</div>`;
+      const preview = lm ? lm.content.slice(0, 40) + (lm.content.length > 40 ? '…' : '') : '';
+      return `<div onclick="openDmChat('${esc(p.username)}')" style="display:flex;align-items:center;gap:.55rem;padding:.6rem 1rem;cursor:pointer;transition:background .15s;border-bottom:1px solid rgba(150,0,28,0.1);" onmouseover="this.style.background='rgba(120,0,160,0.08)'" onmouseout="this.style.background=''">
+        <div style="position:relative;">${av}${c.unread > 0 ? `<span style="position:absolute;top:-2px;right:-2px;background:#c8002a;border-radius:9999px;min-width:12px;height:12px;font-size:.5rem;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;">${c.unread}</span>` : ''}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:.78rem;font-weight:${c.unread > 0 ? '700' : '500'};color:var(--text);">${esc(p.username)}</div>
+          <div style="font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(preview)}</div>
         </div>
       </div>`;
     }).join('');
-    wrap.style.display = '';
   } catch {}
+}
+
+async function loadDmUnread() {
+  try {
+    const d = await fetch('/api/messages/unread-count', {credentials:'include'}).then(r => r.ok ? r.json() : {count:0});
+    const badge = document.getElementById('dm-count');
+    if (!badge) return;
+    if (d.count > 0) { badge.textContent = d.count > 9 ? '9+' : d.count; badge.style.display = 'flex'; }
+    else badge.style.display = 'none';
+  } catch {}
+}
+
+async function openDmChat(username) {
+  _dmPartner = username;
+  const bg = document.getElementById('dm-modal-bg');
+  const box = document.getElementById('dm-modal-box');
+  if (!bg || !box) return;
+  document.getElementById('dm-modal-title').textContent = username;
+  document.getElementById('dm-messages').innerHTML = `<div style="text-align:center;padding:1rem;color:var(--muted);font-size:.75rem;">Загрузка…</div>`;
+  bg.style.display = 'block';
+  box.style.display = 'flex';
+  box.style.flexDirection = 'column';
+  const panel = document.getElementById('dm-panel');
+  if (panel) panel.style.display = 'none';
+  _dmPanelOpen = false;
+  await _refreshDmChat();
+  clearInterval(_dmPollInterval);
+  _dmPollInterval = setInterval(_refreshDmChat, 5000);
+  setTimeout(() => { const el = document.getElementById('dm-input'); if (el) el.focus(); }, 50);
+}
+
+async function _refreshDmChat() {
+  if (!_dmPartner) return;
+  try {
+    const data = await fetch(`/api/messages/with/${encodeURIComponent(_dmPartner)}`, {credentials:'include'}).then(r => r.ok ? r.json() : null);
+    if (!data) return;
+    const avEl = document.getElementById('dm-modal-avatar');
+    const p = data.partner;
+    if (avEl) {
+      avEl.innerHTML = p.avatar_url
+        ? `<img src="${esc(p.avatar_url)}" style="width:100%;height:100%;object-fit:cover;">`
+        : esc(p.username[0].toUpperCase());
+    }
+    const container = document.getElementById('dm-messages');
+    const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 60;
+    const msgs = data.messages;
+    container.innerHTML = msgs.length === 0
+      ? `<div style="text-align:center;padding:2rem;color:var(--muted);font-size:.78rem;">Начните переписку</div>`
+      : msgs.map(m => {
+        const side = m.is_mine ? 'flex-end' : 'flex-start';
+        const cls = m.is_mine ? 'dm-bubble-mine' : 'dm-bubble-their';
+        const bg = m.is_mine ? 'rgba(150,0,28,0.35)' : 'rgba(80,0,120,0.25)';
+        const time = new Date(m.created_at).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+        return `<div style="display:flex;justify-content:${side};margin:1px 0;">
+          <div class="${cls}" style="max-width:78%;background:${bg};border-radius:.6rem;padding:.4rem .65rem;font-size:.82rem;color:var(--text);line-height:1.4;word-break:break-word;">
+            ${DOMPurify.sanitize(m.content).replace(/\n/g,'<br>')}
+            <div style="font-size:.58rem;color:rgba(148,136,168,0.7);text-align:right;margin-top:.2rem;">${time}</div>
+          </div>
+        </div>`;
+      }).join('');
+    if (wasAtBottom || msgs.length <= 3) container.scrollTop = container.scrollHeight;
+    loadDmUnread();
+  } catch {}
+}
+
+function openDmCompose(username) {
+  const stored = localStorage.getItem('user');
+  if (!stored) { window.location.href = '/login.html'; return; }
+  if (username) {
+    openDmChat(username);
+  } else {
+    const u = prompt('Введите имя пользователя:');
+    if (u && u.trim()) openDmChat(u.trim());
+  }
+}
+
+async function sendDm() {
+  if (!_dmPartner) return;
+  const input = document.getElementById('dm-input');
+  const content = (input?.value || '').trim();
+  if (!content) return;
+  try {
+    const r = await fetch('/api/messages', {
+      method: 'POST', credentials: 'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({recipient_username: _dmPartner, content}),
+    });
+    if (r.ok) {
+      input.value = '';
+      input.style.height = 'auto';
+      await _refreshDmChat();
+    } else {
+      const d = await r.json().catch(() => ({}));
+      alert(d.detail || 'Ошибка отправки');
+    }
+  } catch {}
+}
+
+function closeDmModal() {
+  clearInterval(_dmPollInterval);
+  _dmPartner = null;
+  const bg = document.getElementById('dm-modal-bg');
+  const box = document.getElementById('dm-modal-box');
+  if (bg) bg.style.display = 'none';
+  if (box) box.style.display = 'none';
 }
 
 // ── Notification bell ──────────────────────────────────────────────────────
