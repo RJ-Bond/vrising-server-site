@@ -401,26 +401,6 @@
       background:rgba(180,130,0,0.18); border:1px solid rgba(210,165,0,0.4);
       color:#f0c040; font-family:'Inter',sans-serif; white-space:nowrap;
     }
-    /* ── Latest news snippet ── */
-    .nav-latest-news {
-      margin-top:.85rem; padding:.65rem .75rem; border-radius:.65rem;
-      background:rgba(12,3,22,0.7); border:1px solid rgba(110,0,150,0.2);
-      cursor:pointer; transition:border-color .2s, box-shadow .2s;
-      text-decoration:none; display:block;
-    }
-    .nav-latest-news:hover {
-      border-color:rgba(160,0,40,0.45);
-      box-shadow:0 0 14px rgba(180,0,35,0.18);
-    }
-    .nav-latest-label {
-      font-size:.5rem; font-weight:700; letter-spacing:.12em; color:var(--muted);
-      text-transform:uppercase; margin-bottom:.3rem; font-family:'Cinzel',serif;
-    }
-    .nav-latest-title {
-      font-size:.75rem; color:var(--text); line-height:1.35;
-      display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
-    }
-    .nav-latest-date { font-size:.58rem; color:var(--muted); margin-top:.3rem; }
     .discord-btn {
       display:flex; align-items:center; gap:.65rem;
       padding:.6rem .8rem; border-radius:.55rem;
@@ -1307,29 +1287,6 @@
       </a>
     </div>
 
-    <!-- Latest news snippet -->
-    <div id="nav-latest-wrap" style="display:none;">
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.3),transparent);margin:.9rem 0 0;"></div>
-      <a id="nav-latest-card" class="nav-latest-news" href="#">
-        <div class="nav-latest-label">Последняя новость</div>
-        <div id="nav-latest-title" class="nav-latest-title"></div>
-        <div id="nav-latest-date" class="nav-latest-date"></div>
-      </a>
-    </div>
-
-    <!-- Top Hunters + Leaderboard -->
-    <div id="hunters-wrap" style="display:none;margin-top:1.1rem;">
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:1rem;"></div>
-      <h3 style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.6rem;text-align:center;">— Топ охотников —</h3>
-      <!-- Tabs -->
-      <div style="display:flex;gap:.25rem;margin-bottom:.65rem;">
-        <button id="lb-tab-now"  onclick="switchLbTab('now')"  class="lb-tab lb-tab-active">Сейчас</button>
-        <button id="lb-tab-week" onclick="switchLbTab('week')" class="lb-tab">Неделя</button>
-        <button id="lb-tab-all"  onclick="switchLbTab('all')"  class="lb-tab">Всё время</button>
-      </div>
-      <div id="top-hunters"></div>
-      <div id="lb-list" style="display:none;"></div>
-    </div>
   </aside>
 
   <!-- ── CENTER: News ── -->
@@ -1560,6 +1517,7 @@
     <button onclick="closeDmModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;padding:.2rem;">✕</button>
   </div>
   <div id="dm-messages" style="flex:1;overflow-y:auto;padding:.75rem;display:flex;flex-direction:column;gap:.5rem;min-height:0;max-height:50vh;scrollbar-width:thin;scrollbar-color:rgba(110,0,20,0.4) transparent;"></div>
+  <div id="dm-send-error" style="display:none;padding:.35rem .75rem;font-size:.72rem;color:#fca5a5;background:rgba(140,0,20,0.2);border-top:1px solid rgba(180,0,30,0.2);flex-shrink:0;"></div>
   <div style="padding:.6rem .75rem;border-top:1px solid rgba(150,0,28,0.15);display:flex;gap:.5rem;flex-shrink:0;">
     <textarea id="dm-input" placeholder="Сообщение..." rows="1" maxlength="2000"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendDm();}"
@@ -3139,12 +3097,37 @@ async function loadDmUnread() {
 }
 
 async function openDmChat(username) {
-  _dmPartner = username;
   const bg = document.getElementById('dm-modal-bg');
   const box = document.getElementById('dm-modal-box');
   if (!bg || !box) return;
+
+  const me = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}').username; } catch { return null; } })();
+  if (me && username === me) {
+    _dmPartner = null;
+    document.getElementById('dm-modal-title').textContent = '';
+    document.getElementById('dm-messages').innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem;padding:2rem 1.5rem;text-align:center;flex:1;">
+        <div style="font-size:2rem;opacity:.6;">🚫</div>
+        <div style="font-size:.88rem;font-weight:700;color:var(--text);">Нельзя написать самому себе</div>
+        <div style="font-size:.76rem;color:var(--muted);line-height:1.55;">Вы не можете отправить сообщение<br>на свой собственный аккаунт.</div>
+      </div>`;
+    const input = document.getElementById('dm-input');
+    const sendBtn = input?.nextElementSibling;
+    if (input) input.disabled = true;
+    if (sendBtn) sendBtn.disabled = true;
+    bg.style.display = 'block';
+    box.style.display = 'flex';
+    box.style.flexDirection = 'column';
+    return;
+  }
+
+  _dmPartner = username;
   document.getElementById('dm-modal-title').textContent = username;
   document.getElementById('dm-messages').innerHTML = `<div style="text-align:center;padding:1rem;color:var(--muted);font-size:.75rem;">Загрузка…</div>`;
+  const input = document.getElementById('dm-input');
+  const sendBtn = input?.nextElementSibling;
+  if (input) input.disabled = false;
+  if (sendBtn) sendBtn.disabled = false;
   bg.style.display = 'block';
   box.style.display = 'flex';
   box.style.flexDirection = 'column';
@@ -3219,7 +3202,8 @@ async function sendDm() {
       await _refreshDmChat();
     } else {
       const d = await r.json().catch(() => ({}));
-      alert(d.detail || 'Ошибка отправки');
+      const errEl = document.getElementById('dm-send-error');
+      if (errEl) { errEl.textContent = d.detail || 'Ошибка отправки'; errEl.style.display = 'block'; setTimeout(() => { errEl.style.display = 'none'; }, 3500); }
     }
   } catch {}
 }
