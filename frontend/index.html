@@ -1793,6 +1793,7 @@ function toggleDrawer() {
         setInterval(loadNotifications, 60000);
         loadDmUnread();
         setInterval(loadDmUnread, 30000);
+        setInterval(() => fetch('/api/auth/me', { credentials: 'include' }).catch(() => {}), 60000);
       });
     } else {
       localStorage.removeItem('user'); sessionStorage.removeItem('user');
@@ -1842,6 +1843,16 @@ function _dateOpts() {
 function fmtDate(iso) { if(!iso) return '—'; return new Date(iso).toLocaleDateString('ru-RU', _dateOpts()); }
 function fmtDateTime(iso) { if(!iso) return '—'; return new Date(iso).toLocaleString('ru-RU', {..._dateOpts(), hour:'2-digit', minute:'2-digit', hour12:!!(window.__H12) }); }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function _statusInfo(iso) {
+  if (!iso) return { dot:'#374151', label:'Не в сети', color:'#4b3f5c', glow:'' };
+  const m = (Date.now() - new Date(iso).getTime()) / 60000;
+  if (m < 5)    return { dot:'#22c55e', label:'Онлайн',           color:'#22c55e', glow:'0 0 7px rgba(34,197,94,.65)' };
+  if (m < 60)   { const v=Math.round(m); return { dot:'#f59e0b', label:`Был ${v} мин. назад`,  color:'#c9922a', glow:'' }; }
+  if (m < 1440) { const h=Math.floor(m/60); const w=h===1?'час':h<5?'часа':'часов'; return { dot:'#6b7280', label:`Был ${h} ${w} назад`,   color:'#6b5878', glow:'' }; }
+  const d=Math.floor(m/1440); const w=d===1?'день':d<5?'дня':'дней'; return { dot:'#374151', label:`Был ${d} ${w} назад`,   color:'#4b3f5c', glow:'' };
+}
+
 function fmtDuration(sec) {
   if (sec < 60) return `${sec}с`;
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
@@ -3063,21 +3074,16 @@ async function loadTeam() {
     const wrap = document.getElementById('team-section');
     const list = document.getElementById('team-list');
     if (!wrap || !list) return;
+    const _me = getUser();
     list.innerHTML = data.map((u, i) => {
-      const year = u.created_at ? new Date(u.created_at).getFullYear() : null;
       const av = u.avatar_url
         ? `<img src="${esc(u.avatar_url)}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;display:block;">`
         : `<div style="width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(120,0,40,0.7),rgba(80,0,80,0.5));display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:1.3rem;color:var(--gold);">${esc(u.username[0].toUpperCase())}</div>`;
 
-      // Online status
-      let dot = '';
-      if (u.last_active_at) {
-        const diffMin = (Date.now() - new Date(u.last_active_at).getTime()) / 60000;
-        if (diffMin < 15)
-          dot = `<span title="Онлайн" style="position:absolute;bottom:1px;right:1px;width:11px;height:11px;border-radius:50%;background:#22c55e;border:2px solid rgba(10,2,18,0.95);box-shadow:0 0 7px rgba(34,197,94,0.7);"></span>`;
-        else if (diffMin < 1440)
-          dot = `<span title="Был недавно" style="position:absolute;bottom:1px;right:1px;width:11px;height:11px;border-radius:50%;background:#f59e0b;border:2px solid rgba(10,2,18,0.95);"></span>`;
-      }
+      // Current user is always online
+      const effectiveIso = (_me && _me.username === u.username) ? new Date().toISOString() : u.last_active_at;
+      const st = _statusInfo(effectiveIso);
+      const dot = `<span title="${st.label}" style="position:absolute;bottom:1px;right:1px;width:11px;height:11px;border-radius:50%;background:${st.dot};border:2px solid rgba(10,2,18,0.95);${st.glow?'box-shadow:'+st.glow+';':''}"></span>`;
 
       const badgeLabel = u.admin_title || 'Админ';
       const titleHtml = `<div style="margin-top:.28rem;"><span style="font-size:.55rem;font-weight:700;letter-spacing:.07em;padding:.1rem .5rem;border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;font-family:'Inter',sans-serif;white-space:nowrap;">${esc(badgeLabel)}</span></div>`;
@@ -3093,6 +3099,10 @@ async function loadTeam() {
           </div>
           <div style="font-family:'Philosopher',serif;font-size:.82rem;font-weight:700;color:var(--text);letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .18s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'">${esc(u.username)}</div>
           ${titleHtml}
+          <div style="margin-top:.22rem;display:flex;align-items:center;justify-content:center;gap:.22rem;">
+            <span style="width:6px;height:6px;border-radius:50%;background:${st.dot};flex-shrink:0;${st.glow?'box-shadow:'+st.glow+';':''}"></span>
+            <span style="font-size:.58rem;color:${st.color};">${esc(st.label)}</span>
+          </div>
         </a>
         <button onclick="openDmCompose('${esc(u.username)}')" title="Написать сообщение"
           style="margin-top:.6rem;width:100%;display:flex;align-items:center;justify-content:center;gap:.3rem;padding:.3rem .5rem;background:rgba(70,0,110,0.18);border:1px solid rgba(100,0,140,0.32);color:var(--muted);border-radius:.45rem;font-size:.65rem;cursor:pointer;transition:all .2s;"

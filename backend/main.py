@@ -551,7 +551,7 @@ async def logout(response: Response, current_user: User = Depends(get_current_us
 @app.get("/api/auth/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     now = datetime.utcnow()
-    if not current_user.last_active_at or (now - current_user.last_active_at).total_seconds() > 300:
+    if not current_user.last_active_at or (now - current_user.last_active_at).total_seconds() > 60:
         current_user.last_active_at = now
         await db.commit()
     return UserOut.model_validate(current_user)
@@ -1703,6 +1703,7 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         "last_seen": last_seen.isoformat() if last_seen else None,
         "clan": clan,
         "admin_title": user.admin_title,
+        "last_active_at": user.last_active_at.isoformat() if user.last_active_at else None,
     }
 
 
