@@ -3077,24 +3077,29 @@ async function loadTeam() {
     const list = document.getElementById('team-list');
     if (!wrap || !list) return;
     list.innerHTML = data.map(u => {
-      const avatar = u.avatar_url
-        ? `<img src="${esc(u.avatar_url)}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;border:1px solid rgba(200,0,40,0.35);flex-shrink:0;">`
-        : `<div style="width:30px;height:30px;border-radius:50%;background:rgba(110,0,20,0.5);border:1px solid rgba(180,0,30,0.35);display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--gold);flex-shrink:0;">${esc(u.username[0].toUpperCase())}</div>`;
-      return `<div style="display:flex;align-items:center;gap:.6rem;padding:.4rem .5rem;border-radius:.55rem;transition:background .18s;" onmouseover="this.style.background='rgba(110,0,140,0.09)'" onmouseout="this.style.background=''">
-        ${avatar}
-        <div style="flex:1;min-width:0;text-align:center;">
-          <a href="/user.html?u=${encodeURIComponent(u.username)}" style="font-size:.8rem;color:var(--text);font-family:'Philosopher',serif;text-decoration:none;font-weight:600;transition:color .15s;display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'">${esc(u.username)}</a>
-        </div>
+      const year = u.created_at ? new Date(u.created_at).getFullYear() : null;
+      const av = u.avatar_url
+        ? `<img src="${esc(u.avatar_url)}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;display:block;">`
+        : `<div style="width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(120,0,40,0.7),rgba(80,0,80,0.5));display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:1.3rem;color:var(--gold);">${esc(u.username[0].toUpperCase())}</div>`;
+      return `<div style="background:rgba(12,3,20,0.72);border:1px solid rgba(110,0,28,0.28);border-radius:.85rem;padding:.85rem .65rem .7rem;text-align:center;transition:all .22s;position:relative;overflow:hidden;"
+        onmouseover="this.style.borderColor='rgba(180,0,42,0.55)';this.style.boxShadow='0 0 22px rgba(130,0,30,0.22),inset 0 0 14px rgba(100,0,20,0.07)';this.style.background='rgba(16,4,26,0.88)'"
+        onmouseout="this.style.borderColor='rgba(110,0,28,0.28)';this.style.boxShadow='';this.style.background='rgba(12,3,20,0.72)'">
+        <div style="position:absolute;top:0;left:20%;right:20%;height:1px;background:linear-gradient(90deg,transparent,rgba(200,0,42,0.3),transparent);"></div>
+        <a href="/user.html?u=${encodeURIComponent(u.username)}" style="text-decoration:none;display:block;" tabindex="-1">
+          <div style="width:52px;height:52px;border-radius:50%;margin:0 auto .6rem;border:2px solid rgba(180,0,35,0.4);box-shadow:0 0 14px rgba(160,0,30,0.25),0 0 0 3px rgba(90,0,20,0.18);overflow:hidden;transition:box-shadow .22s;">${av}</div>
+          <div style="font-family:'Philosopher',serif;font-size:.82rem;font-weight:700;color:var(--text);letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .18s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'">${esc(u.username)}</div>
+          ${year ? `<div style="font-size:.58rem;color:var(--muted);margin-top:.18rem;letter-spacing:.04em;">с ${year} г.</div>` : ''}
+        </a>
         <button onclick="openDmCompose('${esc(u.username)}')" title="Написать сообщение"
-          style="display:flex;align-items:center;gap:.3rem;padding:.28rem .6rem;background:rgba(80,0,120,0.15);border:1px solid rgba(110,0,150,0.3);color:var(--muted);border-radius:.45rem;font-size:.65rem;cursor:pointer;white-space:nowrap;transition:all .2s;flex-shrink:0;"
-          onmouseover="this.style.background='rgba(130,0,200,0.22)';this.style.borderColor='rgba(160,0,220,0.55)';this.style.color='#d4b8f0';this.style.boxShadow='0 0 12px rgba(130,0,200,0.25)'"
-          onmouseout="this.style.background='rgba(80,0,120,0.15)';this.style.borderColor='rgba(110,0,150,0.3)';this.style.color='var(--muted)';this.style.boxShadow=''">
+          style="margin-top:.6rem;width:100%;display:flex;align-items:center;justify-content:center;gap:.3rem;padding:.3rem .5rem;background:rgba(70,0,110,0.18);border:1px solid rgba(100,0,140,0.32);color:var(--muted);border-radius:.45rem;font-size:.65rem;cursor:pointer;transition:all .2s;"
+          onmouseover="this.style.background='rgba(120,0,190,0.25)';this.style.borderColor='rgba(150,0,210,0.55)';this.style.color='#d4b8f0';this.style.boxShadow='0 0 10px rgba(120,0,180,0.22)'"
+          onmouseout="this.style.background='rgba(70,0,110,0.18)';this.style.borderColor='rgba(100,0,140,0.32)';this.style.color='var(--muted)';this.style.boxShadow=''">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           написать
         </button>
       </div>`;
     }).join('');
-    list.style.cssText = 'display:flex;flex-direction:column;gap:.1rem;';
+    list.style.cssText = `display:grid;grid-template-columns:repeat(${data.length === 1 ? '1' : '2'},1fr);gap:.55rem;`;
     wrap.style.display = '';
   } catch {}
 }
