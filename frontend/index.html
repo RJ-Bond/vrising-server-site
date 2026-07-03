@@ -1052,6 +1052,26 @@
     }
     .sb-status-dot.online  { background:#4ade80; box-shadow:0 0 6px rgba(74,222,128,0.8); animation:dot-pulse 1.6s ease-in-out infinite; }
     .sb-status-dot.offline { background:#f87171; box-shadow:0 0 4px rgba(248,113,113,0.4); }
+
+    /* ── Light theme ── */
+    [data-theme="light"] {
+      --bg: #f0eaf6;
+      --bg2: #e8dff2;
+      --surface: rgba(240,234,246,0.95);
+      --text: #1a0a2e;
+      --muted: #6b5080;
+      --accent: #9b0021;
+      --gold: #8a6500;
+      --border: rgba(100,0,150,0.15);
+    }
+    [data-theme="light"] .glass-card {
+      background: rgba(255,255,255,0.75);
+      border-color: rgba(100,0,150,0.12);
+    }
+    [data-theme="light"] nav, [data-theme="light"] .glass-nav {
+      background: rgba(255,255,255,0.9);
+      border-bottom-color: rgba(100,0,150,0.12);
+    }
   </style>
 </head>
 <body>
@@ -1085,6 +1105,10 @@
           <div id="notif-list" style="max-height:320px;overflow-y:auto;"></div>
         </div>
       </div>
+      <button id="theme-toggle-btn" onclick="toggleTheme()" title="Сменить тему"
+        style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9488a8;font-size:.85rem;transition:all .2s;"
+        onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
+        onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">🌙</button>
       <a id="nav-login" href="/login.html" class="btn-sm">Войти</a>
       <button id="nav-logout" class="hidden pg-btn" style="font-size:.75rem;" onclick="doLogout()">Выйти</button>
     </div>
@@ -1158,6 +1182,9 @@
         <span class="sb-icon">⬆</span>
         <span>Аптайм 24ч</span>
         <span class="sb-val" id="sb-uptime1">—</span>
+        <div style="margin-top:.2rem;height:3px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden;width:60px;">
+          <div id="uptime-gauge-1" style="height:100%;width:0%;transition:width .5s;border-radius:9999px;"></div>
+        </div>
       </div>
       <div class="sb-item">
         <span class="sb-icon">⚔</span>
@@ -1177,6 +1204,9 @@
         <span class="sb-icon">⬆</span>
         <span>Аптайм 24ч</span>
         <span class="sb-val" id="sb-uptime2">—</span>
+        <div style="margin-top:.2rem;height:3px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden;width:60px;">
+          <div id="uptime-gauge-2" style="height:100%;width:0%;transition:width .5s;border-radius:9999px;"></div>
+        </div>
       </div>
       <div class="sb-item" id="sb-s2wipe-row">
         <span class="sb-icon">⚔</span>
@@ -1507,6 +1537,7 @@
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(180,0,30,0.5),transparent);margin-bottom:1rem;"></div>
     <div id="modal-thumb" style="display:none;margin-bottom:1rem;border-radius:8px;overflow:hidden;max-height:320px;"><img id="modal-thumb-img" src="" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;max-height:320px;"></div>
     <div id="modal-content" class="rich-content"></div>
+    <div id="poll-wrap" style="display:none;"></div>
     <div id="modal-reactions" style="display:flex;align-items:center;gap:.5rem;padding:.75rem 0;border-top:1px solid rgba(110,0,20,0.13);border-bottom:1px solid rgba(110,0,20,0.13);margin:.75rem 0;flex-wrap:wrap;"></div>
     <div class="comments-section">
       <div style="font-size:.75rem;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:.75rem;">Комментарии</div>
@@ -1883,6 +1914,11 @@ async function loadStats() {
       sbUp.textContent = s.uptime_24h + '%';
       sbUp.style.color = s.uptime_24h >= 95 ? '#86efac' : s.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
     }
+    const gauge1 = document.getElementById('uptime-gauge-1');
+    if (gauge1 && s.uptime_24h !== null) {
+      gauge1.style.width = s.uptime_24h + '%';
+      gauge1.style.background = s.uptime_24h >= 95 ? '#4ade80' : s.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
+    }
 
     // colour uptime
     [['stat-uptime24', s.uptime_24h], ['stat-uptime7d', s.uptime_7d]].forEach(([id, v]) => {
@@ -1908,6 +1944,11 @@ async function loadStats() {
     if (sbUp2 && s2.uptime_24h !== null) {
       sbUp2.textContent = s2.uptime_24h + '%';
       sbUp2.style.color = s2.uptime_24h >= 95 ? '#86efac' : s2.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
+    }
+    const gauge2 = document.getElementById('uptime-gauge-2');
+    if (gauge2 && s2.uptime_24h !== null) {
+      gauge2.style.width = s2.uptime_24h + '%';
+      gauge2.style.background = s2.uptime_24h >= 95 ? '#4ade80' : s2.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
     }
     [['stat-uptime24-s2', s2.uptime_24h], ['stat-uptime7d-s2', s2.uptime_7d]].forEach(([id, v]) => {
       const el = document.getElementById(id);
@@ -2233,6 +2274,7 @@ async function openNews(slug) {
     document.getElementById('modal-content').innerHTML = DOMPurify.sanitize(n.content || '');
     document.getElementById('modal-bg').classList.add('open');
     document.body.style.overflow = 'hidden';
+    loadPoll(slug);
     loadComments(slug);
     renderCommentForm(slug);
     loadReactions(slug);
@@ -3031,6 +3073,76 @@ document.addEventListener('click', e => {
   window.addEventListener('popstate', e => {
     if (e.state && e.state.newsSlug) openNews(e.state.newsSlug);
     else closeModal();
+  });
+})();
+
+// ── Poll functions ─────────────────────────────────────────────────────────
+async function loadPoll(slug) {
+  const wrap = document.getElementById('poll-wrap');
+  if (!wrap) return;
+  try {
+    const r = await fetch(`${API}/news/${slug}/poll`, {credentials:'include'});
+    if (!r.ok) { wrap.style.display='none'; return; }
+    const poll = await r.json();
+    wrap.style.display = '';
+    renderPoll(poll, slug, wrap);
+  } catch { wrap.style.display='none'; }
+}
+
+function renderPoll(poll, slug, wrap) {
+  if (!poll) { wrap.style.display = 'none'; return; }
+  const total = poll.total_votes || 0;
+  const closed = (poll.ends_at && new Date(poll.ends_at) < new Date());
+  const userVoted = poll.user_voted && poll.user_voted.length > 0;
+  wrap.style.display = '';
+  wrap.innerHTML = `
+    <div style="background:rgba(14,5,22,0.6);border:1px solid rgba(150,0,28,0.25);border-radius:.75rem;padding:1rem 1.25rem;margin-top:1rem;">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:.07em;text-transform:uppercase;margin-bottom:.6rem;">📊 Голосование</div>
+      <div style="font-size:.95rem;font-weight:600;color:#e2d8f0;margin-bottom:.85rem;">${esc(poll.question)}</div>
+      ${poll.options.map(o => {
+        const isVoted = poll.user_voted && poll.user_voted.includes(o.id);
+        const pct = total > 0 ? Math.round(o.votes / total * 100) : 0;
+        const showBar = total > 0 || closed;
+        const clickable = !closed && !userVoted;
+        return `<div style="margin-bottom:.5rem;${clickable?'cursor:pointer;':''}" ${clickable?`onclick="votePoll('${esc(slug)}',${o.id})"`:''}>
+          <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:.25rem;">
+            <span style="color:${isVoted?'#c9a04a':'#e2d8f0'};font-weight:${isVoted?'700':'400'};">${isVoted?'✓ ':''}${esc(o.text)}</span>
+            ${showBar?`<span style="color:var(--muted);font-size:.72rem;">${pct}% (${o.votes})</span>`:''}
+          </div>
+          ${showBar?`<div style="height:6px;background:rgba(255,255,255,.06);border-radius:9999px;overflow:hidden;">
+            <div style="height:100%;width:${pct}%;background:${isVoted?'#c9a04a':'rgba(150,0,28,0.6)'};border-radius:9999px;transition:width .4s;"></div>
+          </div>`:''}
+        </div>`;
+      }).join('')}
+      <div style="font-size:.68rem;color:var(--muted);margin-top:.5rem;">${total} голосов${closed?' · Голосование закрыто':''}</div>
+    </div>`;
+}
+
+async function votePoll(slug, optionId) {
+  const r = await fetch(`${API}/news/${slug}/poll/vote`, {
+    method: 'POST', credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ option_ids: [optionId] }),
+  });
+  loadPoll(slug);
+}
+
+// ── Theme toggle ───────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = next === 'dark' ? '🌙' : '☀️';
+}
+(function() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('theme-toggle-btn');
+    if (btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
   });
 })();
 </script>

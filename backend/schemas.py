@@ -56,6 +56,8 @@ class NewsCreate(BaseModel):
     thumbnail_url: Optional[str] = None
     tags: Optional[str] = None
     published: bool = True
+    publish_at: Optional[datetime] = None
+    is_template: bool = False
 
     @field_validator("title")
     @classmethod
@@ -73,6 +75,8 @@ class NewsUpdate(BaseModel):
     tags: Optional[str] = None
     published: Optional[bool] = None
     pinned: Optional[bool] = None
+    publish_at: Optional[datetime] = None
+    is_template: Optional[bool] = None
 
 
 class NewsOut(BaseModel):
@@ -86,6 +90,8 @@ class NewsOut(BaseModel):
     published: bool
     pinned: bool = False
     views: int = 0
+    publish_at: Optional[datetime] = None
+    is_template: bool = False
     created_at: datetime
     updated_at: datetime
     author: UserOut
@@ -103,6 +109,8 @@ class NewsListOut(BaseModel):
     published: bool
     pinned: bool = False
     views: int = 0
+    publish_at: Optional[datetime] = None
+    is_template: bool = False
     created_at: datetime
     author: UserOut
     comment_count: int = 0
@@ -356,3 +364,105 @@ class ClanOut(BaseModel):
 
 class ClanDetailOut(ClanOut):
     members: list[ClanMemberOut] = []
+
+
+class ReportCreate(BaseModel):
+    target_type: str
+    target_id: int
+    reason: str
+
+    @field_validator("target_type")
+    @classmethod
+    def validate_type(cls, v: str) -> str:
+        if v not in ("comment", "user", "news"):
+            raise ValueError("target_type must be comment, user, or news")
+        return v
+
+    @field_validator("reason")
+    @classmethod
+    def reason_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Reason cannot be empty")
+        return v[:512]
+
+
+class ReportReview(BaseModel):
+    status: str
+    admin_note: Optional[str] = None
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: str) -> str:
+        if v not in ("reviewed", "dismissed"):
+            raise ValueError("status must be reviewed or dismissed")
+        return v
+
+
+class ReportOut(BaseModel):
+    id: int
+    reporter_id: Optional[int] = None
+    target_type: str
+    target_id: int
+    reason: str
+    status: str
+    admin_note: Optional[str] = None
+    created_at: datetime
+    reviewed_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
+
+
+class PollOptionCreate(BaseModel):
+    text: str
+
+    @field_validator("text")
+    @classmethod
+    def not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Option text cannot be empty")
+        return v[:256]
+
+
+class PollCreate(BaseModel):
+    question: str
+    multiple: bool = False
+    ends_at: Optional[datetime] = None
+    options: list[PollOptionCreate]
+
+    @field_validator("question")
+    @classmethod
+    def question_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Question cannot be empty")
+        return v[:256]
+
+    @field_validator("options")
+    @classmethod
+    def min_options(cls, v: list) -> list:
+        if len(v) < 2:
+            raise ValueError("Poll must have at least 2 options")
+        return v
+
+
+class PollOptionOut(BaseModel):
+    id: int
+    text: str
+    votes: int = 0
+    model_config = {"from_attributes": True}
+
+
+class PollOut(BaseModel):
+    id: int
+    news_id: int
+    question: str
+    multiple: bool
+    ends_at: Optional[datetime] = None
+    created_at: datetime
+    options: list[PollOptionOut] = []
+    total_votes: int = 0
+    user_voted: list[int] = []
+    model_config = {"from_attributes": True}
+
+

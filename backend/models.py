@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Index, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Index, UniqueConstraint, Float
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -20,6 +20,7 @@ class User(Base):
     avatar_url = Column(String(512), nullable=True)
     clan_id = Column(Integer, ForeignKey("clans.id", ondelete="SET NULL"), nullable=True)
     rules_accepted_at = Column(DateTime, nullable=True)
+    game_nickname = Column(String(64), nullable=True)
 
 
 class Clan(Base):
@@ -47,6 +48,8 @@ class News(Base):
     published = Column(Boolean, default=True, nullable=False)
     pinned = Column(Boolean, default=False, nullable=False)
     views = Column(Integer, default=0, nullable=False)
+    publish_at = Column(DateTime, nullable=True)
+    is_template = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
@@ -167,3 +170,65 @@ class Notification(Base):
     read = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     __table_args__ = (Index("ix_notifications_user", "user_id", "read"),)
+
+
+class Report(Base):
+    __tablename__ = "reports"
+    id = Column(Integer, primary_key=True, index=True)
+    reporter_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    target_type = Column(String(32), nullable=False)  # "comment", "user", "news"
+    target_id = Column(Integer, nullable=False)
+    reason = Column(String(512), nullable=False)
+    status = Column(String(16), nullable=False, default="pending")  # pending, reviewed, dismissed
+    admin_note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    reviewed_at = Column(DateTime, nullable=True)
+
+
+class Poll(Base):
+    __tablename__ = "polls"
+    id = Column(Integer, primary_key=True, index=True)
+    news_id = Column(Integer, ForeignKey("news.id", ondelete="CASCADE"), nullable=False)
+    question = Column(String(256), nullable=False)
+    multiple = Column(Boolean, default=False, nullable=False)
+    ends_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    options = relationship("PollOption", back_populates="poll", cascade="all, delete-orphan", lazy="selectin")
+
+
+class PollOption(Base):
+    __tablename__ = "poll_options"
+    id = Column(Integer, primary_key=True, index=True)
+    poll_id = Column(Integer, ForeignKey("polls.id", ondelete="CASCADE"), nullable=False)
+    text = Column(String(256), nullable=False)
+    poll = relationship("Poll", back_populates="options")
+
+
+class PollVote(Base):
+    __tablename__ = "poll_votes"
+    id = Column(Integer, primary_key=True, index=True)
+    poll_id = Column(Integer, ForeignKey("polls.id", ondelete="CASCADE"), nullable=False)
+    option_id = Column(Integer, ForeignKey("poll_options.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    __table_args__ = (UniqueConstraint("poll_id", "user_id", name="uq_poll_vote"),)
+
+
+class PageView(Base):
+    __tablename__ = "page_views"
+    id = Column(Integer, primary_key=True, index=True)
+    path = Column(String(256), nullable=False)
+    ip_hash = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    __table_args__ = (Index("ix_page_views_date", "created_at"),)
+
+
+class ErrorLog(Base):
+    __tablename__ = "error_logs"
+    id = Column(Integer, primary_key=True, index=True)
+    path = Column(String(256), nullable=False)
+    method = Column(String(8), nullable=False, default="GET")
+    status_code = Column(Integer, nullable=False)
+    error = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    __table_args__ = (Index("ix_error_logs_date", "created_at"),)

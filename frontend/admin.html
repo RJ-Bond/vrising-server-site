@@ -283,8 +283,16 @@
       <button id="btn-players"   onclick="showSection('players')"   class="sidebar-btn">🎮 Игроки</button>
       <button id="btn-resets"    onclick="showSection('resets')"    class="sidebar-btn">🔑 Сброс паролей<span id="badge-resets" class="sidebar-badge" style="display:none;"></span></button>
 
+      <div class="sidebar-group-label">Модерация</div>
+      <button id="btn-reports"   onclick="showSection('reports')"   class="sidebar-btn">🚩 Жалобы<span id="badge-reports" class="sidebar-badge" style="display:none;"></span></button>
+
+      <div class="sidebar-group-label">Аналитика</div>
+      <button id="btn-analytics" onclick="showSection('analytics')" class="sidebar-btn">📈 Аналитика</button>
+      <button id="btn-backups"   onclick="showSection('backups')"   class="sidebar-btn">💾 Бэкапы</button>
+
       <div class="sidebar-group-label">Система</div>
       <button id="btn-log"       onclick="showSection('log')"       class="sidebar-btn">📋 Лог</button>
+      <button id="btn-errors"    onclick="showSection('errors')"    class="sidebar-btn">❌ Ошибки</button>
     </div>
   </aside>
 
@@ -449,12 +457,24 @@
 
         <!-- Footer controls -->
         <div class="glass-card rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
-          <div class="flex items-center gap-2">
-            <input id="editor-news-published" type="checkbox" checked style="width:1rem;height:1rem;accent-color:var(--accent);" />
-            <label style="margin:0;text-transform:none;font-size:.9rem;color:var(--text);">Опубликовано</label>
+          <div class="flex items-center gap-4 flex-wrap">
+            <div class="flex items-center gap-2">
+              <input id="editor-news-published" type="checkbox" checked style="width:1rem;height:1rem;accent-color:var(--accent);" />
+              <label style="margin:0;text-transform:none;font-size:.9rem;color:var(--text);">Опубликовано</label>
+            </div>
+            <div class="flex items-center gap-2">
+              <input id="editor-news-is-template" type="checkbox" style="width:1rem;height:1rem;accent-color:var(--accent);" />
+              <label style="margin:0;text-transform:none;font-size:.9rem;color:var(--text);">Шаблон</label>
+            </div>
+            <div id="schedule-wrap" style="display:flex;align-items:center;gap:.5rem;">
+              <label style="margin:0;text-transform:none;font-size:.85rem;color:var(--muted);">Запланировать:</label>
+              <input id="editor-news-publish-at" type="datetime-local" class="dark-input" style="width:auto;font-size:.82rem;padding:.35rem .6rem;" />
+              <button type="button" onclick="document.getElementById('editor-news-publish-at').value=''" style="font-size:.75rem;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;">✕</button>
+            </div>
           </div>
-          <div id="editor-error" class="error-box hidden" style="flex:1;margin:0 1rem;"></div>
-          <div class="flex gap-3">
+          <div id="editor-error" class="error-box hidden" style="flex:1;margin:0 1rem;min-width:0;"></div>
+          <div class="flex gap-3 flex-wrap">
+            <button onclick="openTemplates()" class="btn-ghost" style="font-size:.82rem;">📋 Шаблоны</button>
             <button onclick="previewNews()" class="btn-ghost">👁 Превью</button>
             <button onclick="submitEditor()" class="btn-primary">Сохранить</button>
             <button onclick="closeEditor()" class="btn-ghost">Отмена</button>
@@ -1062,6 +1082,14 @@
           </select>
         </div>
       </div>
+      <!-- Bulk panel -->
+      <div id="bulk-panel" style="display:none;align-items:center;gap:.75rem;padding:.75rem 1rem;margin-bottom:.75rem;background:rgba(120,0,28,.15);border:1px solid rgba(180,0,42,.3);border-radius:.6rem;">
+        <span id="bulk-count" style="font-size:.82rem;color:var(--muted);"></span>
+        <button onclick="executeBulk('ban')" style="font-size:.75rem;background:rgba(200,80,0,.2);border:1px solid rgba(200,100,0,.3);border-radius:.35rem;padding:.3rem .65rem;color:#fdba74;cursor:pointer;">🚫 Заблокировать</button>
+        <button onclick="executeBulk('unban')" style="font-size:.75rem;background:rgba(0,150,80,.15);border:1px solid rgba(0,180,100,.25);border-radius:.35rem;padding:.3rem .65rem;color:#6ee7b7;cursor:pointer;">✅ Разблокировать</button>
+        <button onclick="executeBulk('delete')" style="font-size:.75rem;background:rgba(180,0,28,.2);border:1px solid rgba(200,0,40,.3);border-radius:.35rem;padding:.3rem .65rem;color:#fca5a5;cursor:pointer;">🗑 Удалить</button>
+        <button onclick="clearBulk()" style="font-size:.72rem;background:none;border:none;color:var(--muted);cursor:pointer;margin-left:auto;">✕ Снять выделение</button>
+      </div>
       <div id="users-table" class="glass-card rounded-xl overflow-hidden">
         <p class="p-6" style="color:var(--muted);font-size:.85rem;">Загрузка...</p>
       </div>
@@ -1169,6 +1197,86 @@
       <div id="log-pagination" class="flex gap-2 mt-4"></div>
     </div>
 
+    <!-- REPORTS -->
+    <div id="section-reports" class="hidden">
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <h1 class="section-title">Жалобы</h1>
+        <select id="reports-status-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="loadReports(1)">
+          <option value="">Все</option>
+          <option value="pending">Ожидают рассмотрения</option>
+          <option value="reviewed">Рассмотрены</option>
+          <option value="dismissed">Отклонены</option>
+        </select>
+      </div>
+      <div class="glass-card rounded-xl overflow-hidden">
+        <table>
+          <thead><tr><th>ID</th><th>Тип</th><th>ID объекта</th><th>Причина</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
+          <tbody id="reports-table-body"></tbody>
+        </table>
+      </div>
+      <div id="reports-pagination" class="flex gap-2 mt-4"></div>
+    </div>
+
+    <!-- ANALYTICS -->
+    <div id="section-analytics" class="hidden">
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <h1 class="section-title">Аналитика</h1>
+        <select id="analytics-days" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="loadAnalytics()">
+          <option value="7">7 дней</option>
+          <option value="14">14 дней</option>
+          <option value="30">30 дней</option>
+          <option value="90">90 дней</option>
+        </select>
+      </div>
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
+        <div class="glass-card rounded-xl p-4">
+          <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem;">Всего просмотров</div>
+          <div id="analytics-total" style="font-size:2rem;font-weight:700;color:var(--gold);">—</div>
+        </div>
+      </div>
+      <div class="glass-card rounded-xl p-4 mb-4">
+        <h3 style="font-size:.82rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:1rem;">Просмотры по дням</h3>
+        <div id="analytics-chart" style="display:flex;align-items:flex-end;gap:4px;height:100px;"></div>
+        <div id="analytics-labels" style="display:flex;gap:4px;margin-top:4px;font-size:.65rem;color:var(--muted);overflow:hidden;"></div>
+      </div>
+      <div class="glass-card rounded-xl overflow-hidden">
+        <table>
+          <thead><tr><th>Страница</th><th>Просмотры</th></tr></thead>
+          <tbody id="analytics-pages-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- BACKUPS -->
+    <div id="section-backups" class="hidden">
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <h1 class="section-title">Бэкапы</h1>
+        <button onclick="createBackup()" class="btn-primary" style="font-size:.82rem;">💾 Создать бэкап</button>
+      </div>
+      <div id="backup-msg" style="margin-bottom:.75rem;font-size:.85rem;"></div>
+      <div class="glass-card rounded-xl overflow-hidden">
+        <table>
+          <thead><tr><th>Файл</th><th>Размер</th><th>Дата</th><th>Скачать</th></tr></thead>
+          <tbody id="backups-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ERROR LOG -->
+    <div id="section-errors" class="hidden">
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+        <h1 class="section-title">Лог ошибок</h1>
+        <span id="errors-total" style="font-size:.78rem;color:var(--muted);"></span>
+      </div>
+      <div class="glass-card rounded-xl overflow-hidden">
+        <table>
+          <thead><tr><th>Время</th><th>Метод</th><th>Путь</th><th>Код</th><th>Ошибка</th></tr></thead>
+          <tbody id="errors-table-body"></tbody>
+        </table>
+      </div>
+      <div id="errors-pagination" class="flex gap-2 mt-4"></div>
+    </div>
+
   </main>
 </div>
 
@@ -1258,8 +1366,9 @@ loadSidebarBadges();
 
 // ─── Sections ─────────────────────────────────────────────────────────────
 function showSection(name) {
-  ['dashboard','news','editor','settings','users','comments','players','files','log','resets','clans'].forEach(s => {
-    document.getElementById(`section-${s}`).classList.toggle('hidden', s !== name);
+  ['dashboard','news','editor','settings','users','comments','players','files','log','resets','clans','reports','analytics','backups','errors'].forEach(s => {
+    const el = document.getElementById(`section-${s}`);
+    if (el) el.classList.toggle('hidden', s !== name);
     const btn = document.getElementById(`btn-${s}`);
     if (btn) btn.className = 'sidebar-btn' + (s === name ? ' active' : '');
   });
@@ -1274,6 +1383,10 @@ function showSection(name) {
   if (name === 'log')        loadAuditLog(1);
   if (name === 'resets')     loadPasswordResets();
   if (name === 'clans')      loadAdminClans();
+  if (name === 'reports')    loadReports(1);
+  if (name === 'analytics')  loadAnalytics();
+  if (name === 'backups')    loadBackups();
+  if (name === 'errors')     loadErrors(1);
 }
 
 // ─── News list ────────────────────────────────────────────────────────────
@@ -1447,7 +1560,10 @@ async function openEditor(news) {
     document.getElementById('editor-news-summary').value = news.summary;
     document.getElementById('editor-news-thumb').value   = news.thumbnail_url || '';
     document.getElementById('editor-news-tags').value    = news.tags || '';
-    document.getElementById('editor-news-published').checked = news.published;
+    document.getElementById('editor-news-published').checked = !!news.published;
+    document.getElementById('editor-news-is-template').checked = !!news.is_template;
+    const pa = document.getElementById('editor-news-publish-at');
+    if (pa) pa.value = news.publish_at ? new Date(news.publish_at).toISOString().slice(0,16) : '';
     // dangerouslyPasteHTML keeps Quill's internal Delta in sync; defer so DOM is ready
     const html = news.content || '';
     setTimeout(() => quill.clipboard.dangerouslyPasteHTML(html), 0);
@@ -1459,6 +1575,9 @@ async function openEditor(news) {
     document.getElementById('editor-news-thumb').value   = '';
     document.getElementById('editor-news-tags').value    = '';
     document.getElementById('editor-news-published').checked = true;
+    document.getElementById('editor-news-is-template').checked = false;
+    const pa = document.getElementById('editor-news-publish-at');
+    if (pa) pa.value = '';
     setTimeout(() => quill.setText(''), 0);
   }
   _updateDiscordPreview();
@@ -1518,9 +1637,13 @@ async function submitEditor() {
     btn.disabled = false; btn.textContent = 'Сохранить'; return;
   }
 
+  const publishAt = document.getElementById('editor-news-publish-at')?.value;
+  const isTemplate = document.getElementById('editor-news-is-template')?.checked;
   const payload = { title, summary, content, thumbnail_url: thumb || null,
                     tags: tags || null,
-                    published: document.getElementById('editor-news-published').checked };
+                    published: document.getElementById('editor-news-published').checked,
+                    is_template: !!isTemplate,
+                    publish_at: publishAt ? new Date(publishAt).toISOString() : null };
   try {
     const res = await fetch(id ? `${API}/admin/news/${id}` : `${API}/admin/news`, {
       method: id ? 'PUT' : 'POST', credentials: 'include', headers: authH(), body: JSON.stringify(payload),
@@ -1854,7 +1977,7 @@ function renderUsersTable() {
 
   el.innerHTML = `
     <table>
-      <thead><tr>${sortTh('id','ID')}${sortTh('username','Имя')}${sortTh('email','Email')}${sortTh('role','Роль')}<th>Статус</th>${sortTh('created_at','Дата')}<th>Действия</th></tr></thead>
+      <thead><tr><th><input type="checkbox" id="select-all-users" onchange="toggleSelectAll(this)" style="accent-color:var(--accent)"></th>${sortTh('id','ID')}${sortTh('username','Имя')}${sortTh('email','Email')}${sortTh('role','Роль')}<th>Статус</th>${sortTh('created_at','Дата')}<th>Действия</th></tr></thead>
       <tbody>
         ${users.map(u => {
           const isSelf = u.id === currentUser?.id;
@@ -1885,6 +2008,7 @@ function renderUsersTable() {
                 <button class="btn-danger" style="font-size:.72rem;padding:.3rem .6rem;" onclick="deleteUser(${u.id},'${esc(u.username)}')">Удалить</button>
                </div>`;
           return `<tr>
+            <td><input type="checkbox" class="user-check" data-id="${u.id}" onchange="_onUserCheck()" style="accent-color:var(--accent);${isSelf?'display:none':''}" ${isSelf?'disabled':''}></td>
             <td style="color:var(--muted);">${u.id}</td>
             <td><span style="font-weight:600;color:var(--text);">${esc(u.username)}</span></td>
             <td style="color:var(--muted);font-size:.78rem;">${esc(u.email)}</td>
@@ -2847,6 +2971,193 @@ loadWipeHistory().then(() => {
     history.replaceState(null, '', '/admin.html');
   } catch {}
 })();
+
+// ─── Bulk user actions ────────────────────────────────────────────────────
+function _getCheckedUserIds() {
+  return [...document.querySelectorAll('.user-check:checked')].map(el => +el.dataset.id);
+}
+function _onUserCheck() {
+  const ids = _getCheckedUserIds();
+  const panel = document.getElementById('bulk-panel');
+  const countEl = document.getElementById('bulk-count');
+  if (ids.length > 0) {
+    panel.style.display = 'flex';
+    countEl.textContent = `Выбрано: ${ids.length}`;
+  } else {
+    panel.style.display = 'none';
+  }
+}
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.user-check:not(:disabled)').forEach(el => { el.checked = cb.checked; });
+  _onUserCheck();
+}
+function clearBulk() {
+  document.querySelectorAll('.user-check').forEach(el => el.checked = false);
+  const sa = document.getElementById('select-all-users');
+  if (sa) sa.checked = false;
+  _onUserCheck();
+}
+async function executeBulk(action) {
+  const ids = _getCheckedUserIds();
+  if (!ids.length) return;
+  const labels = { ban: 'заблокировать', unban: 'разблокировать', delete: 'удалить' };
+  if (!confirm(`${labels[action]} ${ids.length} пользователей?`)) return;
+  const r = await fetch(`${API}/admin/users/bulk`, {
+    method: 'POST', credentials: 'include', headers: authH(),
+    body: JSON.stringify({ user_ids: ids, action }),
+  });
+  if (r.ok) {
+    const d = await r.json();
+    showToast(`Выполнено: ${d.affected} пользователей`, 'success');
+    clearBulk();
+    loadUsers();
+  } else {
+    showToast('Ошибка выполнения операции', 'error');
+  }
+}
+
+// ─── Templates ────────────────────────────────────────────────────────────
+let _templatesModal = null;
+async function openTemplates() {
+  const templates = await fetch(`${API}/admin/news/templates`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => []);
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;';
+  modal.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);" onclick="closeTemplates()"></div>
+    <div style="position:relative;background:rgba(14,5,22,.97);border:1px solid rgba(180,0,35,.4);border-radius:1rem;padding:1.5rem;max-width:560px;width:100%;box-shadow:0 8px 48px rgba(0,0,0,.7);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h3 style="font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;">Шаблоны новостей</h3>
+        <button onclick="closeTemplates()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;">✕</button>
+      </div>
+      ${templates.length ? templates.map(t => `
+        <div style="padding:.75rem;border:1px solid rgba(150,0,28,.25);border-radius:.5rem;margin-bottom:.5rem;display:flex;align-items:center;justify-content:space-between;gap:.75rem;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='rgba(150,0,28,.1)'" onmouseout="this.style.background=''" onclick="applyTemplate(${JSON.stringify(t).replace(/"/g,'&quot;')})">
+          <div>
+            <div style="font-weight:600;font-size:.88rem;color:var(--text);">${esc(t.title)}</div>
+            <div style="font-size:.75rem;color:var(--muted);margin-top:.15rem;">${esc(t.summary||'')}</div>
+          </div>
+          <span style="font-size:.72rem;color:var(--muted);white-space:nowrap;">${fmtDate(t.created_at)}</span>
+        </div>`).join('') : '<p style="color:var(--muted);text-align:center;font-size:.85rem;">Нет сохранённых шаблонов</p>'}
+    </div>`;
+  document.body.appendChild(modal);
+  _templatesModal = modal;
+}
+function closeTemplates() {
+  if (_templatesModal) { _templatesModal.remove(); _templatesModal = null; }
+}
+function applyTemplate(t) {
+  document.getElementById('editor-news-title').value = t.title || '';
+  document.getElementById('editor-news-summary').value = t.summary || '';
+  document.getElementById('editor-news-thumb').value = t.thumbnail_url || '';
+  document.getElementById('editor-news-tags').value = t.tags || '';
+  if (quill && t.content) setTimeout(() => quill.clipboard.dangerouslyPasteHTML(t.content), 0);
+  closeTemplates();
+  _updateDiscordPreview();
+}
+
+// ─── Reports ──────────────────────────────────────────────────────────────
+let _reportsPage = 1;
+async function loadReports(page = 1) {
+  _reportsPage = page;
+  const status = document.getElementById('reports-status-filter').value;
+  const params = new URLSearchParams({ page, per_page: 20, ...(status ? { status } : {}) });
+  const data = await fetch(`${API}/admin/reports?${params}`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => ({ total: 0, items: [] }));
+  const tbody = document.getElementById('reports-table-body');
+  if (!data.items?.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Жалоб нет</td></tr>'; return; }
+  tbody.innerHTML = data.items.map(r => `
+    <tr>
+      <td>${r.id}</td>
+      <td><span style="font-size:.75rem;background:rgba(150,0,28,0.2);padding:.15rem .4rem;border-radius:.3rem;">${esc(r.target_type)}</span></td>
+      <td>${r.target_id}</td>
+      <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.reason)}">${esc(r.reason)}</td>
+      <td><span style="font-size:.72rem;padding:.15rem .5rem;border-radius:.3rem;background:${r.status==='pending'?'rgba(200,150,0,.2)':r.status==='reviewed'?'rgba(0,150,100,.2)':'rgba(100,100,100,.2)'};">${r.status}</span></td>
+      <td style="white-space:nowrap;">${fmtDate(r.created_at)}</td>
+      <td>
+        ${r.status === 'pending' ? `
+        <button onclick="reviewReport(${r.id},'reviewed')" style="font-size:.72rem;background:rgba(0,150,100,.2);border:1px solid rgba(0,200,130,.3);border-radius:.3rem;padding:.2rem .5rem;color:#6ee7b7;cursor:pointer;margin-right:.25rem;">✓ Рассмотрено</button>
+        <button onclick="reviewReport(${r.id},'dismissed')" style="font-size:.72rem;background:rgba(100,100,100,.15);border:1px solid rgba(150,150,150,.2);border-radius:.3rem;padding:.2rem .5rem;color:var(--muted);cursor:pointer;">✗ Отклонить</button>
+        ` : '—'}
+      </td>
+    </tr>`).join('');
+  const pages = Math.ceil(data.total / 20);
+  document.getElementById('reports-pagination').innerHTML = Array.from({length:pages},(_,i)=>
+    `<button onclick="loadReports(${i+1})" style="padding:.3rem .7rem;border-radius:.4rem;border:1px solid rgba(150,0,28,.3);background:${i+1===page?'rgba(180,0,40,.3)':'rgba(20,0,40,.5)'};color:${i+1===page?'#fca5a5':'var(--muted)'};cursor:pointer;font-size:.78rem;">${i+1}</button>`
+  ).join('');
+}
+async function reviewReport(id, status) {
+  await fetch(`${API}/admin/reports/${id}`, { method: 'PATCH', credentials: 'include', headers: authH(), body: JSON.stringify({ status }) });
+  loadReports(_reportsPage);
+}
+
+// ─── Analytics ────────────────────────────────────────────────────────────
+async function loadAnalytics() {
+  const days = document.getElementById('analytics-days').value;
+  const data = await fetch(`${API}/admin/analytics?days=${days}`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => null);
+  if (!data) return;
+  document.getElementById('analytics-total').textContent = data.total_views.toLocaleString('ru-RU');
+  // Chart
+  const chart = document.getElementById('analytics-chart');
+  const labels = document.getElementById('analytics-labels');
+  const max = Math.max(...data.by_day.map(d => d.views), 1);
+  chart.innerHTML = data.by_day.map(d => {
+    const h = Math.max(4, Math.round((d.views / max) * 96));
+    return `<div title="${d.day}: ${d.views} просмотров" style="flex:1;background:linear-gradient(to top,rgba(181,0,42,.6),rgba(181,0,42,.3));border-radius:3px 3px 0 0;height:${h}px;min-width:4px;"></div>`;
+  }).join('');
+  labels.innerHTML = data.by_day.map(d => `<div style="flex:1;text-align:center;overflow:hidden;font-size:.6rem;">${d.day.slice(5)}</div>`).join('');
+  // Top pages
+  document.getElementById('analytics-pages-body').innerHTML = data.top_pages.map(p =>
+    `<tr><td>${esc(p.path)}</td><td>${p.views}</td></tr>`
+  ).join('') || '<tr><td colspan="2" style="text-align:center;color:var(--muted);">Нет данных</td></tr>';
+}
+
+// ─── Backups ──────────────────────────────────────────────────────────────
+async function loadBackups() {
+  const data = await fetch(`${API}/admin/backups`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => []);
+  const tbody = document.getElementById('backups-table-body');
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Бэкапов нет</td></tr>'; return; }
+  tbody.innerHTML = data.map(b => `
+    <tr>
+      <td>${esc(b.filename)}</td>
+      <td>${(b.size/1024).toFixed(1)} KB</td>
+      <td>${fmtDateTime(b.created_at)}</td>
+      <td><a href="${API}/admin/backups/${encodeURIComponent(b.filename)}" style="font-size:.78rem;color:#93c5fd;text-decoration:underline;">⬇ Скачать</a></td>
+    </tr>`).join('');
+}
+async function createBackup() {
+  const msg = document.getElementById('backup-msg');
+  msg.textContent = '⏳ Создаём бэкап...';
+  const r = await fetch(`${API}/admin/backups/create`, { method: 'POST', credentials: 'include', headers: authH() });
+  if (r.ok) {
+    const d = await r.json();
+    msg.style.color = '#6ee7b7';
+    msg.textContent = `✅ Бэкап создан: ${d.filename} (${(d.size/1024).toFixed(1)} KB)`;
+    loadBackups();
+  } else {
+    msg.style.color = '#fca5a5';
+    msg.textContent = '❌ Ошибка создания бэкапа';
+  }
+}
+
+// ─── Error log ────────────────────────────────────────────────────────────
+let _errorsPage = 1;
+async function loadErrors(page = 1) {
+  _errorsPage = page;
+  const data = await fetch(`${API}/admin/errors?page=${page}&per_page=50`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => ({ total: 0, items: [] }));
+  document.getElementById('errors-total').textContent = `Всего: ${data.total}`;
+  const tbody = document.getElementById('errors-table-body');
+  if (!data.items?.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Ошибок нет</td></tr>'; return; }
+  tbody.innerHTML = data.items.map(e => `
+    <tr>
+      <td style="white-space:nowrap;font-size:.75rem;">${fmtDateTime(e.created_at)}</td>
+      <td><span style="font-size:.7rem;background:rgba(100,100,200,.2);padding:.1rem .35rem;border-radius:.25rem;">${esc(e.method)}</span></td>
+      <td style="font-size:.78rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(e.path)}</td>
+      <td><span style="font-size:.75rem;color:${e.status_code>=500?'#fca5a5':'#fcd34d'};">${e.status_code}</span></td>
+      <td style="font-size:.72rem;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(e.error||'')}</td>
+    </tr>`).join('');
+  const pages = Math.ceil(data.total / 50);
+  document.getElementById('errors-pagination').innerHTML = Array.from({length:pages},(_,i)=>
+    `<button onclick="loadErrors(${i+1})" style="padding:.3rem .7rem;border-radius:.4rem;border:1px solid rgba(150,0,28,.3);background:${i+1===page?'rgba(180,0,40,.3)':'rgba(20,0,40,.5)'};color:${i+1===page?'#fca5a5':'var(--muted)'};cursor:pointer;font-size:.78rem;">${i+1}</button>`
+  ).join('');
+}
 </script>
 
 <!-- Preview modal -->

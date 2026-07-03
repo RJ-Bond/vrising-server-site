@@ -171,6 +171,26 @@
       .stat-key, .stat-val { font-size:.8rem; }
       #profile-email { word-break:break-all; }
     }
+
+    /* ── Light theme ── */
+    [data-theme="light"] {
+      --bg: #f0eaf6;
+      --bg2: #e8dff2;
+      --surface: rgba(240,234,246,0.95);
+      --text: #1a0a2e;
+      --muted: #6b5080;
+      --accent: #9b0021;
+      --gold: #8a6500;
+      --border: rgba(100,0,150,0.15);
+    }
+    [data-theme="light"] .glass-card {
+      background: rgba(255,255,255,0.75);
+      border-color: rgba(100,0,150,0.12);
+    }
+    [data-theme="light"] nav, [data-theme="light"] .glass-nav {
+      background: rgba(255,255,255,0.9);
+      border-bottom-color: rgba(100,0,150,0.12);
+    }
   </style>
 </head>
 <body>
@@ -197,6 +217,10 @@
           <div id="notif-list" style="max-height:320px;overflow-y:auto;"></div>
         </div>
       </div>
+      <button id="theme-toggle-btn" onclick="toggleTheme()" title="Сменить тему"
+        style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9488a8;font-size:.85rem;transition:all .2s;"
+        onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
+        onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">🌙</button>
       <button onclick="doLogout()" class="btn btn-ghost" style="font-size:.72rem;">Выйти</button>
     </div>
   </div>
@@ -275,6 +299,21 @@
     <div class="stat-row">
       <span class="stat-key">Правила сервера</span>
       <span id="profile-rules" class="stat-val">—</span>
+    </div>
+  </div>
+
+  <!-- Game nickname -->
+  <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Игровой профиль —</h2>
+    <div style="margin-bottom:.75rem;">
+      <label style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:.35rem;">Игровой ник (в V Rising)</label>
+      <div style="display:flex;gap:.5rem;">
+        <input id="game-nickname-input" type="text" maxlength="64" placeholder="Ваш ник в игре"
+          style="flex:1;background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.25);border-radius:.55rem;padding:.55rem .9rem;color:#e2d8f0;font-size:.85rem;font-family:'Inter',sans-serif;outline:none;">
+        <button onclick="saveGameNickname()"
+          style="padding:.5rem 1rem;background:rgba(150,0,28,.2);border:1px solid rgba(150,0,28,.4);color:#e2d8f0;border-radius:.55rem;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;">Сохранить</button>
+      </div>
+      <div id="game-nickname-status" style="font-size:.7rem;margin-top:.3rem;"></div>
     </div>
   </div>
 
@@ -499,6 +538,10 @@ async function loadProfile() {
 
     if (u.role === 'admin') document.getElementById('admin-link').style.display = '';
 
+    // Fill game nickname
+    const nickInput = document.getElementById('game-nickname-input');
+    if (nickInput && u.game_nickname) nickInput.value = u.game_nickname;
+
     // Load playtime for rank
     try {
       const pub = await fetch(`${API}/users/${encodeURIComponent(u.username)}`).then(r => r.json());
@@ -522,6 +565,31 @@ async function loadProfile() {
       applySiteBackground(s.bg_image_url);
     } catch {}
   } catch { document.getElementById('profile-error').style.display = ''; }
+}
+
+async function saveGameNickname() {
+  const input = document.getElementById('game-nickname-input');
+  const statusEl = document.getElementById('game-nickname-status');
+  const nick = (input?.value || '').trim();
+  try {
+    const r = await fetch(`${API}/profile/game-nickname`, {
+      method: 'PUT', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ game_nickname: nick }),
+    });
+    if (r.ok) {
+      statusEl.textContent = '✔ Сохранено';
+      statusEl.style.color = '#4ade80';
+    } else {
+      const d = await r.json().catch(() => ({}));
+      statusEl.textContent = '✘ ' + (d.detail || 'Ошибка');
+      statusEl.style.color = '#f87171';
+    }
+  } catch {
+    statusEl.textContent = '✘ Ошибка соединения';
+    statusEl.style.color = '#f87171';
+  }
+  setTimeout(() => { statusEl.textContent = ''; }, 3000);
 }
 
 loadProfile();
@@ -572,6 +640,25 @@ document.addEventListener('click', e => {
     if (panel) panel.style.display = 'none';
   }
 });
+
+// ── Theme toggle ────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = next === 'dark' ? '🌙' : '☀️';
+}
+(function() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('theme-toggle-btn');
+    if (btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
+  });
+})();
 </script>
 </body>
 </html>

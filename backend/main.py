@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, text, or_, update
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog
 from .auth import (
     verify_password,
     get_password_hash,
@@ -75,6 +75,11 @@ from .schemas import (
     ClanUpdate,
     ClanOut,
     ClanDetailOut,
+    ReportCreate,
+    ReportReview,
+    ReportOut,
+    PollCreate,
+    PollOut,
 )
 
 OVERSEER_PROMPT = """Ты — Тёмный Управляющий Замком, древний вампирский дух, хранитель этого сервера V Rising.
@@ -151,6 +156,35 @@ async def _send_reset_email(to_email: str, reset_url: str) -> bool:
         return False
 
 
+async def _send_notification_email(to_email: str, subject: str, body_text: str, body_html: str) -> bool:
+    host = os.getenv("SMTP_HOST", "").strip()
+    if not host:
+        return False
+    try:
+        import aiosmtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+        port = int(os.getenv("SMTP_PORT", "587"))
+        user = os.getenv("SMTP_USER", "")
+        password = os.getenv("SMTP_PASS", "")
+        from_addr = os.getenv("SMTP_FROM", "noreply@localhost")
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"] = from_addr
+        msg["To"] = to_email
+        msg.attach(MIMEText(body_text, "plain", "utf-8"))
+        msg.attach(MIMEText(body_html, "html", "utf-8"))
+        await aiosmtplib.send(
+            msg, hostname=host, port=port,
+            username=user or None, password=password or None,
+            start_tls=(port == 587),
+        )
+        return True
+    except Exception as e:
+        logger.error("Failed to send notification email: %s", e)
+        return False
+
+
 async def _seed_defaults(db: AsyncSession):
     default_settings = [
         Setting(key="setup_completed", value="false"),
@@ -222,6 +256,17 @@ async def lifespan(app: FastAPI):
             "CREATE TABLE IF NOT EXISTS comment_reactions (id INTEGER PRIMARY KEY, comment_id INTEGER REFERENCES comments(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, emoji VARCHAR(10) NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(comment_id, user_id, emoji))",
             "CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, type VARCHAR(32) NOT NULL, data TEXT NOT NULL DEFAULT '{}', read BOOLEAN NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
             "CREATE INDEX IF NOT EXISTS ix_notifications_user ON notifications(user_id, read)",
+            "ALTER TABLE users ADD COLUMN game_nickname VARCHAR(64) DEFAULT NULL",
+            "ALTER TABLE news ADD COLUMN publish_at DATETIME DEFAULT NULL",
+            "ALTER TABLE news ADD COLUMN is_template BOOLEAN DEFAULT 0 NOT NULL",
+            "CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY, reporter_id INTEGER REFERENCES users(id) ON DELETE SET NULL, target_type VARCHAR(32) NOT NULL, target_id INTEGER NOT NULL, reason VARCHAR(512) NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'pending', admin_note TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, reviewed_at DATETIME)",
+            "CREATE TABLE IF NOT EXISTS polls (id INTEGER PRIMARY KEY, news_id INTEGER REFERENCES news(id) ON DELETE CASCADE, question VARCHAR(256) NOT NULL, multiple BOOLEAN NOT NULL DEFAULT 0, ends_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS poll_options (id INTEGER PRIMARY KEY, poll_id INTEGER REFERENCES polls(id) ON DELETE CASCADE, text VARCHAR(256) NOT NULL)",
+            "CREATE TABLE IF NOT EXISTS poll_votes (id INTEGER PRIMARY KEY, poll_id INTEGER REFERENCES polls(id) ON DELETE CASCADE, option_id INTEGER REFERENCES poll_options(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(poll_id, user_id))",
+            "CREATE TABLE IF NOT EXISTS page_views (id INTEGER PRIMARY KEY, path VARCHAR(256) NOT NULL, ip_hash VARCHAR(64), created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE INDEX IF NOT EXISTS ix_page_views_date ON page_views(created_at)",
+            "CREATE TABLE IF NOT EXISTS error_logs (id INTEGER PRIMARY KEY, path VARCHAR(256) NOT NULL, method VARCHAR(8) NOT NULL DEFAULT 'GET', status_code INTEGER NOT NULL, error TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE INDEX IF NOT EXISTS ix_error_logs_date ON error_logs(created_at)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -250,7 +295,13 @@ async def lifespan(app: FastAPI):
             snaps = snaps_res.scalars().all()
             if snaps:
                 init_history(ip, port, [(s.recorded_at.timestamp(), s.players) for s in snaps])
+
+    # Start background tasks
+    task_publish = asyncio.create_task(_scheduled_publish_task())
+    task_backup = asyncio.create_task(_auto_backup_task())
     yield
+    task_publish.cancel()
+    task_backup.cancel()
 
 
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
@@ -269,6 +320,44 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
+
+
+import hashlib
+from starlette.middleware.base import BaseHTTPMiddleware
+
+
+class PageViewMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        path = request.url.path
+        if (
+            request.method == "GET"
+            and not path.startswith("/api/")
+            and not path.startswith("/uploads/")
+            and "." not in path.split("/")[-1]
+        ):
+            try:
+                ip = request.client.host if request.client else ""
+                ip_hash = hashlib.sha256(ip.encode()).hexdigest()[:16] if ip else None
+                async with AsyncSession(engine, expire_on_commit=False) as db:
+                    db.add(PageView(path=path or "/", ip_hash=ip_hash))
+                    await db.commit()
+            except Exception:
+                pass
+        if response.status_code >= 500 and path.startswith("/api/"):
+            try:
+                async with AsyncSession(engine, expire_on_commit=False) as db:
+                    db.add(ErrorLog(
+                        path=path, method=request.method,
+                        status_code=response.status_code, error=None,
+                    ))
+                    await db.commit()
+            except Exception:
+                pass
+        return response
+
+
+app.add_middleware(PageViewMiddleware)
 
 
 # ─── Version ────────────────────────────────────────────────────────────────
@@ -1074,6 +1163,15 @@ async def add_comment(
                 }, ensure_ascii=False)
             ))
             await db.commit()
+            # Send email notification
+            parent_user = await db.get(User, parent_c.author_id)
+            if parent_user and parent_user.email:
+                asyncio.create_task(_send_notification_email(
+                    parent_user.email,
+                    f"Новый ответ на ваш комментарий — {news.title}",
+                    f"{current_user.username} ответил на ваш комментарий:\n\n{body.content[:200]}\n\nНовость: {news.title}",
+                    f"<p><b>{current_user.username}</b> ответил на ваш комментарий в новости <b>{news.title}</b>:</p><blockquote>{body.content[:200]}</blockquote>",
+                ))
     return {
         "id": comment.id,
         "content": comment.content,
@@ -2295,3 +2393,444 @@ async def get_audit_log(
             for r in rows
         ],
     }
+
+
+# ─── Background tasks ────────────────────────────────────────────────────────
+
+async def _scheduled_publish_task():
+    """Publish scheduled news posts when their publish_at time is reached."""
+    while True:
+        try:
+            await asyncio.sleep(60)
+            now = datetime.utcnow()
+            async with AsyncSession(engine, expire_on_commit=False) as db:
+                rows = (await db.execute(
+                    select(News).where(
+                        News.published == False,
+                        News.is_template == False,
+                        News.publish_at != None,
+                        News.publish_at <= now,
+                    )
+                )).scalars().all()
+                for n in rows:
+                    n.published = True
+                    n.publish_at = None
+                    logger.info("Auto-published news id=%s slug=%s", n.id, n.slug)
+                if rows:
+                    await db.commit()
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error("_scheduled_publish_task error: %s", e)
+
+
+BACKUP_DIR = Path("/data/backups")
+
+
+async def _auto_backup_task():
+    """Create daily DB backup at midnight UTC."""
+    while True:
+        try:
+            now = datetime.utcnow()
+            next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+            await asyncio.sleep((next_midnight - now).total_seconds())
+            BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+            db_candidates = [Path("backend/vrising.db"), Path("vrising.db"), Path("/app/backend/vrising.db"), Path("/data/vrising.db")]
+            src = next((p for p in db_candidates if p.exists()), None)
+            if src:
+                import shutil
+                ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                dst = BACKUP_DIR / f"vrising_{ts}.db"
+                shutil.copy2(str(src), str(dst))
+                logger.info("Auto backup created: %s", dst)
+                # keep last 7 backups
+                backups = sorted(BACKUP_DIR.glob("vrising_*.db"))
+                for old in backups[:-7]:
+                    old.unlink(missing_ok=True)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error("_auto_backup_task error: %s", e)
+
+
+# ─── Game nickname ────────────────────────────────────────────────────────────
+
+class GameNicknameBody(BaseModel):
+    game_nickname: str
+
+
+@app.put("/api/profile/game-nickname")
+async def update_game_nickname(
+    body: GameNicknameBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    nick = body.game_nickname.strip()[:64]
+    current_user.game_nickname = nick or None
+    await db.commit()
+    return {"game_nickname": current_user.game_nickname}
+
+
+# ─── Reports ─────────────────────────────────────────────────────────────────
+
+@app.post("/api/reports", status_code=201)
+@limiter.limit("5/minute")
+async def create_report(
+    request: Request,
+    body: ReportCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    report = Report(
+        reporter_id=current_user.id,
+        target_type=body.target_type,
+        target_id=body.target_id,
+        reason=body.reason,
+    )
+    db.add(report)
+    await db.commit()
+    return {"ok": True, "id": report.id}
+
+
+@app.get("/api/admin/reports")
+async def list_reports(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    status: str = Query(""),
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    filters = []
+    if status.strip():
+        filters.append(Report.status == status.strip())
+    total = (await db.execute(select(func.count(Report.id)).where(*filters))).scalar_one()
+    rows = (await db.execute(
+        select(Report).where(*filters).order_by(Report.created_at.desc())
+        .offset((page - 1) * per_page).limit(per_page)
+    )).scalars().all()
+    return {
+        "total": total,
+        "items": [
+            {
+                "id": r.id, "reporter_id": r.reporter_id,
+                "target_type": r.target_type, "target_id": r.target_id,
+                "reason": r.reason, "status": r.status,
+                "admin_note": r.admin_note,
+                "created_at": r.created_at.isoformat(),
+                "reviewed_at": r.reviewed_at.isoformat() if r.reviewed_at else None,
+            }
+            for r in rows
+        ],
+    }
+
+
+@app.patch("/api/admin/reports/{report_id}")
+async def review_report(
+    report_id: int,
+    body: ReportReview,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    r = (await db.execute(select(Report).where(Report.id == report_id))).scalar_one_or_none()
+    if not r:
+        raise HTTPException(404, "Report not found")
+    r.status = body.status
+    r.admin_note = body.admin_note
+    r.reviewed_at = datetime.utcnow()
+    await log_audit(db, current_user, "review_report", f"id={report_id} status={body.status}")
+    await db.commit()
+    return {"ok": True}
+
+
+# ─── Polls ────────────────────────────────────────────────────────────────────
+
+@app.post("/api/news/{slug}/poll", status_code=201)
+async def create_poll(
+    slug: str,
+    body: PollCreate,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    news = (await db.execute(select(News).where(News.slug == slug))).scalar_one_or_none()
+    if not news:
+        raise HTTPException(404, "News not found")
+    existing = (await db.execute(select(Poll).where(Poll.news_id == news.id))).scalar_one_or_none()
+    if existing:
+        raise HTTPException(400, "Poll already exists for this news")
+    poll = Poll(
+        news_id=news.id,
+        question=body.question,
+        multiple=body.multiple,
+        ends_at=body.ends_at,
+    )
+    db.add(poll)
+    await db.flush()
+    for opt in body.options:
+        db.add(PollOption(poll_id=poll.id, text=opt.text))
+    await db.commit()
+    return {"ok": True, "poll_id": poll.id}
+
+
+@app.get("/api/news/{slug}/poll")
+async def get_poll(
+    slug: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    news = (await db.execute(select(News).where(News.slug == slug))).scalar_one_or_none()
+    if not news:
+        raise HTTPException(404, "News not found")
+    poll = (await db.execute(select(Poll).where(Poll.news_id == news.id))).scalar_one_or_none()
+    if not poll:
+        return None
+    # count votes per option
+    vote_rows = (await db.execute(
+        select(PollVote.option_id, func.count(PollVote.id).label("cnt"))
+        .where(PollVote.poll_id == poll.id)
+        .group_by(PollVote.option_id)
+    )).all()
+    vote_map = {r.option_id: r.cnt for r in vote_rows}
+    total_votes = sum(vote_map.values())
+
+    # get user voted options
+    user_voted: list[int] = []
+    try:
+        current_user = await get_current_user(request=request, db=db)
+        if current_user:
+            uv = (await db.execute(
+                select(PollVote.option_id).where(PollVote.poll_id == poll.id, PollVote.user_id == current_user.id)
+            )).scalars().all()
+            user_voted = list(uv)
+    except Exception:
+        pass
+
+    return {
+        "id": poll.id,
+        "news_id": poll.news_id,
+        "question": poll.question,
+        "multiple": poll.multiple,
+        "ends_at": poll.ends_at.isoformat() if poll.ends_at else None,
+        "created_at": poll.created_at.isoformat(),
+        "total_votes": total_votes,
+        "user_voted": user_voted,
+        "options": [
+            {"id": o.id, "text": o.text, "votes": vote_map.get(o.id, 0)}
+            for o in poll.options
+        ],
+    }
+
+
+@app.post("/api/news/{slug}/poll/vote")
+@limiter.limit("10/minute")
+async def vote_poll(
+    request: Request,
+    slug: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    body = await request.json()
+    option_ids = body.get("option_ids", [])
+    if not option_ids:
+        raise HTTPException(400, "option_ids required")
+
+    news = (await db.execute(select(News).where(News.slug == slug))).scalar_one_or_none()
+    if not news:
+        raise HTTPException(404, "News not found")
+    poll = (await db.execute(select(Poll).where(Poll.news_id == news.id))).scalar_one_or_none()
+    if not poll:
+        raise HTTPException(404, "Poll not found")
+    if poll.ends_at and datetime.utcnow() > poll.ends_at:
+        raise HTTPException(400, "Poll has ended")
+
+    existing = (await db.execute(
+        select(PollVote).where(PollVote.poll_id == poll.id, PollVote.user_id == current_user.id)
+    )).scalars().all()
+    if existing:
+        raise HTTPException(400, "Already voted")
+
+    if not poll.multiple:
+        option_ids = option_ids[:1]
+
+    for oid in option_ids:
+        opt = (await db.execute(select(PollOption).where(PollOption.id == oid, PollOption.poll_id == poll.id))).scalar_one_or_none()
+        if not opt:
+            raise HTTPException(400, f"Invalid option id {oid}")
+        db.add(PollVote(poll_id=poll.id, option_id=oid, user_id=current_user.id))
+    await db.commit()
+    return {"ok": True}
+
+
+@app.delete("/api/news/{slug}/poll", status_code=204)
+async def delete_poll(
+    slug: str,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    news = (await db.execute(select(News).where(News.slug == slug))).scalar_one_or_none()
+    if not news:
+        raise HTTPException(404, "News not found")
+    poll = (await db.execute(select(Poll).where(Poll.news_id == news.id))).scalar_one_or_none()
+    if poll:
+        await db.delete(poll)
+        await db.commit()
+
+
+# ─── Analytics (page views) ───────────────────────────────────────────────────
+
+@app.get("/api/admin/analytics")
+async def get_analytics(
+    days: int = Query(7, ge=1, le=90),
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    rows = (await db.execute(
+        select(
+            func.date(PageView.created_at).label("day"),
+            func.count(PageView.id).label("views"),
+            func.count(func.distinct(PageView.ip_hash)).label("unique"),
+        )
+        .where(PageView.created_at >= cutoff)
+        .group_by(func.date(PageView.created_at))
+        .order_by(func.date(PageView.created_at).asc())
+    )).all()
+
+    top_pages = (await db.execute(
+        select(PageView.path, func.count(PageView.id).label("cnt"))
+        .where(PageView.created_at >= cutoff)
+        .group_by(PageView.path)
+        .order_by(func.count(PageView.id).desc())
+        .limit(10)
+    )).all()
+
+    total_views = (await db.execute(
+        select(func.count(PageView.id)).where(PageView.created_at >= cutoff)
+    )).scalar_one()
+
+    return {
+        "days": days,
+        "total_views": total_views,
+        "by_day": [{"day": r.day, "views": r.views, "unique": r.unique} for r in rows],
+        "top_pages": [{"path": r.path, "views": r.cnt} for r in top_pages],
+    }
+
+
+# ─── Error log ────────────────────────────────────────────────────────────────
+
+@app.get("/api/admin/errors")
+async def get_error_log(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    total = (await db.execute(select(func.count(ErrorLog.id)))).scalar_one()
+    rows = (await db.execute(
+        select(ErrorLog).order_by(ErrorLog.created_at.desc())
+        .offset((page - 1) * per_page).limit(per_page)
+    )).scalars().all()
+    return {
+        "total": total,
+        "items": [
+            {"id": r.id, "path": r.path, "method": r.method,
+             "status_code": r.status_code, "error": r.error,
+             "created_at": r.created_at.isoformat()}
+            for r in rows
+        ],
+    }
+
+
+# ─── Auto backups list ────────────────────────────────────────────────────────
+
+@app.get("/api/admin/backups")
+async def list_backups(_: User = Depends(get_admin_user)):
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    files = sorted(BACKUP_DIR.glob("vrising_*.db"), reverse=True)
+    return [
+        {"filename": f.name, "size": f.stat().st_size,
+         "created_at": datetime.utcfromtimestamp(f.stat().st_mtime).isoformat()}
+        for f in files
+    ]
+
+
+@app.get("/api/admin/backups/{filename}")
+async def download_named_backup(filename: str, _: User = Depends(get_admin_user)):
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(400, "Invalid filename")
+    path = BACKUP_DIR / filename
+    if not path.exists():
+        raise HTTPException(404, "Backup not found")
+    return FileResponse(path=str(path), media_type="application/octet-stream", filename=filename)
+
+
+@app.post("/api/admin/backups/create", status_code=201)
+async def create_backup_now(current_user: User = Depends(get_admin_user)):
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    db_candidates = [Path("backend/vrising.db"), Path("vrising.db"), Path("/app/backend/vrising.db"), Path("/data/vrising.db")]
+    src = next((p for p in db_candidates if p.exists()), None)
+    if not src:
+        raise HTTPException(404, "Database file not found")
+    import shutil
+    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    dst = BACKUP_DIR / f"vrising_{ts}.db"
+    shutil.copy2(str(src), str(dst))
+    return {"filename": dst.name, "size": dst.stat().st_size}
+
+
+# ─── Bulk user actions ────────────────────────────────────────────────────────
+
+class BulkUserAction(BaseModel):
+    user_ids: list[int]
+    action: str  # "ban", "unban", "delete"
+
+
+@app.post("/api/admin/users/bulk")
+async def bulk_user_action(
+    body: BulkUserAction,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if body.action not in ("ban", "unban", "delete"):
+        raise HTTPException(400, "Invalid action")
+    if not body.user_ids:
+        raise HTTPException(400, "No user IDs provided")
+    if len(body.user_ids) > 100:
+        raise HTTPException(400, "Too many users (max 100)")
+
+    rows = (await db.execute(
+        select(User).where(User.id.in_(body.user_ids), User.role != "admin")
+    )).scalars().all()
+
+    affected = 0
+    for u in rows:
+        if body.action == "ban":
+            u.is_active = False
+            affected += 1
+        elif body.action == "unban":
+            u.is_active = True
+            affected += 1
+        elif body.action == "delete":
+            await db.delete(u)
+            affected += 1
+
+    await log_audit(db, current_user, f"bulk_{body.action}", f"ids={body.user_ids} affected={affected}")
+    await db.commit()
+    return {"affected": affected}
+
+
+# ─── News templates ───────────────────────────────────────────────────────────
+
+@app.get("/api/admin/news/templates")
+async def list_templates(
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    rows = (await db.execute(
+        select(News).where(News.is_template == True).order_by(News.created_at.desc())
+    )).scalars().all()
+    return [
+        {"id": r.id, "title": r.title, "summary": r.summary,
+         "content": r.content, "thumbnail_url": r.thumbnail_url,
+         "tags": r.tags, "created_at": r.created_at.isoformat()}
+        for r in rows
+    ]

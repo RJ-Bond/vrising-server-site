@@ -300,6 +300,10 @@
         <div id="notif-list" style="max-height:320px;overflow-y:auto;"></div>
       </div>
     </div>
+    <button id="theme-toggle-btn" onclick="toggleTheme()" title="Сменить тему"
+      style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9488a8;font-size:.85rem;transition:all .2s;"
+      onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
+      onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">🌙</button>
     <button class="nav-burger" onclick="toggleMobileNav()" aria-label="Меню">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
@@ -561,7 +565,7 @@ async function loadLeaderboard() {
           : `<span class="lb-avatar" style="background:${grad}">${esc(name.charAt(0).toUpperCase())}</span>`;
         const lastSession = p.last_duration > 0
           ? `<span class="lb-last-session">посл. сессия: ${fmtPlaytime(p.last_duration)}</span>` : '';
-        return `<a class="lb-row${isMe ? ' me' : ''}" href="/user.html?u=${encodeURIComponent(name)}">
+        return `<div class="lb-row${isMe ? ' me' : ''}" onclick="openPlayerModal('${esc(name)}',${_server})" style="cursor:pointer;">
           <span class="lb-rank ${rankCls}">${medal ? `<span class="lb-medal">${medal}</span>` : rank}</span>
           <span class="lb-avatar-wrap">${avatarHtml}<span class="lb-online-dot${isOnline ? ' show' : ''}"></span></span>
           <span class="lb-name-col">
@@ -570,7 +574,7 @@ async function loadLeaderboard() {
           </span>
           <span class="lb-time">${fmtPlaytime(p.total_seconds)}</span>
           <span class="lb-seen">${fmtSeen(p.last_seen)}</span>
-        </a>`;
+        </div>`;
       }).join('');
     }
     pag.style.display = (items.length === PER_PAGE || _page > 1) ? 'flex' : 'none';
@@ -670,6 +674,88 @@ document.addEventListener('click', e => {
     if (panel) panel.style.display = 'none';
   }
 });
+
+// ── Theme toggle ────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  const btn = document.getElementById('theme-toggle-btn');
+  if (btn) btn.textContent = next === 'dark' ? '🌙' : '☀️';
+}
+(function() {
+  const saved = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('theme-toggle-btn');
+    if (btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
+  });
+})();
+
+// ── Player modal ────────────────────────────────────────────────────────────
+let _playerModal = null;
+async function openPlayerModal(playerName, serverNum) {
+  if (_playerModal) { _playerModal.remove(); _playerModal = null; }
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:3rem 1rem;overflow-y:auto;';
+  modal.innerHTML = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(5px);" onclick="closePlayerModal()"></div>
+    <div style="position:relative;background:rgba(10,2,18,.97);border:1px solid rgba(180,0,35,.4);border-radius:1rem;padding:1.75rem;max-width:400px;width:100%;box-shadow:0 8px 48px rgba(0,0,0,.7);" id="player-modal-inner">
+      <button onclick="closePlayerModal()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:#9488a8;cursor:pointer;font-size:1.1rem;line-height:1;padding:.2rem;">✕</button>
+      <div id="player-modal-content" style="text-align:center;">
+        <div style="width:3rem;height:3rem;border-radius:50%;background:rgba(150,0,28,.3);margin:0 auto .75rem;display:flex;align-items:center;justify-content:center;font-size:1.2rem;">⚔</div>
+        <div style="color:#9488a8;font-size:.85rem;">Загрузка...</div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  _playerModal = modal;
+
+  try {
+    const data = await fetch(`${API}/users/${encodeURIComponent(playerName)}`).then(r => r.ok ? r.json() : null);
+    const inner = document.getElementById('player-modal-content');
+    if (!data) {
+      inner.innerHTML = '<p style="color:#f87171;font-size:.85rem;">Игрок не найден</p>';
+      return;
+    }
+    const totalH = Math.floor((data.total_seconds||0) / 3600);
+    const totalM = Math.floor(((data.total_seconds||0) % 3600) / 60);
+    const lastH  = Math.floor((data.last_duration||0) / 3600);
+    const lastM  = Math.floor(((data.last_duration||0) % 3600) / 60);
+    const avatarHtml = data.avatar_url
+      ? `<img src="${esc(data.avatar_url)}" alt="" style="width:4rem;height:4rem;border-radius:50%;object-fit:cover;margin:0 auto .75rem;display:block;border:2px solid rgba(150,0,28,.5);">`
+      : `<div style="width:4rem;height:4rem;border-radius:50%;background:${nameGradient(playerName)};margin:0 auto .75rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:#fff;">${esc(playerName.charAt(0).toUpperCase())}</div>`;
+    const isOnline = _onlineNames.has(playerName);
+    inner.innerHTML = `
+      ${avatarHtml}
+      <h3 style="font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;color:#d4c4e0;margin-bottom:.25rem;">${esc(playerName)}</h3>
+      ${isOnline ? '<div style="display:inline-flex;align-items:center;gap:.35rem;background:rgba(0,70,15,.25);border:1px solid rgba(0,160,35,.4);color:#86efac;font-size:.7rem;font-weight:700;padding:.2rem .6rem;border-radius:9999px;margin-bottom:.75rem;"><span style="width:.45rem;height:.45rem;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;"></span>В сети</div>' : ''}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.85rem;text-align:left;">
+        <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.6rem .8rem;">
+          <div style="font-size:.6rem;color:#9488a8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;">Всего времени</div>
+          <div style="font-size:1rem;font-weight:700;color:#e2d8f0;font-family:'Oswald',sans-serif;">${totalH}ч ${totalM}м</div>
+        </div>
+        <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.6rem .8rem;">
+          <div style="font-size:.6rem;color:#9488a8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;">Последняя сессия</div>
+          <div style="font-size:1rem;font-weight:700;color:#e2d8f0;font-family:'Oswald',sans-serif;">${lastH}ч ${lastM}м</div>
+        </div>
+        <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.6rem .8rem;grid-column:span 2;">
+          <div style="font-size:.6rem;color:#9488a8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;">Последний вход</div>
+          <div style="font-size:.88rem;color:#e2d8f0;">${data.last_seen ? new Date(data.last_seen).toLocaleString('ru-RU', {timeZone: window.__TZ||'Europe/Moscow'}) : '—'}</div>
+        </div>
+      </div>
+      <div style="margin-top:1rem;">
+        <a href="/user.html?u=${encodeURIComponent(playerName)}" style="display:inline-block;padding:.5rem 1.25rem;background:rgba(150,0,28,.2);border:1px solid rgba(180,0,40,.4);border-radius:.5rem;color:#e2d8f0;font-size:.8rem;text-decoration:none;transition:background .15s;" onmouseover="this.style.background='rgba(150,0,28,.35)'" onmouseout="this.style.background='rgba(150,0,28,.2)'">Открыть профиль →</a>
+      </div>`;
+  } catch {
+    const inner = document.getElementById('player-modal-content');
+    if (inner) inner.innerHTML = '<p style="color:#f87171;font-size:.85rem;">Ошибка загрузки</p>';
+  }
+}
+function closePlayerModal() {
+  if (_playerModal) { _playerModal.remove(); _playerModal = null; }
+}
 </script>
 </body>
 </html>
