@@ -1169,6 +1169,14 @@
         <span class="sb-val" id="sb-online1">—</span>
       </div>
       <div class="sb-item">
+        <span class="sb-icon">⬆</span>
+        <span>Аптайм 24ч</span>
+        <span class="sb-val" id="sb-uptime1">—</span>
+        <div style="margin-top:.2rem;height:3px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden;width:60px;">
+          <div id="uptime-gauge-1" style="height:100%;width:0%;transition:width .5s;border-radius:9999px;"></div>
+        </div>
+      </div>
+      <div class="sb-item">
         <span class="sb-icon">⚔</span>
         <span>До вайпа</span>
         <span class="sb-val" id="sb-wipe1">—</span>
@@ -1181,6 +1189,14 @@
         <span class="sb-icon">🩸</span>
         <span>Игрок(ов)</span>
         <span class="sb-val" id="sb-online2">—</span>
+      </div>
+      <div class="sb-item">
+        <span class="sb-icon">⬆</span>
+        <span>Аптайм 24ч</span>
+        <span class="sb-val" id="sb-uptime2">—</span>
+        <div style="margin-top:.2rem;height:3px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden;width:60px;">
+          <div id="uptime-gauge-2" style="height:100%;width:0%;transition:width .5s;border-radius:9999px;"></div>
+        </div>
       </div>
       <div class="sb-item" id="sb-s2wipe-row">
         <span class="sb-icon">⚔</span>
@@ -1425,11 +1441,7 @@
     <!-- Latency + stats -->
     <div id="monitor-stats" style="display:none;margin-top:.6rem;">
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.6rem;"></div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;text-align:center;">
-        <div>
-          <div id="stat-uptime24" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
-          <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Аптайм 24ч</div>
-        </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.3rem;text-align:center;">
         <div>
           <div id="stat-uptime7d" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
           <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Аптайм 7д</div>
@@ -1451,11 +1463,7 @@
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
       <div id="left-info2" style="font-size:.78rem;display:flex;flex-direction:column;gap:.45rem;"></div>
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.3rem;text-align:center;">
-        <div>
-          <div id="stat-uptime24-s2" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
-          <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Аптайм 24ч</div>
-        </div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.3rem;text-align:center;">
         <div>
           <div id="stat-uptime7d-s2" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
           <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Аптайм 7д</div>
@@ -3210,7 +3218,7 @@ async function openDmChat(username) {
   const bg = document.getElementById('dm-modal-bg');
   const box = document.getElementById('dm-modal-box');
   if (!bg||!box) return;
-  const me = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}').username; } catch { return null; } })();
+  const me = getUser()?.username || null;
   if (me && username===me) {
     _dmPartner = null;
     document.getElementById('dm-modal-title').textContent = '';
@@ -3337,7 +3345,7 @@ async function deleteDmMsg(id) {
 
 // ── Compose modal ──
 function openDmCompose(username) {
-  if (!localStorage.getItem('user')) { window.location.href='/login.html'; return; }
+  if (!getUser()) { window.location.href='/login.html'; return; }
   if (username) { openDmChat(username); return; }
   const bg = document.getElementById('dm-compose-bg');
   const box = document.getElementById('dm-compose-box');
