@@ -505,9 +505,9 @@ async function loadProfile() {
     document.getElementById('profile-email').textContent = u.email;
     const roleEl = document.getElementById('profile-role');
     if (u.role === 'admin') {
-      roleEl.innerHTML = '<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;padding:.1rem .45rem;border-radius:9999px;background:rgba(140,100,0,0.2);border:1px solid rgba(210,165,0,0.4);color:#f0c040;font-family:\'Inter\',sans-serif;">Админ</span>';
+      roleEl.innerHTML = '<span style="font-size:.8rem;font-weight:700;letter-spacing:.06em;padding:.25rem .75rem;border-radius:9999px;background:rgba(140,100,0,0.2);border:1px solid rgba(210,165,0,0.4);color:#f0c040;font-family:\'Inter\',sans-serif;">Админ</span>';
     } else {
-      roleEl.innerHTML = '<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;padding:.1rem .45rem;border-radius:9999px;background:rgba(80,40,140,0.2);border:1px solid rgba(120,80,200,0.4);color:#c4b5fd;font-family:\'Inter\',sans-serif;">Игрок</span>';
+      roleEl.innerHTML = '<span style="font-size:.8rem;font-weight:700;letter-spacing:.06em;padding:.25rem .75rem;border-radius:9999px;background:rgba(80,40,140,0.2);border:1px solid rgba(120,80,200,0.4);color:#c4b5fd;font-family:\'Inter\',sans-serif;">Игрок</span>';
     }
     document.getElementById('profile-since').textContent = fmtDate(u.created_at);
 
