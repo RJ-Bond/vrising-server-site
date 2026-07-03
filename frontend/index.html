@@ -3247,9 +3247,9 @@ function _renderMsg(m) {
   const bg   = m.is_mine ? 'rgba(150,0,28,0.38)' : 'rgba(80,0,120,0.28)';
   const br   = m.is_mine ? '.65rem .65rem .1rem .65rem' : '.65rem .65rem .65rem .1rem';
   const time = new Date(m.created_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
-  const del  = m.is_mine ? `<button onclick="deleteDmMsg(${m.id},event)" title="Удалить" style="opacity:0;position:absolute;top:-.35rem;${m.is_mine?'left':'right'}:-.35rem;background:rgba(20,0,30,0.9);border:1px solid rgba(180,0,30,0.5);color:#f87171;border-radius:50%;width:18px;height:18px;font-size:.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity .15s;line-height:1;padding:0;" class="dm-del-btn">✕</button>` : '';
+  const del  = m.is_mine ? `<button onclick="(function(e){e.stopPropagation();deleteDmMsg(${m.id});})(event)" title="Удалить" style="opacity:0;position:absolute;top:-.35rem;left:-.35rem;background:rgba(20,0,30,0.9);border:1px solid rgba(180,0,30,0.5);color:#f87171;border-radius:50%;width:18px;height:18px;font-size:.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity .15s;line-height:1;padding:0;" class="dm-del-btn">✕</button>` : '';
   const tick = m.is_mine ? `<span style="font-size:.6rem;color:${m.read?'#60a5fa':'rgba(148,136,168,0.5)'};" title="${m.read?'Прочитано':'Доставлено'}">${m.read?'✓✓':'✓'}</span>` : '';
-  return `<div data-msg-id="${m.id}" style="display:flex;justify-content:${side};margin:1px 0;" onmouseover="this.querySelector('.dm-del-btn')&&(this.querySelector('.dm-del-btn').style.opacity='1')" onmouseout="this.querySelector('.dm-del-btn')&&(this.querySelector('.dm-del-btn').style.opacity='0')">
+  return `<div data-msg-id="${m.id}" style="display:flex;justify-content:${side};margin:1px 0;" onmouseenter="const b=this.querySelector('.dm-del-btn');if(b)b.style.opacity='1'" onmouseleave="const b=this.querySelector('.dm-del-btn');if(b)b.style.opacity='0'">
     <div style="position:relative;max-width:80%;background:${bg};border-radius:${br};padding:.45rem .7rem .35rem;font-size:.82rem;color:var(--text);line-height:1.45;word-break:break-word;">
       ${del}
       ${DOMPurify.sanitize(m.content).replace(/\n/g,'<br>')}
@@ -3320,14 +3320,17 @@ async function loadOlderDmMessages() {
 }
 
 // ── Delete message ──
-async function deleteDmMsg(id, e) {
-  e.stopPropagation();
+async function deleteDmMsg(id) {
   try {
     const r = await fetch(`/api/messages/${id}`, {method:'DELETE', credentials:'include'});
     if (r.ok) {
       const el = document.querySelector(`[data-msg-id="${id}"]`);
       if (el) el.remove();
       _dmLastMsgCount = Math.max(0, _dmLastMsgCount - 1);
+    } else {
+      const d = await r.json().catch(() => ({}));
+      const errEl = document.getElementById('dm-send-error');
+      if (errEl) { errEl.textContent = d.detail || 'Ошибка удаления'; errEl.style.display = 'block'; setTimeout(() => { errEl.style.display = 'none'; }, 3000); }
     }
   } catch {}
 }
