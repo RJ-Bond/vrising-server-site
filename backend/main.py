@@ -503,11 +503,13 @@ async def register(request: Request, body: UserRegister, response: Response, db:
     ))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Username or email already taken")
+    nick = (body.game_nickname or "").strip()[:64] or None
     user = User(
         username=body.username,
         email=body.email,
         hashed_password=get_password_hash(body.password),
         role="user",
+        game_nickname=nick,
     )
     db.add(user)
     await db.commit()
@@ -1667,10 +1669,15 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
+    lookup_name = user.game_nickname or username
     total_result = await db.execute(
-        select(func.sum(PlayerRecord.total_seconds)).where(PlayerRecord.player_name == username)
+        select(func.sum(PlayerRecord.total_seconds)).where(PlayerRecord.player_name == lookup_name)
     )
     total_seconds = total_result.scalar_one() or 0
+    last_seen_result = await db.execute(
+        select(func.max(PlayerRecord.last_seen)).where(PlayerRecord.player_name == lookup_name)
+    )
+    last_seen = last_seen_result.scalar_one()
     clan = None
     if user.clan_id:
         clan_result = await db.execute(select(Clan).where(Clan.id == user.clan_id))
@@ -1682,7 +1689,9 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         "avatar_url": user.avatar_url,
         "role": user.role,
         "created_at": user.created_at.isoformat(),
+        "game_nickname": user.game_nickname,
         "total_seconds": total_seconds,
+        "last_seen": last_seen.isoformat() if last_seen else None,
         "clan": clan,
     }
 
@@ -2469,6 +2478,25 @@ async def update_game_nickname(
     current_user.game_nickname = nick or None
     await db.commit()
     return {"game_nickname": current_user.game_nickname}
+
+
+# ─── Team ────────────────────────────────────────────────────────────────────
+
+@app.get("/api/team")
+async def get_team(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(User).where(User.role == "admin", User.is_active == True).order_by(User.created_at)
+    )
+    admins = result.scalars().all()
+    return [
+        {
+            "id": u.id,
+            "username": u.username,
+            "avatar_url": u.avatar_url,
+            "created_at": u.created_at.isoformat(),
+        }
+        for u in admins
+    ]
 
 
 # ─── Reports ─────────────────────────────────────────────────────────────────

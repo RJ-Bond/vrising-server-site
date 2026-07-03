@@ -8,6 +8,7 @@ class UserRegister(BaseModel):
     username: str
     email: EmailStr
     password: str
+    game_nickname: Optional[str] = None
 
     @field_validator("username")
     @classmethod

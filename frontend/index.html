@@ -14,7 +14,7 @@
   <meta id="meta-tw-title" name="twitter:title" content="V Rising — Главная" />
   <meta id="meta-tw-description" name="twitter:description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <style>
@@ -102,7 +102,8 @@
       letter-spacing: .22em; line-height: 1;
       text-shadow: 0 0 24px rgba(201,169,74,0.25), 0 0 60px rgba(201,169,74,0.1);
       color: var(--gold);
-      font-family: 'Philosopher', serif;
+      font-family: 'Cormorant Garamond', 'Philosopher', serif;
+      font-weight: 700;
     }
     .hero-sub { font-size: .75rem; letter-spacing: .3em; color: var(--muted); text-transform: uppercase; }
     .hero-divider { width: 120px; height: 1px; background: linear-gradient(90deg, transparent, var(--crimson), var(--purple), transparent); margin: .45rem auto; }
@@ -1506,6 +1507,13 @@
       Подробнее на странице сервера
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
     </a>
+
+    <!-- Team section -->
+    <div id="team-section" style="display:none;margin-top:1.1rem;">
+      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.85rem;"></div>
+      <h3 style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;text-align:center;">— Наша команда —</h3>
+      <div id="team-list" style="display:flex;flex-direction:column;gap:.55rem;"></div>
+    </div>
 
     <!-- Discord widget (hidden until discord_server_id is set) -->
     <div id="discord-widget-wrap" style="display:none;margin-top:1.1rem;">
@@ -3018,6 +3026,31 @@ loadLatestNews();
 loadNews(1);
 loadTags();
 loadWipeHistory();
+loadTeam();
+
+// ── Team ────────────────────────────────────────────────────────────────────
+async function loadTeam() {
+  try {
+    const data = await fetch('/api/team').then(r => r.json());
+    if (!Array.isArray(data) || data.length === 0) return;
+    const wrap = document.getElementById('team-section');
+    const list = document.getElementById('team-list');
+    if (!wrap || !list) return;
+    list.innerHTML = data.map(u => {
+      const avatar = u.avatar_url
+        ? `<img src="${esc(u.avatar_url)}" style="width:30px;height:30px;border-radius:50%;object-fit:cover;border:1px solid rgba(180,0,30,0.4);">`
+        : `<div style="width:30px;height:30px;border-radius:50%;background:rgba(110,0,20,0.4);border:1px solid rgba(180,0,30,0.3);display:flex;align-items:center;justify-content:center;font-size:.8rem;color:var(--gold);">${esc(u.username[0].toUpperCase())}</div>`;
+      return `<div style="display:flex;align-items:center;gap:.55rem;">
+        ${avatar}
+        <div style="min-width:0;">
+          <div style="font-size:.78rem;color:var(--text);font-family:'Philosopher',serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(u.username)}</div>
+          <div style="font-size:.6rem;color:var(--gold);letter-spacing:.04em;">Администратор</div>
+        </div>
+      </div>`;
+    }).join('');
+    wrap.style.display = '';
+  } catch {}
+}
 
 // ── Notification bell ──────────────────────────────────────────────────────
 let _notifOpen = false;
