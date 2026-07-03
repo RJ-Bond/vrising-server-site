@@ -1439,18 +1439,9 @@
     <div id="left-info" style="font-size:.78rem;display:flex;flex-direction:column;gap:.45rem;"></div>
 
     <!-- Latency + stats -->
-    <div id="monitor-stats" style="display:none;margin-top:.6rem;">
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.6rem;"></div>
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.3rem;text-align:center;">
-        <div>
-          <div id="stat-uptime7d" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
-          <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Аптайм 7д</div>
-        </div>
-        <div>
-          <div id="stat-peak7d" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
-          <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Пик 7д</div>
-        </div>
-      </div>
+    <div id="monitor-stats" style="display:none;">
+      <div id="stat-uptime7d" style="display:none;"></div>
+      <div id="stat-peak7d" style="display:none;"></div>
     </div>
 
     <!-- Server 2 (shown only when enabled) -->
@@ -1463,16 +1454,8 @@
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
       <div id="left-info2" style="font-size:.78rem;display:flex;flex-direction:column;gap:.45rem;"></div>
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.3rem;text-align:center;">
-        <div>
-          <div id="stat-uptime7d-s2" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
-          <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Аптайм 7д</div>
-        </div>
-        <div>
-          <div id="stat-peak7d-s2" style="font-size:1.1rem;font-weight:600;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;">—</div>
-          <div style="font-size:.55rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;">Пик 7д</div>
-        </div>
-      </div>
+      <div id="stat-uptime7d-s2" style="display:none;"></div>
+      <div id="stat-peak7d-s2" style="display:none;"></div>
     </div>
 
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:1rem 0 .85rem;"></div>
