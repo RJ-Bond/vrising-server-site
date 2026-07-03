@@ -300,10 +300,6 @@
         <div id="notif-list" style="max-height:320px;overflow-y:auto;"></div>
       </div>
     </div>
-    <button id="theme-toggle-btn" onclick="toggleTheme()" title="Сменить тему"
-      style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9488a8;font-size:.85rem;transition:all .2s;"
-      onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
-      onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">🌙</button>
     <button class="nav-burger" onclick="toggleMobileNav()" aria-label="Меню">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
@@ -676,23 +672,6 @@ document.addEventListener('click', e => {
 });
 
 // ── Theme toggle ────────────────────────────────────────────────────────────
-function toggleTheme() {
-  const html = document.documentElement;
-  const current = html.getAttribute('data-theme') || 'dark';
-  const next = current === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
-  const btn = document.getElementById('theme-toggle-btn');
-  if (btn) btn.textContent = next === 'dark' ? '🌙' : '☀️';
-}
-(function() {
-  const saved = localStorage.getItem('theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', saved);
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('theme-toggle-btn');
-    if (btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
-  });
-})();
 
 // ── Player modal ────────────────────────────────────────────────────────────
 let _playerModal = null;

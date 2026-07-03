@@ -172,25 +172,6 @@
       #profile-email { word-break:break-all; }
     }
 
-    /* ── Light theme ── */
-    [data-theme="light"] {
-      --bg: #f0eaf6;
-      --bg2: #e8dff2;
-      --surface: rgba(240,234,246,0.95);
-      --text: #1a0a2e;
-      --muted: #6b5080;
-      --accent: #9b0021;
-      --gold: #8a6500;
-      --border: rgba(100,0,150,0.15);
-    }
-    [data-theme="light"] .glass-card {
-      background: rgba(255,255,255,0.75);
-      border-color: rgba(100,0,150,0.12);
-    }
-    [data-theme="light"] nav, [data-theme="light"] .glass-nav {
-      background: rgba(255,255,255,0.9);
-      border-bottom-color: rgba(100,0,150,0.12);
-    }
   </style>
 </head>
 <body>
@@ -217,10 +198,6 @@
           <div id="notif-list" style="max-height:320px;overflow-y:auto;"></div>
         </div>
       </div>
-      <button id="theme-toggle-btn" onclick="toggleTheme()" title="Сменить тему"
-        style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9488a8;font-size:.85rem;transition:all .2s;"
-        onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
-        onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">🌙</button>
       <button onclick="doLogout()" class="btn btn-ghost" style="font-size:.72rem;">Выйти</button>
     </div>
   </div>
@@ -669,24 +646,6 @@ document.addEventListener('click', e => {
   }
 });
 
-// ── Theme toggle ────────────────────────────────────────────────────────────
-function toggleTheme() {
-  const html = document.documentElement;
-  const current = html.getAttribute('data-theme') || 'dark';
-  const next = current === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
-  const btn = document.getElementById('theme-toggle-btn');
-  if (btn) btn.textContent = next === 'dark' ? '🌙' : '☀️';
-}
-(function() {
-  const saved = localStorage.getItem('theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', saved);
-  document.addEventListener('DOMContentLoaded', () => {
-    const btn = document.getElementById('theme-toggle-btn');
-    if (btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
-  });
-})();
 </script>
 </body>
 </html>
