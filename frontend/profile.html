@@ -518,7 +518,7 @@ async function loadProfile() {
     document.getElementById('profile-email').textContent = u.email;
     const roleEl = document.getElementById('profile-role');
     if (u.role === 'admin') {
-      roleEl.innerHTML = '<span style="font-size:.8rem;font-weight:700;letter-spacing:.06em;padding:.25rem .75rem;border-radius:9999px;background:rgba(140,100,0,0.2);border:1px solid rgba(210,165,0,0.4);color:#f0c040;font-family:\'Inter\',sans-serif;">Админ</span>';
+      roleEl.innerHTML = `<span style="font-size:.8rem;font-weight:700;letter-spacing:.06em;padding:.25rem .75rem;border-radius:9999px;background:rgba(140,100,0,0.2);border:1px solid rgba(210,165,0,0.4);color:#f0c040;font-family:'Inter',sans-serif;">${u.admin_title || 'Админ'}</span>`;
     } else {
       roleEl.innerHTML = '<span style="font-size:.8rem;font-weight:700;letter-spacing:.06em;padding:.25rem .75rem;border-radius:9999px;background:rgba(80,40,140,0.2);border:1px solid rgba(120,80,200,0.4);color:#c4b5fd;font-family:\'Inter\',sans-serif;">Игрок</span>';
     }
@@ -540,7 +540,7 @@ async function loadProfile() {
     }
 
     const badgeEl = document.getElementById('profile-role-badge');
-    badgeEl.textContent = u.role === 'admin' ? 'Админ' : 'Игрок';
+    badgeEl.textContent = u.role === 'admin' ? (u.admin_title || 'Админ') : 'Игрок';
     badgeEl.style.color       = u.role === 'admin' ? '#fcd34d' : '#c4b5fd';
     badgeEl.style.borderColor = u.role === 'admin' ? 'rgba(200,160,74,0.5)' : 'rgba(120,80,200,0.4)';
     badgeEl.style.background  = u.role === 'admin' ? 'rgba(140,100,0,0.2)' : 'rgba(80,40,140,0.2)';

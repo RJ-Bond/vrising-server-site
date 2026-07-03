@@ -258,11 +258,11 @@ async function loadUser(){
       }
     } catch {}
     const badge=document.getElementById('user-role-badge');
-    badge.textContent=u.role==='admin'?'Админ':'Игрок';
+    badge.textContent=u.role==='admin'?(u.admin_title||'Админ'):'Игрок';
     badge.style.color=u.role==='admin'?'#fcd34d':'#c4b5fd';
     badge.style.borderColor=u.role==='admin'?'rgba(200,160,74,0.5)':'rgba(120,80,200,0.4)';
     badge.style.background=u.role==='admin'?'rgba(140,100,0,0.2)':'rgba(80,40,140,0.2)';
-    document.getElementById('user-role').textContent=u.role==='admin'?'Администратор':'Игрок';
+    document.getElementById('user-role').textContent=u.role==='admin'?(u.admin_title||'Администратор'):'Игрок';
     document.getElementById('user-since').textContent=fmtDate(u.created_at);
     document.getElementById('user-playtime').textContent=u.total_seconds>0?fmtSec(u.total_seconds):'Ещё не играл';
     renderRank(u.total_seconds||0);

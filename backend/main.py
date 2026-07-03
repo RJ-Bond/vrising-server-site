@@ -1702,6 +1702,7 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         "total_seconds": total_seconds,
         "last_seen": last_seen.isoformat() if last_seen else None,
         "clan": clan,
+        "admin_title": user.admin_title,
     }
 
 

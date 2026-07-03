@@ -1762,7 +1762,7 @@ function toggleDrawer() {
       }
       if (u.role === 'admin') {
         roleEl.style.display = 'inline-block';
-        roleEl.innerHTML = `<span class="nav-user-role">Админ</span>`;
+        roleEl.innerHTML = `<span class="nav-user-role">${esc(u.admin_title || 'Админ')}</span>`;
       }
       // join date
       if (u.created_at) {
@@ -2076,7 +2076,7 @@ async function loadFeatured() {
     const n = data.items[0];
     const authorName = esc(n.author.username);
     const adminBadge = n.author.role === 'admin'
-      ? `<span style="font-size:.55rem;font-weight:700;letter-spacing:.07em;padding:.1rem .45rem;border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;font-family:'Inter',sans-serif;">Админ</span>` : '';
+      ? `<span style="font-size:.55rem;font-weight:700;letter-spacing:.07em;padding:.1rem .45rem;border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;font-family:'Inter',sans-serif;">${esc(n.author.admin_title || 'Админ')}</span>` : '';
     const avatarEl = n.author.avatar_url
       ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.35);flex-shrink:0;">`
       : `<span style="width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(80,0,150,0.6),rgba(120,0,20,0.4));border:1px solid rgba(190,0,40,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:.8rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
@@ -2187,7 +2187,7 @@ async function loadNews(page = 1, append = false) {
       .map(t => `<span class="news-tag" onclick="event.stopPropagation();setTag('${esc(t)}')">${esc(t)}</span>`).join('');
     const authorName = esc(n.author.username);
     const adminBadge = n.author.role === 'admin'
-      ? `<span style="font-size:.55rem;font-weight:700;letter-spacing:.07em;padding:.1rem .45rem;border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;font-family:'Inter',sans-serif;white-space:nowrap;">Админ</span>`
+      ? `<span style="font-size:.55rem;font-weight:700;letter-spacing:.07em;padding:.1rem .45rem;border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;font-family:'Inter',sans-serif;white-space:nowrap;">${esc(n.author.admin_title || 'Админ')}</span>`
       : '';
     const miniAvatar = n.author.avatar_url
       ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.25);flex-shrink:0;">`
@@ -2277,7 +2277,7 @@ async function openNews(slug) {
     document.getElementById('modal-title').textContent = n.title;
     const authorName = esc(n.author.username);
     const modalAdminBadge = n.author.role === 'admin'
-      ? `<span style="font-size:.55rem;font-weight:700;letter-spacing:.07em;padding:.1rem .45rem;border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;font-family:'Inter',sans-serif;white-space:nowrap;">Админ</span>`
+      ? `<span style="font-size:.55rem;font-weight:700;letter-spacing:.07em;padding:.1rem .45rem;border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;font-family:'Inter',sans-serif;white-space:nowrap;">${esc(n.author.admin_title || 'Админ')}</span>`
       : '';
     const avatarEl = n.author.avatar_url
       ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.3);flex-shrink:0;">`
@@ -3079,12 +3079,8 @@ async function loadTeam() {
           dot = `<span title="Был недавно" style="position:absolute;bottom:1px;right:1px;width:11px;height:11px;border-radius:50%;background:#f59e0b;border:2px solid rgba(10,2,18,0.95);"></span>`;
       }
 
-      const titleHtml = u.admin_title
-        ? `<div style="font-size:.6rem;color:rgba(200,160,80,0.75);margin-top:.15rem;letter-spacing:.05em;font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(u.admin_title)}</div>`
-        : '';
-      const yearHtml = year
-        ? `<div style="font-size:.58rem;color:var(--muted);margin-top:.12rem;letter-spacing:.04em;">с ${year} г.</div>`
-        : '';
+      const badgeLabel = u.admin_title || 'Админ';
+      const titleHtml = `<div style="margin-top:.28rem;"><span style="font-size:.55rem;font-weight:700;letter-spacing:.07em;padding:.1rem .5rem;border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;font-family:'Inter',sans-serif;white-space:nowrap;">${esc(badgeLabel)}</span></div>`;
 
       return `<div style="background:rgba(12,3,20,0.72);border:1px solid rgba(110,0,28,0.28);border-radius:.85rem;padding:.85rem .65rem .7rem;text-align:center;transition:all .22s;position:relative;overflow:hidden;opacity:0;transform:translateY(12px);animation:teamCardIn .35s ease forwards;animation-delay:${i * 0.08}s;"
         onmouseover="this.style.borderColor='rgba(180,0,42,0.55)';this.style.boxShadow='0 0 22px rgba(130,0,30,0.22),inset 0 0 14px rgba(100,0,20,0.07)';this.style.background='rgba(16,4,26,0.88)'"
@@ -3096,7 +3092,7 @@ async function loadTeam() {
             ${dot}
           </div>
           <div style="font-family:'Philosopher',serif;font-size:.82rem;font-weight:700;color:var(--text);letter-spacing:.03em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .18s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'">${esc(u.username)}</div>
-          ${titleHtml}${yearHtml}
+          ${titleHtml}
         </a>
         <button onclick="openDmCompose('${esc(u.username)}')" title="Написать сообщение"
           style="margin-top:.6rem;width:100%;display:flex;align-items:center;justify-content:center;gap:.3rem;padding:.3rem .5rem;background:rgba(70,0,110,0.18);border:1px solid rgba(100,0,140,0.32);color:var(--muted);border-radius:.45rem;font-size:.65rem;cursor:pointer;transition:all .2s;"
