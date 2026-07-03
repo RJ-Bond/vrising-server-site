@@ -1547,7 +1547,7 @@ async def serve_upload(filename: str):
 
 @app.get("/api/settings/public")
 async def get_public_settings(db: AsyncSession = Depends(get_db)):
-    keys = ["site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules", "timezone", "time_format", "date_format"]
+    keys = ["site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id", "max_url", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules", "timezone", "time_format", "date_format"]
     result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
     settings = result.scalars().all()
     return {s.key: s.value for s in settings}
@@ -1558,7 +1558,7 @@ async def get_public_settings(db: AsyncSession = Depends(get_db)):
 ALLOWED_SETTING_KEYS = {
     "setup_completed", "server_ip", "server_port", "server_game_port", "server_connect_ip", "server_name",
     "server2_name", "server2_ip", "server2_port", "server2_game_port", "server2_connect_ip",
-    "site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id",
+    "site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id", "max_url",
     "bg_image_url", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2",
     "event_active", "event_title", "event_text", "event_color",
     "rules", "https_domain", "https_email",
@@ -2604,6 +2604,7 @@ async def messages_inbox(current_user: User = Depends(get_current_user), db: Asy
 @app.get("/api/messages/with/{username}")
 async def messages_conversation(
     username: str,
+    before_id: Optional[int] = Query(None),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -2612,16 +2613,19 @@ async def messages_conversation(
     if partner is None:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    msgs_res = await db.execute(
+    base = (
         select(Message)
         .where(
             ((Message.sender_id == current_user.id) & (Message.recipient_id == partner.id))
             | ((Message.sender_id == partner.id) & (Message.recipient_id == current_user.id))
         )
-        .order_by(Message.created_at.asc())
-        .limit(200)
     )
-    messages = msgs_res.scalars().all()
+    if before_id:
+        base = base.where(Message.id < before_id)
+    msgs_res = await db.execute(base.order_by(Message.id.desc()).limit(51))
+    batch = msgs_res.scalars().all()
+    has_more = len(batch) > 50
+    messages = list(reversed(batch[:50]))
 
     for m in messages:
         if m.recipient_id == current_user.id and not m.read:
@@ -2630,6 +2634,7 @@ async def messages_conversation(
 
     return {
         "partner": {"id": partner.id, "username": partner.username, "avatar_url": partner.avatar_url},
+        "has_more": has_more,
         "messages": [
             {
                 "id": m.id,
@@ -2642,6 +2647,20 @@ async def messages_conversation(
             for m in messages
         ],
     }
+
+
+@app.delete("/api/messages/{msg_id}", status_code=204)
+async def delete_message(
+    msg_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    res = await db.execute(select(Message).where(Message.id == msg_id, Message.sender_id == current_user.id))
+    msg = res.scalar_one_or_none()
+    if msg is None:
+        raise HTTPException(status_code=404, detail="Сообщение не найдено")
+    await db.delete(msg)
+    await db.commit()
 
 
 # ─── Reports ─────────────────────────────────────────────────────────────────

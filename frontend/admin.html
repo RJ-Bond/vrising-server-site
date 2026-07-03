@@ -756,6 +756,22 @@
             <p class="s-desc" id="webhook-test-result" style="margin-top:.3rem;"></p>
             <p class="s-desc">При публикации новости — автоматически отправит embed в Discord канал</p>
           </div>
+
+          <div class="s-field">
+            <label style="display:flex;align-items:center;gap:.4rem;">
+              <svg width="14" height="14" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                <defs><linearGradient id="maxAdminGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1F9C6E"/><stop offset="100%" style="stop-color:#0DC268"/></linearGradient></defs>
+                <rect width="32" height="32" rx="7" fill="url(#maxAdminGrad)"/>
+                <text x="16" y="22" font-family="Arial Black, Arial" font-weight="900" font-size="13" fill="#fff" text-anchor="middle" letter-spacing="-0.5">MAX</text>
+              </svg>
+              Ссылка на MAX мессенджер
+            </label>
+            <div class="s-field-row">
+              <input id="setting-max_url" type="url" class="dark-input" placeholder="https://max.ru/join/...">
+              <button class="s-save-btn" onclick="saveSetting('max_url')">Сохранить</button>
+            </div>
+            <p class="s-desc">Кнопка MAX появится в блоке «Сообщество» на главной странице</p>
+          </div>
         </div>
 
         <!-- Event banner -->
@@ -1658,7 +1674,7 @@ async function submitEditor() {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
-const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','discord_webhook_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port'];
+const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port'];
 let _settingsBaseline = {};
 
 async function loadSettings() {
@@ -2781,7 +2797,7 @@ async function exportSettings() {
 const _ALLOWED_SETTING_KEYS = new Set([
   'setup_completed','server_ip','server_port','server_game_port','server_connect_ip','server_name',
   'server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip',
-  'site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','discord_webhook_url',
+  'site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','discord_webhook_url','max_url',
   'bg_image_url','wipe_date','wipe_type','wipe_date2','wipe_type2',
   'event_active','event_title','event_text','event_color',
   'rules','https_domain','https_email','timezone','time_format','date_format',
