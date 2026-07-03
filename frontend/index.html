@@ -1506,6 +1506,40 @@
   </div>
 </div>
 
+<!-- ══ DM COMPOSE ═════════════════════════════════════════════════════════════ -->
+<div id="dm-compose-bg" style="display:none;position:fixed;inset:0;z-index:950;background:rgba(4,0,10,0.75);backdrop-filter:blur(5px);" onclick="closeDmCompose()"></div>
+<div id="dm-compose-box" style="display:none;position:fixed;z-index:951;top:50%;left:50%;transform:translate(-50%,-50%);width:min(420px,92vw);background:rgba(10,2,18,0.99);border:1px solid rgba(150,0,28,0.4);border-radius:1rem;box-shadow:0 12px 50px rgba(0,0,0,0.8);overflow:hidden;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:.8rem 1.1rem;border-bottom:1px solid rgba(150,0,28,0.2);">
+    <span style="font-size:.85rem;font-weight:700;color:var(--text);font-family:'Philosopher',serif;letter-spacing:.05em;">✉ Новое сообщение</span>
+    <button onclick="closeDmCompose()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;padding:.2rem;">✕</button>
+  </div>
+  <div style="padding:1rem 1.1rem;display:flex;flex-direction:column;gap:.75rem;">
+    <div>
+      <label style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);display:block;margin-bottom:.35rem;">Кому</label>
+      <input id="dm-compose-to" type="text" placeholder="Имя пользователя..." maxlength="64" autocomplete="off"
+        style="width:100%;background:rgba(6,0,15,0.8);border:1px solid rgba(120,0,24,0.38);color:var(--text);border-radius:.5rem;padding:.6rem .85rem;font-size:.88rem;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s;"
+        onfocus="this.style.borderColor='rgba(181,0,42,0.5)'" onblur="this.style.borderColor='rgba(120,0,24,0.38)'"
+        onkeydown="if(event.key==='Tab'){event.preventDefault();document.getElementById('dm-compose-text').focus();}">
+    </div>
+    <div>
+      <label style="font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);display:block;margin-bottom:.35rem;">Сообщение</label>
+      <textarea id="dm-compose-text" placeholder="Введите сообщение..." rows="4" maxlength="2000"
+        style="width:100%;background:rgba(6,0,15,0.8);border:1px solid rgba(120,0,24,0.38);color:var(--text);border-radius:.5rem;padding:.6rem .85rem;font-size:.88rem;font-family:'Inter',sans-serif;outline:none;resize:vertical;min-height:90px;transition:border-color .2s;"
+        onfocus="this.style.borderColor='rgba(181,0,42,0.5)'" onblur="this.style.borderColor='rgba(120,0,24,0.38)'"
+        onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){sendDmCompose();}"></textarea>
+      <div style="font-size:.62rem;color:var(--muted);text-align:right;margin-top:.25rem;">Ctrl+Enter — отправить</div>
+    </div>
+    <div id="dm-compose-error" style="display:none;font-size:.76rem;color:#fca5a5;background:rgba(140,0,20,0.2);border:1px solid rgba(180,0,30,0.25);border-radius:.4rem;padding:.45rem .75rem;"></div>
+  </div>
+  <div style="padding:.75rem 1.1rem 1rem;display:flex;justify-content:flex-end;gap:.5rem;border-top:1px solid rgba(150,0,28,0.15);">
+    <button onclick="closeDmCompose()" style="padding:.55rem 1.1rem;background:rgba(80,0,120,0.15);border:1px solid rgba(110,0,150,0.3);color:var(--muted);border-radius:.5rem;font-size:.82rem;cursor:pointer;transition:all .18s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Отмена</button>
+    <button id="dm-compose-send-btn" onclick="sendDmCompose()" style="padding:.55rem 1.2rem;background:linear-gradient(135deg,#6a0018,var(--crimson));border:1px solid rgba(200,0,40,0.4);color:#fff;border-radius:.5rem;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:.4rem;" onmouseover="this.style.boxShadow='0 0 18px rgba(200,0,40,0.4)'" onmouseout="this.style.boxShadow=''">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      Отправить
+    </button>
+  </div>
+</div>
+
 <!-- ══ DM MODAL ══════════════════════════════════════════════════════════════ -->
 <div id="dm-modal-bg" style="display:none;position:fixed;inset:0;z-index:900;background:rgba(4,0,10,0.7);backdrop-filter:blur(4px);" onclick="closeDmModal()"></div>
 <div id="dm-modal-box" style="position:fixed;z-index:901;bottom:4.5rem;right:1rem;width:360px;max-height:80vh;background:rgba(10,2,18,0.98);border:1px solid rgba(150,0,28,0.35);border-radius:.875rem;box-shadow:0 8px 40px rgba(0,0,0,0.7);flex-direction:column;overflow:hidden;display:none;">
@@ -1524,7 +1558,7 @@
       oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';"
       style="flex:1;background:rgba(6,0,15,0.8);border:1px solid rgba(120,0,24,0.38);color:var(--text);border-radius:.45rem;padding:.45rem .65rem;font-size:.82rem;font-family:'Inter',sans-serif;resize:none;outline:none;min-height:32px;transition:border-color .2s;"
       onfocus="this.style.borderColor='rgba(181,0,42,0.5)'" onblur="this.style.borderColor='rgba(120,0,24,0.38)'"></textarea>
-    <button onclick="sendDm()" style="background:rgba(150,0,28,0.4);border:1px solid rgba(200,0,40,0.4);color:#fff;border-radius:.45rem;padding:.45rem .75rem;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s;flex-shrink:0;" onmouseover="this.style.background='rgba(200,0,40,0.5)'" onmouseout="this.style.background='rgba(150,0,28,0.4)'">
+    <button id="dm-send-btn" onclick="sendDm()" style="background:rgba(150,0,28,0.4);border:1px solid rgba(200,0,40,0.4);color:#fff;border-radius:.45rem;padding:.45rem .75rem;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:background .2s;flex-shrink:0;" onmouseover="this.style.background='rgba(200,0,40,0.5)'" onmouseout="this.style.background='rgba(150,0,28,0.4)'">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
     </button>
   </div>
@@ -3039,7 +3073,43 @@ async function loadTeam() {
 let _dmPartner = null;
 let _dmPanelOpen = false;
 let _dmPollInterval = null;
+let _dmOldestId = null;
+let _dmHasMore = false;
+let _dmLastMsgCount = 0;
+let _tabFlashInterval = null;
+let _dmOrigTitle = document.title;
 
+// ── Sound ──
+function _playDmSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(660, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.35);
+  } catch {}
+}
+
+// ── Tab flash ──
+function _startTabFlash() {
+  if (_tabFlashInterval) return;
+  _dmOrigTitle = document.title;
+  let alt = false;
+  _tabFlashInterval = setInterval(() => {
+    document.title = alt ? _dmOrigTitle : '💬 Новое сообщение';
+    alt = !alt;
+  }, 1000);
+  const stop = () => { clearInterval(_tabFlashInterval); _tabFlashInterval = null; document.title = _dmOrigTitle; };
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) stop(); }, { once: true });
+  window.addEventListener('focus', stop, { once: true });
+}
+
+// ── Panel ──
 function toggleDmPanel() {
   _dmPanelOpen = !_dmPanelOpen;
   const panel = document.getElementById('dm-panel');
@@ -3048,7 +3118,6 @@ function toggleDmPanel() {
   if (_dmPanelOpen) { loadDmInbox(); document.addEventListener('click', _closeDmPanelOutside, true); }
   else document.removeEventListener('click', _closeDmPanelOutside, true);
 }
-
 function _closeDmPanelOutside(e) {
   const wrap = document.getElementById('dm-bell-wrap');
   if (wrap && !wrap.contains(e.target)) {
@@ -3057,6 +3126,19 @@ function _closeDmPanelOutside(e) {
     if (p) p.style.display = 'none';
     document.removeEventListener('click', _closeDmPanelOutside, true);
   }
+}
+
+// ── Inbox ──
+function _fmtInboxTime(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 60000) return 'только что';
+  if (diff < 3600000) return Math.floor(diff/60000) + ' мин';
+  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  const yesterday = new Date(now); yesterday.setDate(now.getDate()-1);
+  if (d.toDateString() === yesterday.toDateString()) return 'вчера';
+  return d.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'});
 }
 
 async function loadDmInbox() {
@@ -3069,153 +3151,231 @@ async function loadDmInbox() {
       return;
     }
     list.innerHTML = data.map(c => {
-      const p = c.partner;
-      const lm = c.last_message;
+      const p = c.partner, lm = c.last_message;
       const av = p.avatar_url
         ? `<img src="${esc(p.avatar_url)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
         : `<div style="width:32px;height:32px;border-radius:50%;background:rgba(110,0,20,0.5);display:flex;align-items:center;justify-content:center;font-size:.8rem;color:var(--gold);flex-shrink:0;">${esc(p.username[0].toUpperCase())}</div>`;
-      const preview = lm ? lm.content.slice(0, 40) + (lm.content.length > 40 ? '…' : '') : '';
+      const preview = lm ? lm.content.slice(0,38)+(lm.content.length>38?'…':'') : '';
+      const time = lm ? _fmtInboxTime(lm.created_at) : '';
+      const isMine = lm && lm.sender_id !== p.id;
       return `<div onclick="openDmChat('${esc(p.username)}')" style="display:flex;align-items:center;gap:.55rem;padding:.6rem 1rem;cursor:pointer;transition:background .15s;border-bottom:1px solid rgba(150,0,28,0.1);" onmouseover="this.style.background='rgba(120,0,160,0.08)'" onmouseout="this.style.background=''">
-        <div style="position:relative;">${av}${c.unread > 0 ? `<span style="position:absolute;top:-2px;right:-2px;background:#c8002a;border-radius:9999px;min-width:12px;height:12px;font-size:.5rem;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;">${c.unread}</span>` : ''}</div>
+        <div style="position:relative;flex-shrink:0;">${av}${c.unread>0?`<span style="position:absolute;top:-2px;right:-2px;background:#c8002a;border-radius:9999px;min-width:12px;height:12px;font-size:.5rem;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:center;">${c.unread}</span>`:''}</div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:.78rem;font-weight:${c.unread > 0 ? '700' : '500'};color:var(--text);">${esc(p.username)}</div>
-          <div style="font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(preview)}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:.3rem;">
+            <div style="font-size:.78rem;font-weight:${c.unread>0?'700':'500'};color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(p.username)}</div>
+            <div style="font-size:.6rem;color:var(--muted);white-space:nowrap;flex-shrink:0;">${time}</div>
+          </div>
+          <div style="font-size:.68rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${isMine?'<span style="color:rgba(148,136,168,0.6);">Вы: </span>':''}${esc(preview)}</div>
         </div>
       </div>`;
     }).join('');
   } catch {}
 }
 
+// ── Unread badge ──
 async function loadDmUnread() {
   try {
-    const d = await fetch('/api/messages/unread-count', {credentials:'include'}).then(r => r.ok ? r.json() : {count:0});
+    const d = await fetch('/api/messages/unread-count',{credentials:'include'}).then(r=>r.ok?r.json():{count:0});
     const badge = document.getElementById('dm-count');
     if (!badge) return;
-    if (d.count > 0) { badge.textContent = d.count > 9 ? '9+' : d.count; badge.style.display = 'flex'; }
-    else badge.style.display = 'none';
+    if (d.count>0){ badge.textContent=d.count>9?'9+':d.count; badge.style.display='flex'; }
+    else badge.style.display='none';
   } catch {}
 }
 
+// ── Open chat ──
 async function openDmChat(username) {
   const bg = document.getElementById('dm-modal-bg');
   const box = document.getElementById('dm-modal-box');
-  if (!bg || !box) return;
-
-  const me = (() => { try { return JSON.parse(localStorage.getItem('user') || '{}').username; } catch { return null; } })();
-  if (me && username === me) {
+  if (!bg||!box) return;
+  const me = (() => { try { return JSON.parse(localStorage.getItem('user')||'{}').username; } catch { return null; } })();
+  if (me && username===me) {
     _dmPartner = null;
     document.getElementById('dm-modal-title').textContent = '';
     document.getElementById('dm-messages').innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem;padding:2rem 1.5rem;text-align:center;flex:1;">
-        <div style="font-size:2rem;opacity:.6;">🚫</div>
-        <div style="font-size:.88rem;font-weight:700;color:var(--text);">Нельзя написать самому себе</div>
-        <div style="font-size:.76rem;color:var(--muted);line-height:1.55;">Вы не можете отправить сообщение<br>на свой собственный аккаунт.</div>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.75rem;padding:2.5rem 1.5rem;text-align:center;flex:1;">
+        <div style="font-size:2.2rem;opacity:.55;">🚫</div>
+        <div style="font-size:.9rem;font-weight:700;color:var(--text);">Нельзя написать самому себе</div>
+        <div style="font-size:.76rem;color:var(--muted);line-height:1.6;">Вы не можете отправить сообщение<br>на свой собственный аккаунт.</div>
       </div>`;
-    const input = document.getElementById('dm-input');
-    const sendBtn = input?.nextElementSibling;
-    if (input) input.disabled = true;
-    if (sendBtn) sendBtn.disabled = true;
-    bg.style.display = 'block';
-    box.style.display = 'flex';
-    box.style.flexDirection = 'column';
-    return;
+    const inp = document.getElementById('dm-input');
+    const snd = document.getElementById('dm-send-btn');
+    if (inp) inp.disabled = true; if (snd) snd.disabled = true;
+    bg.style.display='block'; box.style.display='flex'; box.style.flexDirection='column'; return;
   }
-
-  _dmPartner = username;
+  _dmPartner = username; _dmOldestId = null; _dmHasMore = false; _dmLastMsgCount = 0;
   document.getElementById('dm-modal-title').textContent = username;
   document.getElementById('dm-messages').innerHTML = `<div style="text-align:center;padding:1rem;color:var(--muted);font-size:.75rem;">Загрузка…</div>`;
-  const input = document.getElementById('dm-input');
-  const sendBtn = input?.nextElementSibling;
-  if (input) input.disabled = false;
-  if (sendBtn) sendBtn.disabled = false;
-  bg.style.display = 'block';
-  box.style.display = 'flex';
-  box.style.flexDirection = 'column';
+  const inp = document.getElementById('dm-input');
+  const snd = document.getElementById('dm-send-btn');
+  if (inp) inp.disabled = false; if (snd) snd.disabled = false;
+  bg.style.display='block'; box.style.display='flex'; box.style.flexDirection='column';
   const panel = document.getElementById('dm-panel');
-  if (panel) panel.style.display = 'none';
+  if (panel) panel.style.display='none';
   _dmPanelOpen = false;
-  await _refreshDmChat();
+  await _refreshDmChat(true);
   clearInterval(_dmPollInterval);
   _dmPollInterval = setInterval(_refreshDmChat, 5000);
-  setTimeout(() => { const el = document.getElementById('dm-input'); if (el) el.focus(); }, 50);
+  setTimeout(() => { const el=document.getElementById('dm-input'); if(el) el.focus(); }, 50);
 }
 
-async function _refreshDmChat() {
+// ── Render messages ──
+function _renderMsg(m) {
+  const side = m.is_mine ? 'flex-end' : 'flex-start';
+  const bg   = m.is_mine ? 'rgba(150,0,28,0.38)' : 'rgba(80,0,120,0.28)';
+  const br   = m.is_mine ? '.65rem .65rem .1rem .65rem' : '.65rem .65rem .65rem .1rem';
+  const time = new Date(m.created_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  const del  = m.is_mine ? `<button onclick="deleteDmMsg(${m.id},event)" title="Удалить" style="opacity:0;position:absolute;top:-.35rem;${m.is_mine?'left':'right'}:-.35rem;background:rgba(20,0,30,0.9);border:1px solid rgba(180,0,30,0.5);color:#f87171;border-radius:50%;width:18px;height:18px;font-size:.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity .15s;line-height:1;padding:0;" class="dm-del-btn">✕</button>` : '';
+  const tick = m.is_mine ? `<span style="font-size:.6rem;color:${m.read?'#60a5fa':'rgba(148,136,168,0.5)'};" title="${m.read?'Прочитано':'Доставлено'}">${m.read?'✓✓':'✓'}</span>` : '';
+  return `<div data-msg-id="${m.id}" style="display:flex;justify-content:${side};margin:1px 0;" onmouseover="this.querySelector('.dm-del-btn')&&(this.querySelector('.dm-del-btn').style.opacity='1')" onmouseout="this.querySelector('.dm-del-btn')&&(this.querySelector('.dm-del-btn').style.opacity='0')">
+    <div style="position:relative;max-width:80%;background:${bg};border-radius:${br};padding:.45rem .7rem .35rem;font-size:.82rem;color:var(--text);line-height:1.45;word-break:break-word;">
+      ${del}
+      ${DOMPurify.sanitize(m.content).replace(/\n/g,'<br>')}
+      <div style="display:flex;align-items:center;justify-content:flex-end;gap:.25rem;margin-top:.2rem;">
+        <span style="font-size:.58rem;color:rgba(148,136,168,0.6);">${time}</span>${tick}
+      </div>
+    </div>
+  </div>`;
+}
+
+async function _refreshDmChat(initial = false) {
   if (!_dmPartner) return;
   try {
-    const data = await fetch(`/api/messages/with/${encodeURIComponent(_dmPartner)}`, {credentials:'include'}).then(r => r.ok ? r.json() : null);
+    const url = `/api/messages/with/${encodeURIComponent(_dmPartner)}`;
+    const data = await fetch(url, {credentials:'include'}).then(r => r.ok ? r.json() : null);
     if (!data) return;
-    const avEl = document.getElementById('dm-modal-avatar');
     const p = data.partner;
-    if (avEl) {
-      avEl.innerHTML = p.avatar_url
-        ? `<img src="${esc(p.avatar_url)}" style="width:100%;height:100%;object-fit:cover;">`
-        : esc(p.username[0].toUpperCase());
-    }
+    const avEl = document.getElementById('dm-modal-avatar');
+    if (avEl) avEl.innerHTML = p.avatar_url
+      ? `<img src="${esc(p.avatar_url)}" style="width:100%;height:100%;object-fit:cover;">`
+      : esc(p.username[0].toUpperCase());
+
     const container = document.getElementById('dm-messages');
-    const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 60;
     const msgs = data.messages;
+    const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+
+    // Sound + tab flash for new incoming messages
+    if (!initial && msgs.length > _dmLastMsgCount) {
+      const newest = msgs[msgs.length-1];
+      if (newest && !newest.is_mine) { _playDmSound(); if (document.hidden) _startTabFlash(); }
+    }
+    _dmLastMsgCount = msgs.length;
+    _dmHasMore = data.has_more;
+    if (msgs.length) _dmOldestId = msgs[0].id;
+
+    const loadMoreBtn = _dmHasMore
+      ? `<div style="text-align:center;padding:.5rem 0;"><button onclick="loadOlderDmMessages()" style="background:rgba(80,0,120,0.2);border:1px solid rgba(110,0,150,0.3);color:var(--muted);border-radius:.4rem;padding:.3rem .85rem;font-size:.7rem;cursor:pointer;transition:all .18s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Загрузить ещё</button></div>`
+      : '';
+
     container.innerHTML = msgs.length === 0
       ? `<div style="text-align:center;padding:2rem;color:var(--muted);font-size:.78rem;">Начните переписку</div>`
-      : msgs.map(m => {
-        const side = m.is_mine ? 'flex-end' : 'flex-start';
-        const cls = m.is_mine ? 'dm-bubble-mine' : 'dm-bubble-their';
-        const bg = m.is_mine ? 'rgba(150,0,28,0.35)' : 'rgba(80,0,120,0.25)';
-        const time = new Date(m.created_at).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
-        return `<div style="display:flex;justify-content:${side};margin:1px 0;">
-          <div class="${cls}" style="max-width:78%;background:${bg};border-radius:.6rem;padding:.4rem .65rem;font-size:.82rem;color:var(--text);line-height:1.4;word-break:break-word;">
-            ${DOMPurify.sanitize(m.content).replace(/\n/g,'<br>')}
-            <div style="font-size:.58rem;color:rgba(148,136,168,0.7);text-align:right;margin-top:.2rem;">${time}</div>
-          </div>
-        </div>`;
-      }).join('');
-    if (wasAtBottom || msgs.length <= 3) container.scrollTop = container.scrollHeight;
+      : loadMoreBtn + msgs.map(_renderMsg).join('');
+
+    if (wasAtBottom || initial) container.scrollTop = container.scrollHeight;
     loadDmUnread();
   } catch {}
 }
 
-function openDmCompose(username) {
-  const stored = localStorage.getItem('user');
-  if (!stored) { window.location.href = '/login.html'; return; }
-  if (username) {
-    openDmChat(username);
-  } else {
-    const u = prompt('Введите имя пользователя:');
-    if (u && u.trim()) openDmChat(u.trim());
-  }
+// ── Load older (pagination) ──
+async function loadOlderDmMessages() {
+  if (!_dmPartner || !_dmOldestId) return;
+  try {
+    const data = await fetch(`/api/messages/with/${encodeURIComponent(_dmPartner)}?before_id=${_dmOldestId}`, {credentials:'include'}).then(r => r.ok ? r.json() : null);
+    if (!data) return;
+    const container = document.getElementById('dm-messages');
+    const prevScrollHeight = container.scrollHeight;
+    const msgs = data.messages;
+    _dmHasMore = data.has_more;
+    if (msgs.length) _dmOldestId = msgs[0].id;
+    _dmLastMsgCount += msgs.length;
+    const loadMoreBtn = _dmHasMore
+      ? `<div style="text-align:center;padding:.5rem 0;"><button onclick="loadOlderDmMessages()" style="background:rgba(80,0,120,0.2);border:1px solid rgba(110,0,150,0.3);color:var(--muted);border-radius:.4rem;padding:.3rem .85rem;font-size:.7rem;cursor:pointer;transition:all .18s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Загрузить ещё</button></div>`
+      : '';
+    const oldContent = container.innerHTML.replace(/<div[^>]*><button[^>]*onclick="loadOlderDmMessages\(\)"[^>]*>.*?<\/button><\/div>/, '');
+    container.innerHTML = loadMoreBtn + msgs.map(_renderMsg).join('') + oldContent;
+    container.scrollTop = container.scrollHeight - prevScrollHeight;
+  } catch {}
 }
 
-async function sendDm() {
-  if (!_dmPartner) return;
-  const input = document.getElementById('dm-input');
-  const content = (input?.value || '').trim();
-  if (!content) return;
+// ── Delete message ──
+async function deleteDmMsg(id, e) {
+  e.stopPropagation();
   try {
-    const r = await fetch('/api/messages', {
-      method: 'POST', credentials: 'include',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({recipient_username: _dmPartner, content}),
-    });
+    const r = await fetch(`/api/messages/${id}`, {method:'DELETE', credentials:'include'});
     if (r.ok) {
-      input.value = '';
-      input.style.height = 'auto';
-      await _refreshDmChat();
-    } else {
-      const d = await r.json().catch(() => ({}));
-      const errEl = document.getElementById('dm-send-error');
-      if (errEl) { errEl.textContent = d.detail || 'Ошибка отправки'; errEl.style.display = 'block'; setTimeout(() => { errEl.style.display = 'none'; }, 3500); }
+      const el = document.querySelector(`[data-msg-id="${id}"]`);
+      if (el) el.remove();
+      _dmLastMsgCount = Math.max(0, _dmLastMsgCount - 1);
     }
   } catch {}
 }
 
-function closeDmModal() {
-  clearInterval(_dmPollInterval);
-  _dmPartner = null;
-  const bg = document.getElementById('dm-modal-bg');
-  const box = document.getElementById('dm-modal-box');
-  if (bg) bg.style.display = 'none';
-  if (box) box.style.display = 'none';
+// ── Compose modal ──
+function openDmCompose(username) {
+  if (!localStorage.getItem('user')) { window.location.href='/login.html'; return; }
+  if (username) { openDmChat(username); return; }
+  const bg = document.getElementById('dm-compose-bg');
+  const box = document.getElementById('dm-compose-box');
+  if (!bg||!box) return;
+  document.getElementById('dm-compose-to').value = '';
+  document.getElementById('dm-compose-text').value = '';
+  document.getElementById('dm-compose-error').style.display = 'none';
+  bg.style.display = 'block'; box.style.display = 'block';
+  setTimeout(() => document.getElementById('dm-compose-to').focus(), 50);
 }
+function closeDmCompose() {
+  const bg = document.getElementById('dm-compose-bg');
+  const box = document.getElementById('dm-compose-box');
+  if (bg) bg.style.display = 'none'; if (box) box.style.display = 'none';
+}
+async function sendDmCompose() {
+  const to      = (document.getElementById('dm-compose-to')?.value||'').trim();
+  const content = (document.getElementById('dm-compose-text')?.value||'').trim();
+  const errEl   = document.getElementById('dm-compose-error');
+  const btn     = document.getElementById('dm-compose-send-btn');
+  if (!to)      { errEl.textContent='Укажите получателя'; errEl.style.display='block'; return; }
+  if (!content) { errEl.textContent='Введите сообщение'; errEl.style.display='block'; return; }
+  if (btn) { btn.disabled=true; btn.textContent='Отправка…'; }
+  try {
+    const r = await fetch('/api/messages',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipient_username:to,content})});
+    if (r.ok) { closeDmCompose(); openDmChat(to); }
+    else { const d=await r.json().catch(()=>({})); errEl.textContent=d.detail||'Ошибка'; errEl.style.display='block'; }
+  } catch { errEl.textContent='Ошибка соединения'; errEl.style.display='block'; }
+  finally { if(btn){btn.disabled=false;btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Отправить';} }
+}
+
+// ── Send in chat ──
+async function sendDm() {
+  if (!_dmPartner) return;
+  const input = document.getElementById('dm-input');
+  const content = (input?.value||'').trim();
+  if (!content) return;
+  try {
+    const r = await fetch('/api/messages',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipient_username:_dmPartner,content})});
+    if (r.ok) {
+      input.value=''; input.style.height='auto';
+      await _refreshDmChat();
+    } else {
+      const d=await r.json().catch(()=>({}));
+      const errEl=document.getElementById('dm-send-error');
+      if(errEl){errEl.textContent=d.detail||'Ошибка отправки';errEl.style.display='block';setTimeout(()=>{errEl.style.display='none';},3500);}
+    }
+  } catch {}
+}
+
+// ── Close chat ──
+function closeDmModal() {
+  clearInterval(_dmPollInterval); _dmPartner=null; _dmOldestId=null;
+  const bg=document.getElementById('dm-modal-bg');
+  const box=document.getElementById('dm-modal-box');
+  if(bg) bg.style.display='none'; if(box) box.style.display='none';
+}
+
+// ── Auto-open from URL param ──
+(function(){
+  const p=new URLSearchParams(location.search).get('dm');
+  if(p) window.addEventListener('load', ()=>{ const u=localStorage.getItem('user'); if(u) setTimeout(()=>openDmChat(p),600); });
+})();
 
 // ── Notification bell ──────────────────────────────────────────────────────
 let _notifOpen = false;

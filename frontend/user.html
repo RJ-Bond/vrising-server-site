@@ -131,6 +131,10 @@
         <div style="display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-bottom:.2rem;">
           <h1 class="gothic" id="user-name" style="font-size:1.45rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;">—</h1>
           <span id="user-role-badge" style="font-size:.6rem;padding:.15rem .6rem;border-radius:9999px;border:1px solid rgba(120,80,200,0.4);color:#c4b5fd;background:rgba(80,40,140,0.2);"></span>
+          <a id="dm-user-btn" href="#" onclick="dmUser(event)" style="display:none;align-items:center;gap:.35rem;background:rgba(80,0,120,0.22);border:1px solid rgba(110,0,150,0.38);color:var(--muted);border-radius:.5rem;padding:.28rem .72rem;font-size:.72rem;text-decoration:none;cursor:pointer;transition:all .18s;" onmouseover="this.style.color='var(--text)';this.style.background='rgba(100,0,150,0.32)'" onmouseout="this.style.color='var(--muted)';this.style.background='rgba(80,0,120,0.22)'">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Написать
+          </a>
         </div>
         <!-- Rank -->
         <div id="rank-wrap" style="display:none;margin-top:.5rem;">
@@ -227,6 +231,12 @@ function renderRank(totalSeconds){
   wrap.style.display='';
 }
 
+function dmUser(e) {
+  e.preventDefault();
+  const username = new URLSearchParams(location.search).get('u');
+  if (username) window.location.href = `/?dm=${encodeURIComponent(username)}`;
+}
+
 async function loadUser(){
   buildStars();
   const params=new URLSearchParams(location.search);
@@ -239,6 +249,14 @@ async function loadUser(){
     if(u.avatar_url){const img=document.createElement('img');img.src=u.avatar_url;av.appendChild(img);}
     else{av.textContent=u.username.charAt(0).toUpperCase();}
     document.getElementById('user-name').textContent=u.username;
+    // Show DM button if logged in as a different user
+    try {
+      const me = await fetch(`${API}/auth/me`,{credentials:'include'}).then(r=>r.ok?r.json():null);
+      if (me && me.username !== u.username) {
+        const dmBtn = document.getElementById('dm-user-btn');
+        if (dmBtn) dmBtn.style.display = 'inline-flex';
+      }
+    } catch {}
     const badge=document.getElementById('user-role-badge');
     badge.textContent=u.role==='admin'?'Админ':'Игрок';
     badge.style.color=u.role==='admin'?'#fcd34d':'#c4b5fd';
