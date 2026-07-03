@@ -272,6 +272,8 @@ async def lifespan(app: FastAPI):
             "CREATE INDEX IF NOT EXISTS ix_messages_sender ON messages(sender_id)",
             "ALTER TABLE users ADD COLUMN admin_title VARCHAR(128) DEFAULT NULL",
             "ALTER TABLE users ADD COLUMN last_active_at DATETIME DEFAULT NULL",
+            "ALTER TABLE users ADD COLUMN badge_icon_url VARCHAR(512) DEFAULT NULL",
+            "ALTER TABLE users ADD COLUMN badge_style VARCHAR(32) DEFAULT 'default'",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -1704,6 +1706,8 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         "clan": clan,
         "admin_title": user.admin_title,
         "last_active_at": user.last_active_at.isoformat() if user.last_active_at else None,
+        "badge_icon_url": user.badge_icon_url,
+        "badge_style": user.badge_style or "default",
     }
 
 
@@ -2507,6 +2511,8 @@ async def get_team(db: AsyncSession = Depends(get_db)):
             "created_at": u.created_at.isoformat(),
             "admin_title": u.admin_title,
             "last_active_at": u.last_active_at.isoformat() if u.last_active_at else None,
+            "badge_icon_url": u.badge_icon_url,
+            "badge_style": u.badge_style or "default",
         }
         for u in admins
     ]
@@ -2528,6 +2534,74 @@ async def set_admin_title(
     current_user.admin_title = title or None
     await db.commit()
     return {"admin_title": current_user.admin_title}
+
+
+@app.post("/api/profile/badge-icon")
+async def upload_badge_icon(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Только для администраторов")
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Только изображения")
+    ext = Path(file.filename).suffix.lower() if file.filename else ".png"
+    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"}:
+        ext = ".png"
+    content = await file.read()
+    if len(content) > 2 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="Максимальный размер 2 МБ")
+    fname = f"badge_{current_user.id}_{uuid.uuid4().hex[:8]}{ext}"
+    (UPLOAD_DIR / fname).write_bytes(content)
+    old = (current_user.badge_icon_url or "").rsplit("/", 1)[-1]
+    if old.startswith("badge_"):
+        (UPLOAD_DIR / old).unlink(missing_ok=True)
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one()
+    user.badge_icon_url = f"/api/uploads/{fname}"
+    await db.commit()
+    return {"badge_icon_url": user.badge_icon_url}
+
+
+@app.delete("/api/profile/badge-icon", status_code=204)
+async def clear_badge_icon(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Только для администраторов")
+    old = (current_user.badge_icon_url or "").rsplit("/", 1)[-1]
+    if old.startswith("badge_"):
+        (UPLOAD_DIR / old).unlink(missing_ok=True)
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one()
+    user.badge_icon_url = None
+    await db.commit()
+
+
+class BadgeStyleBody(BaseModel):
+    style: str
+
+
+_BADGE_STYLES = {"default", "crown", "shield", "diamond", "flame", "swords"}
+
+
+@app.put("/api/profile/badge-style")
+async def set_badge_style(
+    body: BadgeStyleBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Только для администраторов")
+    if body.style not in _BADGE_STYLES:
+        raise HTTPException(status_code=400, detail="Недопустимый стиль")
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one()
+    user.badge_style = body.style
+    await db.commit()
+    return {"badge_style": user.badge_style}
 
 
 # ─── Direct Messages ─────────────────────────────────────────────────────────

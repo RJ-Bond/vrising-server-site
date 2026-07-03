@@ -43,6 +43,8 @@ class UserOut(BaseModel):
     game_nickname: Optional[str] = None
     admin_title: Optional[str] = None
     last_active_at: Optional[datetime] = None
+    badge_icon_url: Optional[str] = None
+    badge_style: Optional[str] = 'default'
 
     model_config = {"from_attributes": True}
 

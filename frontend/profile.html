@@ -321,6 +321,44 @@
     <div id="admin-title-status" style="font-size:.7rem;margin-top:.3rem;"></div>
   </div>
 
+  <!-- Badge section (admins only) -->
+  <div id="badge-section" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
+    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Значок —</h2>
+
+    <div style="margin-bottom:1rem;">
+      <div style="font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem;">Предпросмотр</div>
+      <div id="badge-preview" style="min-height:1.6rem;display:flex;align-items:center;"></div>
+    </div>
+
+    <div style="margin-bottom:1.1rem;">
+      <div style="font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem;">Стиль</div>
+      <div id="badge-style-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;"></div>
+    </div>
+
+    <div>
+      <div style="font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.45rem;">
+        Своя иконка <span style="font-weight:400;text-transform:none;letter-spacing:0;color:rgba(148,136,168,0.55);">(перекрывает стиль)</span>
+      </div>
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+        <input type="file" id="badge-icon-input" accept="image/*" style="display:none" onchange="uploadBadgeIcon(this)">
+        <button onclick="document.getElementById('badge-icon-input').click()"
+          style="padding:.42rem .85rem;background:rgba(80,0,15,.18);border:1px solid rgba(150,0,28,.38);color:#e2d8f0;border-radius:.55rem;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .18s;"
+          onmouseover="this.style.borderColor='rgba(200,0,40,.55)'" onmouseout="this.style.borderColor='rgba(150,0,28,.38)'">
+          Загрузить иконку
+        </button>
+        <button id="badge-icon-clear-btn" onclick="clearBadgeIcon()"
+          style="display:none;padding:.42rem .85rem;background:rgba(60,0,10,.12);border:1px solid rgba(100,0,15,.28);color:var(--muted);border-radius:.55rem;font-size:.78rem;cursor:pointer;">
+          Убрать иконку
+        </button>
+        <span id="badge-icon-current" style="display:none;align-items:center;gap:.35rem;font-size:.68rem;color:var(--muted);">
+          <img id="badge-icon-current-img" style="width:20px;height:20px;object-fit:contain;border-radius:3px;border:1px solid rgba(110,0,20,.3);">
+          текущая иконка
+        </span>
+      </div>
+      <div id="badge-icon-status" style="font-size:.7rem;margin-top:.35rem;min-height:1em;"></div>
+    </div>
+  </div>
+
   <!-- Change password -->
   <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
     <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Сменить пароль —</h2>
@@ -518,7 +556,7 @@ async function loadProfile() {
     document.getElementById('profile-email').textContent = u.email;
     const roleEl = document.getElementById('profile-role');
     if (u.role === 'admin') {
-      roleEl.innerHTML = `<span style="font-size:.8rem;font-weight:700;letter-spacing:.06em;padding:.25rem .75rem;border-radius:9999px;background:rgba(140,100,0,0.2);border:1px solid rgba(210,165,0,0.4);color:#f0c040;font-family:'Inter',sans-serif;">${u.admin_title || 'Админ'}</span>`;
+      roleEl.innerHTML = _renderAdminBadge(u);
     } else {
       roleEl.innerHTML = '<span style="font-size:.8rem;font-weight:700;letter-spacing:.06em;padding:.25rem .75rem;border-radius:9999px;background:rgba(80,40,140,0.2);border:1px solid rgba(120,80,200,0.4);color:#c4b5fd;font-family:\'Inter\',sans-serif;">Игрок</span>';
     }
@@ -540,10 +578,13 @@ async function loadProfile() {
     }
 
     const badgeEl = document.getElementById('profile-role-badge');
-    badgeEl.textContent = u.role === 'admin' ? (u.admin_title || 'Админ') : 'Игрок';
-    badgeEl.style.color       = u.role === 'admin' ? '#fcd34d' : '#c4b5fd';
-    badgeEl.style.borderColor = u.role === 'admin' ? 'rgba(200,160,74,0.5)' : 'rgba(120,80,200,0.4)';
-    badgeEl.style.background  = u.role === 'admin' ? 'rgba(140,100,0,0.2)' : 'rgba(80,40,140,0.2)';
+    if (u.role === 'admin') {
+      badgeEl.innerHTML = _renderAdminBadge(u);
+      badgeEl.style.cssText = '';
+    } else {
+      badgeEl.textContent = 'Игрок';
+      badgeEl.style.color='#c4b5fd'; badgeEl.style.borderColor='rgba(120,80,200,0.4)'; badgeEl.style.background='rgba(80,40,140,0.2)';
+    }
 
     if (u.role === 'admin') {
       document.getElementById('admin-link').style.display = '';
@@ -551,6 +592,16 @@ async function loadProfile() {
       if (titleCard) titleCard.style.display = '';
       const titleInput = document.getElementById('admin-title-input');
       if (titleInput && u.admin_title) titleInput.value = u.admin_title;
+
+      const badgeSec = document.getElementById('badge-section');
+      if (badgeSec) {
+        badgeSec.style.display = '';
+        _badgeState = { style: u.badge_style || 'default', icon: u.badge_icon_url || null, title: u.admin_title || 'Админ' };
+        _buildBadgeStyleGrid();
+        _highlightBadgeStyle(_badgeState.style);
+        _updateBadgePreview();
+        _showBadgeIconCurrent(_badgeState.icon);
+      }
     }
 
     // Fill game nickname
@@ -634,6 +685,10 @@ async function saveAdminTitle() {
     if (r.ok) {
       statusEl.textContent = '✔ Сохранено';
       statusEl.style.color = '#4ade80';
+      _badgeState.title = title || 'Админ';
+      _buildBadgeStyleGrid();
+      _highlightBadgeStyle(_badgeState.style);
+      _updateBadgePreview();
     } else {
       const d = await r.json().catch(() => ({}));
       statusEl.textContent = '✘ ' + (d.detail || 'Ошибка');
@@ -644,6 +699,111 @@ async function saveAdminTitle() {
     statusEl.style.color = '#f87171';
   }
   setTimeout(() => { statusEl.textContent = ''; }, 3000);
+}
+
+// ── Badge section ────────────────────────────────────────────────────────────
+function _renderAdminBadge(u) {
+  if (u.role !== 'admin') return '';
+  const label = _esc(u.admin_title || 'Админ');
+  const icon  = u.badge_icon_url;
+  const style = u.badge_style || 'default';
+  const B = 'display:inline-flex;align-items:center;gap:.28rem;font-size:.6rem;font-weight:700;letter-spacing:.06em;padding:.15rem .6rem;white-space:nowrap;';
+  if (icon) return `<span style="${B}border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;"><img src="${_esc(icon)}" style="width:13px;height:13px;object-fit:contain;border-radius:2px;flex-shrink:0;">${label}</span>`;
+  switch (style) {
+    case 'crown':   return `<span style="${B}border-radius:9999px;background:linear-gradient(135deg,rgba(200,150,0,.28),rgba(255,195,0,.14));border:1px solid rgba(225,175,0,.62);color:#f5c842;box-shadow:0 0 9px rgba(200,150,0,.18);"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;margin-bottom:1px;"><path d="M5 16 3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm2 3a1 1 0 0 0 0 2h10a1 1 0 0 0 0-2H7z"/></svg>${label}</span>`;
+    case 'shield':  return `<span style="${B}border-radius:.42rem;background:linear-gradient(135deg,rgba(160,0,30,.32),rgba(90,0,15,.18));border:1px solid rgba(205,0,42,.52);color:#f87171;"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>${label}</span>`;
+    case 'diamond': return `<span style="${B}border-radius:9999px;background:linear-gradient(135deg,rgba(110,0,210,.3),rgba(155,0,255,.15));border:1px solid rgba(165,0,255,.48);color:#c4b5fd;box-shadow:0 0 8px rgba(130,0,210,.15);">✦ ${label}</span>`;
+    case 'flame':   return `<span style="${B}border-radius:.42rem;background:linear-gradient(135deg,rgba(200,55,0,.3),rgba(255,125,0,.14));border:1px solid rgba(225,80,0,.52);color:#fb923c;">🔥 ${label}</span>`;
+    case 'swords':  return `<span style="${B}border-radius:.42rem;background:linear-gradient(135deg,rgba(25,25,60,.55),rgba(50,50,100,.32));border:1px solid rgba(100,100,185,.42);color:#a5b4fc;">⚔ ${label}</span>`;
+    default:        return `<span style="${B}border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;">${label}</span>`;
+  }
+}
+
+const _BADGE_STYLES = [
+  { key:'default', label:'Стандарт' },
+  { key:'crown',   label:'Корона' },
+  { key:'shield',  label:'Щит' },
+  { key:'diamond', label:'Кристалл' },
+  { key:'flame',   label:'Пламя' },
+  { key:'swords',  label:'Мечи' },
+];
+
+let _badgeState = { style:'default', icon:null, title:'Админ' };
+
+function _buildBadgeStyleGrid() {
+  const grid = document.getElementById('badge-style-grid');
+  if (!grid) return;
+  grid.innerHTML = _BADGE_STYLES.map(s => `
+    <button id="bsg-${s.key}" onclick="selectBadgeStyle('${s.key}')"
+      style="padding:.5rem .3rem;border-radius:.55rem;border:1px solid rgba(110,0,20,.28);background:rgba(10,2,18,.5);cursor:pointer;transition:all .18s;display:flex;flex-direction:column;align-items:center;gap:.3rem;">
+      ${_renderAdminBadge({ role:'admin', admin_title:_badgeState.title||'Админ', badge_icon_url:null, badge_style:s.key })}
+      <span style="font-size:.58rem;color:var(--muted);">${s.label}</span>
+    </button>`).join('');
+}
+
+function _highlightBadgeStyle(key) {
+  _BADGE_STYLES.forEach(s => {
+    const btn = document.getElementById(`bsg-${s.key}`);
+    if (!btn) return;
+    btn.style.borderColor = s.key === key ? 'rgba(200,150,0,.6)' : 'rgba(110,0,20,.28)';
+    btn.style.background  = s.key === key ? 'rgba(180,130,0,.1)' : 'rgba(10,2,18,.5)';
+  });
+}
+
+function _updateBadgePreview() {
+  const el = document.getElementById('badge-preview');
+  if (el) el.innerHTML = _renderAdminBadge({ role:'admin', admin_title:_badgeState.title||'Админ', badge_icon_url:_badgeState.icon, badge_style:_badgeState.style });
+}
+
+function _showBadgeIconCurrent(url) {
+  const clearBtn = document.getElementById('badge-icon-clear-btn');
+  const cur = document.getElementById('badge-icon-current');
+  if (url) {
+    if (clearBtn) clearBtn.style.display = '';
+    if (cur) { cur.style.display = 'inline-flex'; document.getElementById('badge-icon-current-img').src = url; }
+  } else {
+    if (clearBtn) clearBtn.style.display = 'none';
+    if (cur) cur.style.display = 'none';
+  }
+}
+
+async function selectBadgeStyle(key) {
+  _badgeState.style = key;
+  _highlightBadgeStyle(key);
+  _updateBadgePreview();
+  try {
+    await fetch(`${API}/profile/badge-style`, { method:'PUT', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ style:key }) });
+  } catch {}
+}
+
+async function uploadBadgeIcon(input) {
+  if (!input.files?.[0]) return;
+  const st = document.getElementById('badge-icon-status');
+  const form = new FormData(); form.append('file', input.files[0]);
+  st.textContent = 'Загрузка…'; st.style.color = '#9488a8';
+  try {
+    const r = await fetch(`${API}/profile/badge-icon`, { method:'POST', credentials:'include', body:form });
+    if (!r.ok) { const d = await r.json().catch(()=>{}); st.textContent = '✘ ' + (d?.detail||'Ошибка'); st.style.color='#f87171'; return; }
+    const { badge_icon_url } = await r.json();
+    _badgeState.icon = badge_icon_url;
+    _updateBadgePreview();
+    _showBadgeIconCurrent(badge_icon_url);
+    st.textContent = '✔ Загружено'; st.style.color = '#4ade80';
+  } catch { st.textContent = '✘ Ошибка соединения'; st.style.color = '#f87171'; }
+  finally { input.value = ''; }
+  setTimeout(() => { st.textContent = ''; }, 3000);
+}
+
+async function clearBadgeIcon() {
+  const st = document.getElementById('badge-icon-status');
+  try {
+    await fetch(`${API}/profile/badge-icon`, { method:'DELETE', credentials:'include' });
+    _badgeState.icon = null;
+    _updateBadgePreview();
+    _showBadgeIconCurrent(null);
+    st.textContent = '✔ Иконка удалена'; st.style.color = '#4ade80';
+  } catch { st.textContent = '✘ Ошибка'; st.style.color = '#f87171'; }
+  setTimeout(() => { st.textContent = ''; }, 3000);
 }
 
 loadProfile();

@@ -23,6 +23,8 @@ class User(Base):
     game_nickname = Column(String(64), nullable=True)
     admin_title = Column(String(128), nullable=True)
     last_active_at = Column(DateTime, nullable=True)
+    badge_icon_url = Column(String(512), nullable=True)
+    badge_style = Column(String(32), nullable=True, default='default')
 
 
 class Clan(Base):
