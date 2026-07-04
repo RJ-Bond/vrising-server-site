@@ -124,12 +124,13 @@
     @keyframes skel-pulse { 0%,100%{opacity:.35} 50%{opacity:.85} }
     .skel { animation:skel-pulse 1.3s ease-in-out infinite; }
 
-    .srv-wipe-chip {
-      font-size:.65rem; font-weight:600; color:var(--muted); background:var(--panel);
-      border:1px solid rgba(255,255,255,0.1); border-radius:9999px; padding:.2rem .6rem;
-      display:inline-flex; align-items:center; gap:.3rem; margin-top:.6rem;
+    .srv-wipe-banner {
+      padding:.85rem 1.25rem .85rem 1.4rem;
+      border-top:1px solid transparent;
+      border-bottom:1px solid transparent;
+      border-left:3px solid transparent;
+      position:relative;
     }
-    .srv-wipe-chip.urgent { color:var(--red); border-color:rgba(255,93,126,0.4); background:rgba(255,93,126,0.1); }
 
     .srv-connect-row { display:flex; gap:.6rem; margin-bottom:1.25rem; }
     .srv-connect-btn {
@@ -379,6 +380,15 @@ function updatePageTitle() {
 
 const WIPE_TYPE_LABELS = { full: 'Полный вайп', map: 'Вайп карты', progress: 'Вайп прогресса' };
 
+function wipeCountBlock(val, lbl, urgent, rgb) {
+  const col = urgent ? `rgb(${rgb})` : '#e8ddf5';
+  const glow = urgent ? `0 0 16px rgba(${rgb},.55)` : 'none';
+  return `<div style="text-align:center;min-width:2.1rem;">
+    <div style="font-family:'Oswald',sans-serif;font-size:1.7rem;font-weight:700;line-height:1;color:${col};text-shadow:${glow};">${String(val).padStart(2,'0')}</div>
+    <div style="font-size:.44rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-top:.1rem;">${lbl}</div>
+  </div>`;
+}
+
 function renderWipeChip(num) {
   const el = document.getElementById(`srv-wipe-${num}`);
   const w = _wipeSettings[num];
@@ -387,17 +397,46 @@ function renderWipeChip(num) {
   if (isNaN(date)) { el.style.display = 'none'; return; }
   const diff = date.getTime() - Date.now();
   const label = WIPE_TYPE_LABELS[w.type] || 'Вайп';
+  const typeRgb   = w.type === 'map' ? '201,169,74' : w.type === 'progress' ? '153,85,238' : '200,0,42';
+  const typeIcon  = w.type === 'map' ? '🗺️' : w.type === 'progress' ? '🔮' : '⚰️';
+  const urgent    = diff > 0 && diff < 7 * 86400000;
+  const alpha     = urgent ? '.14' : '.08';
+  const dateStr   = date.toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit', year:'2-digit'});
+
+  el.style.borderTopColor    = `rgba(${typeRgb},.18)`;
+  el.style.borderBottomColor = `rgba(${typeRgb},.1)`;
+  el.style.borderLeftColor   = `rgba(${typeRgb},.75)`;
+  el.style.background        = `linear-gradient(135deg, rgba(${typeRgb},${alpha}) 0%, rgba(${typeRgb},.01) 65%)`;
+
   if (diff <= 0) {
-    el.textContent = `🗡 ${label}: сервер сброшен`;
-    el.classList.remove('urgent');
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:.55rem;">
+        <span style="font-size:.95rem;opacity:.55;">${typeIcon}</span>
+        <div>
+          <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:rgba(${typeRgb},1);">${label}</div>
+          <div style="font-size:.64rem;color:var(--muted);margin-top:.1rem;">Сервер сброшен · ${dateStr}</div>
+        </div>
+      </div>`;
   } else {
-    const d = Math.floor(diff / 86400000);
-    const h = Math.floor((diff % 86400000) / 3600000);
-    el.textContent = `🗡 ${label} через ${d}д ${h}ч`;
-    el.classList.toggle('urgent', d < 7);
+    const dd = Math.floor(diff / 86400000);
+    const hh = Math.floor((diff % 86400000) / 3600000);
+    const mm = Math.floor((diff % 3600000) / 60000);
+    const sep = `<div style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:var(--muted);padding-bottom:.15rem;line-height:1;opacity:.4;">:</div>`;
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:.45rem;margin-bottom:.5rem;">
+        <span style="font-size:.92rem;">${typeIcon}</span>
+        <span style="font-size:.57rem;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:rgba(${typeRgb},1);">${label}</span>
+        <span style="font-size:.56rem;color:var(--muted);margin-left:auto;">📅 ${dateStr}</span>
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:.28rem;">
+        ${wipeCountBlock(dd,'дней',urgent,typeRgb)}
+        ${sep}
+        ${wipeCountBlock(hh,'часов',urgent,typeRgb)}
+        ${sep}
+        ${wipeCountBlock(mm,'минут',urgent,typeRgb)}
+      </div>`;
   }
-  el.title = fmtDate(date.toISOString());
-  el.style.display = 'inline-flex';
+  el.style.display = 'block';
 }
 
 const SERVER_THEMES = {
@@ -420,8 +459,8 @@ function srvCardSkeleton(num) {
           <span class="srv-vac-badge" id="srv-vac-${num}" style="display:none;">🛡 VAC</span>
         </div>
       </div>
-      <span class="srv-wipe-chip" id="srv-wipe-${num}" style="display:none;"></span>
     </div>
+    <div class="srv-wipe-banner" id="srv-wipe-${num}" style="display:none;"></div>
     <div class="g-card-body">
     <div class="srv-record" id="srv-record-${num}" style="display:none;"></div>
     <div class="srv-connect-row" id="srv-connect-${num}" style="display:none;">
