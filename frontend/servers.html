@@ -174,6 +174,17 @@
     .srv-period-btn:hover { color:var(--text); }
     .srv-period-btn.active { background:var(--accent); color:#fff; }
     .srv-graph-wrap { position:relative; }
+    .srv-live-dot {
+      position:absolute; width:8px; height:8px; border-radius:50%;
+      background:var(--accent); pointer-events:none; transform:translate(-50%,-50%);
+      box-shadow:0 0 0 0 var(--accent); z-index:3; display:none;
+      animation:live-pulse 2.4s ease-out infinite;
+    }
+    @keyframes live-pulse {
+      0%   { box-shadow:0 0 0 0 rgba(var(--accent-rgb),.7); }
+      70%  { box-shadow:0 0 0 8px rgba(var(--accent-rgb),0); }
+      100% { box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); }
+    }
     .srv-graph-tooltip {
       position:absolute; pointer-events:none; background:rgba(10,2,18,0.96); border:1px solid rgba(150,0,28,0.4);
       border-radius:.4rem; padding:.4rem .6rem; font-size:.68rem; color:var(--text); white-space:nowrap;
@@ -440,7 +451,8 @@ function srvCardSkeleton(num) {
         </div>
       </div>
       <div class="srv-graph-wrap">
-        <canvas id="srv-graph-${num}" height="110" style="width:100%;display:block;cursor:crosshair;"></canvas>
+        <canvas id="srv-graph-${num}" height="130" style="width:100%;display:block;cursor:crosshair;"></canvas>
+        <div class="srv-live-dot" id="srv-live-dot-${num}"></div>
         <div class="srv-graph-tooltip" id="srv-graph-tip-${num}" style="display:none;"></div>
       </div>
       <div class="srv-graph-axis" id="srv-graph-axis-${num}"></div>
@@ -735,14 +747,14 @@ function drawGraph(num) {
 
   const dpr = window.devicePixelRatio || 1;
   const w = canvas.clientWidth || canvas.parentElement.clientWidth;
-  const h = 110;
+  const h = 130;
   canvas.width = w * dpr; canvas.height = h * dpr;
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   const accent = SERVER_THEMES[num].accentRgb;
   const maxPlayers = Math.max(1, ...snaps.map(s => s.players));
-  const padL = 4, padR = 4, padT = 8, padB = 4;
+  const padL = 28, padR = 4, padT = 8, padB = 4;
   const plotW = w - padL - padR, plotH = h - padT - padB;
   const tMin = snaps[0].ts, tMax = snaps[snaps.length - 1].ts;
   const tSpan = Math.max(1, tMax - tMin);
@@ -775,14 +787,21 @@ function renderChart(num) {
   const { snaps, x, y, padL, padT, plotW, plotH, w, h, accent } = geom;
   ctx.clearRect(0, 0, w, h);
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-  ctx.lineWidth = 1;
-  [0.25, 0.5, 0.75].forEach(f => {
-    const gy = padT + plotH * f;
+  // Y-axis gridlines + labels
+  ctx.font = '500 8px Inter, system-ui, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  [0, 0.5, 1].forEach(f => {
+    const gy = padT + plotH * (1 - f);
+    const playerVal = Math.round(maxPlayers * f);
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(padL, gy);
     ctx.lineTo(padL + plotW, gy);
     ctx.stroke();
+    ctx.fillStyle = 'rgba(182,168,210,0.55)';
+    ctx.fillText(playerVal, padL - 4, gy);
   });
 
   const pts = snaps.map(s => ({ x: x(s), y: y(s) }));
@@ -810,6 +829,35 @@ function renderChart(num) {
 
   ctx.fillStyle = 'rgb(255,93,126)';
   snaps.forEach(s => { if (!s.online) { ctx.beginPath(); ctx.arc(x(s), padT + plotH - 1, 1.3, 0, Math.PI * 2); ctx.fill(); } });
+
+  // Live endpoint dot (glow in canvas + position CSS pulse ring)
+  const last = snaps[snaps.length - 1];
+  if (last && last.online) {
+    const lx = x(last), ly = y(last);
+    ctx.save();
+    ctx.shadowBlur = 14;
+    ctx.shadowColor = `rgb(${accent})`;
+    ctx.fillStyle = `rgb(${accent})`;
+    ctx.beginPath();
+    ctx.arc(lx, ly, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(lx, ly, 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    // Position the CSS pulse ring
+    const dotEl = document.getElementById(`srv-live-dot-${num}`);
+    if (dotEl) {
+      dotEl.style.display = 'block';
+      dotEl.style.left = lx + 'px';
+      dotEl.style.top = ly + 'px';
+    }
+  } else {
+    const dotEl = document.getElementById(`srv-live-dot-${num}`);
+    if (dotEl) dotEl.style.display = 'none';
+  }
 }
 
 function renderAxisLabels(num, snaps, days) {

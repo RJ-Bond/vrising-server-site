@@ -1448,6 +1448,7 @@
       <div style="width:100%;height:3rem;border-radius:.5rem;background:rgba(110,0,20,0.1);animation:pulse 2s ease-in-out infinite;"></div>
     </div>
     <div id="left-circles"></div>
+    <canvas id="left-spark" height="36" style="width:100%;display:none;border-radius:.3rem;margin-top:.5rem;margin-bottom:.1rem;opacity:.75;"></canvas>
     <div id="left-connect" style="margin-top:.75rem;"></div>
     <div id="left-players" style="margin-top:.6rem;"></div>
     <div id="left-info" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.55rem;"></div>
@@ -1463,6 +1464,7 @@
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.55),transparent);margin:1.1rem 0;"></div>
       <div id="left-status2" style="margin-bottom:.75rem;"></div>
       <div id="left-circles2"></div>
+      <canvas id="left-spark2" height="36" style="width:100%;display:none;border-radius:.3rem;margin-top:.5rem;margin-bottom:.1rem;opacity:.75;"></canvas>
       <div id="left-connect2" style="margin-top:.75rem;"></div>
       <div id="left-players2" style="margin-top:.6rem;"></div>
       <div id="left-info2" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.55rem;"></div>
@@ -1957,6 +1959,66 @@ function updateHunters(players) {
       </div>`).join('')}
     </div>` : '';
   el.innerHTML = podiumHtml + restHtml;
+}
+
+function drawMiniSparkline(canvasId, snaps, accentRgb) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !snaps || snaps.length < 2) { if (canvas) canvas.style.display = 'none'; return; }
+  const cutoff = Date.now() / 1000 - 86400;
+  const pts = snaps.filter(s => s.ts >= cutoff);
+  if (pts.length < 2) { canvas.style.display = 'none'; return; }
+  canvas.style.display = 'block';
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth || canvas.parentElement.clientWidth || 180;
+  const h = 36;
+  canvas.width = w * dpr; canvas.height = h * dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const maxP = Math.max(1, ...pts.map(s => s.players));
+  const tMin = pts[0].ts, tSpan = Math.max(1, pts[pts.length - 1].ts - tMin);
+  const px = s => ((s.ts - tMin) / tSpan) * w;
+  const py = s => h - 2 - (s.players / maxP) * (h - 4);
+  const coords = pts.map(s => ({ x: px(s), y: py(s) }));
+  // fill
+  ctx.beginPath();
+  ctx.moveTo(coords[0].x, h);
+  ctx.lineTo(coords[0].x, coords[0].y);
+  for (let i = 1; i < coords.length - 1; i++) {
+    const xc = (coords[i].x + coords[i + 1].x) / 2, yc = (coords[i].y + coords[i + 1].y) / 2;
+    ctx.quadraticCurveTo(coords[i].x, coords[i].y, xc, yc);
+  }
+  const last = coords[coords.length - 1];
+  ctx.quadraticCurveTo(coords[coords.length - 2].x, coords[coords.length - 2].y, last.x, last.y);
+  ctx.lineTo(last.x, h);
+  ctx.closePath();
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, `rgba(${accentRgb},0.35)`);
+  grad.addColorStop(1, `rgba(${accentRgb},0.02)`);
+  ctx.fillStyle = grad;
+  ctx.fill();
+  // line
+  ctx.beginPath();
+  ctx.moveTo(coords[0].x, coords[0].y);
+  for (let i = 1; i < coords.length - 1; i++) {
+    const xc = (coords[i].x + coords[i + 1].x) / 2, yc = (coords[i].y + coords[i + 1].y) / 2;
+    ctx.quadraticCurveTo(coords[i].x, coords[i].y, xc, yc);
+  }
+  ctx.quadraticCurveTo(coords[coords.length - 2].x, coords[coords.length - 2].y, last.x, last.y);
+  ctx.strokeStyle = `rgba(${accentRgb},0.9)`;
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  ctx.stroke();
+}
+
+async function loadSparklines() {
+  try {
+    const [s1, s2] = await Promise.all([
+      fetch(`${API}/monitor/snapshots?server=1`).then(r => r.json()).catch(() => []),
+      fetch(`${API}/monitor/snapshots?server=2`).then(r => r.json()).catch(() => []),
+    ]);
+    drawMiniSparkline('left-spark',  s1, '224,85,117');
+    drawMiniSparkline('left-spark2', s2, '153,85,238');
+  } catch {}
 }
 
 async function loadStats() {
@@ -3126,8 +3188,11 @@ loadVersion();
 loadStatus();
 loadStatus2();
 loadStats();
+loadSparklines();
 setInterval(() => { loadStatus(); loadStatus2(); }, 30000);
 setInterval(loadStats, 300000);
+setInterval(loadSparklines, 300000);
+window.addEventListener('resize', loadSparklines);
 loadFeatured();
 loadLatestNews();
 loadNews(1);
