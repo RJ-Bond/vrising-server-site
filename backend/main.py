@@ -625,7 +625,7 @@ class OnlinePingBody(BaseModel):
 
 
 @app.post("/api/online/ping", status_code=204)
-async def online_ping(body: OnlinePingBody):
+async def online_ping(body: OnlinePingBody, db: AsyncSession = Depends(get_db)):
     cutoff = time.time() - _GUEST_TTL
     for vid in list(_visitor_data):
         if _visitor_data[vid]["ts"] < cutoff:
@@ -637,6 +637,19 @@ async def online_ping(body: OnlinePingBody):
             "username": body.username if body.is_authed else None,
             "is_authed": body.is_authed,
         }
+    # Keep last_active_at fresh so the user appears in the online widget immediately.
+    # Throttled: only write to DB if last ping was >55s ago (ping interval is 30s,
+    # /api/auth/me already updates every 60s — this covers the gap on first page load).
+    if body.is_authed and body.username:
+        prev = _visitor_data.get(body.visitor_id, {})
+        prev_db_ts = prev.get("db_ts", 0)
+        if time.time() - prev_db_ts > 55:
+            result = await db.execute(select(User).where(User.username == body.username, User.is_active == True))
+            user = result.scalar_one_or_none()
+            if user:
+                user.last_active_at = datetime.now(timezone.utc)
+                await db.commit()
+                _visitor_data[body.visitor_id]["db_ts"] = time.time()
     return Response(status_code=204)
 
 
