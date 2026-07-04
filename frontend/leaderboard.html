@@ -776,6 +776,10 @@ async function openPlayerModal(playerName, serverNum, playerRank) {
     const totalM = Math.floor(((data.total_seconds||0) % 3600) / 60);
     const lastH  = Math.floor((data.last_duration||0) / 3600);
     const lastM  = Math.floor(((data.last_duration||0) % 3600) / 60);
+    const sc     = data.session_count || 0;
+    const avgSec = sc > 0 ? Math.round((data.total_seconds||0) / sc) : 0;
+    const avgH   = Math.floor(avgSec / 3600);
+    const avgM   = Math.floor((avgSec % 3600) / 60);
     const avatarHtml = data.avatar_url
       ? `<img src="${esc(data.avatar_url)}" alt="" style="width:4rem;height:4rem;border-radius:50%;object-fit:cover;margin:0 auto .75rem;display:block;border:2px solid rgba(150,0,28,.5);">`
       : `<div style="width:4rem;height:4rem;border-radius:50%;background:${nameGradient(playerName)};margin:0 auto .75rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:#fff;">${esc(playerName.charAt(0).toUpperCase())}</div>`;
@@ -785,18 +789,26 @@ async function openPlayerModal(playerName, serverNum, playerRank) {
       <h3 style="font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;color:#d4c4e0;margin-bottom:.2rem;">${esc(playerName)}</h3>
       ${playerRank ? `<div style="font-size:.68rem;color:#9488a8;margin-bottom:.5rem;"># ${playerRank} место в рейтинге</div>` : ''}
       ${isOnline ? '<div style="display:inline-flex;align-items:center;gap:.35rem;background:rgba(0,70,15,.25);border:1px solid rgba(0,160,35,.4);color:#86efac;font-size:.7rem;font-weight:700;padding:.2rem .6rem;border-radius:9999px;margin-bottom:.75rem;"><span style="width:.45rem;height:.45rem;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;"></span>В сети</div>' : ''}
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.85rem;text-align:left;">
-        <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.6rem .8rem;">
-          <div style="font-size:.6rem;color:#9488a8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;">Всего времени</div>
-          <div style="font-size:1rem;font-weight:700;color:#e2d8f0;font-family:'Oswald',sans-serif;">${totalH}ч ${totalM}м</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-top:.85rem;text-align:left;">
+        <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.55rem .7rem;">
+          <div style="font-size:.55rem;color:#9488a8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;">Всего</div>
+          <div style="font-size:.92rem;font-weight:700;color:#e2d8f0;font-family:'Oswald',sans-serif;">${totalH}ч ${totalM}м</div>
         </div>
-        <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.6rem .8rem;">
-          <div style="font-size:.6rem;color:#9488a8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;">Последняя сессия</div>
-          <div style="font-size:1rem;font-weight:700;color:#e2d8f0;font-family:'Oswald',sans-serif;">${lastH}ч ${lastM}м</div>
+        <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.55rem .7rem;">
+          <div style="font-size:.55rem;color:#9488a8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;">Ср. сессия</div>
+          <div style="font-size:.92rem;font-weight:700;color:#e2d8f0;font-family:'Oswald',sans-serif;">${sc > 0 ? `${avgH}ч ${avgM}м` : '—'}</div>
         </div>
-        <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.6rem .8rem;grid-column:span 2;">
-          <div style="font-size:.6rem;color:#9488a8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;">Последний вход</div>
-          <div style="font-size:.88rem;color:#e2d8f0;">${data.last_seen ? new Date(data.last_seen).toLocaleString('ru-RU', {timeZone: window.__TZ||'Europe/Moscow'}) : '—'}</div>
+        <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.55rem .7rem;">
+          <div style="font-size:.55rem;color:#9488a8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;">Сессий</div>
+          <div style="font-size:.92rem;font-weight:700;color:#e2d8f0;font-family:'Oswald',sans-serif;">${sc || '—'}</div>
+        </div>
+        <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.55rem .7rem;">
+          <div style="font-size:.55rem;color:#9488a8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;">Посл. сессия</div>
+          <div style="font-size:.88rem;font-weight:700;color:#e2d8f0;font-family:'Oswald',sans-serif;">${lastH}ч ${lastM}м</div>
+        </div>
+        <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.55rem .7rem;grid-column:span 2;">
+          <div style="font-size:.55rem;color:#9488a8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;">Последний вход</div>
+          <div style="font-size:.82rem;color:#e2d8f0;">${data.last_seen ? new Date(data.last_seen).toLocaleString('ru-RU', {timeZone: window.__TZ||'Europe/Moscow'}) : '—'}</div>
         </div>
       </div>
       <div style="margin-top:1rem;">
