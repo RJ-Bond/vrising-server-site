@@ -2721,6 +2721,8 @@ async def get_team(db: AsyncSession = Depends(get_db)):
         select(User).where(User.role == "admin", User.is_active == True).order_by(User.created_at)
     )
     admins = result.scalars().all()
+    now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+    cutoff_5min = now_naive - timedelta(minutes=5)
     return [
         {
             "id": u.id,
@@ -2728,8 +2730,12 @@ async def get_team(db: AsyncSession = Depends(get_db)):
             "avatar_url": u.avatar_url,
             "created_at": _fmt_dt(u.created_at),
             "admin_title": u.admin_title,
-            # Return None if user explicitly logged out so _statusInfo shows "Не в сети"
-            "last_active_at": None if u.username in _explicit_logouts else _fmt_dt(u.last_active_at),
+            "last_active_at": _fmt_dt(u.last_active_at),
+            "is_online": (
+                u.username not in _explicit_logouts
+                and u.last_active_at is not None
+                and (u.last_active_at.replace(tzinfo=None) if u.last_active_at.tzinfo else u.last_active_at) >= cutoff_5min
+            ),
             "badge_icon_url": u.badge_icon_url,
             "badge_style": u.badge_style or "default",
         }

@@ -3443,7 +3443,6 @@ async function loadTeam() {
     const wrap = document.getElementById('team-section');
     const list = document.getElementById('team-list');
     if (!wrap || !list) return;
-    const _me = getUser();
     const firstLoad = !_teamLoaded;
     _teamLoaded = true;
     list.innerHTML = data.map((u, i) => {
@@ -3451,9 +3450,12 @@ async function loadTeam() {
         ? `<img src="${esc(u.avatar_url)}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;display:block;">`
         : `<div style="width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(120,0,40,0.7),rgba(80,0,80,0.5));display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:1.3rem;color:var(--gold);">${esc(u.username[0].toUpperCase())}</div>`;
 
-      // Current user is always online
-      const effectiveIso = (_me && _me.username === u.username) ? new Date().toISOString() : u.last_active_at;
-      const st = _statusInfo(effectiveIso);
+      const _raw = _statusInfo(u.last_active_at);
+      // If server says offline, never show "Онлайн" — cap to "Не в сети" preserving time
+      const st = u.is_online ? _raw
+        : (_raw.label === 'Онлайн'
+            ? { dot:'#6b7280', label:'Не в сети', color:'#6b5878', glow:'' }
+            : _raw);
       const dot = `<span title="${st.label}" style="position:absolute;bottom:1px;right:1px;width:11px;height:11px;border-radius:50%;background:${st.dot};border:2px solid rgba(10,2,18,0.95);${st.glow?'box-shadow:'+st.glow+';':''}"></span>`;
 
       const titleHtml = `<div style="margin-top:.28rem;">${_renderAdminBadge(u)}</div>`;
