@@ -453,6 +453,8 @@
     .online-user-row:hover { background:rgba(110,0,20,.2); }
     .online-dot { width:.42rem;height:.42rem;border-radius:50%;background:#4ade80;box-shadow:0 0 7px #4ade80;flex-shrink:0;animation:ow-pulse 2.4s ease-in-out infinite; }
     @keyframes ow-pulse { 0%,100%{box-shadow:0 0 4px #4ade80;opacity:1} 50%{box-shadow:0 0 12px #4ade80,0 0 20px rgba(74,222,128,.4);opacity:.85} }
+    @keyframes ow-fadein { from{opacity:0;transform:translateX(-7px)} to{opacity:1;transform:none} }
+    .ow-new { animation:ow-fadein .32s ease both; }
     .online-avatar { width:1.5rem;height:1.5rem;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid rgba(110,0,20,.3); }
     .online-avatar-ph { width:1.5rem;height:1.5rem;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:700;font-family:'Cinzel',serif; }
     .online-name { font-size:.72rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
@@ -1372,6 +1374,7 @@
     </div>
 
     <div id="ow-list" style="display:flex;flex-direction:column;gap:.2rem;"></div>
+    <div id="ow-pages" style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:.35rem;line-height:1.7;display:none;"></div>
     <div id="ow-more-wrap" style="display:none;margin-top:.3rem;">
       <button onclick="owShowAll()" style="width:100%;background:none;border:none;color:var(--muted);font-size:.65rem;cursor:pointer;padding:.2rem 0;transition:color .15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
         <span id="ow-more-label"></span>
@@ -1864,12 +1867,19 @@ function toggleDrawer() {
 })();
 
 // ── Online widget ──────────────────────────────────────────────────────────
+const PAGE_ICONS = {
+  'Главная':'🏠','Серверы':'🖥️','Игроки':'🏆','Кланы':'🛡️',
+  'Баны':'🚫','Карта':'🗺️','FAQ':'❓','Профиль':'👤','Читает новость':'📰',
+};
+const ROLE_ORDER = { admin: 0, moder: 1, user: 2 };
+
 let _owAllUsers = [];
+let _owPrevUsernames = new Set();
 
 function owShowAll() {
   const ul = document.getElementById('ow-list');
   const mw = document.getElementById('ow-more-wrap');
-  if (ul) ul.innerHTML = _owAllUsers.map(_owRow).join('');
+  if (ul) ul.innerHTML = _owAllUsers.map(u => _owRow(u, false)).join('');
   if (mw) mw.style.display = 'none';
 }
 
@@ -1908,17 +1918,38 @@ function owShowAll() {
       document.getElementById('ow-total').textContent  = d.total;
       document.getElementById('ow-users').textContent  = d.users.length;
       document.getElementById('ow-guests').textContent = d.guests;
-      _owAllUsers = d.users;
+
+      // Sort: admin → moder → user
+      const sorted = [...d.users].sort((a, b) =>
+        (ROLE_ORDER[a.role] ?? 2) - (ROLE_ORDER[b.role] ?? 2)
+      );
+      _owAllUsers = sorted;
+
+      // Page counters
+      const pc = document.getElementById('ow-pages');
+      if (pc) {
+        const counts = d.page_counts || {};
+        const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        if (entries.length > 1 || (entries.length === 1 && d.users.length > 1)) {
+          pc.innerHTML = entries.map(([pg, n]) => `${PAGE_ICONS[pg] || '📄'} ${n}`).join(' · ');
+          pc.style.display = '';
+        } else {
+          pc.style.display = 'none';
+        }
+      }
+
       const LIMIT = 5;
       const ul = document.getElementById('ow-list');
       const mw = document.getElementById('ow-more-wrap');
       const ml = document.getElementById('ow-more-label');
       if (!ul) return;
-      const visible = d.users.slice(0, LIMIT);
-      ul.innerHTML = visible.map(_owRow).join('')
+      const visible = sorted.slice(0, LIMIT);
+      const newNames = new Set(d.users.map(u => u.username));
+      ul.innerHTML = visible.map(u => _owRow(u, !_owPrevUsernames.has(u.username))).join('')
         || `<div style="font-size:.68rem;color:var(--muted);text-align:center;padding:.3rem 0;">Нет активных пользователей</div>`;
-      if (d.users.length > LIMIT) {
-        if (ml) ml.textContent = `▾ ещё ${d.users.length - LIMIT}`;
+      _owPrevUsernames = newNames;
+      if (sorted.length > LIMIT) {
+        if (ml) ml.textContent = `▾ ещё ${sorted.length - LIMIT}`;
         if (mw) mw.style.display = '';
       } else {
         if (mw) mw.style.display = 'none';
@@ -1930,7 +1961,7 @@ function owShowAll() {
   setInterval(load, 60000);
 })();
 
-function _owRow(u) {
+function _owRow(u, isNew = false) {
   const roleColor = u.role === 'admin' ? 'var(--crimson)' : u.role === 'moder' ? 'var(--purple)' : 'var(--text)';
   const init = (u.username[0] || '?').toUpperCase();
   const [bg, bd, cl] = u.role === 'admin'
@@ -1941,11 +1972,17 @@ function _owRow(u) {
   const ph = `<span class='online-avatar-ph' style='background:${bg};border:1px solid ${bd};color:${cl};'>${init}</span>`;
   const av = u.avatar_url
     ? `<img src="${u.avatar_url}" class="online-avatar" alt="" onerror="this.outerHTML='${ph.replace(/'/g, "\\'")}'">` : ph;
-  const sub = u.page ? `<div style="font-size:.58rem;color:var(--muted);margin-top:.05rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(u.page)}</div>` : '';
-  return `<a href="/user.html?u=${encodeURIComponent(u.username)}" class="online-user-row">
+  const pageIcon = PAGE_ICONS[u.page] || '';
+  const sub = u.page
+    ? `<div style="font-size:.58rem;color:var(--muted);margin-top:.05rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pageIcon} ${esc(u.page)}</div>`
+    : '';
+  const sword = u.in_game
+    ? `<span title="Играет на сервере" style="font-size:.72rem;margin-left:.25rem;filter:drop-shadow(0 0 4px rgba(220,80,80,.7));">⚔️</span>`
+    : '';
+  return `<a href="/user.html?u=${encodeURIComponent(u.username)}" class="online-user-row${isNew ? ' ow-new' : ''}">
     ${av}
     <div style="flex:1;min-width:0;">
-      <div class="online-name" style="color:${roleColor};">${esc(u.username)}</div>
+      <div class="online-name" style="color:${roleColor};">${esc(u.username)}${sword}</div>
       ${sub}
     </div>
     <span class="online-dot"></span>

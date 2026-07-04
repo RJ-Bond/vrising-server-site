@@ -583,7 +583,9 @@ async def me(current_user: User = Depends(get_current_user), db: AsyncSession = 
 # ─── Who's online ─────────────────────────────────────────────────────────────
 _visitor_data: dict[str, dict] = {}  # visitor_id -> {ts, page, username, is_authed}
 _explicit_logouts: dict[str, float] = {}  # username -> logout timestamp
-_GUEST_TTL = 120  # 2 minutes
+_ingame_players: dict[str, float] = {}   # player_name_lower -> last_seen_ts
+_GUEST_TTL = 120   # 2 minutes
+_INGAME_TTL = 900  # 15 minutes (≈3 monitor polls)
 
 _PAGE_LABELS = {
     "/": "Главная", "/index.html": "Главная",
@@ -637,6 +639,7 @@ async def online_status(db: AsyncSession = Depends(get_db)):
         else:
             guests += 1
 
+    ingame_cutoff = now_ts - _INGAME_TTL
     cutoff = (datetime.now(timezone.utc) - timedelta(minutes=2)).replace(tzinfo=None)
     result = await db.execute(
         select(User.username, User.avatar_url, User.role)
@@ -646,11 +649,16 @@ async def online_status(db: AsyncSession = Depends(get_db)):
     )
     users = [
         {"username": r.username, "avatar_url": r.avatar_url, "role": r.role,
-         "page": user_pages.get(r.username, "")}
+         "page": user_pages.get(r.username, ""),
+         "in_game": _ingame_players.get(r.username.lower(), 0) > ingame_cutoff}
         for r in result.all()
         if r.username not in _explicit_logouts
     ]
-    return {"users": users, "guests": guests, "total": len(users) + guests}
+    page_counts: dict[str, int] = {}
+    for u in users:
+        if u["page"]:
+            page_counts[u["page"]] = page_counts.get(u["page"], 0) + 1
+    return {"users": users, "guests": guests, "total": len(users) + guests, "page_counts": page_counts}
 
 
 @app.post("/api/auth/accept-rules", response_model=UserOut)
@@ -809,10 +817,12 @@ async def _track_players(db: AsyncSession, players: list, server_num: int):
     if not players:
         return
     now = datetime.now(timezone.utc)
+    now_ts = time.time()
     for p in players:
         name = (p.get("name") or "").strip()
         if not name:
             continue
+        _ingame_players[name.lower()] = now_ts  # cache for online widget
         cur_dur = int(p.get("duration", 0))
         result = await db.execute(
             select(PlayerRecord).where(
