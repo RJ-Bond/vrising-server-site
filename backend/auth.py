@@ -8,10 +8,10 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
 from .database import get_db
-from .models import User
+from .models import User, RevokedToken
 
 logger = logging.getLogger(__name__)
 
@@ -29,17 +29,6 @@ if SECRET_KEY == _DEFAULT_KEY:
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
-# In-memory token revocation list. Clears on restart (acceptable for this use case).
-_revoked_tokens: set[str] = set()
-
-
-def revoke_token(token: str) -> None:
-    _revoked_tokens.add(token)
-
-
-# Alias for external access
-revoked_tokens = _revoked_tokens
-
 
 def verify_password(plain: str, hashed: str) -> bool:
     return _bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
@@ -56,6 +45,20 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
+async def revoke_token(token: str, db: AsyncSession) -> None:
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        exp = payload.get("exp")
+        expires_at = datetime.fromtimestamp(exp, tz=timezone.utc) if exp else datetime.now(timezone.utc) + timedelta(days=7)
+    except Exception:
+        expires_at = datetime.now(timezone.utc) + timedelta(days=7)
+    db.add(RevokedToken(token=token, expires_at=expires_at))
+    await db.commit()
+    # Purge expired tokens periodically
+    await db.execute(delete(RevokedToken).where(RevokedToken.expires_at < datetime.now(timezone.utc)))
+    await db.commit()
+
+
 async def get_current_user(
     request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
@@ -69,7 +72,9 @@ async def get_current_user(
         token = request.cookies.get(COOKIE_NAME)
     if token is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    if token in _revoked_tokens:
+    # Check DB revocation list
+    revoked = await db.execute(select(RevokedToken.id).where(RevokedToken.token == token))
+    if revoked.scalar_one_or_none() is not None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])

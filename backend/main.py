@@ -32,7 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, text, or_, update
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken
 from .auth import (
     verify_password,
     get_password_hash,
@@ -43,7 +43,6 @@ from .auth import (
     SECRET_KEY,
     ALGORITHM,
     COOKIE_NAME,
-    revoked_tokens as _revoked_tokens,
 )
 from jose import jwt as jose_jwt
 from .schemas import (
@@ -274,6 +273,8 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE users ADD COLUMN last_active_at DATETIME DEFAULT NULL",
             "ALTER TABLE users ADD COLUMN badge_icon_url VARCHAR(512) DEFAULT NULL",
             "ALTER TABLE users ADD COLUMN badge_style VARCHAR(32) DEFAULT 'default'",
+            "CREATE TABLE IF NOT EXISTS revoked_tokens (id INTEGER PRIMARY KEY, token VARCHAR(512) NOT NULL UNIQUE, expires_at DATETIME NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE INDEX IF NOT EXISTS ix_revoked_tokens_token ON revoked_tokens(token)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -365,6 +366,39 @@ class PageViewMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(PageViewMiddleware)
+
+
+_ALLOWED_ORIGINS_SET: set[str] = set()
+if _raw_origins != "*":
+    _ALLOWED_ORIGINS_SET = {o.rstrip("/") for o in _origins}
+
+
+class CSRFMiddleware(BaseHTTPMiddleware):
+    """Reject state-changing API requests whose Origin doesn't match the server host."""
+    _SAFE = frozenset({"GET", "HEAD", "OPTIONS"})
+
+    async def dispatch(self, request: Request, call_next):
+        if request.method not in self._SAFE and request.url.path.startswith("/api/"):
+            origin = request.headers.get("origin", "")
+            referer = request.headers.get("referer", "")
+            host = request.headers.get("host", "")
+            if _ALLOWED_ORIGINS_SET:
+                allowed = any(o in (origin.rstrip("/"), referer) for o in _ALLOWED_ORIGINS_SET)
+            else:
+                # wildcard: allow same-host or no origin (same-origin requests from httpOnly cookie don't send Origin)
+                allowed = (
+                    not origin
+                    or origin.rstrip("/").endswith(host)
+                    or "localhost" in origin
+                    or "127.0.0.1" in origin
+                )
+            if not allowed:
+                from fastapi.responses import JSONResponse
+                return JSONResponse({"detail": "CSRF check failed"}, status_code=403)
+        return await call_next(request)
+
+
+app.add_middleware(CSRFMiddleware)
 
 
 # ─── Version ────────────────────────────────────────────────────────────────
@@ -541,12 +575,12 @@ async def login(request: Request, body: UserLogin, response: Response, db: Async
 
 
 @app.post("/api/auth/logout", status_code=204)
-async def logout(response: Response, current_user: User = Depends(get_current_user), request: Request = None):
+async def logout(response: Response, current_user: User = Depends(get_current_user), request: Request = None, db: AsyncSession = Depends(get_db)):
     auth_header = request.headers.get("Authorization", "") if request else ""
     cookie_token = request.cookies.get(COOKIE_NAME, "") if request else ""
     token = auth_header[7:] if auth_header.startswith("Bearer ") else cookie_token
     if token:
-        revoke_token(token)
+        await revoke_token(token, db)
     _clear_auth_cookie(response)
 
 
@@ -573,7 +607,9 @@ async def accept_rules(
 
 
 @app.post("/api/auth/change-password")
+@limiter.limit("5/minute")
 async def change_password(
+    request: Request,
     body: ChangePasswordBody,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -592,6 +628,7 @@ async def change_password(
 
 
 @app.post("/api/auth/forgot-password")
+@limiter.limit("3/minute;10/hour")
 async def forgot_password(request: Request, body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == body.email, User.is_active == True))
     user = result.scalar_one_or_none()
@@ -632,7 +669,8 @@ async def validate_reset_token(token: str, db: AsyncSession = Depends(get_db)):
 
 
 @app.post("/api/auth/reset-password/{token}")
-async def do_reset_password(token: str, body: ResetPasswordBody, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def do_reset_password(request: Request, token: str, body: ResetPasswordBody, db: AsyncSession = Depends(get_db)):
     result = await db.execute(
         select(PasswordReset).where(
             PasswordReset.token == token,
@@ -674,7 +712,9 @@ async def list_password_resets(_: User = Depends(get_admin_user), db: AsyncSessi
 
 
 @app.post("/api/auth/avatar")
+@limiter.limit("10/minute")
 async def upload_avatar(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -1548,7 +1588,7 @@ async def serve_upload(filename: str):
     path = UPLOAD_DIR / filename
     if not path.exists() or not path.is_file():
         raise HTTPException(404)
-    return FileResponse(str(path))
+    return FileResponse(str(path), headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 # ─── Settings (public) ───────────────────────────────────────────────────────
@@ -2537,7 +2577,9 @@ async def set_admin_title(
 
 
 @app.post("/api/profile/badge-icon")
+@limiter.limit("10/minute")
 async def upload_badge_icon(
+    request: Request,
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
