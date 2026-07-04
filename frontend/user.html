@@ -104,7 +104,10 @@
 <nav class="glass-nav">
   <div style="max-width:680px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">V RISING</a>
-    <a href="/" class="btn btn-ghost" style="font-size:.72rem;">← Главная</a>
+    <div style="display:flex;gap:.5rem;">
+      <a href="/leaderboard.html" class="btn btn-ghost" style="font-size:.72rem;">🏆 Лидерборд</a>
+      <a href="/" class="btn btn-ghost" style="font-size:.72rem;">← Главная</a>
+    </div>
   </div>
 </nav>
 
@@ -133,11 +136,12 @@
           <h1 class="gothic" id="user-name" style="font-size:1.45rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;">—</h1>
           <span id="user-role-badge" style="font-size:.6rem;padding:.15rem .6rem;border-radius:9999px;border:1px solid rgba(120,80,200,0.4);color:#c4b5fd;background:rgba(80,40,140,0.2);"></span>
           <span id="user-status" style="display:none;align-items:center;gap:.28rem;font-size:.6rem;"></span>
-          <a id="dm-user-btn" href="#" onclick="dmUser(event)" style="display:none;align-items:center;gap:.35rem;background:rgba(80,0,120,0.22);border:1px solid rgba(110,0,150,0.38);color:var(--muted);border-radius:.5rem;padding:.28rem .72rem;font-size:.72rem;text-decoration:none;cursor:pointer;transition:all .18s;" onmouseover="this.style.color='var(--text)';this.style.background='rgba(100,0,150,0.32)'" onmouseout="this.style.color='var(--muted)';this.style.background='rgba(80,0,120,0.22)'">
+          <a id="dm-user-btn" href="#" onclick="dmUser(event)" style="visibility:hidden;display:inline-flex;align-items:center;gap:.35rem;background:rgba(80,0,120,0.22);border:1px solid rgba(110,0,150,0.38);color:var(--muted);border-radius:.5rem;padding:.28rem .72rem;font-size:.72rem;text-decoration:none;cursor:pointer;transition:all .18s;" onmouseover="this.style.color='var(--text)';this.style.background='rgba(100,0,150,0.32)'" onmouseout="this.style.color='var(--muted)';this.style.background='rgba(80,0,120,0.22)'">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             Написать
           </a>
         </div>
+        <div id="user-game-nick" style="display:none;font-size:.72rem;color:var(--muted);margin-bottom:.1rem;"></div>
         <!-- Rank -->
         <div id="rank-wrap" style="display:none;margin-top:.5rem;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.2rem;">
@@ -167,6 +171,10 @@
       <div class="stat-row">
         <span style="color:var(--muted);font-size:.82rem;">Всего на серверах</span>
         <span id="user-playtime" style="font-size:.85rem;color:var(--text);font-weight:500;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;">—</span>
+      </div>
+      <div class="stat-row">
+        <span style="color:var(--muted);font-size:.82rem;">Последний сеанс</span>
+        <span id="user-last-seen" style="font-size:.85rem;color:var(--text);font-weight:500;font-family:'Oswald',sans-serif;">—</span>
       </div>
       <div class="stat-row">
         <span style="color:var(--muted);font-size:.82rem;">Комментариев</span>
@@ -204,6 +212,13 @@ const RANKS = [
 
 // esc, _dateOpts, fmtDate, _renderAdminBadge, _statusInfo — defined in common.js
 function fmtSec(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h>0?`${h}ч ${m}м`:`${m}м`;}
+function fmtAgo(iso){
+  if(!iso)return'Никогда';
+  const d=Math.floor((Date.now()-new Date(iso).getTime())/864e5);
+  if(d<1)return'Сегодня';if(d===1)return'Вчера';
+  if(d<7)return d+' дн. назад';if(d<30)return Math.floor(d/7)+' нед. назад';
+  if(d<365)return Math.floor(d/30)+' мес. назад';return Math.floor(d/365)+' г. назад';
+}
 
 function buildStars(){
   const ct=document.getElementById('cover-stars');
@@ -249,18 +264,22 @@ async function loadUser(){
     if(u.avatar_url){const img=document.createElement('img');img.src=u.avatar_url;av.appendChild(img);}
     else{av.textContent=u.username.charAt(0).toUpperCase();}
     document.getElementById('user-name').textContent=u.username;
-    // Show DM button if logged in as a different user
+    // Game nickname
+    if (u.game_nickname) {
+      const nickEl = document.getElementById('user-game-nick');
+      if (nickEl) { nickEl.textContent = '⚔ В игре: ' + u.game_nickname; nickEl.style.display = ''; }
+    }
+    // Show DM button if logged in as a different user (space always reserved to avoid CLS)
     let _isMe = false;
+    const dmBtn = document.getElementById('dm-user-btn');
     try {
       const me = await fetch(`${API}/auth/me`,{credentials:'include'}).then(r=>r.ok?r.json():null);
       if (me) {
         _isMe = me.username === u.username;
-        if (!_isMe) {
-          const dmBtn = document.getElementById('dm-user-btn');
-          if (dmBtn) dmBtn.style.display = 'inline-flex';
-        }
-      }
-    } catch {}
+        if (!_isMe && dmBtn) dmBtn.style.visibility = 'visible';
+        else if (dmBtn) dmBtn.style.display = 'none';
+      } else if (dmBtn) dmBtn.style.display = 'none';
+    } catch { if (dmBtn) dmBtn.style.display = 'none'; }
     const badge=document.getElementById('user-role-badge');
     if (u.role === 'admin') {
       badge.innerHTML = _renderAdminBadge(u);
@@ -272,6 +291,7 @@ async function loadUser(){
     document.getElementById('user-role').textContent=u.role==='admin'?(u.admin_title||'Администратор'):'Игрок';
     document.getElementById('user-since').textContent=fmtDate(u.created_at);
     document.getElementById('user-playtime').textContent=u.total_seconds>0?fmtSec(u.total_seconds):'Ещё не играл';
+    document.getElementById('user-last-seen').textContent=u.last_seen?fmtAgo(u.last_seen):'Не играл';
     document.getElementById('user-comment-count').textContent=u.comment_count??'0';
     renderRank(u.total_seconds||0);
     const statusEl = document.getElementById('user-status');

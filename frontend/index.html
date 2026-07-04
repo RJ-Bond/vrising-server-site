@@ -1337,9 +1337,12 @@
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:.75rem;">
       <h2 style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;">— Новости —</h2>
       <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
-        <input id="news-search" type="search" placeholder="Поиск..." oninput="onSearchInput(this.value)"
-          style="background:rgba(8,0,16,0.7);border:1px solid rgba(110,0,150,0.3);color:#e2d8f0;border-radius:.4rem;padding:.3rem .65rem;font-size:.75rem;width:130px;outline:none;transition:border-color .2s;"
-          onfocus="this.style.borderColor='rgba(180,0,35,0.5)'" onblur="this.style.borderColor='rgba(110,0,150,0.3)'" />
+        <div style="position:relative;display:inline-flex;align-items:center;">
+          <svg style="position:absolute;left:.5rem;pointer-events:none;opacity:.45;" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#e2d8f0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="news-search" type="search" placeholder="Поиск новостей…" oninput="onSearchInput(this.value)"
+            style="background:rgba(8,0,16,0.7);border:1px solid rgba(110,0,150,0.3);color:#e2d8f0;border-radius:.4rem;padding:.3rem .65rem .3rem 1.85rem;font-size:.75rem;width:180px;outline:none;transition:border-color .2s,width .2s;"
+            onfocus="this.style.borderColor='rgba(180,0,35,0.5)';this.style.width='220px'" onblur="this.style.borderColor='rgba(110,0,150,0.3)';this.style.width='180px'" />
+        </div>
         <div id="tag-filters" style="display:flex;gap:.4rem;flex-wrap:wrap;"></div>
       </div>
     </div>
