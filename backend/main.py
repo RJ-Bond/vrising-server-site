@@ -1,4 +1,4 @@
-import logging
+﻿import logging
 import os
 import math
 import re
@@ -275,6 +275,7 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE users ADD COLUMN badge_style VARCHAR(32) DEFAULT 'default'",
             "CREATE TABLE IF NOT EXISTS revoked_tokens (id INTEGER PRIMARY KEY, token VARCHAR(512) NOT NULL UNIQUE, expires_at DATETIME NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
             "CREATE INDEX IF NOT EXISTS ix_revoked_tokens_token ON revoked_tokens(token)",
+            "ALTER TABLE users ADD COLUMN revoke_before DATETIME DEFAULT NULL",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -307,9 +308,11 @@ async def lifespan(app: FastAPI):
     # Start background tasks
     task_publish = asyncio.create_task(_scheduled_publish_task())
     task_backup = asyncio.create_task(_auto_backup_task())
+    task_cleanup = asyncio.create_task(_cleanup_task())
     yield
     task_publish.cancel()
     task_backup.cancel()
+    task_cleanup.cancel()
 
 
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
@@ -377,20 +380,33 @@ class CSRFMiddleware(BaseHTTPMiddleware):
     """Reject state-changing API requests whose Origin doesn't match the server host."""
     _SAFE = frozenset({"GET", "HEAD", "OPTIONS"})
 
+    @staticmethod
+    def _host_only(value: str) -> str:
+        """Extract hostname (no scheme, no port) from a header value."""
+        from urllib.parse import urlparse
+        parsed = urlparse(value)
+        return (parsed.hostname or value.split(":")[0]).lower()
+
     async def dispatch(self, request: Request, call_next):
         if request.method not in self._SAFE and request.url.path.startswith("/api/"):
-            origin = request.headers.get("origin", "")
-            referer = request.headers.get("referer", "")
-            host = request.headers.get("host", "")
+            origin = request.headers.get("origin", "").rstrip("/")
+            referer = request.headers.get("referer", "").rstrip("/")
+            # nginx passes real host via Host header (proxy_set_header Host $host)
+            host_header = request.headers.get("host", "")
+            host_name = self._host_only(host_header)
+
             if _ALLOWED_ORIGINS_SET:
-                allowed = any(o in (origin.rstrip("/"), referer) for o in _ALLOWED_ORIGINS_SET)
+                allowed = (
+                    any(o.rstrip("/") == origin for o in _ALLOWED_ORIGINS_SET)
+                    or any(o.rstrip("/") in referer for o in _ALLOWED_ORIGINS_SET)
+                )
             else:
-                # wildcard: allow same-host or no origin (same-origin requests from httpOnly cookie don't send Origin)
+                # wildcard: compare hostnames, allow localhost for dev
+                origin_host = self._host_only(origin) if origin else ""
                 allowed = (
                     not origin
-                    or origin.rstrip("/").endswith(host)
-                    or "localhost" in origin
-                    or "127.0.0.1" in origin
+                    or origin_host == host_name
+                    or origin_host in ("localhost", "127.0.0.1")
                 )
             if not allowed:
                 from fastapi.responses import JSONResponse
@@ -586,7 +602,7 @@ async def logout(response: Response, current_user: User = Depends(get_current_us
 
 @app.get("/api/auth/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if not current_user.last_active_at or (now - current_user.last_active_at).total_seconds() > 60:
         current_user.last_active_at = now
         await db.commit()
@@ -892,7 +908,7 @@ async def get_snapshots(server: int = Query(1), db: AsyncSession = Depends(get_d
 
 @app.get("/api/monitor/stats")
 async def get_monitor_stats(server: int = Query(1), db: AsyncSession = Depends(get_db)):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     day_ago  = now - timedelta(hours=24)
     week_ago = now - timedelta(days=7)
 
@@ -1035,12 +1051,26 @@ async def list_news(
 
 
 @app.get("/api/news/{slug}", response_model=NewsOut)
-async def get_news(slug: str, db: AsyncSession = Depends(get_db)):
+async def get_news(slug: str, request: Request, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(News).where(News.slug == slug, News.published == True))
     news = result.scalar_one_or_none()
     if news is None:
         raise HTTPException(status_code=404, detail="News not found")
-    news.views = (news.views or 0) + 1
+    # Deduplicate views: count only once per IP per 24h using page_views table
+    ip = request.client.host if request.client else ""
+    ip_hash = hashlib.sha256(ip.encode()).hexdigest()[:16] if ip else None
+    view_key = f"/news/{news.id}"
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+    recent = await db.execute(
+        select(PageView.id).where(
+            PageView.path == view_key,
+            PageView.ip_hash == ip_hash,
+            PageView.created_at >= cutoff,
+        ).limit(1)
+    )
+    if recent.scalar_one_or_none() is None:
+        news.views = (news.views or 0) + 1
+        db.add(PageView(path=view_key, ip_hash=ip_hash))
     await db.commit()
     await db.refresh(news)
     return NewsOut.model_validate(news)
@@ -1077,7 +1107,8 @@ async def get_reactions(
         token = request.cookies.get(COOKIE_NAME)
     if token:
         try:
-            if token not in _revoked_tokens:
+            revoked = await db.execute(select(RevokedToken.id).where(RevokedToken.token == token))
+            if revoked.scalar_one_or_none() is None:
                 payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
                 uid = int(payload.get("sub", 0))
                 if uid:
@@ -1309,17 +1340,19 @@ async def get_comment_reactions(comment_id: int, request: Request, db: AsyncSess
     user_reaction = None
     try:
         token = request.cookies.get(COOKIE_NAME)
-        if token and token not in _revoked_tokens:
-            payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            uid = int(payload.get("sub", 0))
-            if uid:
-                ur = await db.execute(
-                    select(CommentReaction.emoji).where(
-                        CommentReaction.comment_id == comment_id,
-                        CommentReaction.user_id == uid
+        if token:
+            revoked = await db.execute(select(RevokedToken.id).where(RevokedToken.token == token))
+            if revoked.scalar_one_or_none() is None:
+                payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                uid = int(payload.get("sub", 0))
+                if uid:
+                    ur = await db.execute(
+                        select(CommentReaction.emoji).where(
+                            CommentReaction.comment_id == comment_id,
+                            CommentReaction.user_id == uid
+                        )
                     )
-                )
-                user_reaction = ur.scalar_one_or_none()
+                    user_reaction = ur.scalar_one_or_none()
     except Exception:
         pass
     return {"counts": counts, "user_reaction": user_reaction}
@@ -1710,6 +1743,22 @@ async def delete_user(
     await db.commit()
 
 
+@app.post("/api/admin/users/{user_id}/revoke-sessions", status_code=204)
+async def revoke_user_sessions(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_admin_user),
+):
+    """Force-logout: set revoke_before=now() so all older tokens are rejected on next request."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    target = result.scalar_one_or_none()
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    target.revoke_before = datetime.now(timezone.utc)
+    await log_audit(db, current_user, "user.revoke_sessions", target.username)
+    await db.commit()
+
+
 # ─── Public profile ──────────────────────────────────────────────────────────
 
 @app.get("/api/users/{username}")
@@ -1735,6 +1784,10 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         clan_row = clan_result.scalar_one_or_none()
         if clan_row:
             clan = {"id": clan_row.id, "name": clan_row.name, "tag": clan_row.tag}
+    comment_count_res = await db.execute(
+        select(func.count(Comment.id)).where(Comment.author_id == user.id)
+    )
+    comment_count = comment_count_res.scalar_one() or 0
     return {
         "username": user.username,
         "avatar_url": user.avatar_url,
@@ -1748,6 +1801,7 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         "last_active_at": user.last_active_at.isoformat() if user.last_active_at else None,
         "badge_icon_url": user.badge_icon_url,
         "badge_style": user.badge_style or "default",
+        "comment_count": comment_count,
     }
 
 
@@ -2466,7 +2520,7 @@ async def _scheduled_publish_task():
     while True:
         try:
             await asyncio.sleep(60)
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             async with AsyncSession(engine, expire_on_commit=False) as db:
                 rows = (await db.execute(
                     select(News).where(
@@ -2495,7 +2549,7 @@ async def _auto_backup_task():
     """Create daily DB backup at midnight UTC."""
     while True:
         try:
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
             next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
             await asyncio.sleep((next_midnight - now).total_seconds())
             BACKUP_DIR.mkdir(parents=True, exist_ok=True)
@@ -2503,7 +2557,7 @@ async def _auto_backup_task():
             src = next((p for p in db_candidates if p.exists()), None)
             if src:
                 import shutil
-                ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+                ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                 dst = BACKUP_DIR / f"vrising_{ts}.db"
                 shutil.copy2(str(src), str(dst))
                 logger.info("Auto backup created: %s", dst)
@@ -2515,6 +2569,27 @@ async def _auto_backup_task():
             break
         except Exception as e:
             logger.error("_auto_backup_task error: %s", e)
+
+
+async def _cleanup_task():
+    """Nightly: purge expired revoked tokens, old page_views, old error_logs."""
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            next_run = (now + timedelta(days=1)).replace(hour=3, minute=0, second=0, microsecond=0)
+            await asyncio.sleep((next_run - now).total_seconds())
+            async with AsyncSession(engine, expire_on_commit=False) as db:
+                cutoff_views = datetime.now(timezone.utc) - timedelta(days=90)
+                cutoff_errors = datetime.now(timezone.utc) - timedelta(days=30)
+                r1 = await db.execute(delete(RevokedToken).where(RevokedToken.expires_at < datetime.now(timezone.utc)))
+                r2 = await db.execute(delete(PageView).where(PageView.created_at < cutoff_views))
+                r3 = await db.execute(delete(ErrorLog).where(ErrorLog.created_at < cutoff_errors))
+                await db.commit()
+                logger.info("Cleanup: revoked=%d page_views=%d error_logs=%d", r1.rowcount, r2.rowcount, r3.rowcount)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error("_cleanup_task error: %s", e)
 
 
 # ─── Game nickname ────────────────────────────────────────────────────────────
@@ -2872,7 +2947,7 @@ async def review_report(
         raise HTTPException(404, "Report not found")
     r.status = body.status
     r.admin_note = body.admin_note
-    r.reviewed_at = datetime.utcnow()
+    r.reviewed_at = datetime.now(timezone.utc)
     await log_audit(db, current_user, "review_report", f"id={report_id} status={body.status}")
     await db.commit()
     return {"ok": True}
@@ -2975,7 +3050,7 @@ async def vote_poll(
     poll = (await db.execute(select(Poll).where(Poll.news_id == news.id))).scalar_one_or_none()
     if not poll:
         raise HTTPException(404, "Poll not found")
-    if poll.ends_at and datetime.utcnow() > poll.ends_at:
+    if poll.ends_at and datetime.now(timezone.utc) > poll.ends_at:
         raise HTTPException(400, "Poll has ended")
 
     existing = (await db.execute(
@@ -3019,7 +3094,7 @@ async def get_analytics(
     _: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     rows = (await db.execute(
         select(
             func.date(PageView.created_at).label("day"),
@@ -3107,7 +3182,7 @@ async def create_backup_now(current_user: User = Depends(get_admin_user)):
     if not src:
         raise HTTPException(404, "Database file not found")
     import shutil
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     dst = BACKUP_DIR / f"vrising_{ts}.db"
     shutil.copy2(str(src), str(dst))
     return {"filename": dst.name, "size": dst.stat().st_size}

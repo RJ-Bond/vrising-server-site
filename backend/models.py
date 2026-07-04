@@ -1,4 +1,4 @@
-from datetime import datetime
+﻿from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, Index, UniqueConstraint, Float
 from sqlalchemy.orm import DeclarativeBase, relationship
 
@@ -16,7 +16,7 @@ class User(Base):
     hashed_password = Column(String(256), nullable=False)
     role = Column(String(16), nullable=False, default="user")
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     avatar_url = Column(String(512), nullable=True)
     clan_id = Column(Integer, ForeignKey("clans.id", ondelete="SET NULL"), nullable=True)
     rules_accepted_at = Column(DateTime, nullable=True)
@@ -25,6 +25,7 @@ class User(Base):
     last_active_at = Column(DateTime, nullable=True)
     badge_icon_url = Column(String(512), nullable=True)
     badge_style = Column(String(32), nullable=True, default='default')
+    revoke_before = Column(DateTime, nullable=True)
 
 
 class Clan(Base):
@@ -35,7 +36,7 @@ class Clan(Base):
     tag = Column(String(6), unique=True, nullable=False, index=True)
     description = Column(String(256), nullable=True, default="")
     leader_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class News(Base):
@@ -54,8 +55,8 @@ class News(Base):
     views = Column(Integer, default=0, nullable=False)
     publish_at = Column(DateTime, nullable=True)
     is_template = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     author = relationship("User", backref="news_posts", lazy="selectin")
     comments = relationship("Comment", back_populates="news", cascade="all, delete-orphan", lazy="noload")
@@ -97,7 +98,7 @@ class Wipe(Base):
     wipe_type = Column(String(32), nullable=False, default="full")
     wipe_date = Column(DateTime, nullable=False)
     note = Column(String(256), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class Comment(Base):
@@ -108,7 +109,7 @@ class Comment(Base):
     author_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     content = Column(Text, nullable=False)
     parent_id = Column(Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
     author = relationship("User", lazy="selectin")
     news = relationship("News", back_populates="comments")
@@ -123,7 +124,7 @@ class Setting(Base):
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String(64), unique=True, nullable=False, index=True)
     value = Column(Text, nullable=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class Reaction(Base):
@@ -132,7 +133,7 @@ class Reaction(Base):
     news_id = Column(Integer, ForeignKey("news.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     emoji = Column(String(10), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     __table_args__ = (UniqueConstraint("news_id", "user_id", "emoji", name="uq_reaction"),)
 
 
@@ -142,7 +143,7 @@ class AuditLog(Base):
     admin_username = Column(String(64), nullable=False)
     action = Column(String(128), nullable=False)
     detail = Column(Text, nullable=True, default="")
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
 class PasswordReset(Base):
@@ -150,7 +151,7 @@ class PasswordReset(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     token = Column(String(64), unique=True, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     expires_at = Column(DateTime, nullable=False)
     used = Column(Boolean, default=False, nullable=False)
 
@@ -161,7 +162,7 @@ class CommentReaction(Base):
     comment_id = Column(Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     emoji = Column(String(10), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     __table_args__ = (UniqueConstraint("comment_id", "user_id", "emoji", name="uq_comment_reaction"),)
 
 
@@ -172,7 +173,7 @@ class Notification(Base):
     type = Column(String(32), nullable=False)  # "reply", "mention"
     data = Column(Text, nullable=False, default="{}")  # JSON: {comment_id, news_slug, news_title, from_username, preview}
     read = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     __table_args__ = (Index("ix_notifications_user", "user_id", "read"),)
 
 
@@ -183,7 +184,7 @@ class Message(Base):
     recipient_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     content = Column(Text, nullable=False)
     read = Column(Boolean, default=False, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     sender = relationship("User", foreign_keys=[sender_id], lazy="selectin")
     recipient = relationship("User", foreign_keys=[recipient_id], lazy="selectin")
 
@@ -197,7 +198,7 @@ class Report(Base):
     reason = Column(String(512), nullable=False)
     status = Column(String(16), nullable=False, default="pending")  # pending, reviewed, dismissed
     admin_note = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     reviewed_at = Column(DateTime, nullable=True)
 
 
@@ -208,7 +209,7 @@ class Poll(Base):
     question = Column(String(256), nullable=False)
     multiple = Column(Boolean, default=False, nullable=False)
     ends_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     options = relationship("PollOption", back_populates="poll", cascade="all, delete-orphan", lazy="selectin")
 
 
@@ -226,7 +227,7 @@ class PollVote(Base):
     poll_id = Column(Integer, ForeignKey("polls.id", ondelete="CASCADE"), nullable=False)
     option_id = Column(Integer, ForeignKey("poll_options.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     __table_args__ = (UniqueConstraint("poll_id", "user_id", name="uq_poll_vote"),)
 
 
@@ -235,7 +236,7 @@ class PageView(Base):
     id = Column(Integer, primary_key=True, index=True)
     path = Column(String(256), nullable=False)
     ip_hash = Column(String(64), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     __table_args__ = (Index("ix_page_views_date", "created_at"),)
 
 
@@ -246,7 +247,7 @@ class ErrorLog(Base):
     method = Column(String(8), nullable=False, default="GET")
     status_code = Column(Integer, nullable=False)
     error = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     __table_args__ = (Index("ix_error_logs_date", "created_at"),)
 
 
@@ -255,4 +256,4 @@ class RevokedToken(Base):
     id = Column(Integer, primary_key=True, index=True)
     token = Column(String(512), unique=True, nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
