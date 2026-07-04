@@ -1465,13 +1465,7 @@
     <span class="corner-bl">✦</span><span class="corner-br">✦</span>
 
     <!-- Server monitoring header -->
-    <div style="text-align:center;margin-bottom:.85rem;">
-      <h2 style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;">— Мониторинг серверов —</h2>
-      <div id="sidebar-total-online" style="display:none;margin-top:.3rem;align-items:center;justify-content:center;gap:.3rem;">
-        <span class="dot-pulse" style="color:#4ade80;font-size:.55rem;">●</span>
-        <span id="sidebar-online-count" style="font-size:.68rem;color:#86efac;font-weight:600;"></span>
-      </div>
-    </div>
+    <h2 style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;text-align:center;margin-bottom:.85rem;">— Мониторинг серверов —</h2>
 
     <!-- Server 1 mini-card -->
     <div class="srv-mini-card" style="--mini-rgb:200,0,42;">
@@ -2040,14 +2034,16 @@ async function loadStats() {
     const infoEl = document.getElementById('left-info');
     if (infoEl) {
       const cells = [];
+      let recordRow = '';
       if (s.peak_alltime > 0) {
         const dateStr = s.peak_alltime_date
-          ? new Date(s.peak_alltime_date).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'2-digit'})
+          ? new Date(s.peak_alltime_date).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric'})
           : '';
-        cells.push(`<div class="srv-stat-cell">
-          <div class="srv-stat-lbl">🏆 Рекорд</div>
-          <div class="srv-stat-val" style="color:var(--gold);">${s.peak_alltime}${dateStr ? `<div style="font-size:.5rem;color:var(--muted);font-weight:400;margin-top:.1rem;">${dateStr}</div>` : ''}</div>
-        </div>`);
+        const pl = _plPlayers(s.peak_alltime);
+        recordRow = `<div style="display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.3rem .45rem;background:rgba(201,169,74,.07);border:1px solid rgba(201,169,74,.2);border-radius:.4rem;font-size:.68rem;">
+          <span style="color:var(--gold);font-weight:600;">🏆 Рекорд</span>
+          <span style="color:#e8d9a0;">${s.peak_alltime} ${pl} было${dateStr ? ' · ' + dateStr : ''}</span>
+        </div>`;
       }
       if (s.uptime_24h !== null) {
         const uc = s.uptime_24h >= 95 ? '#86efac' : s.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
@@ -2062,7 +2058,8 @@ async function loadStats() {
           <div class="srv-stat-val" style="color:#d4c4e0;">${s.peak_7d}</div>
         </div>`);
       }
-      if (cells.length) { infoEl.innerHTML = `<div class="srv-stat-grid">${cells.join('')}</div>`; }
+      const gridHtml = cells.length ? `<div class="srv-stat-grid" style="margin-top:${recordRow ? '.35rem' : '0'};">${cells.join('')}</div>` : '';
+      if (recordRow || gridHtml) infoEl.innerHTML = recordRow + gridHtml;
     }
   } catch {}
 
@@ -2094,14 +2091,16 @@ async function loadStats() {
     const infoEl2 = document.getElementById('left-info2');
     if (infoEl2) {
       const cells2 = [];
+      let recordRow2 = '';
       if (s2.peak_alltime > 0) {
         const dateStr2 = s2.peak_alltime_date
-          ? new Date(s2.peak_alltime_date).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'2-digit'})
+          ? new Date(s2.peak_alltime_date).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric'})
           : '';
-        cells2.push(`<div class="srv-stat-cell">
-          <div class="srv-stat-lbl">🏆 Рекорд</div>
-          <div class="srv-stat-val" style="color:var(--gold);">${s2.peak_alltime}${dateStr2 ? `<div style="font-size:.5rem;color:var(--muted);font-weight:400;margin-top:.1rem;">${dateStr2}</div>` : ''}</div>
-        </div>`);
+        const pl2 = _plPlayers(s2.peak_alltime);
+        recordRow2 = `<div style="display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.3rem .45rem;background:rgba(201,169,74,.07);border:1px solid rgba(201,169,74,.2);border-radius:.4rem;font-size:.68rem;">
+          <span style="color:var(--gold);font-weight:600;">🏆 Рекорд</span>
+          <span style="color:#e8d9a0;">${s2.peak_alltime} ${pl2} было${dateStr2 ? ' · ' + dateStr2 : ''}</span>
+        </div>`;
       }
       if (s2.uptime_24h !== null) {
         const uc2 = s2.uptime_24h >= 95 ? '#86efac' : s2.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
@@ -2116,7 +2115,8 @@ async function loadStats() {
           <div class="srv-stat-val" style="color:#d4c4e0;">${s2.peak_7d}</div>
         </div>`);
       }
-      if (cells2.length) { infoEl2.innerHTML = `<div class="srv-stat-grid">${cells2.join('')}</div>`; }
+      const gridHtml2 = cells2.length ? `<div class="srv-stat-grid" style="margin-top:${recordRow2 ? '.35rem' : '0'};">${cells2.join('')}</div>` : '';
+      if (recordRow2 || gridHtml2) infoEl2.innerHTML = recordRow2 + gridHtml2;
     }
   } catch {}
 }
@@ -2138,18 +2138,6 @@ function _updateStatusBarOnline() {
     const n = window._sb_online2 || 0, m = window._sb_max2 || 0;
     el2.textContent = m > 0 ? `${n} / ${m}` : (n > 0 ? `${n}` : '—');
     el2.style.color = n > 0 ? '#86efac' : 'var(--muted)';
-  }
-  // Sidebar header total
-  const total = (window._sb_online1 || 0) + (window._sb_online2 || 0);
-  const sidebarWrap = document.getElementById('sidebar-total-online');
-  const sidebarCnt  = document.getElementById('sidebar-online-count');
-  if (sidebarWrap && sidebarCnt) {
-    if (total > 0) {
-      sidebarWrap.style.display = 'flex';
-      sidebarCnt.textContent = `${total} онлайн`;
-    } else {
-      sidebarWrap.style.display = 'none';
-    }
   }
 }
 
@@ -3145,22 +3133,50 @@ function _wipeCountdown(date, num) {
 function updateWipeTimer()  { _wipeCountdown(_wipeDate,  1); }
 function updateWipeTimer2() { _wipeCountdown(_wipeDate2, 2); }
 
+function _plPlayers(n) {
+  const n10 = n % 10, n100 = n % 100;
+  if (n10 === 1 && n100 !== 11) return 'игрок';
+  if ([2,3,4].includes(n10) && ![12,13,14].includes(n100)) return 'игрока';
+  return 'игроков';
+}
+
 function updateSidebarWipes() {
-  [[_wipeDate, window._wipeType1, 'left-wipe'], [_wipeDate2, window._wipeType2, 'left-wipe2']].forEach(([date, type, id]) => {
+  [
+    [_wipeDate,  window._wipeType1, 'left-wipe',  '200,0,42',   '#e05575'],
+    [_wipeDate2, window._wipeType2, 'left-wipe2', '124,58,237', '#9955ee'],
+  ].forEach(([date, type, id, rgb, color]) => {
     const el = document.getElementById(id);
     if (!el || !date) return;
     const diff = date.getTime() - Date.now();
     const label = WIPE_TYPE_LABELS[type || 'full'] || 'Вайп';
-    let text;
+    const urgent = diff > 0 && Math.floor(diff / 86400000) < 7;
+    const accentBg  = urgent ? 'rgba(255,93,126,.1)'  : `rgba(${rgb},.08)`;
+    const accentBdr = urgent ? 'rgba(255,93,126,.35)' : `rgba(${rgb},.28)`;
+    const accentClr = urgent ? 'var(--red)' : color;
+    let countdown;
     if (diff <= 0) {
-      text = `🗡 ${label}: сброшен`;
+      countdown = '<span style="font-size:.62rem;opacity:.7;">сброшен</span>';
     } else {
       const d = Math.floor(diff / 86400000);
       const h = Math.floor((diff % 86400000) / 3600000);
-      text = `🗡 ${label} через ${d}д ${h}ч`;
+      const m = Math.floor((diff % 3600000) / 60000);
+      countdown = d > 0
+        ? `<b style="font-size:.82rem;">${d}</b><span style="font-size:.56rem;">д</span> <b style="font-size:.82rem;">${h}</b><span style="font-size:.56rem;">ч</span>`
+        : `<b style="font-size:.82rem;">${h}</b><span style="font-size:.56rem;">ч</span> <b style="font-size:.82rem;">${m}</b><span style="font-size:.56rem;">м</span>`;
     }
-    const urgent = diff > 0 && Math.floor(diff / 86400000) < 7;
-    el.innerHTML = `<span class="srv-mini-wipe${urgent ? ' urgent' : ''}">${text}</span>`;
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.4rem;
+        padding:.38rem .55rem;border-radius:.45rem;
+        background:${accentBg};border:1px solid ${accentBdr};">
+        <div style="display:flex;align-items:center;gap:.35rem;min-width:0;">
+          <span style="font-size:.8rem;flex-shrink:0;">🗡</span>
+          <div style="min-width:0;">
+            <div style="font-size:.58rem;color:var(--muted);line-height:1.1;">следующий вайп</div>
+            <div style="font-size:.65rem;font-weight:600;color:${accentClr};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;color:${accentClr};line-height:1.15;">${countdown}</div>
+      </div>`;
     el.style.display = '';
   });
 }
