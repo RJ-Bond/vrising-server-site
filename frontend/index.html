@@ -182,20 +182,6 @@
       border-radius: .6rem;
       padding: .85rem .85rem .85rem .75rem;
     }
-    .srv-mini-wipe {
-      font-size:.61rem; font-weight:600; color:var(--muted);
-      background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09);
-      border-radius:9999px; padding:.17rem .52rem;
-      display:inline-flex; align-items:center; gap:.28rem;
-    }
-    .srv-mini-wipe.urgent { color:var(--red); border-color:rgba(255,93,126,.38); background:rgba(255,93,126,.07); }
-    .srv-stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:.35rem; }
-    .srv-stat-cell {
-      background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07);
-      border-radius:.4rem; padding:.38rem .45rem; text-align:center;
-    }
-    .srv-stat-lbl { font-size:.54rem; color:var(--muted); margin-bottom:.18rem; }
-    .srv-stat-val { font-size:.8rem; font-weight:600; line-height:1; }
     .p-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--purple), var(--crimson)); transition: width .8s ease; }
     .left-connect-btn {
       display:flex; align-items:center; justify-content:center; gap:.5rem;
@@ -1464,27 +1450,17 @@
     <span class="corner-tl">✦</span><span class="corner-tr">✦</span>
     <span class="corner-bl">✦</span><span class="corner-br">✦</span>
 
-    <!-- Server monitoring header -->
-    <h2 style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;text-align:center;margin-bottom:.85rem;">— Мониторинг серверов —</h2>
+    <!-- Server 1 -->
+    <h2 style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.85rem;text-align:center;">— Мониторинг серверов —</h2>
 
-    <!-- Server 1 mini-card -->
     <div class="srv-mini-card" style="--mini-rgb:200,0,42;">
-      <div id="left-status" style="margin-bottom:.65rem;">
-        <div style="width:100%;height:2.5rem;border-radius:.5rem;background:rgba(110,0,20,0.1);animation:pulse 2s ease-in-out infinite;"></div>
+      <div id="left-status" style="margin-bottom:.75rem;">
+        <div style="width:100%;height:3rem;border-radius:.5rem;background:rgba(110,0,20,0.1);animation:pulse 2s ease-in-out infinite;"></div>
       </div>
-      <div id="left-wipe" style="display:none;margin-bottom:.5rem;"></div>
-      <div id="left-circles">
-        <div style="animation:pulse 2s ease-in-out infinite;padding:.1rem 0;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:.5rem;gap:.5rem;">
-            <div style="height:1.65rem;width:55%;background:rgba(255,255,255,.06);border-radius:.3rem;"></div>
-            <div style="height:1rem;width:22%;background:rgba(255,255,255,.04);border-radius:.3rem;"></div>
-          </div>
-          <div style="height:7px;background:rgba(255,255,255,.06);border-radius:9999px;"></div>
-        </div>
-      </div>
+      <div id="left-circles"></div>
       <div id="left-connect" style="margin-top:.75rem;"></div>
       <div id="left-players" style="margin-top:.6rem;"></div>
-      <div id="left-info" style="margin-top:.6rem;"></div>
+      <div id="left-info" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.55rem;"></div>
     </div>
 
     <!-- Latency + stats -->
@@ -1496,12 +1472,11 @@
     <!-- Server 2 (shown only when enabled) -->
     <div id="server2-section" style="display:none;margin-top:.85rem;">
       <div class="srv-mini-card" style="--mini-rgb:124,58,237;">
-        <div id="left-status2" style="margin-bottom:.65rem;"></div>
-        <div id="left-wipe2" style="display:none;margin-bottom:.5rem;"></div>
+        <div id="left-status2" style="margin-bottom:.75rem;"></div>
         <div id="left-circles2"></div>
         <div id="left-connect2" style="margin-top:.75rem;"></div>
         <div id="left-players2" style="margin-top:.6rem;"></div>
-        <div id="left-info2" style="margin-top:.6rem;"></div>
+        <div id="left-info2" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.55rem;"></div>
       </div>
       <div id="stat-uptime7d-s2" style="display:none;"></div>
       <div id="stat-peak7d-s2" style="display:none;"></div>
@@ -2030,36 +2005,33 @@ async function loadStats() {
     const statsWrap = document.getElementById('monitor-stats');
     if (statsWrap) statsWrap.style.display = '';
 
-    // Fill left-info stats grid
+    // Fill left-info with uptime + peak stats
     const infoEl = document.getElementById('left-info');
     if (infoEl) {
-      const cells = [];
-      let recordRow = '';
+      const rows = [];
       if (s.peak_alltime > 0) {
         const dateStr = s.peak_alltime_date
-          ? new Date(s.peak_alltime_date).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric'})
+          ? ' · ' + new Date(s.peak_alltime_date).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'2-digit'})
           : '';
-        const pl = _plPlayers(s.peak_alltime);
-        recordRow = `<div style="display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.3rem .45rem;background:rgba(201,169,74,.07);border:1px solid rgba(201,169,74,.2);border-radius:.4rem;font-size:.68rem;">
-          <span style="color:var(--gold);font-weight:600;">🏆 Рекорд</span>
-          <span style="color:#e8d9a0;">${s.peak_alltime} ${pl} было${dateStr ? ' · ' + dateStr : ''}</span>
-        </div>`;
+        rows.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:var(--muted);">🏆 Рекорд</span>
+          <span style="font-weight:600;color:var(--gold);">${s.peak_alltime} игр.${dateStr}</span>
+        </div>`);
       }
       if (s.uptime_24h !== null) {
         const uc = s.uptime_24h >= 95 ? '#86efac' : s.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
-        cells.push(`<div class="srv-stat-cell">
-          <div class="srv-stat-lbl">⬆ Аптайм</div>
-          <div class="srv-stat-val" style="color:${uc};">${s.uptime_24h}%</div>
+        rows.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:var(--muted);">⬆ Аптайм 24ч</span>
+          <span style="font-weight:600;color:${uc};">${s.uptime_24h}%</span>
         </div>`);
       }
       if (s.peak_7d) {
-        cells.push(`<div class="srv-stat-cell">
-          <div class="srv-stat-lbl">📈 Пик 7д</div>
-          <div class="srv-stat-val" style="color:#d4c4e0;">${s.peak_7d}</div>
+        rows.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:var(--muted);">📈 Пик 7д</span>
+          <span style="font-weight:600;color:#d4c4e0;">${s.peak_7d} игр.</span>
         </div>`);
       }
-      const gridHtml = cells.length ? `<div class="srv-stat-grid" style="margin-top:${recordRow ? '.35rem' : '0'};">${cells.join('')}</div>` : '';
-      if (recordRow || gridHtml) infoEl.innerHTML = recordRow + gridHtml;
+      if (rows.length) { infoEl.innerHTML = rows.join(''); infoEl.style.display = 'flex'; }
     }
   } catch {}
 
@@ -2090,33 +2062,30 @@ async function loadStats() {
 
     const infoEl2 = document.getElementById('left-info2');
     if (infoEl2) {
-      const cells2 = [];
-      let recordRow2 = '';
+      const rows2 = [];
       if (s2.peak_alltime > 0) {
         const dateStr2 = s2.peak_alltime_date
-          ? new Date(s2.peak_alltime_date).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric'})
+          ? ' · ' + new Date(s2.peak_alltime_date).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'2-digit'})
           : '';
-        const pl2 = _plPlayers(s2.peak_alltime);
-        recordRow2 = `<div style="display:flex;align-items:center;justify-content:space-between;gap:.4rem;padding:.3rem .45rem;background:rgba(201,169,74,.07);border:1px solid rgba(201,169,74,.2);border-radius:.4rem;font-size:.68rem;">
-          <span style="color:var(--gold);font-weight:600;">🏆 Рекорд</span>
-          <span style="color:#e8d9a0;">${s2.peak_alltime} ${pl2} было${dateStr2 ? ' · ' + dateStr2 : ''}</span>
-        </div>`;
+        rows2.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:var(--muted);">🏆 Рекорд</span>
+          <span style="font-weight:600;color:var(--gold);">${s2.peak_alltime} игр.${dateStr2}</span>
+        </div>`);
       }
       if (s2.uptime_24h !== null) {
         const uc2 = s2.uptime_24h >= 95 ? '#86efac' : s2.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
-        cells2.push(`<div class="srv-stat-cell">
-          <div class="srv-stat-lbl">⬆ Аптайм</div>
-          <div class="srv-stat-val" style="color:${uc2};">${s2.uptime_24h}%</div>
+        rows2.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:var(--muted);">⬆ Аптайм 24ч</span>
+          <span style="font-weight:600;color:${uc2};">${s2.uptime_24h}%</span>
         </div>`);
       }
       if (s2.peak_7d) {
-        cells2.push(`<div class="srv-stat-cell">
-          <div class="srv-stat-lbl">📈 Пик 7д</div>
-          <div class="srv-stat-val" style="color:#d4c4e0;">${s2.peak_7d}</div>
+        rows2.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:var(--muted);">📈 Пик 7д</span>
+          <span style="font-weight:600;color:#d4c4e0;">${s2.peak_7d} игр.</span>
         </div>`);
       }
-      const gridHtml2 = cells2.length ? `<div class="srv-stat-grid" style="margin-top:${recordRow2 ? '.35rem' : '0'};">${cells2.join('')}</div>` : '';
-      if (recordRow2 || gridHtml2) infoEl2.innerHTML = recordRow2 + gridHtml2;
+      if (rows2.length) { infoEl2.innerHTML = rows2.join(''); infoEl2.style.display = 'flex'; }
     }
   } catch {}
 }
@@ -2921,7 +2890,6 @@ async function loadSiteSettings() {
       const parsed = new Date(wipeDateStr);
       if (!isNaN(parsed)) {
         _wipeDate = parsed;
-        window._wipeType1 = d.wipe_type || 'full';
         const card = document.getElementById('wipe-card');
         if (card) card.style.display = 'flex';
         const typeEl = document.getElementById('wipe-type-label');
@@ -2940,7 +2908,6 @@ async function loadSiteSettings() {
       const parsed2 = new Date(wipeDateStr2);
       if (!isNaN(parsed2)) {
         _wipeDate2 = parsed2;
-        window._wipeType2 = d.wipe_type2 || 'full';
         const card2 = document.getElementById('wipe-card2');
         if (card2) card2.style.display = 'flex';
         const typeEl2 = document.getElementById('wipe-type-label2');
@@ -2953,8 +2920,6 @@ async function loadSiteSettings() {
         setInterval(updateWipeTimer2, 60000);
       }
     }
-
-    updateSidebarWipes();
 
     // Status bar — wipe countdown server 1
     const sbWipe1 = document.getElementById('sb-wipe1');
@@ -3132,54 +3097,6 @@ function _wipeCountdown(date, num) {
 
 function updateWipeTimer()  { _wipeCountdown(_wipeDate,  1); }
 function updateWipeTimer2() { _wipeCountdown(_wipeDate2, 2); }
-
-function _plPlayers(n) {
-  const n10 = n % 10, n100 = n % 100;
-  if (n10 === 1 && n100 !== 11) return 'игрок';
-  if ([2,3,4].includes(n10) && ![12,13,14].includes(n100)) return 'игрока';
-  return 'игроков';
-}
-
-function updateSidebarWipes() {
-  [
-    [_wipeDate,  window._wipeType1, 'left-wipe',  '200,0,42',   '#e05575'],
-    [_wipeDate2, window._wipeType2, 'left-wipe2', '124,58,237', '#9955ee'],
-  ].forEach(([date, type, id, rgb, color]) => {
-    const el = document.getElementById(id);
-    if (!el || !date) return;
-    const diff = date.getTime() - Date.now();
-    const label = WIPE_TYPE_LABELS[type || 'full'] || 'Вайп';
-    const urgent = diff > 0 && Math.floor(diff / 86400000) < 7;
-    const accentBg  = urgent ? 'rgba(255,93,126,.1)'  : `rgba(${rgb},.08)`;
-    const accentBdr = urgent ? 'rgba(255,93,126,.35)' : `rgba(${rgb},.28)`;
-    const accentClr = urgent ? 'var(--red)' : color;
-    let countdown;
-    if (diff <= 0) {
-      countdown = '<span style="font-size:.62rem;opacity:.7;">сброшен</span>';
-    } else {
-      const d = Math.floor(diff / 86400000);
-      const h = Math.floor((diff % 86400000) / 3600000);
-      const m = Math.floor((diff % 3600000) / 60000);
-      countdown = d > 0
-        ? `<b style="font-size:.82rem;">${d}</b><span style="font-size:.56rem;">д</span> <b style="font-size:.82rem;">${h}</b><span style="font-size:.56rem;">ч</span>`
-        : `<b style="font-size:.82rem;">${h}</b><span style="font-size:.56rem;">ч</span> <b style="font-size:.82rem;">${m}</b><span style="font-size:.56rem;">м</span>`;
-    }
-    el.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:.4rem;
-        padding:.38rem .55rem;border-radius:.45rem;
-        background:${accentBg};border:1px solid ${accentBdr};">
-        <div style="display:flex;align-items:center;gap:.35rem;min-width:0;">
-          <span style="font-size:.8rem;flex-shrink:0;">🗡</span>
-          <div style="min-width:0;">
-            <div style="font-size:.58rem;color:var(--muted);line-height:1.1;">следующий вайп</div>
-            <div style="font-size:.65rem;font-weight:600;color:${accentClr};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</div>
-          </div>
-        </div>
-        <div style="text-align:right;flex-shrink:0;color:${accentClr};line-height:1.15;">${countdown}</div>
-      </div>`;
-    el.style.display = '';
-  });
-}
 
 async function loadWipeHistory() {
   try {
