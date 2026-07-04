@@ -1183,7 +1183,7 @@
         <span class="sb-val" id="sb-online1">—</span>
       </div>
       <div class="sb-item">
-        <span class="sb-icon">⬆</span>
+        <span class="sb-icon">🛡️</span>
         <span>Аптайм 24ч</span>
         <span class="sb-val" id="sb-uptime1">—</span>
         <div style="margin-top:.2rem;height:3px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden;width:60px;">
@@ -1191,7 +1191,7 @@
         </div>
       </div>
       <div class="sb-item">
-        <span class="sb-icon">⚔</span>
+        <span class="sb-icon">⏳</span>
         <span>До вайпа</span>
         <span class="sb-val" id="sb-wipe1">—</span>
       </div>
@@ -1205,7 +1205,7 @@
         <span class="sb-val" id="sb-online2">—</span>
       </div>
       <div class="sb-item">
-        <span class="sb-icon">⬆</span>
+        <span class="sb-icon">🛡️</span>
         <span>Аптайм 24ч</span>
         <span class="sb-val" id="sb-uptime2">—</span>
         <div style="margin-top:.2rem;height:3px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden;width:60px;">
@@ -1213,7 +1213,7 @@
         </div>
       </div>
       <div class="sb-item" id="sb-s2wipe-row">
-        <span class="sb-icon">⚔</span>
+        <span class="sb-icon">⏳</span>
         <span>До вайпа</span>
         <span class="sb-val" id="sb-wipe2">—</span>
       </div>
@@ -1383,7 +1383,7 @@
         <div style="padding:.85rem 1.1rem .8rem;display:flex;flex-direction:column;align-items:center;text-align:center;">
           <div style="width:100%;margin-bottom:.5rem;text-align:left;">
             <div style="display:flex;align-items:center;gap:.4rem;">
-              <div style="font-size:1.05rem;filter:drop-shadow(0 0 8px rgba(200,0,40,.6));flex-shrink:0;">🗡️</div>
+              <div style="font-size:1.05rem;filter:drop-shadow(0 0 8px rgba(200,0,40,.6));flex-shrink:0;">⚰️</div>
               <div id="wipe-card-title" style="font-family:'Philosopher',serif;font-size:.68rem;font-weight:700;letter-spacing:.07em;color:var(--gold);text-transform:uppercase;flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Сервер 1</div>
             </div>
             <div style="text-align:center;margin-top:.4rem;"><span id="wipe-type-label" class="wipe-badge wipe-badge-full" style="display:inline-block;"></span></div>
@@ -1407,7 +1407,7 @@
         <div style="padding:.85rem 1.1rem .8rem;display:flex;flex-direction:column;align-items:center;text-align:center;">
           <div style="width:100%;margin-bottom:.5rem;text-align:left;">
             <div style="display:flex;align-items:center;gap:.4rem;">
-              <div style="font-size:1.05rem;filter:drop-shadow(0 0 8px rgba(120,60,220,.6));flex-shrink:0;">🗡️</div>
+              <div style="font-size:1.05rem;filter:drop-shadow(0 0 8px rgba(120,60,220,.6));flex-shrink:0;">⚰️</div>
               <div id="wipe-card-title2" style="font-family:'Philosopher',serif;font-size:.68rem;font-weight:700;letter-spacing:.07em;color:var(--gold);text-transform:uppercase;flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Сервер 2</div>
             </div>
             <div style="text-align:center;margin-top:.4rem;"><span id="wipe-type-label2" class="wipe-badge wipe-badge-full" style="display:inline-block;"></span></div>
@@ -2061,20 +2061,20 @@ async function loadStats() {
           ? ' · ' + new Date(s.peak_alltime_date).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'2-digit'})
           : '';
         rows.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="color:var(--muted);">🏆 Рекорд</span>
+          <span style="color:var(--muted);">👑 Рекорд</span>
           <span style="font-weight:600;color:var(--gold);">${s.peak_alltime} игр.${dateStr}</span>
         </div>`);
       }
       if (s.uptime_24h !== null) {
         const uc = s.uptime_24h >= 95 ? '#86efac' : s.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
         rows.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="color:var(--muted);">⬆ Аптайм 24ч</span>
+          <span style="color:var(--muted);">🛡️ Аптайм 24ч</span>
           <span style="font-weight:600;color:${uc};">${s.uptime_24h}%</span>
         </div>`);
       }
       if (s.peak_7d) {
         rows.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="color:var(--muted);">📈 Пик 7д</span>
+          <span style="color:var(--muted);">⚡ Пик 7д</span>
           <span style="font-weight:600;color:#d4c4e0;">${s.peak_7d} игр.</span>
         </div>`);
       }
@@ -2115,20 +2115,20 @@ async function loadStats() {
           ? ' · ' + new Date(s2.peak_alltime_date).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'2-digit'})
           : '';
         rows2.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="color:var(--muted);">🏆 Рекорд</span>
+          <span style="color:var(--muted);">👑 Рекорд</span>
           <span style="font-weight:600;color:var(--gold);">${s2.peak_alltime} игр.${dateStr2}</span>
         </div>`);
       }
       if (s2.uptime_24h !== null) {
         const uc2 = s2.uptime_24h >= 95 ? '#86efac' : s2.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
         rows2.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="color:var(--muted);">⬆ Аптайм 24ч</span>
+          <span style="color:var(--muted);">🛡️ Аптайм 24ч</span>
           <span style="font-weight:600;color:${uc2};">${s2.uptime_24h}%</span>
         </div>`);
       }
       if (s2.peak_7d) {
         rows2.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
-          <span style="color:var(--muted);">📈 Пик 7д</span>
+          <span style="color:var(--muted);">⚡ Пик 7д</span>
           <span style="font-weight:600;color:#d4c4e0;">${s2.peak_7d} игр.</span>
         </div>`);
       }
