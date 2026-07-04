@@ -1444,15 +1444,14 @@
     <!-- Server 1 -->
     <h2 style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;text-align:center;">— Мониторинг серверов —</h2>
 
-    <div id="left-status" style="margin-bottom:1rem;">
+    <div id="left-status" style="margin-bottom:.75rem;">
       <div style="width:100%;height:3rem;border-radius:.5rem;background:rgba(110,0,20,0.1);animation:pulse 2s ease-in-out infinite;"></div>
     </div>
 
-    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
-    <div id="left-circles" style="text-align:center;"></div>
-    <div id="left-connect" style="margin-top:.85rem;"></div>
-    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
-    <div id="left-info" style="font-size:.78rem;display:flex;flex-direction:column;gap:.45rem;"></div>
+    <div id="left-circles"></div>
+    <div id="left-connect" style="margin-top:.75rem;"></div>
+    <div id="left-players" style="margin-top:.6rem;"></div>
+    <div id="left-info" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.55rem;"></div>
 
     <!-- Latency + stats -->
     <div id="monitor-stats" style="display:none;">
@@ -1462,14 +1461,12 @@
 
     <!-- Server 2 (shown only when enabled) -->
     <div id="server2-section" style="display:none;">
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.55),transparent);margin:1.25rem 0;"></div>
-      <div id="left-status2" style="margin-bottom:1rem;"></div>
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
-      <div id="left-circles2" style="text-align:center;"></div>
-      <div id="left-connect2" style="margin-top:.85rem;"></div>
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
-      <div id="left-info2" style="font-size:.78rem;display:flex;flex-direction:column;gap:.45rem;"></div>
-      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:.85rem 0;"></div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.55),transparent);margin:1.1rem 0;"></div>
+      <div id="left-status2" style="margin-bottom:.75rem;"></div>
+      <div id="left-circles2"></div>
+      <div id="left-connect2" style="margin-top:.75rem;"></div>
+      <div id="left-players2" style="margin-top:.6rem;"></div>
+      <div id="left-info2" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.55rem;"></div>
       <div id="stat-uptime7d-s2" style="display:none;"></div>
       <div id="stat-peak7d-s2" style="display:none;"></div>
     </div>
@@ -1858,24 +1855,55 @@ function renderServerBlock(d, sfx) {
 
   const circEl = document.getElementById('left-circles' + sfx);
   if (circEl) {
-    circEl.innerHTML = `
-      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;">
-        <div>
-          <div><span style="font-size:1.65rem;font-weight:700;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;line-height:1;">${d.players}</span><span style="color:var(--muted);font-size:1rem;"> / ${d.max_players}</span></div>
-          <div style="font-size:.52rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:.1rem;">Игроков онлайн</div>
+    if (!d.online) {
+      circEl.innerHTML = `
+        <div style="text-align:center;padding:.85rem .5rem;background:rgba(255,93,126,0.06);border:1px solid rgba(255,93,126,0.18);border-radius:.55rem;">
+          <div style="font-size:1.5rem;margin-bottom:.25rem;opacity:.45;">💀</div>
+          <div style="font-size:.75rem;color:var(--red);font-weight:600;letter-spacing:.02em;">Сервер недоступен</div>
+          <div style="font-size:.6rem;color:var(--muted);margin-top:.2rem;">Данные обновятся автоматически</div>
+        </div>`;
+    } else {
+      circEl.innerHTML = `
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;">
+          <div>
+            <div><span style="font-size:1.65rem;font-weight:700;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;line-height:1;">${d.players}</span><span style="color:var(--muted);font-size:1rem;"> / ${d.max_players}</span></div>
+            <div style="font-size:.52rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:.1rem;">Игроков онлайн</div>
+          </div>
+          ${d.latency_ms != null ? `<div style="text-align:right;">
+            <div style="font-size:1rem;font-weight:700;font-family:'Oswald',sans-serif;color:${pingColor};line-height:1;">${d.latency_ms}<span style="font-size:.55rem;font-weight:400;color:var(--muted);"> мс</span></div>
+            <div style="font-size:.52rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:.1rem;">Пинг</div>
+          </div>` : ''}
         </div>
-        ${d.latency_ms != null ? `<div style="text-align:right;">
-          <div style="font-size:1rem;font-weight:700;font-family:'Oswald',sans-serif;color:${pingColor};line-height:1;">${d.latency_ms}<span style="font-size:.55rem;font-weight:400;color:var(--muted);"> мс</span></div>
-          <div style="font-size:.52rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:.1rem;">Пинг</div>
-        </div>` : ''}
-      </div>
-      <div style="height:7px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden;margin-bottom:.28rem;">
-        <div style="height:100%;width:${pct}%;border-radius:9999px;background:linear-gradient(90deg,${accent},rgba(${accentRgb},.5));transition:width .8s cubic-bezier(.4,0,.2,1);box-shadow:0 0 8px rgba(${accentRgb},.4);"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:.57rem;color:var(--muted);">
-        <span>${pct}% заполнено</span>
-        <span>${d.max_players - d.players} мест свободно</span>
-      </div>`;
+        <div style="height:7px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden;margin-bottom:.28rem;">
+          <div style="height:100%;width:${pct}%;border-radius:9999px;background:linear-gradient(90deg,${accent},rgba(${accentRgb},.5));transition:width .8s cubic-bezier(.4,0,.2,1);box-shadow:0 0 8px rgba(${accentRgb},.4);"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.57rem;color:var(--muted);">
+          <span>${pct}% заполнено</span>
+          <span>${d.max_players - d.players} мест свободно</span>
+        </div>`;
+    }
+  }
+
+  const playersEl = document.getElementById('left-players' + sfx);
+  if (playersEl) {
+    const list = d.players_list || [];
+    if (d.online && list.length) {
+      const top = list.slice(0, 3);
+      playersEl.innerHTML = `
+        <div style="font-size:.57rem;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:.3rem;">Сейчас онлайн</div>
+        ${top.map(p => {
+          const name = p.name || 'Аноним';
+          const hue = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 55 + 330;
+          return `<div style="display:flex;align-items:center;gap:.4rem;padding:.22rem 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+            <span style="width:.38rem;height:.38rem;border-radius:50%;flex-shrink:0;background:hsl(${hue},78%,55%);box-shadow:0 0 5px hsl(${hue},78%,55%);"></span>
+            <span style="font-size:.72rem;color:#d4c4e0;font-family:'Philosopher',serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">${esc(name)}</span>
+            <span style="font-size:.6rem;color:var(--muted);white-space:nowrap;flex-shrink:0;">${fmtDuration(p.duration)}</span>
+          </div>`;
+        }).join('')}
+        ${list.length > 3 ? `<div style="font-size:.58rem;color:var(--muted);text-align:right;margin-top:.2rem;">ещё ${list.length - 3}…</div>` : ''}`;
+    } else {
+      playersEl.innerHTML = '';
+    }
   }
 
   const connectEl = document.getElementById('left-connect' + sfx);
@@ -1970,6 +1998,15 @@ async function loadStats() {
     const infoEl = document.getElementById('left-info');
     if (infoEl) {
       const rows = [];
+      if (s.peak_alltime > 0) {
+        const dateStr = s.peak_alltime_date
+          ? ' · ' + new Date(s.peak_alltime_date).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'2-digit'})
+          : '';
+        rows.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:var(--muted);">🏆 Рекорд</span>
+          <span style="font-weight:600;color:var(--gold);">${s.peak_alltime} игр.${dateStr}</span>
+        </div>`);
+      }
       if (s.uptime_24h !== null) {
         const uc = s.uptime_24h >= 95 ? '#86efac' : s.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
         rows.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
@@ -2015,6 +2052,15 @@ async function loadStats() {
     const infoEl2 = document.getElementById('left-info2');
     if (infoEl2) {
       const rows2 = [];
+      if (s2.peak_alltime > 0) {
+        const dateStr2 = s2.peak_alltime_date
+          ? ' · ' + new Date(s2.peak_alltime_date).toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'2-digit'})
+          : '';
+        rows2.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:var(--muted);">🏆 Рекорд</span>
+          <span style="font-weight:600;color:var(--gold);">${s2.peak_alltime} игр.${dateStr2}</span>
+        </div>`);
+      }
       if (s2.uptime_24h !== null) {
         const uc2 = s2.uptime_24h >= 95 ? '#86efac' : s2.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
         rows2.push(`<div style="display:flex;justify-content:space-between;align-items:center;">
