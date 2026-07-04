@@ -372,36 +372,6 @@ class PageViewMiddleware(BaseHTTPMiddleware):
 app.add_middleware(PageViewMiddleware)
 
 
-_ALLOWED_ORIGINS_SET: set[str] = set()
-if _raw_origins != "*":
-    _ALLOWED_ORIGINS_SET = {o.rstrip("/") for o in _origins}
-
-
-class CSRFMiddleware(BaseHTTPMiddleware):
-    """Reject state-changing API requests from unlisted origins.
-
-    Only enforced when ALLOWED_ORIGINS env var is set to specific domains.
-    In wildcard mode the SameSite=Lax cookie already prevents cross-site CSRF.
-    """
-    _SAFE = frozenset({"GET", "HEAD", "OPTIONS"})
-
-    async def dispatch(self, request: Request, call_next):
-        if _ALLOWED_ORIGINS_SET and request.method not in self._SAFE and request.url.path.startswith("/api/"):
-            origin = request.headers.get("origin", "").rstrip("/")
-            referer = request.headers.get("referer", "").rstrip("/")
-            allowed = (
-                not origin
-                or any(o.rstrip("/") == origin for o in _ALLOWED_ORIGINS_SET)
-                or any(o.rstrip("/") in referer for o in _ALLOWED_ORIGINS_SET)
-            )
-            if not allowed:
-                from fastapi.responses import JSONResponse
-                return JSONResponse({"detail": "CSRF check failed"}, status_code=403)
-        return await call_next(request)
-
-
-app.add_middleware(CSRFMiddleware)
-
 
 # ─── Version ────────────────────────────────────────────────────────────────
 
