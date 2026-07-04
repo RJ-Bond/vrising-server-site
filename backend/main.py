@@ -559,7 +559,10 @@ async def logout(response: Response, current_user: User = Depends(get_current_us
 @app.get("/api/auth/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     now = datetime.now(timezone.utc)
-    if not current_user.last_active_at or (now - current_user.last_active_at).total_seconds() > 60:
+    last = current_user.last_active_at
+    if last is not None and last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    if not last or (now - last).total_seconds() > 60:
         current_user.last_active_at = now
         await db.commit()
     return UserOut.model_validate(current_user)
