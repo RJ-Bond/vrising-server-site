@@ -28,6 +28,15 @@ logger = logging.getLogger(__name__)
 
 UPLOAD_DIR = Path("/data/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _fmt_dt(dt: datetime | None) -> str | None:
+    """Return ISO-8601 string with explicit UTC offset so JS always parses as UTC."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat()
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, text, or_, update
 
@@ -1871,15 +1880,15 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         "username": user.username,
         "avatar_url": user.avatar_url,
         "role": user.role,
-        "created_at": user.created_at.isoformat(),
+        "created_at": _fmt_dt(user.created_at),
         "game_nickname": user.game_nickname,
         "total_seconds": total_seconds,
-        "last_seen": last_seen.isoformat() if last_seen else None,
+        "last_seen": _fmt_dt(last_seen),
         "session_count": session_count,
         "last_duration": last_duration,
         "clan": clan,
         "admin_title": user.admin_title,
-        "last_active_at": user.last_active_at.isoformat() if user.last_active_at else None,
+        "last_active_at": _fmt_dt(user.last_active_at),
         "badge_icon_url": user.badge_icon_url,
         "badge_style": user.badge_style or "default",
         "comment_count": comment_count,
@@ -2704,9 +2713,9 @@ async def get_team(db: AsyncSession = Depends(get_db)):
             "id": u.id,
             "username": u.username,
             "avatar_url": u.avatar_url,
-            "created_at": u.created_at.isoformat(),
+            "created_at": _fmt_dt(u.created_at),
             "admin_title": u.admin_title,
-            "last_active_at": u.last_active_at.isoformat() if u.last_active_at else None,
+            "last_active_at": _fmt_dt(u.last_active_at),
             "badge_icon_url": u.badge_icon_url,
             "badge_style": u.badge_style or "default",
         }

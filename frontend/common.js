@@ -37,6 +37,20 @@ window.__TZ     = window.__TZ     || 'Europe/Moscow';
 window.__H12    = window.__H12    || false;
 window.__DATEFMT = window.__DATEFMT || 'dd.mm.yyyy';
 
+/* Auto-load timezone / date settings from admin panel once at startup */
+(async function _initSettings() {
+  if (window.__settingsLoaded) return;
+  try {
+    const s = await fetch('/api/settings/public').then(r => r.ok ? r.json() : null);
+    if (s) {
+      window.__TZ      = s.timezone     || 'Europe/Moscow';
+      window.__H12     = (s.time_format || '24h') === '12h';
+      window.__DATEFMT = s.date_format  || 'dd.mm.yyyy';
+      window.__settingsLoaded = true;
+    }
+  } catch {}
+})();
+
 function _dateOpts() {
   const m = {
     'dd.mm.yyyy':   {day:'2-digit',month:'2-digit',year:'numeric'},
