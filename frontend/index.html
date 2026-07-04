@@ -1938,7 +1938,7 @@ function _owRow(u) {
     : u.role === 'moder'
     ? ['rgba(153,85,238,.28)', 'rgba(153,85,238,.5)', '#c084fc']
     : ['rgba(60,30,90,.45)', 'rgba(110,70,150,.4)', '#c8c5d4'];
-  const ph = `<span class="online-avatar-ph" style="background:${bg};border:1px solid ${bd};color:${cl};">${init}</span>`;
+  const ph = `<span class='online-avatar-ph' style='background:${bg};border:1px solid ${bd};color:${cl};'>${init}</span>`;
   const av = u.avatar_url
     ? `<img src="${u.avatar_url}" class="online-avatar" alt="" onerror="this.outerHTML='${ph.replace(/'/g, "\\'")}'">` : ph;
   const sub = u.page ? `<div style="font-size:.58rem;color:var(--muted);margin-top:.05rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(u.page)}</div>` : '';
