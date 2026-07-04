@@ -25,7 +25,6 @@ class User(Base):
     last_active_at = Column(DateTime, nullable=True)
     badge_icon_url = Column(String(512), nullable=True)
     badge_style = Column(String(32), nullable=True, default='default')
-    revoke_before = Column(DateTime, nullable=True)
 
 
 class Clan(Base):

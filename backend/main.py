@@ -1710,7 +1710,8 @@ async def revoke_user_sessions(
     target = result.scalar_one_or_none()
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
-    target.revoke_before = datetime.now(timezone.utc)
+    now_utc = datetime.now(timezone.utc).isoformat()
+    await db.execute(text("UPDATE users SET revoke_before = :ts WHERE id = :uid"), {"ts": now_utc, "uid": user_id})
     await log_audit(db, current_user, "user.revoke_sessions", target.username)
     await db.commit()
 

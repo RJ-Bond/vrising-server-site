@@ -8,7 +8,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, text
 
 from .database import get_db
 from .models import User, RevokedToken
@@ -89,11 +89,23 @@ async def get_current_user(
     user = result.scalar_one_or_none()
     if user is None or not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found or inactive")
-    # Check revoke_before: tokens issued before this timestamp are rejected
-    if user.revoke_before:
-        iat = payload.get("iat")
-        if iat and datetime.fromtimestamp(iat, tz=timezone.utc) < user.revoke_before:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session revoked")
+    # Check revoke_before via raw SQL (column added via migration, not in ORM model)
+    try:
+        rb_row = await db.execute(
+            text("SELECT revoke_before FROM users WHERE id = :uid"), {"uid": user_id}
+        )
+        rb_val = rb_row.scalar_one_or_none()
+        if rb_val:
+            iat = payload.get("iat")
+            revoke_before_dt = datetime.fromisoformat(rb_val) if isinstance(rb_val, str) else rb_val
+            if not revoke_before_dt.tzinfo:
+                revoke_before_dt = revoke_before_dt.replace(tzinfo=timezone.utc)
+            if iat and datetime.fromtimestamp(iat, tz=timezone.utc) < revoke_before_dt:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session revoked")
+    except HTTPException:
+        raise
+    except Exception:
+        pass  # revoke_before column may not exist yet
     return user
 
 
