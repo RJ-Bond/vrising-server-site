@@ -163,6 +163,15 @@
     .lb-row:hover { background:rgba(255,255,255,0.035); transform:translateX(2px); }
     .lb-row:last-child { border-bottom:none; }
     .lb-row.me { background:rgba(201,169,74,0.08); border:1px solid rgba(201,169,74,0.3); padding-left:.4rem; padding-right:.4rem; }
+    .lb-row.rank-1 { background:rgba(255,213,74,0.07); border:1px solid rgba(255,213,74,0.2); padding-left:.4rem; padding-right:.4rem; }
+    .lb-row.rank-2 { background:rgba(214,214,232,0.05); border:1px solid rgba(214,214,232,0.15); padding-left:.4rem; padding-right:.4rem; }
+    .lb-row.rank-3 { background:rgba(224,163,97,0.06); border:1px solid rgba(224,163,97,0.16); padding-left:.4rem; padding-right:.4rem; }
+    .lb-row.rank-1:hover { background:rgba(255,213,74,0.12); }
+    .lb-row.rank-2:hover { background:rgba(214,214,232,0.09); }
+    .lb-row.rank-3:hover { background:rgba(224,163,97,0.10); }
+    .lb-progress { height:2px; border-radius:9999px; background:rgba(255,255,255,0.07); margin-top:.32rem; overflow:hidden; }
+    .lb-progress-fill { height:100%; border-radius:9999px; transition:width .4s ease; }
+    .lb-badge { font-size:.72rem; line-height:1; flex-shrink:0; }
     .lb-rank { font-family:'Oswald',sans-serif; font-size:1rem; font-weight:600; color:var(--muted); width:2.2rem; text-align:center; flex-shrink:0; }
     .lb-rank.top1 { color:#ffd54a; text-shadow:0 0 12px rgba(255,213,74,0.7); }
     .lb-rank.top2 { color:#d6d6e8; text-shadow:0 0 8px rgba(214,214,232,0.5); }
@@ -386,9 +395,30 @@ function fmtPlaytime(sec) {
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
 }
 // _dateOpts — defined in common.js
-function fmtSeen(iso) {
+function relativeDate(iso) {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('ru-RU', { timeZone:window.__TZ||'Europe/Moscow', day:'2-digit', month:'2-digit', year:'2-digit' });
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 2)   return 'только что';
+  if (m < 60)  return `${m} мин. назад`;
+  const h = Math.floor(m / 60);
+  if (h < 24)  return `${h} ч. назад`;
+  const d = Math.floor(h / 24);
+  if (d === 1) return 'вчера';
+  if (d < 7)   return `${d} дн. назад`;
+  const w = Math.floor(d / 7);
+  if (w < 5)   return `${w} нед. назад`;
+  const mo = Math.floor(d / 30);
+  if (mo < 12) return `${mo} мес. назад`;
+  return `${Math.floor(d / 365)} г. назад`;
+}
+
+function activityBadge(lastSeen) {
+  if (!lastSeen) return '';
+  const diff = Date.now() - new Date(lastSeen).getTime();
+  if (diff < 86400000)  return '<span class="lb-badge" title="Был онлайн последние 24ч">🔥</span>';
+  if (diff < 604800000) return '<span class="lb-badge" title="Был онлайн последние 7 дней">⚡</span>';
+  return '';
 }
 
 function applySiteBackground(bg) {
@@ -535,9 +565,11 @@ async function loadLeaderboard() {
       }
     } else {
       const offset = (_page - 1) * PER_PAGE;
+      const maxSeconds = items[0]?.total_seconds || 1;
       list.innerHTML = items.map((p, i) => {
         const rank     = offset + i + 1;
         const rankCls  = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
+        const podiumCls = rank <= 3 ? ` rank-${rank}` : '';
         const medal    = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
         const name     = p.player_name || 'Аноним';
         const isOnline = _onlineNames.has(name);
@@ -548,15 +580,22 @@ async function loadLeaderboard() {
           : `<span class="lb-avatar" style="background:${grad}">${esc(name.charAt(0).toUpperCase())}</span>`;
         const lastSession = p.last_duration > 0
           ? `<span class="lb-last-session">посл. сессия: ${fmtPlaytime(p.last_duration)}</span>` : '';
-        return `<div class="lb-row${isMe ? ' me' : ''}" onclick="openPlayerModal('${esc(name)}',${_server})" style="cursor:pointer;">
+        const badge    = activityBadge(p.last_seen);
+        const barPct   = Math.round((p.total_seconds / maxSeconds) * 100);
+        const barColor = rank === 1 ? '#ffd54a' : rank === 2 ? 'rgba(214,214,232,0.7)' : rank === 3 ? '#e0a361' : 'rgba(160,0,40,0.55)';
+        return `<div class="lb-row${isMe ? ' me' : ''}${podiumCls}" onclick="openPlayerModal('${esc(name)}',${_server},${rank})" style="cursor:pointer;">
           <span class="lb-rank ${rankCls}">${medal ? `<span class="lb-medal">${medal}</span>` : rank}</span>
           <span class="lb-avatar-wrap">${avatarHtml}<span class="lb-online-dot${isOnline ? ' show' : ''}"></span></span>
           <span class="lb-name-col">
-            <span class="lb-name">${esc(name)}</span>
+            <div style="display:flex;align-items:center;gap:.3rem;">
+              <span class="lb-name">${esc(name)}</span>
+              ${badge}
+            </div>
             ${lastSession}
+            <div class="lb-progress"><div class="lb-progress-fill" style="width:${barPct}%;background:${barColor};"></div></div>
           </span>
           <span class="lb-time">${fmtPlaytime(p.total_seconds)}</span>
-          <span class="lb-seen">${fmtSeen(p.last_seen)}</span>
+          <span class="lb-seen">${relativeDate(p.last_seen)}</span>
         </div>`;
       }).join('');
     }
@@ -662,7 +701,7 @@ document.addEventListener('click', e => {
 
 // ── Player modal ────────────────────────────────────────────────────────────
 let _playerModal = null;
-async function openPlayerModal(playerName, serverNum) {
+async function openPlayerModal(playerName, serverNum, playerRank) {
   if (_playerModal) { _playerModal.remove(); _playerModal = null; }
   const modal = document.createElement('div');
   modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:3rem 1rem;overflow-y:auto;';
@@ -695,7 +734,8 @@ async function openPlayerModal(playerName, serverNum) {
     const isOnline = _onlineNames.has(playerName);
     inner.innerHTML = `
       ${avatarHtml}
-      <h3 style="font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;color:#d4c4e0;margin-bottom:.25rem;">${esc(playerName)}</h3>
+      <h3 style="font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;color:#d4c4e0;margin-bottom:.2rem;">${esc(playerName)}</h3>
+      ${playerRank ? `<div style="font-size:.68rem;color:#9488a8;margin-bottom:.5rem;"># ${playerRank} место в рейтинге</div>` : ''}
       ${isOnline ? '<div style="display:inline-flex;align-items:center;gap:.35rem;background:rgba(0,70,15,.25);border:1px solid rgba(0,160,35,.4);color:#86efac;font-size:.7rem;font-weight:700;padding:.2rem .6rem;border-radius:9999px;margin-bottom:.75rem;"><span style="width:.45rem;height:.45rem;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;"></span>В сети</div>' : ''}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-top:.85rem;text-align:left;">
         <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.6rem .8rem;">
