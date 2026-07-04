@@ -52,18 +52,28 @@
       backdrop-filter: blur(5px);
     }
     .sidebar-btn {
-      width: 100%; text-align: left; padding: .75rem 1rem; font-size: .8rem;
+      width: 100%; text-align: left; padding: .7rem 1rem; font-size: .78rem;
       font-weight: 600; text-transform: uppercase; letter-spacing: .08em;
       background: none; border: none; cursor: pointer; color: var(--muted);
       border-left: 2px solid transparent; transition: all .2s;
+      display: flex; align-items: center; justify-content: space-between; gap: .4rem;
     }
-    .sidebar-btn:hover { color: var(--text); background: rgba(150,0,28,0.1); }
-    .sidebar-btn.active { color: var(--text); border-left-color: var(--accent); background: rgba(150,0,28,0.15); }
-    .sidebar-btn { display: flex; align-items: center; justify-content: space-between; gap: .4rem; }
+    .sidebar-btn:hover { color: #d4c0e8; background: rgba(150,0,28,0.1); }
+    .sidebar-btn.active {
+      color: #ece3f7; border-left-color: var(--accent);
+      background: linear-gradient(90deg, rgba(150,0,28,0.22), rgba(150,0,28,0.06));
+      text-shadow: 0 0 14px rgba(220,0,50,.35);
+      box-shadow: inset 2px 0 10px rgba(150,0,28,.12);
+    }
     .sidebar-group-label {
-      font-size: .6rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-      color: #564a6a; padding: .65rem 1rem .25rem; margin-top: .2rem;
-      border-top: 1px solid rgba(150,0,28,0.12);
+      font-size: .52rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+      color: rgba(150,0,28,.55); padding: .6rem 1rem .22rem; margin-top: .15rem;
+      border-top: 1px solid rgba(150,0,28,0.1);
+      display: flex; align-items: center; gap: .45rem;
+    }
+    .sidebar-group-label::before {
+      content: ''; width: 4px; height: 4px; border-radius: 50%;
+      background: rgba(180,0,38,.45); flex-shrink: 0;
     }
     .sidebar-group-label:first-of-type { border-top: none; margin-top: 0; }
     .sidebar-badge {
@@ -101,7 +111,8 @@
     }
     .btn-danger:hover { background: rgba(150,0,20,0.4); }
     label { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .3rem; }
-    .section-title { font-family: 'Cinzel', serif; font-size: 1.25rem; font-weight: 700; color: var(--gold); letter-spacing: .08em; }
+    .section-title { font-family: 'Cinzel', serif; font-size: 1.15rem; font-weight: 700; color: var(--gold); letter-spacing: .08em; display:flex; align-items:center; gap:.6rem; }
+    .section-title::before { content:''; display:inline-block; width:3px; height:1.1em; background:linear-gradient(180deg,var(--accent),rgba(181,0,42,.3)); border-radius:2px; flex-shrink:0; }
     .badge-pub { background: rgba(0,70,15,0.3); border: 1px solid rgba(0,160,35,0.4); color: #86efac; font-size: .65rem; padding: .15rem .5rem; border-radius: 9999px; }
     .badge-draft { background: rgba(60,60,60,0.3); border: 1px solid rgba(100,100,100,0.4); color: var(--muted); font-size: .65rem; padding: .15rem .5rem; border-radius: 9999px; }
     .error-box { background: rgba(140,0,20,0.25); border: 1px solid rgba(180,0,30,0.5); color: #fca5a5; border-radius: .5rem; padding: .55rem .85rem; font-size: .82rem; }
@@ -253,8 +264,14 @@
 <nav class="glass-nav sticky top-0 z-40 relative">
   <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <a href="/" id="nav-logo" class="gothic font-black text-lg tracking-widest glow-text" style="color:#e0c8d8;text-decoration:none;">⚔ V RISING</a>
-      <span class="gothic" style="display:inline-flex;align-items:center;padding:.3rem .75rem;border-radius:9999px;background:rgba(150,0,28,0.15);border:1px solid rgba(200,0,45,0.35);color:var(--gold);font-size:.68rem;letter-spacing:.06em;">Админ</span>
+      <a href="/" id="nav-logo" class="gothic font-black tracking-widest" style="color:#e0c8d8;text-decoration:none;display:inline-flex;align-items:center;gap:.5rem;">
+        <img src="/icon-vrising.png" alt="" style="width:1.35rem;height:1.35rem;object-fit:contain;filter:drop-shadow(0 0 8px rgba(200,0,42,.6));">
+        <span class="glow-text" style="font-size:1.05rem;">V RISING</span>
+      </a>
+      <span class="gothic" style="display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .7rem;border-radius:9999px;background:rgba(150,0,28,0.18);border:1px solid rgba(200,0,45,0.4);color:var(--gold);font-size:.65rem;letter-spacing:.08em;">
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Admin
+      </span>
     </div>
     <div class="flex items-center gap-3">
       <span id="nav-username" class="text-sm" style="color:var(--muted);"></span>
@@ -268,6 +285,14 @@
   <!-- SIDEBAR -->
   <aside style="width:12rem;flex-shrink:0;">
     <div class="glass-card rounded-xl overflow-hidden">
+      <!-- Sidebar header -->
+      <div style="padding:.85rem 1rem .75rem;border-bottom:1px solid rgba(150,0,28,.18);display:flex;align-items:center;gap:.6rem;background:linear-gradient(135deg,rgba(150,0,28,.12),rgba(80,0,120,.06));">
+        <img src="/icon-vrising.png" alt="" style="width:1.5rem;height:1.5rem;object-fit:contain;filter:drop-shadow(0 0 7px rgba(200,0,42,.55));flex-shrink:0;">
+        <div>
+          <div style="font-family:'Cinzel',serif;font-size:.68rem;font-weight:700;letter-spacing:.1em;color:var(--gold);">V RISING</div>
+          <div style="font-size:.48rem;letter-spacing:.18em;color:rgba(200,0,42,.65);text-transform:uppercase;font-weight:700;margin-top:.05rem;">Admin Panel</div>
+        </div>
+      </div>
       <button id="btn-dashboard" onclick="showSection('dashboard')" class="sidebar-btn active">📊 Дашборд</button>
 
       <div class="sidebar-group-label">Контент</div>
@@ -315,29 +340,35 @@
       <div id="dash-server-status" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;"></div>
 
       <div id="dash-stats-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:1rem;margin-bottom:1.5rem;">
-        <div class="glass-card rounded-xl p-4 text-center">
-          <div id="dash-users" style="font-size:2rem;font-family:'Cinzel',serif;color:var(--gold);">—</div>
-          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Пользователи</div>
+        <div class="glass-card rounded-xl p-4 text-center" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
+          <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">👥</div>
+          <div id="dash-users" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
+          <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Пользователи</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center">
-          <div id="dash-news" style="font-size:2rem;font-family:'Cinzel',serif;color:var(--gold);">—</div>
-          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Новости</div>
+        <div class="glass-card rounded-xl p-4 text-center" style="border-top:2px solid rgba(181,0,42,.3);position:relative;overflow:hidden;">
+          <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">📰</div>
+          <div id="dash-news" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
+          <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Новости</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center">
-          <div id="dash-comments" style="font-size:2rem;font-family:'Cinzel',serif;color:var(--gold);">—</div>
-          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Комментарии</div>
+        <div class="glass-card rounded-xl p-4 text-center" style="border-top:2px solid rgba(90,130,240,.3);position:relative;overflow:hidden;">
+          <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">💬</div>
+          <div id="dash-comments" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
+          <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Комментарии</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center">
-          <div id="dash-files" style="font-size:2rem;font-family:'Cinzel',serif;color:var(--gold);">—</div>
-          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Файлы</div>
+        <div class="glass-card rounded-xl p-4 text-center" style="border-top:2px solid rgba(120,80,200,.3);position:relative;overflow:hidden;">
+          <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">📁</div>
+          <div id="dash-files" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
+          <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Файлы</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center">
-          <div id="dash-new7" style="font-size:2rem;font-family:'Cinzel',serif;color:#60c0f0;">—</div>
-          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Активны 7 дней</div>
+        <div class="glass-card rounded-xl p-4 text-center" style="border-top:2px solid rgba(96,192,240,.3);position:relative;overflow:hidden;">
+          <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">⚡</div>
+          <div id="dash-new7" style="font-size:1.75rem;font-family:'Cinzel',serif;color:#60c0f0;line-height:1;">—</div>
+          <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Активны 7 дней</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center">
-          <div id="dash-resets" style="font-size:2rem;font-family:'Cinzel',serif;color:#fbbf24;">—</div>
-          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Сброс паролей</div>
+        <div class="glass-card rounded-xl p-4 text-center" style="border-top:2px solid rgba(251,191,36,.3);position:relative;overflow:hidden;">
+          <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">🔑</div>
+          <div id="dash-resets" style="font-size:1.75rem;font-family:'Cinzel',serif;color:#fbbf24;line-height:1;">—</div>
+          <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Сброс паролей</div>
         </div>
       </div>
 
