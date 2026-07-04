@@ -432,6 +432,16 @@
       box-shadow:0 0 26px rgba(100,26,255,0.28),inset 0 0 14px rgba(100,26,255,0.1);
       transform:translateY(-1px);
     }
+    /* ── Sparkline hover ── */
+    .spark-wrap { position:relative; display:block; }
+    .spark-xhair { display:none;position:absolute;top:.5rem;bottom:.15rem;width:1px;pointer-events:none; }
+    .spark-tip {
+      display:none;position:absolute;bottom:calc(100% + 2px);z-index:20;pointer-events:none;
+      background:rgba(6,0,12,.96);border:1px solid rgba(150,0,28,.4);
+      color:#c8c5d4;font-size:.68rem;padding:.22rem .55rem;border-radius:.35rem;
+      white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,.55);line-height:1.5;
+    }
+
     /* ── Online widget ── */
     .online-stat { flex:1;text-align:center;padding:.4rem .3rem;border-radius:.5rem; }
     .online-stat-n { font-size:1.1rem;font-family:'Cinzel',serif;line-height:1.2; }
@@ -1486,7 +1496,11 @@
       <div style="width:100%;height:3rem;border-radius:.5rem;background:rgba(110,0,20,0.1);animation:pulse 2s ease-in-out infinite;"></div>
     </div>
     <div id="left-circles"></div>
-    <canvas id="left-spark" height="36" style="width:100%;display:none;border-radius:.3rem;margin-top:.5rem;margin-bottom:.1rem;opacity:.75;"></canvas>
+    <div class="spark-wrap" id="spark1-wrap">
+      <canvas id="left-spark" height="36" style="width:100%;display:none;border-radius:.3rem;margin-top:.5rem;margin-bottom:.1rem;opacity:.75;cursor:crosshair;"></canvas>
+      <div id="spark1-xhair" class="spark-xhair" style="background:rgba(224,85,117,.55);"></div>
+      <div id="spark1-tip" class="spark-tip"></div>
+    </div>
     <div id="left-connect" style="margin-top:.75rem;"></div>
     <div id="left-players" style="margin-top:.6rem;"></div>
     <div id="left-info" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.55rem;"></div>
@@ -1502,7 +1516,11 @@
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.55),transparent);margin:1.1rem 0;"></div>
       <div id="left-status2" style="margin-bottom:.75rem;"></div>
       <div id="left-circles2"></div>
-      <canvas id="left-spark2" height="36" style="width:100%;display:none;border-radius:.3rem;margin-top:.5rem;margin-bottom:.1rem;opacity:.75;"></canvas>
+      <div class="spark-wrap" id="spark2-wrap">
+        <canvas id="left-spark2" height="36" style="width:100%;display:none;border-radius:.3rem;margin-top:.5rem;margin-bottom:.1rem;opacity:.75;cursor:crosshair;"></canvas>
+        <div id="spark2-xhair" class="spark-xhair" style="background:rgba(153,85,238,.55);"></div>
+        <div id="spark2-tip" class="spark-tip"></div>
+      </div>
       <div id="left-connect2" style="margin-top:.75rem;"></div>
       <div id="left-players2" style="margin-top:.6rem;"></div>
       <div id="left-info2" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.55rem;"></div>
@@ -2090,13 +2108,13 @@ function updateHunters(players) {
 
 function drawMiniSparkline(canvasId, snaps, accentRgb) {
   const canvas = document.getElementById(canvasId);
-  if (!canvas || !snaps || snaps.length < 2) { if (canvas) canvas.style.display = 'none'; return; }
+  if (!canvas || !snaps || snaps.length < 2) { if (canvas) canvas.style.display = 'none'; return null; }
   const cutoff = Date.now() / 1000 - 86400;
   const pts = snaps.filter(s => s.ts >= cutoff);
-  if (pts.length < 2) { canvas.style.display = 'none'; return; }
+  if (pts.length < 2) { canvas.style.display = 'none'; return null; }
   canvas.style.display = 'block';
   const dpr = window.devicePixelRatio || 1;
-  const w = canvas.clientWidth || canvas.parentElement.clientWidth || 180;
+  const w = canvas.clientWidth || canvas.parentElement?.clientWidth || 180;
   const h = 36;
   canvas.width = w * dpr; canvas.height = h * dpr;
   const ctx = canvas.getContext('2d');
@@ -2135,6 +2153,52 @@ function drawMiniSparkline(canvasId, snaps, accentRgb) {
   ctx.lineWidth = 1.5;
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   ctx.stroke();
+  return { pts, w, tMin, tSpan };
+}
+
+function setupSparkHover(canvasId, geom, tipId, xhairId) {
+  const canvas = document.getElementById(canvasId);
+  const tip    = document.getElementById(tipId);
+  const xhair  = document.getElementById(xhairId);
+  if (!canvas || !tip || !xhair || !geom) return;
+
+  const { pts, w, tMin, tSpan } = geom;
+  const spx = s => ((s.ts - tMin) / tSpan) * w;
+
+  const nearest = mx => pts.reduce((b, s) => Math.abs(spx(s) - mx) < Math.abs(spx(b) - mx) ? s : b, pts[0]);
+
+  const onMove = e => {
+    const mx = e.offsetX;
+    if (mx < 0 || mx > w) { tip.style.display = 'none'; xhair.style.display = 'none'; return; }
+    const s = nearest(mx);
+    const sx = spx(s);
+
+    xhair.style.display = 'block';
+    xhair.style.left = sx + 'px';
+
+    const dt = new Date(s.ts * 1000);
+    const dStr = dt.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const n = s.players;
+    const word = n === 1 ? 'игрок' : (n >= 2 && n <= 4) ? 'игрока' : 'игроков';
+    const dot = s.online ? '<span style="color:#4ade80;">●</span>' : '<span style="color:#f87171;">●</span>';
+    tip.innerHTML = `${dot} <b style="color:#ece3f7;">${n} ${word}</b><span style="color:var(--muted);margin-left:.3rem;">${dStr}</span>`;
+
+    tip.style.display = 'block';
+    const tipW = tip.offsetWidth || 140;
+    let left = sx - tipW / 2;
+    if (left + tipW > w) left = w - tipW;
+    if (left < 0) left = 0;
+    tip.style.left = left + 'px';
+  };
+
+  const onLeave = () => { tip.style.display = 'none'; xhair.style.display = 'none'; };
+
+  if (canvas._spMove)  canvas.removeEventListener('mousemove',  canvas._spMove);
+  if (canvas._spLeave) canvas.removeEventListener('mouseleave', canvas._spLeave);
+  canvas._spMove  = onMove;
+  canvas._spLeave = onLeave;
+  canvas.addEventListener('mousemove',  onMove);
+  canvas.addEventListener('mouseleave', onLeave);
 }
 
 async function loadSparklines() {
@@ -2143,8 +2207,10 @@ async function loadSparklines() {
       fetch(`${API}/monitor/snapshots?server=1`).then(r => r.json()).catch(() => []),
       fetch(`${API}/monitor/snapshots?server=2`).then(r => r.json()).catch(() => []),
     ]);
-    drawMiniSparkline('left-spark',  s1, '224,85,117');
-    drawMiniSparkline('left-spark2', s2, '153,85,238');
+    const g1 = drawMiniSparkline('left-spark',  s1, '224,85,117');
+    const g2 = drawMiniSparkline('left-spark2', s2, '153,85,238');
+    setupSparkHover('left-spark',  g1, 'spark1-tip', 'spark1-xhair');
+    setupSparkHover('left-spark2', g2, 'spark2-tip', 'spark2-xhair');
   } catch {}
 }
 
