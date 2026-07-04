@@ -798,7 +798,7 @@ function drawHeatmap(num) {
     return;
   }
   wrap.style.display = '';
-  if (titleEl) titleEl.textContent = `Активность по часам (UTC, среднее за ${PERIOD_LABELS[days] || '7 дней'})`;
+  if (titleEl) titleEl.textContent = `Активность по часам (среднее за ${PERIOD_LABELS[days] || '7 дней'})`;
 
   const max = Math.max(...buckets.map(b => b.avg), 1);
   const peak = buckets.reduce((best, b) => b.avg > best.avg ? b : best, buckets[0]);
@@ -824,7 +824,13 @@ function setupHeatmapHover(num) {
   const show = (bar) => {
     if (!bar) { tip.style.display = 'none'; return; }
     const hour = String(bar.dataset.hour).padStart(2, '0');
-    tip.innerHTML = `<b>${bar.dataset.avg}</b> игроков<span>${hour}:00–${hour}:59 UTC</span>`;
+    const avg = parseFloat(bar.dataset.avg);
+    const n = Math.round(avg);
+    const isInt = Math.abs(avg - n) < 0.05;
+    const m10 = n % 10, m100 = n % 100;
+    const word = (!isInt || (m100 >= 11 && m100 <= 14) || m10 >= 5 || m10 === 0)
+      ? 'Игроков' : m10 === 1 ? 'Игрок' : 'Игрока';
+    tip.innerHTML = `<b>${bar.dataset.avg}</b> ${word}<span>${hour}:00–${hour}:59</span>`;
     tip.style.display = 'block';
     const areaRect = el.parentElement.getBoundingClientRect();
     const barRect = bar.getBoundingClientRect();
