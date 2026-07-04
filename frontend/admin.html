@@ -257,6 +257,17 @@
     }
     .act-btn:hover::before { opacity:1; }
 
+    /* ── Dashboard graph tooltip ── */
+    #dash-graph-wrap { position:relative; }
+    #dash-graph-xhair { display:none; position:absolute; width:1px; background:rgba(220,80,110,.45); pointer-events:none; }
+    #dash-graph-tip {
+      display:none; position:absolute; pointer-events:none; z-index:10;
+      background:rgba(6,0,12,.96); border:1px solid rgba(150,0,28,.45);
+      color:#c8c5d4; font-size:.72rem; padding:.35rem .65rem; border-radius:.4rem;
+      box-shadow:0 4px 16px rgba(0,0,0,.55); white-space:nowrap;
+      font-family:'Inter',sans-serif; line-height:1.4;
+    }
+
     /* ── Clickable dash tiles ── */
     .dash-tile { cursor:pointer; transition:transform .15s, box-shadow .15s, border-color .2s; }
     .dash-tile:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.4), 0 0 0 1px rgba(150,0,28,.3); }
@@ -470,7 +481,11 @@
               <option value="2">Сервер 2</option>
             </select>
           </div>
-          <canvas id="dash-graph-canvas" height="110" style="width:100%;display:block;"></canvas>
+          <div id="dash-graph-wrap" style="position:relative;">
+            <canvas id="dash-graph-canvas" height="130" style="width:100%;display:block;cursor:crosshair;"></canvas>
+            <div id="dash-graph-xhair" style="display:none;position:absolute;top:0;width:1px;background:rgba(220,80,110,.45);pointer-events:none;"></div>
+            <div id="dash-graph-tip"></div>
+          </div>
           <div id="dash-graph-empty" style="display:none;color:var(--muted);font-size:.8rem;text-align:center;padding:2rem 0;">Нет данных за этот период.</div>
         </div>
         <div class="glass-card rounded-xl p-4">
@@ -2650,6 +2665,12 @@ async function loadDashServerStatus() {
     const srvName  = (smap.server_name  || '').trim() || 'Сервер 1';
     const srvName2 = (smap.server2_name || '').trim() || 'Сервер 2';
     wrap.innerHTML = card(results[0], srvName, '#e05575') + (hasServer2 ? card(results[1], srvName2, '#9955ee') : '');
+    // Sync select names
+    const sel = document.getElementById('dash-graph-server');
+    if (sel) {
+      if (sel.options[0]) sel.options[0].text = srvName;
+      if (sel.options[1]) sel.options[1].text = srvName2;
+    }
     // Update sidebar online badge
     const totalOnline = results.reduce((s, d) => s + (d?.online ? (d.players || 0) : 0), 0);
     const anyOnline   = results.some(d => d?.online);
@@ -2686,11 +2707,15 @@ async function loadDashRecentUsers() {
 }
 
 // ─── Dashboard: weekly online graph ───────────────────────────────────────
+let _dashSnapData = null, _dashGeom = null;
+
 async function loadDashGraph() {
   const canvas = document.getElementById('dash-graph-canvas');
   const empty  = document.getElementById('dash-graph-empty');
   if (!canvas) return;
   const server = document.getElementById('dash-graph-server')?.value || '1';
+  const accent = server === '2' ? '153,85,238' : '181,0,42';
+  const lineCol = server === '2' ? '#9955ee' : '#e05575';
   try {
     const snaps = await fetch(`${API}/monitor/snapshots?server=${server}`).then(r => r.ok ? r.json() : []);
     if (!snaps.length) {
@@ -2702,47 +2727,134 @@ async function loadDashGraph() {
     if (empty) empty.style.display = 'none';
 
     const dpr = window.devicePixelRatio || 1;
-    const w = canvas.clientWidth || canvas.parentElement.clientWidth;
-    const h = 110;
+    const w = canvas.clientWidth || canvas.parentElement?.clientWidth || 300;
+    const h = 130;
     canvas.width = w * dpr; canvas.height = h * dpr;
     const ctx = canvas.getContext('2d');
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, w, h);
 
     const maxPlayers = Math.max(1, ...snaps.map(s => s.players));
-    const padL = 4, padR = 4, padT = 8, padB = 4;
+    const padL = 30, padR = 6, padT = 8, padB = 20;
     const plotW = w - padL - padR, plotH = h - padT - padB;
     const tMin = snaps[0].ts, tMax = snaps[snaps.length - 1].ts;
     const tSpan = Math.max(1, tMax - tMin);
-    const x = s => padL + ((s.ts - tMin) / tSpan) * plotW;
-    const y = s => padT + plotH - (s.players / maxPlayers) * plotH;
+    const px = s => padL + ((s.ts - tMin) / tSpan) * plotW;
+    const py = s => padT + plotH - (s.players / maxPlayers) * plotH;
+
+    ctx.font = '9px Inter, system-ui, sans-serif';
+
+    // Y-axis grid lines + labels
+    const ySteps = Math.min(maxPlayers, 4);
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= ySteps; i++) {
+      const val = Math.round((i / ySteps) * maxPlayers);
+      const yy  = padT + plotH - (val / maxPlayers) * plotH;
+      ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(w - padR, yy); ctx.stroke();
+      ctx.fillStyle = 'rgba(150,130,170,0.55)';
+      ctx.fillText(val, padL - 4, yy + 3.5);
+    }
+
+    // X-axis day labels
+    const dayS = 86400;
+    const firstDay = Math.ceil(tMin / dayS) * dayS;
+    ctx.textAlign = 'center';
+    for (let t = firstDay; t <= tMax; t += dayS) {
+      const lx = padL + ((t - tMin) / tSpan) * plotW;
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(lx, padT); ctx.lineTo(lx, padT + plotH); ctx.stroke();
+      const dt = new Date(t * 1000);
+      ctx.fillStyle = 'rgba(150,130,170,0.55)';
+      ctx.fillText(dt.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' }), lx, padT + plotH + 13);
+    }
 
     // filled area
     ctx.beginPath();
-    ctx.moveTo(x(snaps[0]), padT + plotH);
-    snaps.forEach(s => ctx.lineTo(x(s), y(s)));
-    ctx.lineTo(x(snaps[snaps.length - 1]), padT + plotH);
+    ctx.moveTo(px(snaps[0]), padT + plotH);
+    snaps.forEach(s => ctx.lineTo(px(s), py(s)));
+    ctx.lineTo(px(snaps[snaps.length - 1]), padT + plotH);
     ctx.closePath();
     const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
-    grad.addColorStop(0, 'rgba(181,0,42,0.35)');
-    grad.addColorStop(1, 'rgba(181,0,42,0.02)');
+    grad.addColorStop(0, `rgba(${accent},0.35)`);
+    grad.addColorStop(1, `rgba(${accent},0.02)`);
     ctx.fillStyle = grad;
     ctx.fill();
 
     // line
     ctx.beginPath();
-    snaps.forEach((s, i) => i === 0 ? ctx.moveTo(x(s), y(s)) : ctx.lineTo(x(s), y(s)));
-    ctx.strokeStyle = '#e05575';
+    snaps.forEach((s, i) => i === 0 ? ctx.moveTo(px(s), py(s)) : ctx.lineTo(px(s), py(s)));
+    ctx.strokeStyle = lineCol;
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
     // offline markers
     ctx.fillStyle = 'rgba(248,113,113,0.7)';
-    snaps.forEach(s => { if (!s.online) { ctx.beginPath(); ctx.arc(x(s), padT + plotH - 1, 1.3, 0, Math.PI * 2); ctx.fill(); } });
+    snaps.forEach(s => { if (!s.online) { ctx.beginPath(); ctx.arc(px(s), padT + plotH - 1, 1.3, 0, Math.PI * 2); ctx.fill(); } });
+
+    const accentRgba = server === '2' ? 'rgba(153,85,238,.5)' : 'rgba(220,80,110,.5)';
+    _dashSnapData = snaps;
+    _dashGeom = { padL, padR, padT, padB, plotW, plotH, w, tMin, tSpan, lineCol, accentRgba };
+    setupDashGraphHover();
   } catch {
     canvas.style.display = 'none';
     if (empty) { empty.style.display = ''; empty.textContent = 'Ошибка загрузки графика.'; }
   }
+}
+
+function setupDashGraphHover() {
+  const canvas = document.getElementById('dash-graph-canvas');
+  const tip    = document.getElementById('dash-graph-tip');
+  const xhair  = document.getElementById('dash-graph-xhair');
+  if (!canvas || !tip || !xhair || !_dashSnapData || !_dashGeom) return;
+
+  const snaps = _dashSnapData;
+  const { padL, padR, padT, plotH, plotW, w, tMin, tSpan, lineCol, accentRgba } = _dashGeom;
+
+  const getNearestSnap = mx => snaps.reduce((best, s) => {
+    const sx = padL + ((s.ts - tMin) / tSpan) * plotW;
+    const bx = padL + ((best.ts - tMin) / tSpan) * plotW;
+    return Math.abs(sx - mx) < Math.abs(bx - mx) ? s : best;
+  }, snaps[0]);
+
+  const onMove = e => {
+    const mx = e.offsetX;
+    if (mx < padL || mx > w - padR) { tip.style.display = 'none'; xhair.style.display = 'none'; return; }
+
+    const snap = getNearestSnap(mx);
+    const sx = padL + ((snap.ts - tMin) / tSpan) * plotW;
+
+    xhair.style.display = 'block';
+    xhair.style.left = sx + 'px';
+    xhair.style.top = padT + 'px';
+    xhair.style.height = plotH + 'px';
+    xhair.style.background = accentRgba;
+
+    const dt = new Date(snap.ts * 1000);
+    const dateStr = dt.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const statusCol = snap.online ? '#4ade80' : '#f87171';
+    const statusLbl = snap.online ? 'Онлайн' : 'Офлайн';
+    const playerWord = snap.players === 1 ? 'игрок' : (snap.players >= 2 && snap.players <= 4) ? 'игрока' : 'игроков';
+    tip.innerHTML = `<b style="font-size:.8rem;color:#ece3f7;">${snap.players} ${playerWord}</b><div style="font-size:.63rem;color:var(--muted);margin-top:.1rem;">${dateStr}</div><div style="font-size:.63rem;color:${statusCol};margin-top:.05rem;">● ${statusLbl}</div>`;
+
+    tip.style.display = 'block';
+    const tipW = tip.offsetWidth || 100;
+    let left = sx + 10;
+    if (left + tipW + 6 > w) left = sx - tipW - 10;
+    tip.style.left = Math.max(padL, left) + 'px';
+    tip.style.top = padT + 'px';
+  };
+
+  const onLeave = () => { tip.style.display = 'none'; xhair.style.display = 'none'; };
+
+  if (canvas._dmove)  canvas.removeEventListener('mousemove',  canvas._dmove);
+  if (canvas._dleave) canvas.removeEventListener('mouseleave', canvas._dleave);
+  canvas._dmove  = onMove;
+  canvas._dleave = onLeave;
+  canvas.addEventListener('mousemove',  onMove);
+  canvas.addEventListener('mouseleave', onLeave);
 }
 
 // ─── Comments moderation ──────────────────────────────────────────────────
