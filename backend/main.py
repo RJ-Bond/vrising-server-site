@@ -269,6 +269,7 @@ async def lifespan(app: FastAPI):
             "CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE, recipient_id INTEGER REFERENCES users(id) ON DELETE CASCADE, content TEXT NOT NULL, read BOOLEAN NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
             "CREATE INDEX IF NOT EXISTS ix_messages_recipient ON messages(recipient_id, read)",
             "CREATE INDEX IF NOT EXISTS ix_messages_sender ON messages(sender_id)",
+            "CREATE INDEX IF NOT EXISTS ix_messages_conversation ON messages(sender_id, recipient_id)",
             "ALTER TABLE users ADD COLUMN admin_title VARCHAR(128) DEFAULT NULL",
             "ALTER TABLE users ADD COLUMN last_active_at DATETIME DEFAULT NULL",
             "ALTER TABLE users ADD COLUMN badge_icon_url VARCHAR(512) DEFAULT NULL",
@@ -377,37 +378,22 @@ if _raw_origins != "*":
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):
-    """Reject state-changing API requests whose Origin doesn't match the server host."""
+    """Reject state-changing API requests from unlisted origins.
+
+    Only enforced when ALLOWED_ORIGINS env var is set to specific domains.
+    In wildcard mode the SameSite=Lax cookie already prevents cross-site CSRF.
+    """
     _SAFE = frozenset({"GET", "HEAD", "OPTIONS"})
 
-    @staticmethod
-    def _host_only(value: str) -> str:
-        """Extract hostname (no scheme, no port) from a header value."""
-        from urllib.parse import urlparse
-        parsed = urlparse(value)
-        return (parsed.hostname or value.split(":")[0]).lower()
-
     async def dispatch(self, request: Request, call_next):
-        if request.method not in self._SAFE and request.url.path.startswith("/api/"):
+        if _ALLOWED_ORIGINS_SET and request.method not in self._SAFE and request.url.path.startswith("/api/"):
             origin = request.headers.get("origin", "").rstrip("/")
             referer = request.headers.get("referer", "").rstrip("/")
-            # nginx passes real host via Host header (proxy_set_header Host $host)
-            host_header = request.headers.get("host", "")
-            host_name = self._host_only(host_header)
-
-            if _ALLOWED_ORIGINS_SET:
-                allowed = (
-                    any(o.rstrip("/") == origin for o in _ALLOWED_ORIGINS_SET)
-                    or any(o.rstrip("/") in referer for o in _ALLOWED_ORIGINS_SET)
-                )
-            else:
-                # wildcard: compare hostnames, allow localhost for dev
-                origin_host = self._host_only(origin) if origin else ""
-                allowed = (
-                    not origin
-                    or origin_host == host_name
-                    or origin_host in ("localhost", "127.0.0.1")
-                )
+            allowed = (
+                not origin
+                or any(o.rstrip("/") == origin for o in _ALLOWED_ORIGINS_SET)
+                or any(o.rstrip("/") in referer for o in _ALLOWED_ORIGINS_SET)
+            )
             if not allowed:
                 from fastapi.responses import JSONResponse
                 return JSONResponse({"detail": "CSRF check failed"}, status_code=403)

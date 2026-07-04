@@ -1987,6 +1987,7 @@ function renderUsersTable() {
                   ? `<button class="btn-ghost" style="font-size:.72rem;padding:.3rem .6rem;color:#86efac;border-color:rgba(0,160,35,.35);" onclick="unbanUserAction(${existingBan.id},'${esc(u.username)}')">Разбанить</button>`
                   : `<button class="btn-ghost" style="font-size:.72rem;padding:.3rem .6rem;color:#f87171;border-color:rgba(248,113,113,.3);" onclick="banUserAction('${esc(u.username)}')">Забанить</button>`
                 }
+                <button class="btn-ghost" style="font-size:.72rem;padding:.3rem .6rem;color:#fb923c;border-color:rgba(251,146,60,.35);" onclick="revokeUserSessions(${u.id},'${esc(u.username)}')">Сбросить сессии</button>
                 <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" class="btn-ghost" style="font-size:.72rem;padding:.3rem .6rem;text-decoration:none;display:inline-flex;align-items:center;">Профиль</a>
                 <button class="btn-danger" style="font-size:.72rem;padding:.3rem .6rem;" onclick="deleteUser(${u.id},'${esc(u.username)}')">Удалить</button>
                </div>`;
@@ -2066,6 +2067,19 @@ async function toggleUserActive(userId, username, isActive) {
 async function toggleActive(userId) {
   const res = await fetch(`${API}/admin/users/${userId}/toggle-active`, { method: 'PUT', credentials: 'include', headers: authH() });
   if (res.ok) loadUsers(); else showToast('Ошибка изменения статуса', 'error');
+}
+
+async function revokeUserSessions(userId, username) {
+  showConfirm({
+    title: 'Сбросить все сессии?',
+    text: `Пользователь «${username}» будет принудительно выведен из всех устройств. Ему потребуется повторный вход.`,
+    icon: '🔑', okLabel: 'Сбросить',
+    onOk: async () => {
+      const res = await fetch(`${API}/admin/users/${userId}/revoke-sessions`, { method: 'POST', credentials: 'include', headers: authH() });
+      if (res.ok) showToast('Сессии сброшены', 'success');
+      else showToast('Ошибка сброса сессий', 'error');
+    },
+  });
 }
 
 async function banUserAction(username) {
