@@ -257,6 +257,42 @@
     }
     .act-btn:hover::before { opacity:1; }
 
+    /* ── Clickable dash tiles ── */
+    .dash-tile { cursor:pointer; transition:transform .15s, box-shadow .15s, border-color .2s; }
+    .dash-tile:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.4), 0 0 0 1px rgba(150,0,28,.3); }
+
+    /* ── Quick action cards ── */
+    .qa-card {
+      display:inline-flex; align-items:center; gap:.5rem; padding:.55rem .9rem;
+      background:rgba(14,3,24,.75); border:1px solid rgba(150,0,28,.2); border-radius:.55rem;
+      cursor:pointer; transition:all .15s; color:var(--muted); font-size:.75rem;
+      font-weight:600; letter-spacing:.02em; white-space:nowrap; text-decoration:none;
+      font-family:'Inter',sans-serif;
+    }
+    .qa-card:hover { background:rgba(150,0,28,.22); border-color:rgba(200,0,40,.5); color:#d4c0e8; transform:translateY(-1px); box-shadow:0 4px 14px rgba(0,0,0,.35); }
+    .qa-card svg { flex-shrink:0; opacity:.65; transition:opacity .15s; }
+    .qa-card:hover svg { opacity:1; }
+
+    /* ── Sidebar online badge ── */
+    #sb-online {
+      display:inline-flex; align-items:center; gap:.3rem;
+      font-size:.58rem; font-weight:700; letter-spacing:.05em; padding:.18rem .5rem;
+      border-radius:9999px; border:1px solid rgba(74,222,128,.2);
+      background:rgba(0,80,30,.2); color:rgba(100,220,130,.75); white-space:nowrap;
+      transition:all .4s;
+    }
+    #sb-online.offline { color:rgba(160,160,160,.5); border-color:rgba(120,120,120,.15); background:rgba(30,30,30,.2); }
+    #sb-online .sb-online-dot { width:5px; height:5px; border-radius:50%; background:currentColor; flex-shrink:0; }
+
+    /* ── Editor draft status ── */
+    #editor-draft-status { font-size:.67rem; color:var(--muted); display:inline-flex; align-items:center; gap:.3rem; opacity:.8; }
+
+    /* ── Editor word count ── */
+    #editor-word-count { font-size:.67rem; color:var(--muted); text-align:right; padding:.3rem .5rem 0; opacity:.7; }
+
+    /* ── Table results footer ── */
+    .table-foot { font-size:.72rem; color:var(--muted); padding:.55rem 1rem; border-top:1px solid rgba(150,0,28,.1); text-align:right; background:rgba(14,3,24,.4); }
+
     /* ── Ban reason modal ── */
     #ban-modal { display:none; position:fixed; inset:0; z-index:10000; align-items:center; justify-content:center; }
     #ban-modal.open { display:flex; }
@@ -319,6 +355,9 @@
           <div style="font-size:.48rem;letter-spacing:.18em;color:rgba(200,0,42,.65);text-transform:uppercase;font-weight:700;margin-top:.05rem;">Admin Panel</div>
         </div>
       </div>
+      <div style="padding:.45rem 1rem;border-bottom:1px solid rgba(150,0,28,.12);">
+        <span id="sb-online" class="offline"><span class="sb-online-dot"></span><span id="sb-online-text">Загрузка…</span></span>
+      </div>
       <button id="btn-dashboard" onclick="showSection('dashboard')" class="sidebar-btn active">📊 Дашборд</button>
 
       <div class="sidebar-group-label">Контент</div>
@@ -355,47 +394,71 @@
     <div id="section-dashboard">
       <div class="flex items-center justify-between mb-5">
         <h1 class="section-title">Дашборд</h1>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-          <button onclick="openEditor(null)" class="btn-ghost" style="display:inline-flex;align-items:center;gap:.35rem;">+ Новость</button>
-          <button onclick="showSection('resets')" class="btn-ghost" style="display:inline-flex;align-items:center;gap:.35rem;">🔑 Сброс паролей</button>
-          <button onclick="showSection('users')" class="btn-ghost" style="display:inline-flex;align-items:center;gap:.35rem;">👥 Пользователи</button>
-        </div>
+        <span style="font-size:.7rem;color:var(--muted);" id="dash-last-updated"></span>
       </div>
 
       <!-- Server status -->
       <div id="dash-server-status" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;"></div>
 
       <div id="dash-stats-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:1rem;margin-bottom:1.5rem;">
-        <div class="glass-card rounded-xl p-4 text-center" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('users')" title="Перейти к пользователям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">👥</div>
           <div id="dash-users" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Пользователи</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center" style="border-top:2px solid rgba(181,0,42,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('news')" title="Перейти к новостям" style="border-top:2px solid rgba(181,0,42,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">📰</div>
           <div id="dash-news" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Новости</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center" style="border-top:2px solid rgba(90,130,240,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('comments')" title="Перейти к комментариям" style="border-top:2px solid rgba(90,130,240,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">💬</div>
           <div id="dash-comments" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Комментарии</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center" style="border-top:2px solid rgba(120,80,200,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('files')" title="Перейти к файлам" style="border-top:2px solid rgba(120,80,200,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">📁</div>
           <div id="dash-files" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Файлы</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center" style="border-top:2px solid rgba(96,192,240,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('users')" title="Активные за 7 дней" style="border-top:2px solid rgba(96,192,240,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">⚡</div>
           <div id="dash-new7" style="font-size:1.75rem;font-family:'Cinzel',serif;color:#60c0f0;line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Активны 7 дней</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center" style="border-top:2px solid rgba(251,191,36,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('resets')" title="Перейти к сбросу паролей" style="border-top:2px solid rgba(251,191,36,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">🔑</div>
           <div id="dash-resets" style="font-size:1.75rem;font-family:'Cinzel',serif;color:#fbbf24;line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Сброс паролей</div>
         </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+        <button class="qa-card" onclick="openEditor(null)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Новость
+        </button>
+        <button class="qa-card" onclick="showSection('users')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Пользователи
+        </button>
+        <button class="qa-card" onclick="showSection('reports')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+          Жалобы<span id="qa-badge-reports" style="display:none;background:rgba(181,0,42,.35);border:1px solid rgba(220,0,50,.45);color:#fca5a5;font-size:.58rem;font-weight:700;padding:.05rem .35rem;border-radius:9999px;line-height:1.4;"></span>
+        </button>
+        <button class="qa-card" onclick="showSection('resets')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6"/><path d="M15.5 7.5l3 3L22 7l-3-3"/></svg>
+          Сброс паролей<span id="qa-badge-resets" style="display:none;background:rgba(181,0,42,.35);border:1px solid rgba(220,0,50,.45);color:#fca5a5;font-size:.58rem;font-weight:700;padding:.05rem .35rem;border-radius:9999px;line-height:1.4;"></span>
+        </button>
+        <button class="qa-card" onclick="showSection('comments')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Комментарии
+        </button>
+        <button class="qa-card" onclick="showSection('settings')">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Настройки
+        </button>
       </div>
 
       <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:1rem;margin-bottom:1.5rem;align-items:stretch;">
@@ -435,7 +498,10 @@
     <!-- NEWS EDITOR -->
     <div id="section-editor" class="hidden">
       <div class="flex items-center justify-between mb-5">
-        <h1 id="editor-title-label" class="section-title">Новая новость</h1>
+        <div style="display:flex;align-items:center;gap:.85rem;min-width:0;">
+          <h1 id="editor-title-label" class="section-title">Новая новость</h1>
+          <span id="editor-draft-status"></span>
+        </div>
         <div class="flex gap-3">
           <button onclick="submitEditor()" id="editor-save-btn" class="btn-primary">Сохранить</button>
           <button onclick="closeEditor()" class="btn-ghost">Отмена</button>
@@ -476,6 +542,7 @@
         <!-- Rich editor -->
         <div>
           <div id="quill-editor"></div>
+          <div id="editor-word-count"></div>
         </div>
 
         <!-- Discord embed preview -->
@@ -1154,6 +1221,10 @@
             <option value="active">Активен</option>
             <option value="blocked">Заблокирован</option>
           </select>
+          <button onclick="exportUsersCsv()" class="btn-ghost" style="display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            CSV
+          </button>
         </div>
       </div>
       <!-- Bulk panel -->
@@ -1167,6 +1238,7 @@
       <div id="users-table" class="glass-card rounded-xl overflow-hidden">
         <p class="p-6" style="color:var(--muted);font-size:.85rem;">Загрузка...</p>
       </div>
+      <div id="users-count-footer" class="table-foot" style="display:none;"></div>
     </div>
 
     <!-- CLANS -->
@@ -1223,6 +1295,7 @@
           <tbody id="players-table-body"></tbody>
         </table>
       </div>
+      <div id="players-count-footer" class="table-foot" style="display:none;"></div>
     </div>
 
     <!-- FILES -->
@@ -1361,6 +1434,51 @@ const API = '/api';
 // esc — defined in common.js
 let adminNewsPage = 1;
 let quill = null;
+let _draftTimer = null;
+let _draftSavedAt = null;
+const DRAFT_KEY = 'admin_news_draft';
+
+function _saveDraft() {
+  if (!quill) return;
+  const draft = {
+    title:   document.getElementById('editor-news-title')?.value || '',
+    summary: document.getElementById('editor-news-summary')?.value || '',
+    thumb:   document.getElementById('editor-news-thumb')?.value || '',
+    tags:    document.getElementById('editor-news-tags')?.value || '',
+    content: quill.root.innerHTML,
+    ts: Date.now(),
+  };
+  localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  _draftSavedAt = draft.ts;
+  _updateDraftStatus();
+}
+
+function _clearDraft() {
+  localStorage.removeItem(DRAFT_KEY);
+  _draftSavedAt = null;
+  _updateDraftStatus();
+}
+
+function _updateDraftStatus() {
+  const el = document.getElementById('editor-draft-status');
+  if (!el) return;
+  if (!_draftSavedAt) { el.innerHTML = ''; return; }
+  const sec = Math.floor((Date.now() - _draftSavedAt) / 1000);
+  const rel = sec < 10 ? 'только что' : sec < 60 ? `${sec} сек. назад` : `${Math.floor(sec/60)} мин. назад`;
+  el.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Черновик: ${rel}`;
+}
+
+function _scheduleDraftSave() {
+  clearTimeout(_draftTimer);
+  _draftTimer = setTimeout(_saveDraft, 1500);
+}
+
+function _setupDraftListeners() {
+  ['editor-news-title','editor-news-summary','editor-news-thumb','editor-news-tags'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', _scheduleDraftSave);
+  });
+}
 
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
 function authH()   { return { 'Content-Type': 'application/json' }; }
@@ -1415,6 +1533,12 @@ fetch(`${API}/settings/public`).then(r => r.json()).then(d => {
 // ─── Sidebar badges ─────────────────────────────────────────────────────────
 async function loadSidebarBadges() {
   const setBadge = (id, n) => {
+    [id, 'qa-' + id].forEach(bid => {
+      const el = document.getElementById(bid);
+      if (!el) return;
+      if (n > 0) { el.textContent = n > 99 ? '99+' : n; el.style.display = 'inline'; }
+      else el.style.display = 'none';
+    });
     const el = document.getElementById(id);
     if (!el) return;
     if (n > 0) { el.textContent = n > 99 ? '99+' : n; el.style.display = ''; }
@@ -1529,6 +1653,7 @@ async function deleteNews(id) {
 function initQuill() {
   if (quill) return;
   _initDiscordPreviewListeners();
+  _setupDraftListeners();
   quill = new Quill('#quill-editor', {
     theme: 'snow',
     placeholder: 'Напишите текст новости...',
@@ -1546,6 +1671,16 @@ function initQuill() {
         handlers: { image: editorImageHandler },
       },
     },
+  });
+  quill.on('text-change', () => {
+    // Word count
+    const text = quill.getText().trim();
+    const words = text ? text.split(/\s+/).filter(Boolean).length : 0;
+    const chars = text.length;
+    const wc = document.getElementById('editor-word-count');
+    if (wc) wc.textContent = `${words} слов · ${chars} символов`;
+    // Draft autosave
+    _scheduleDraftSave();
   });
 }
 
@@ -1610,15 +1745,31 @@ async function openEditor(news) {
   } else {
     document.getElementById('editor-title-label').textContent = 'Новая новость';
     document.getElementById('editor-news-id').value      = '';
-    document.getElementById('editor-news-title').value   = '';
-    document.getElementById('editor-news-summary').value = '';
-    document.getElementById('editor-news-thumb').value   = '';
-    document.getElementById('editor-news-tags').value    = '';
     document.getElementById('editor-news-published').checked = true;
     document.getElementById('editor-news-is-template').checked = false;
     const pa = document.getElementById('editor-news-publish-at');
     if (pa) pa.value = '';
-    setTimeout(() => quill.setText(''), 0);
+    // Restore draft if available
+    const saved = (() => { try { return JSON.parse(localStorage.getItem(DRAFT_KEY)); } catch { return null; } })();
+    if (saved && (saved.title || saved.content?.replace(/<[^>]+>/g,'').trim())) {
+      document.getElementById('editor-news-title').value   = saved.title   || '';
+      document.getElementById('editor-news-summary').value = saved.summary || '';
+      document.getElementById('editor-news-thumb').value   = saved.thumb   || '';
+      document.getElementById('editor-news-tags').value    = saved.tags    || '';
+      setTimeout(() => quill.clipboard.dangerouslyPasteHTML(saved.content || ''), 0);
+      _draftSavedAt = saved.ts || null;
+      _updateDraftStatus();
+      const ago = Math.floor((Date.now() - (saved.ts||Date.now())) / 60000);
+      showToast(`Черновик восстановлен${ago > 0 ? ` (${ago} мин. назад)` : ''}`, 'info');
+    } else {
+      document.getElementById('editor-news-title').value   = '';
+      document.getElementById('editor-news-summary').value = '';
+      document.getElementById('editor-news-thumb').value   = '';
+      document.getElementById('editor-news-tags').value    = '';
+      setTimeout(() => quill.setText(''), 0);
+      _draftSavedAt = null;
+      _updateDraftStatus();
+    }
   }
   _updateDiscordPreview();
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1693,6 +1844,7 @@ async function submitEditor() {
       errEl.textContent = d.detail || 'Ошибка сохранения';
       errEl.classList.remove('hidden'); return;
     }
+    _clearDraft();
     closeEditor();
   } finally { btn.disabled = false; btn.textContent = 'Сохранить'; }
 }
@@ -2009,8 +2161,9 @@ function renderUsersTable() {
     return av < bv ? -1 * dir : av > bv ? 1 * dir : 0;
   });
 
-  if (!_allUsers.length) { el.innerHTML = '<p class="p-6" style="color:var(--muted);">Пользователей нет.</p>'; return; }
-  if (!users.length) { el.innerHTML = '<p class="p-6" style="color:var(--muted);">Ничего не найдено.</p>'; return; }
+  const footer = document.getElementById('users-count-footer');
+  if (!_allUsers.length) { el.innerHTML = '<p class="p-6" style="color:var(--muted);">Пользователей нет.</p>'; if (footer) footer.style.display='none'; return; }
+  if (!users.length) { el.innerHTML = '<p class="p-6" style="color:var(--muted);">Ничего не найдено.</p>'; if (footer) footer.style.display='none'; return; }
 
   const sortArrow = f => _usersSort.field === f ? (_usersSort.dir === 1 ? ' ▲' : ' ▼') : '';
   const sortTh = (f, label) => `<th onclick="sortUsersBy('${f}')" style="cursor:pointer;user-select:none;">${label}${sortArrow(f)}</th>`;
@@ -2069,6 +2222,32 @@ function renderUsersTable() {
         }).join('')}
       </tbody>
     </table>`;
+  if (footer) {
+    footer.style.display = 'block';
+    footer.textContent = users.length < _allUsers.length
+      ? `Показано ${users.length} из ${_allUsers.length} пользователей`
+      : `Всего: ${_allUsers.length} пользователей`;
+  }
+}
+
+function exportUsersCsv() {
+  if (!_allUsers.length) return;
+  const q = (document.getElementById('users-search')?.value || '').trim().toLowerCase();
+  const roleFilter   = document.getElementById('users-role-filter')?.value   || '';
+  const statusFilter = document.getElementById('users-status-filter')?.value || '';
+  let users = _allUsers;
+  if (q) users = users.filter(u => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+  if (roleFilter === 'admin') users = users.filter(u => u.role === 'admin');
+  else if (roleFilter === 'player') users = users.filter(u => u.role !== 'admin');
+  if (statusFilter === 'active') users = users.filter(u => u.is_active);
+  else if (statusFilter === 'blocked') users = users.filter(u => !u.is_active);
+  const rows = [['ID','Имя','Email','Роль','Статус','Зарегистрирован']];
+  users.forEach(u => rows.push([u.id, u.username, u.email, u.role, u.is_active ? 'Активен' : 'Заблокирован', u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : '']));
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8'}));
+  a.download = `users_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
 }
 
 async function toggleRole(userId, cur) {
@@ -2471,6 +2650,18 @@ async function loadDashServerStatus() {
     const srvName  = (smap.server_name  || '').trim() || 'Сервер 1';
     const srvName2 = (smap.server2_name || '').trim() || 'Сервер 2';
     wrap.innerHTML = card(results[0], srvName, '#e05575') + (hasServer2 ? card(results[1], srvName2, '#9955ee') : '');
+    // Update sidebar online badge
+    const totalOnline = results.reduce((s, d) => s + (d?.online ? (d.players || 0) : 0), 0);
+    const anyOnline   = results.some(d => d?.online);
+    const badge = document.getElementById('sb-online');
+    const badgeTxt = document.getElementById('sb-online-text');
+    if (badge && badgeTxt) {
+      badge.className = anyOnline ? '' : 'offline';
+      badgeTxt.textContent = anyOnline ? `${totalOnline} онлайн` : 'Серверы офлайн';
+    }
+    // Update last-updated timestamp
+    const lu = document.getElementById('dash-last-updated');
+    if (lu) lu.textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
   } catch {
     wrap.innerHTML = `<div class="glass-card rounded-xl p-4" style="color:var(--muted);font-size:.8rem;">Ошибка загрузки статуса.</div>`;
   }
@@ -2629,6 +2820,8 @@ async function loadAdminPlayers() {
         <td style="color:var(--muted);">${Math.floor((p.total_seconds || 0) / 3600)}ч ${Math.floor(((p.total_seconds || 0) % 3600) / 60)}м</td>
         <td style="color:var(--muted);font-size:.78rem;">${p.last_seen ? fmtDateTime(p.last_seen) : '—'}</td>
       </tr>`).join('');
+    const pf = document.getElementById('players-count-footer');
+    if (pf) { pf.style.display = 'block'; pf.textContent = `Всего: ${items.length} игроков`; }
   } catch { }
 }
 
