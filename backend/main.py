@@ -2728,7 +2728,8 @@ async def get_team(db: AsyncSession = Depends(get_db)):
             "avatar_url": u.avatar_url,
             "created_at": _fmt_dt(u.created_at),
             "admin_title": u.admin_title,
-            "last_active_at": _fmt_dt(u.last_active_at),
+            # Return None if user explicitly logged out so _statusInfo shows "Не в сети"
+            "last_active_at": None if u.username in _explicit_logouts else _fmt_dt(u.last_active_at),
             "badge_icon_url": u.badge_icon_url,
             "badge_style": u.badge_style or "default",
         }
