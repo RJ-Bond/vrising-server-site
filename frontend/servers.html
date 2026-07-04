@@ -125,12 +125,19 @@
     .skel { animation:skel-pulse 1.3s ease-in-out infinite; }
 
     .srv-wipe-banner {
-      padding:.85rem 1.25rem .85rem 1.4rem;
+      padding:.85rem 1.25rem .95rem 1.4rem;
       border-top:1px solid transparent;
       border-bottom:1px solid transparent;
       border-left:3px solid transparent;
       position:relative;
+      cursor:default;
     }
+    @keyframes wipe-crit-pulse {
+      0%,100% { box-shadow:none; }
+      50%      { box-shadow:inset 0 0 0 1px rgba(255,60,60,.35), 0 0 18px rgba(255,60,60,.08); }
+    }
+    .srv-wipe-banner.critical { animation:wipe-crit-pulse 1.8s ease-in-out infinite; }
+    .wipe-digit-val { display:inline-block; transition:transform .12s ease, opacity .12s ease; transform-origin:50% 50%; }
 
     .srv-connect-row { display:flex; gap:.6rem; margin-bottom:1.25rem; }
     .srv-connect-btn {
@@ -370,8 +377,8 @@ function updatePageTitle() {
       1: { date: (d.wipe_date || '').trim(), type: d.wipe_type || 'full' },
       2: { date: (d.wipe_date2 || '').trim(), type: d.wipe_type2 || 'full' },
     };
-    [1, 2].forEach(renderWipeChip);
-    setInterval(() => [1, 2].forEach(renderWipeChip), 60000);
+    loadWipeHistory().then(() => [1, 2].forEach(renderWipeChip));
+    setInterval(() => [1, 2].forEach(tickWipeCountdown), 1000);
     window.__TZ = d.timezone || 'Europe/Moscow';
     window.__H12 = (d.time_format || '24h') === '12h';
     window.__DATEFMT = d.date_format || 'dd.mm.yyyy';
@@ -379,14 +386,39 @@ function updatePageTitle() {
 })();
 
 const WIPE_TYPE_LABELS = { full: 'Полный вайп', map: 'Вайп карты', progress: 'Вайп прогресса' };
+let _wipeHistory = {};
 
-function wipeCountBlock(val, lbl, urgent, rgb) {
-  const col = urgent ? `rgb(${rgb})` : '#e8ddf5';
-  const glow = urgent ? `0 0 16px rgba(${rgb},.55)` : 'none';
-  return `<div style="text-align:center;min-width:2.1rem;">
-    <div style="font-family:'Oswald',sans-serif;font-size:1.7rem;font-weight:700;line-height:1;color:${col};text-shadow:${glow};">${String(val).padStart(2,'0')}</div>
+async function loadWipeHistory() {
+  try {
+    const wipes = await fetch('/api/wipes').then(r => r.json());
+    _wipeHistory = {};
+    wipes.forEach(w => {
+      if (!_wipeHistory[w.server_num]) _wipeHistory[w.server_num] = [];
+      _wipeHistory[w.server_num].push(w);
+    });
+  } catch {}
+}
+
+function getPrevWipe(num) {
+  const now = Date.now();
+  return (_wipeHistory[num] || []).find(w => new Date(w.wipe_date).getTime() < now) || null;
+}
+
+function _wipeTypeRgb(type) {
+  return type === 'map' ? '201,169,74' : type === 'progress' ? '153,85,238' : '200,0,42';
+}
+
+function _wipeDigitEl(id, lbl, big = true) {
+  const sz = big ? '1.7rem' : '1.1rem';
+  const mw = big ? '2.1rem' : '1.6rem';
+  return `<div style="text-align:center;min-width:${mw};">
+    <span class="wipe-digit-val" id="${id}" style="font-family:'Oswald',sans-serif;font-size:${sz};font-weight:700;line-height:1;color:#e8ddf5;">00</span>
     <div style="font-size:.44rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-top:.1rem;">${lbl}</div>
   </div>`;
+}
+
+function _wipeDigitSep(small) {
+  return `<div style="font-family:'Oswald',sans-serif;font-size:${small?'.9rem':'1.2rem'};color:var(--muted);padding-bottom:.15rem;line-height:1;opacity:.35;">:</div>`;
 }
 
 function renderWipeChip(num) {
@@ -396,47 +428,121 @@ function renderWipeChip(num) {
   const date = new Date(w.date);
   if (isNaN(date)) { el.style.display = 'none'; return; }
   const diff = date.getTime() - Date.now();
-  const label = WIPE_TYPE_LABELS[w.type] || 'Вайп';
-  const typeRgb   = w.type === 'map' ? '201,169,74' : w.type === 'progress' ? '153,85,238' : '200,0,42';
-  const typeIcon  = w.type === 'map' ? '🗺️' : w.type === 'progress' ? '🔮' : '⚰️';
-  const urgent    = diff > 0 && diff < 7 * 86400000;
-  const alpha     = urgent ? '.14' : '.08';
-  const dateStr   = date.toLocaleDateString('ru-RU', {day:'2-digit', month:'2-digit', year:'2-digit'});
+  const label   = WIPE_TYPE_LABELS[w.type] || 'Вайп';
+  const rgb     = _wipeTypeRgb(w.type);
+  const icon    = w.type === 'map' ? '🗺️' : w.type === 'progress' ? '🔮' : '⚰️';
+  const dateStr = date.toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'2-digit'});
+  const weekday = date.toLocaleDateString('ru-RU', {weekday:'long'});
+  const timeStr = date.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
 
-  el.style.borderTopColor    = `rgba(${typeRgb},.18)`;
-  el.style.borderBottomColor = `rgba(${typeRgb},.1)`;
-  el.style.borderLeftColor   = `rgba(${typeRgb},.75)`;
-  el.style.background        = `linear-gradient(135deg, rgba(${typeRgb},${alpha}) 0%, rgba(${typeRgb},.01) 65%)`;
+  el.style.borderTopColor    = `rgba(${rgb},.18)`;
+  el.style.borderBottomColor = `rgba(${rgb},.1)`;
+  el.style.borderLeftColor   = `rgba(${rgb},.75)`;
+  el.title = `${weekday}, ${dateStr} в ${timeStr}`;
 
   if (diff <= 0) {
     el.innerHTML = `
       <div style="display:flex;align-items:center;gap:.55rem;">
-        <span style="font-size:.95rem;opacity:.55;">${typeIcon}</span>
+        <span style="font-size:.95rem;opacity:.55;">${icon}</span>
         <div>
-          <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:rgba(${typeRgb},1);">${label}</div>
+          <div style="font-size:.58rem;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:rgba(${rgb},1);">${label}</div>
           <div style="font-size:.64rem;color:var(--muted);margin-top:.1rem;">Сервер сброшен · ${dateStr}</div>
         </div>
       </div>`;
-  } else {
-    const dd = Math.floor(diff / 86400000);
-    const hh = Math.floor((diff % 86400000) / 3600000);
-    const mm = Math.floor((diff % 3600000) / 60000);
-    const sep = `<div style="font-family:'Oswald',sans-serif;font-size:1.2rem;color:var(--muted);padding-bottom:.15rem;line-height:1;opacity:.4;">:</div>`;
-    el.innerHTML = `
-      <div style="display:flex;align-items:center;gap:.45rem;margin-bottom:.5rem;">
-        <span style="font-size:.92rem;">${typeIcon}</span>
-        <span style="font-size:.57rem;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:rgba(${typeRgb},1);">${label}</span>
-        <span style="font-size:.56rem;color:var(--muted);margin-left:auto;">📅 ${dateStr}</span>
-      </div>
-      <div style="display:flex;align-items:flex-end;gap:.28rem;">
-        ${wipeCountBlock(dd,'дней',urgent,typeRgb)}
-        ${sep}
-        ${wipeCountBlock(hh,'часов',urgent,typeRgb)}
-        ${sep}
-        ${wipeCountBlock(mm,'минут',urgent,typeRgb)}
-      </div>`;
+    el.style.background = `linear-gradient(135deg,rgba(${rgb},.06) 0%,rgba(${rgb},.01) 65%)`;
+    el.classList.remove('critical');
+    el.style.display = 'block';
+    return;
   }
+
+  const prev = getPrevWipe(num);
+  const prevLine = prev ? (() => {
+    const d = Math.floor((Date.now() - new Date(prev.wipe_date).getTime()) / 86400000);
+    const rel = d === 0 ? 'сегодня' : d === 1 ? 'вчера' : `${d} дн. назад`;
+    return `<div style="font-size:.54rem;color:var(--muted);margin-top:.45rem;opacity:.7;">⏪ Прошлый вайп: ${rel}</div>`;
+  })() : '';
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:.45rem;margin-bottom:.5rem;">
+      <span style="font-size:.92rem;">${icon}</span>
+      <span style="font-size:.57rem;text-transform:uppercase;letter-spacing:.12em;font-weight:700;color:rgba(${rgb},1);">${label}</span>
+      <span style="font-size:.56rem;color:var(--muted);margin-left:auto;">📅 ${dateStr}</span>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:.28rem;">
+      ${_wipeDigitEl(`wd-d-${num}`,'дней')}
+      ${_wipeDigitSep(false)}
+      ${_wipeDigitEl(`wd-h-${num}`,'часов')}
+      ${_wipeDigitSep(false)}
+      ${_wipeDigitEl(`wd-m-${num}`,'минут')}
+      ${_wipeDigitSep(true)}
+      ${_wipeDigitEl(`wd-s-${num}`,'сек',false)}
+    </div>
+    ${prevLine}
+    <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,0.05);">
+      <div id="wd-prog-${num}" style="height:100%;width:0%;background:rgba(${rgb},.6);transition:width .8s ease;border-radius:0 1px 1px 0;"></div>
+    </div>`;
+
   el.style.display = 'block';
+  tickWipeCountdown(num);
+}
+
+function _setWipeDigit(id, val, color, glow) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const str = String(val).padStart(2,'0');
+  if (el.textContent !== str) {
+    el.style.transform = 'rotateX(90deg)';
+    el.style.opacity = '0';
+    setTimeout(() => {
+      el.textContent = str;
+      el.style.transform = 'rotateX(-90deg)';
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        el.style.transform = 'rotateX(0)';
+        el.style.opacity = '1';
+      }));
+    }, 120);
+  }
+  el.style.color = color;
+  el.style.textShadow = glow ? `0 0 16px ${color}` : 'none';
+}
+
+function tickWipeCountdown(num) {
+  const w = _wipeSettings[num];
+  const el = document.getElementById(`srv-wipe-${num}`);
+  if (!w || !w.date || !el || el.style.display === 'none') return;
+  const date = new Date(w.date);
+  const diff = date.getTime() - Date.now();
+  if (diff <= 0) return;
+
+  const rgb     = _wipeTypeRgb(w.type);
+  const urgent  = diff < 86400000;
+  const colored = diff < 7 * 86400000;
+  const col     = colored ? `rgb(${rgb})` : '#e8ddf5';
+  const alpha   = urgent ? '.18' : colored ? '.13' : '.08';
+
+  el.style.background = `linear-gradient(135deg,rgba(${rgb},${alpha}) 0%,rgba(${rgb},.01) 65%)`;
+  el.classList.toggle('critical', urgent);
+
+  const dd = Math.floor(diff / 86400000);
+  const hh = Math.floor((diff % 86400000) / 3600000);
+  const mm = Math.floor((diff % 3600000) / 60000);
+  const ss = Math.floor((diff % 60000) / 1000);
+
+  _setWipeDigit(`wd-d-${num}`, dd, col, urgent);
+  _setWipeDigit(`wd-h-${num}`, hh, col, urgent);
+  _setWipeDigit(`wd-m-${num}`, mm, col, urgent);
+  // seconds: no flip, always update
+  const secEl = document.getElementById(`wd-s-${num}`);
+  if (secEl) { secEl.textContent = String(ss).padStart(2,'0'); secEl.style.color = 'var(--muted)'; }
+
+  // Progress bar
+  const prev = getPrevWipe(num);
+  if (prev) {
+    const prevTs = new Date(prev.wipe_date).getTime();
+    const pct = Math.min(100, Math.max(0, (Date.now() - prevTs) / (date.getTime() - prevTs) * 100));
+    const prog = document.getElementById(`wd-prog-${num}`);
+    if (prog) prog.style.width = pct.toFixed(1) + '%';
+  }
 }
 
 const SERVER_THEMES = {
