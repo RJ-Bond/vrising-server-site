@@ -432,6 +432,19 @@
       box-shadow:0 0 26px rgba(100,26,255,0.28),inset 0 0 14px rgba(100,26,255,0.1);
       transform:translateY(-1px);
     }
+    /* ── Online widget ── */
+    .online-stat { flex:1;text-align:center;padding:.4rem .3rem;border-radius:.5rem; }
+    .online-stat-n { font-size:1.1rem;font-family:'Cinzel',serif;line-height:1.2; }
+    .online-stat-l { font-size:.58rem;color:var(--muted);margin-top:.1rem; }
+    .online-user-row {
+      display:flex;align-items:center;gap:.45rem;text-decoration:none;
+      padding:.2rem .35rem;border-radius:.35rem;transition:background .15s;
+    }
+    .online-user-row:hover { background:rgba(110,0,20,.2); }
+    .online-dot { width:.42rem;height:.42rem;border-radius:50%;background:#4ade80;box-shadow:0 0 7px #4ade80;flex-shrink:0; }
+    .online-avatar { width:1.35rem;height:1.35rem;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid rgba(110,0,20,.3); }
+    .online-name { font-size:.72rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+
     @media (max-width: 1024px) {
       .main-grid { flex-direction: column !important; }
       .side-panel { width: 100% !important; }
@@ -1331,6 +1344,23 @@
       </a>
     </div>
 
+    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:1.1rem 0;"></div>
+
+    <h3 style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;text-align:center;">— На сайте —</h3>
+
+    <div style="display:flex;gap:.5rem;margin-bottom:.75rem;">
+      <div class="online-stat" style="background:rgba(0,100,30,.12);border:1px solid rgba(34,197,94,.2);">
+        <div class="online-stat-n" style="color:#4ade80;" id="ow-users">–</div>
+        <div class="online-stat-l">Авторизованных</div>
+      </div>
+      <div class="online-stat" style="background:rgba(100,80,0,.1);border:1px solid rgba(200,160,60,.2);">
+        <div class="online-stat-n" style="color:var(--gold);" id="ow-guests">–</div>
+        <div class="online-stat-l">Гостей</div>
+      </div>
+    </div>
+
+    <div id="ow-list" style="display:flex;flex-direction:column;gap:.2rem;"></div>
+
   </aside>
 
   <!-- ── CENTER: News ── -->
@@ -1806,6 +1836,47 @@ function toggleDrawer() {
       localStorage.removeItem('token'); sessionStorage.removeItem('token');
     }
   }).catch(() => {});
+})();
+
+// ── Online widget ──────────────────────────────────────────────────────────
+(function initOnlineWidget() {
+  let _vid = localStorage.getItem('_ow_vid');
+  if (!_vid) { _vid = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now()); localStorage.setItem('_ow_vid', _vid); }
+
+  const ping = () => {
+    const authed = !!getUser();
+    fetch('/api/online/ping', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitor_id: _vid, is_authed: authed })
+    }).catch(() => {});
+  };
+
+  const roleColor = r => r === 'admin' ? 'var(--crimson)' : r === 'moder' ? 'var(--purple)' : 'var(--text)';
+
+  const load = async () => {
+    try {
+      const d = await fetch('/api/online').then(r => r.json());
+      const uc = document.getElementById('ow-users');
+      const gc = document.getElementById('ow-guests');
+      const ul = document.getElementById('ow-list');
+      if (uc) uc.textContent = d.users.length;
+      if (gc) gc.textContent = d.guests;
+      if (ul) ul.innerHTML = d.users.map(u => {
+        const av = u.avatar_url
+          ? `<img src="${u.avatar_url}" class="online-avatar" alt="" onerror="this.style.display='none'">`
+          : `<span class="online-dot"></span>`;
+        return `<a href="/user.html?u=${encodeURIComponent(u.username)}" class="online-user-row">
+          ${av}
+          <span class="online-name" style="color:${roleColor(u.role)};">${esc(u.username)}</span>
+        </a>`;
+      }).join('') || `<div style="font-size:.68rem;color:var(--muted);text-align:center;padding:.3rem 0;">Нет активных пользователей</div>`;
+    } catch {}
+  };
+
+  ping();
+  setInterval(ping, 30000);
+  load();
+  setInterval(load, 60000);
 })();
 
 async function loadLatestNews() {

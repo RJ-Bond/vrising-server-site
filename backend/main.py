@@ -569,6 +569,42 @@ async def me(current_user: User = Depends(get_current_user), db: AsyncSession = 
     return UserOut.model_validate(current_user)
 
 
+# ─── Who's online ─────────────────────────────────────────────────────────────
+_guest_sessions: dict[str, float] = {}
+_GUEST_TTL = 300  # 5 minutes
+
+
+class OnlinePingBody(BaseModel):
+    visitor_id: str
+    is_authed: bool = False
+
+
+@app.post("/api/online/ping", status_code=204)
+async def online_ping(body: OnlinePingBody):
+    cutoff = time.time() - _GUEST_TTL
+    for vid in list(_guest_sessions):
+        if _guest_sessions[vid] < cutoff:
+            del _guest_sessions[vid]
+    if not body.is_authed and len(body.visitor_id) <= 64:
+        _guest_sessions[body.visitor_id] = time.time()
+    return Response(status_code=204)
+
+
+@app.get("/api/online")
+async def online_status(db: AsyncSession = Depends(get_db)):
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=5)).replace(tzinfo=None)
+    result = await db.execute(
+        select(User.username, User.avatar_url, User.role)
+        .where(User.is_active == True, User.last_active_at != None, User.last_active_at >= cutoff)
+        .order_by(User.last_active_at.desc())
+        .limit(20)
+    )
+    users = [{"username": r.username, "avatar_url": r.avatar_url, "role": r.role} for r in result.all()]
+    cutoff_ts = time.time() - _GUEST_TTL
+    guests = sum(1 for ts in _guest_sessions.values() if ts > cutoff_ts)
+    return {"users": users, "guests": guests, "total": len(users) + guests}
+
+
 @app.post("/api/auth/accept-rules", response_model=UserOut)
 async def accept_rules(
     current_user: User = Depends(get_current_user),
