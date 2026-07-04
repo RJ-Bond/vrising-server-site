@@ -384,6 +384,18 @@ async def get_version():
     return {"version": None}
 
 
+# ─── SEO ─────────────────────────────────────────────────────────────────────
+
+@app.get("/google{code}.html", response_class=Response)
+async def google_verify(code: str, db: AsyncSession = Depends(get_db)):
+    """Serves Google Search Console HTML verification file if key matches setting."""
+    result = await db.execute(select(Setting).where(Setting.key == "google_site_verification_file"))
+    s = result.scalar_one_or_none()
+    if not s or s.value.strip() != code.strip():
+        return Response(status_code=404)
+    return Response(content=f"google-site-verification: google{code}.html", media_type="text/html")
+
+
 # ─── Sitemap ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/sitemap.xml", response_class=Response)

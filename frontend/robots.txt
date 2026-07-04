@@ -1,6 +1,9 @@
 User-agent: *
 Allow: /
+
 Disallow: /admin.html
 Disallow: /setup.html
+Disallow: /reset.html
+Disallow: /api/
 
-Sitemap: /api/sitemap.xml
+Sitemap: https://just-skill.ru/sitemap.xml
