@@ -695,12 +695,13 @@
       font-variant-numeric:tabular-nums; color:var(--text); }
     .sb-icon { font-size:.9rem; line-height:1; }
     .sb-srv-tag {
-      display:flex; align-items:center; justify-content:flex-end;
+      display:flex; align-items:center; justify-content:flex-end; gap:.3rem;
       font-family:'Cinzel',serif; font-size:.56rem; font-weight:700;
       letter-spacing:.1em; color:rgba(200,165,255,.55); text-transform:uppercase;
       padding:.28rem .75rem; border-right:1px solid rgba(110,0,20,0.2);
       white-space:nowrap;
     }
+    .sb-srv-logo { width:14px; height:14px; object-fit:contain; flex-shrink:0; opacity:.75; filter:drop-shadow(0 0 4px rgba(200,0,42,.5)); }
     .sb-srv-sep { display:none; }
 
     /* ── Event banner ── */
@@ -1176,7 +1177,7 @@
   <div class="status-bar-inner">
     <!-- Server 1 row -->
     <div class="sb-row sb-sep" id="sb-s1-row">
-      <span class="sb-srv-tag" id="sb-s1name"><span class="sb-status-dot" id="sb-dot1"></span>Сервер 1</span>
+      <span class="sb-srv-tag" id="sb-s1name"><img src="/icon-vrising.png" class="sb-srv-logo" alt=""><span class="sb-status-dot" id="sb-dot1"></span><span id="sb-s1text">Сервер 1</span></span>
       <div class="sb-item">
         <span class="sb-icon">🩸</span>
         <span>Игрок(ов)</span>
@@ -1198,7 +1199,7 @@
     </div>
     <!-- Server 2 row (shown by JS when enabled) -->
     <div class="sb-row" id="sb-s2-row" style="display:none">
-      <span class="sb-srv-tag" id="sb-s2name"><span class="sb-status-dot" id="sb-dot2"></span>Сервер 2</span>
+      <span class="sb-srv-tag" id="sb-s2name"><img src="/icon-vrising.png" class="sb-srv-logo" alt=""><span class="sb-status-dot" id="sb-dot2"></span><span id="sb-s2text">Сервер 2</span></span>
       <div class="sb-item" id="sb-s2online-row">
         <span class="sb-icon">🩸</span>
         <span>Игрок(ов)</span>
@@ -2925,11 +2926,11 @@ async function loadSiteSettings() {
     window._srvName  = srvName;
     window._srvName2 = srvName2;
 
-    // Status bar server names
-    const sbS1 = document.getElementById('sb-s1name');
-    if (sbS1) sbS1.textContent = srvName;
-    const sbS2 = document.getElementById('sb-s2name');
-    if (sbS2) sbS2.textContent = srvName2;
+    // Status bar server names (target text spans to preserve logo+dot)
+    const sbT1 = document.getElementById('sb-s1text');
+    if (sbT1) sbT1.textContent = srvName;
+    const sbT2 = document.getElementById('sb-s2text');
+    if (sbT2) sbT2.textContent = srvName2;
 
 
     const wipeDateStr = (d.wipe_date || '').trim();
