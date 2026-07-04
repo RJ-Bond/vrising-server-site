@@ -552,6 +552,17 @@ async def logout(response: Response, current_user: User = Depends(get_current_us
     auth_header = request.headers.get("Authorization", "") if request else ""
     cookie_token = request.cookies.get(COOKIE_NAME, "") if request else ""
     token = auth_header[7:] if auth_header.startswith("Bearer ") else cookie_token
+    # Stamp last_active_at at logout so "last seen" is accurate
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one_or_none()
+    if user:
+        user.last_active_at = datetime.now(timezone.utc)
+        await db.commit()
+    # Remove from online tracking immediately
+    _explicit_logouts[current_user.username] = time.time()
+    for vid in list(_visitor_data):
+        if _visitor_data[vid].get("username") == current_user.username:
+            del _visitor_data[vid]
     if token:
         await revoke_token(token, db)
     _clear_auth_cookie(response)
@@ -571,6 +582,7 @@ async def me(current_user: User = Depends(get_current_user), db: AsyncSession = 
 
 # ─── Who's online ─────────────────────────────────────────────────────────────
 _visitor_data: dict[str, dict] = {}  # visitor_id -> {ts, page, username, is_authed}
+_explicit_logouts: dict[str, float] = {}  # username -> logout timestamp
 _GUEST_TTL = 120  # 2 minutes
 
 _PAGE_LABELS = {
@@ -607,7 +619,14 @@ async def online_ping(body: OnlinePingBody):
 
 @app.get("/api/online")
 async def online_status(db: AsyncSession = Depends(get_db)):
-    cutoff_ts = time.time() - _GUEST_TTL
+    now_ts = time.time()
+    cutoff_ts = now_ts - _GUEST_TTL
+
+    # Purge stale explicit logouts (keep 5 min)
+    for u in list(_explicit_logouts):
+        if _explicit_logouts[u] < now_ts - 300:
+            del _explicit_logouts[u]
+
     user_pages: dict[str, str] = {}
     guests = 0
     for d in _visitor_data.values():
@@ -629,6 +648,7 @@ async def online_status(db: AsyncSession = Depends(get_db)):
         {"username": r.username, "avatar_url": r.avatar_url, "role": r.role,
          "page": user_pages.get(r.username, "")}
         for r in result.all()
+        if r.username not in _explicit_logouts
     ]
     return {"users": users, "guests": guests, "total": len(users) + guests}
 
