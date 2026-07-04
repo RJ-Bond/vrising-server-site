@@ -69,17 +69,30 @@
     [data-tip]:hover::after { opacity:1; }
 
     .g-card {
-      background:var(--card); border:1px solid var(--border);
+      background:var(--card); border:1px solid rgba(var(--accent-rgb,110,0,150),.28);
       border-radius:.875rem; backdrop-filter:blur(16px) saturate(1.2);
-      box-shadow:0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
-      position:relative; padding:1.5rem;
+      box-shadow:0 4px 32px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.04);
+      position:relative; padding:0; overflow:hidden;
+      transition:box-shadow .3s;
+    }
+    .g-card:hover {
+      box-shadow:0 6px 40px rgba(0,0,0,0.7), 0 0 28px rgba(var(--accent-rgb,110,0,150),.13), inset 0 1px 0 rgba(255,255,255,0.04);
     }
     .g-card::before {
-      content:''; position:absolute; top:0; left:12%; right:12%; height:1px;
-      background:linear-gradient(90deg,transparent,var(--accent,rgba(200,0,45,0.4)),transparent);
+      content:''; position:absolute; top:0; left:0; right:0; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(var(--accent-rgb,110,0,150),.7),var(--accent,rgba(200,0,45,0.5)),rgba(var(--accent-rgb,110,0,150),.7),transparent);
+      z-index:1;
     }
     @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
     .g-card { animation:fade-up .4s ease both; }
+
+    .srv-header-zone {
+      padding:1.35rem 1.5rem 1.15rem;
+      background:linear-gradient(135deg, rgba(var(--accent-rgb,110,0,150),.13) 0%, rgba(var(--accent-rgb,110,0,150),.04) 55%, transparent 100%);
+      border-bottom:1px solid rgba(var(--accent-rgb,110,0,150),.15);
+      position:relative;
+    }
+    .g-card-body { padding:1.25rem 1.5rem 1.5rem; }
 
     .srv-head { display:flex; align-items:center; gap:.6rem; margin-bottom:1.1rem; flex-wrap:wrap; }
     .srv-icon { width:1.7rem; height:1.7rem; object-fit:contain; filter:drop-shadow(0 0 8px var(--accent)); flex-shrink:0; }
@@ -99,8 +112,8 @@
     }
     .srv-vac-badge.off { background:rgba(255,255,255,0.04); border-color:rgba(255,255,255,0.1); color:var(--muted); }
 
-    .srv-capacity-track { height:5px; background:rgba(255,255,255,0.08); border-radius:9999px; overflow:hidden; margin-top:.4rem; }
-    .srv-capacity-fill { height:100%; border-radius:9999px; background:var(--accent); transition:width .6s ease; }
+    .srv-capacity-track { height:6px; background:rgba(255,255,255,0.08); border-radius:9999px; overflow:hidden; margin-top:.5rem; }
+    .srv-capacity-fill { height:100%; border-radius:9999px; background:linear-gradient(90deg, var(--accent), rgba(var(--accent-rgb,110,0,150),.6)); transition:width .7s cubic-bezier(.4,0,.2,1); box-shadow:0 0 8px rgba(var(--accent-rgb,110,0,150),.5); }
 
     .srv-record {
       font-size:.72rem; color:var(--gold); display:flex; align-items:center; gap:.4rem;
@@ -114,18 +127,18 @@
     .srv-wipe-chip {
       font-size:.65rem; font-weight:600; color:var(--muted); background:var(--panel);
       border:1px solid rgba(255,255,255,0.1); border-radius:9999px; padding:.2rem .6rem;
-      display:inline-flex; align-items:center; gap:.3rem; margin-bottom:1rem;
+      display:inline-flex; align-items:center; gap:.3rem; margin-top:.6rem;
     }
     .srv-wipe-chip.urgent { color:var(--red); border-color:rgba(255,93,126,0.4); background:rgba(255,93,126,0.1); }
 
     .srv-connect-row { display:flex; gap:.6rem; margin-bottom:1.25rem; }
     .srv-connect-btn {
-      flex:1; background:linear-gradient(135deg,var(--pink-a),var(--pink-b)); border:none; color:#fff;
+      flex:1; background:linear-gradient(135deg,var(--accent),rgba(var(--accent-rgb,110,0,150),.7)); border:none; color:#fff;
       font-size:.78rem; font-weight:700; padding:.6rem 1rem; border-radius:.55rem; cursor:pointer;
-      box-shadow:0 2px 16px rgba(194,33,138,0.35); transition:transform .15s, box-shadow .2s;
+      box-shadow:0 2px 16px rgba(var(--accent-rgb,110,0,150),.35); transition:transform .15s, box-shadow .2s;
       display:inline-flex; align-items:center; justify-content:center; gap:.45rem;
     }
-    .srv-connect-btn:hover { transform:translateY(-1px); box-shadow:0 2px 26px rgba(194,33,138,0.55); }
+    .srv-connect-btn:hover { transform:translateY(-1px); box-shadow:0 4px 28px rgba(var(--accent-rgb,110,0,150),.55); }
     .srv-copy-btn {
       background:var(--panel); border:1px solid rgba(255,255,255,0.12); color:var(--muted);
       border-radius:.55rem; padding:.6rem .9rem; font-size:.78rem; cursor:pointer; transition:all .2s;
@@ -198,13 +211,15 @@
     /* ── Mobile ── */
     @media (max-width:640px) {
       body { overflow-x:hidden; }
-      .g-card { padding:1.1rem; }
+      .srv-header-zone { padding:1.1rem 1.1rem .9rem; }
+      .g-card-body { padding:1rem 1.1rem 1.25rem; }
       .srv-connect-btn, .srv-copy-btn { padding:.55rem .9rem; min-height:2.75rem; }
       .srv-section-title { font-size:.62rem; letter-spacing:.12em; }
       .glass-nav > div { padding:.6rem 1rem !important; }
     }
     @media (max-width:400px) {
-      .g-card { padding:.9rem; }
+      .srv-header-zone { padding:.9rem .9rem .8rem; }
+      .g-card-body { padding:.9rem .9rem 1.1rem; }
       .srv-connect-btn { font-size:.72rem; }
       .srv-metric-val { font-size:1.05rem; }
     }
@@ -384,16 +399,19 @@ const STEAM_ICON_SVG = '<svg width="15" height="15" viewBox="0 0 24 24" fill="cu
 function srvCardSkeleton(num) {
   const t = SERVER_THEMES[num];
   return `
-  <div class="g-card" style="--accent:${t.accent};" id="srv-card-${num}">
-    <div class="srv-head">
-      <img src="/icon-vrising.png" alt="" class="srv-icon">
-      <div class="srv-name" id="srv-name-${num}">Сервер ${num}</div>
-      <div class="srv-badge-group">
-        <span class="srv-badge off skel" id="srv-badge-${num}"><span class="srv-dot"></span>Загрузка</span>
-        <span class="srv-vac-badge" id="srv-vac-${num}" style="display:none;">🛡 VAC</span>
+  <div class="g-card" style="--accent:${t.accent};--accent-rgb:${t.accentRgb};" id="srv-card-${num}">
+    <div class="srv-header-zone">
+      <div class="srv-head">
+        <img src="/icon-vrising.png" alt="" class="srv-icon">
+        <div class="srv-name" id="srv-name-${num}">Сервер ${num}</div>
+        <div class="srv-badge-group">
+          <span class="srv-badge off skel" id="srv-badge-${num}"><span class="srv-dot"></span>Загрузка</span>
+          <span class="srv-vac-badge" id="srv-vac-${num}" style="display:none;">🛡 VAC</span>
+        </div>
       </div>
+      <span class="srv-wipe-chip" id="srv-wipe-${num}" style="display:none;"></span>
     </div>
-    <span class="srv-wipe-chip" id="srv-wipe-${num}" style="display:none;"></span>
+    <div class="g-card-body">
     <div class="srv-record" id="srv-record-${num}" style="display:none;"></div>
     <div class="srv-connect-row" id="srv-connect-${num}" style="display:none;">
       <button class="srv-connect-btn" onclick="connectServer(${num})">Подключиться через ${STEAM_ICON_SVG}</button>
@@ -440,6 +458,7 @@ function srvCardSkeleton(num) {
     <div>
       <div class="srv-section-title">Игроки онлайн</div>
       <div class="srv-players-list" id="srv-players-list-${num}"><p class="srv-empty skel">Загрузка…</p></div>
+    </div>
     </div>
   </div>`;
 }
