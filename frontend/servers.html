@@ -785,6 +785,7 @@ function renderChart(num) {
   if (!canvas || !geom) return;
   const ctx = canvas.getContext('2d');
   const { snaps, x, y, padL, padT, plotW, plotH, w, h, accent } = geom;
+  const maxPlayers = Math.max(1, ...snaps.map(s => s.players));
   ctx.clearRect(0, 0, w, h);
 
   // Y-axis gridlines + labels
