@@ -214,7 +214,7 @@ const RANKS = [
 function fmtSec(s){const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);return h>0?`${h}ч ${m}м`:`${m}м`;}
 function fmtAgo(iso){
   if(!iso)return'Никогда';
-  const d=Math.floor((Date.now()-new Date(iso).getTime())/864e5);
+  const d=Math.floor((Date.now()-_toDate(iso).getTime())/864e5);
   if(d<1)return'Сегодня';if(d===1)return'Вчера';
   if(d<7)return d+' дн. назад';if(d<30)return Math.floor(d/7)+' нед. назад';
   if(d<365)return Math.floor(d/30)+' мес. назад';return Math.floor(d/365)+' г. назад';

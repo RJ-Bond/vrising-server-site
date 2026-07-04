@@ -13,6 +13,12 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/* Normalise naive ISO strings from SQLite (no tz suffix) to UTC before parsing */
+function _toDate(iso) {
+  if (!iso) return null;
+  return new Date(iso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(iso) ? iso : iso + 'Z');
+}
+
 /* Read cached user from storage */
 function getUser() {
   try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; }
@@ -41,8 +47,8 @@ function _dateOpts() {
   return { timeZone: window.__TZ || 'Europe/Moscow', ...(m[window.__DATEFMT] || m['dd.mm.yyyy']) };
 }
 
-function fmtDate(iso)     { if (!iso) return '—'; return new Date(iso).toLocaleDateString('ru-RU', _dateOpts()); }
-function fmtDateTime(iso) { if (!iso) return '—'; return new Date(iso).toLocaleString('ru-RU', { ..._dateOpts(), hour:'2-digit', minute:'2-digit', hour12: !!(window.__H12) }); }
+function fmtDate(iso)     { if (!iso) return '—'; return _toDate(iso).toLocaleDateString('ru-RU', _dateOpts()); }
+function fmtDateTime(iso) { if (!iso) return '—'; return _toDate(iso).toLocaleString('ru-RU', { ..._dateOpts(), hour:'2-digit', minute:'2-digit', hour12: !!(window.__H12) }); }
 
 /* Admin role badge */
 function _renderAdminBadge(u) {
@@ -65,7 +71,7 @@ function _renderAdminBadge(u) {
 /* Online status helper */
 function _statusInfo(iso) {
   if (!iso) return { dot:'#374151', label:'Не в сети', color:'#4b3f5c', glow:'' };
-  const m = (Date.now() - new Date(iso).getTime()) / 60000;
+  const m = (Date.now() - _toDate(iso).getTime()) / 60000;
   if (m < 5)    return { dot:'#22c55e', label:'Онлайн',          color:'#22c55e', glow:'0 0 7px rgba(34,197,94,.65)' };
   if (m < 60)   { const v = Math.round(m); return { dot:'#f59e0b', label:`Был ${v} мин. назад`, color:'#c9922a', glow:'' }; }
   if (m < 1440) { const h = Math.floor(m/60); const w = h===1?'час':h<5?'часа':'часов'; return { dot:'#6b7280', label:`Был ${h} ${w} назад`,  color:'#6b5878', glow:'' }; }
