@@ -570,38 +570,66 @@ async def me(current_user: User = Depends(get_current_user), db: AsyncSession = 
 
 
 # ─── Who's online ─────────────────────────────────────────────────────────────
-_guest_sessions: dict[str, float] = {}
-_GUEST_TTL = 300  # 5 minutes
+_visitor_data: dict[str, dict] = {}  # visitor_id -> {ts, page, username, is_authed}
+_GUEST_TTL = 120  # 2 minutes
+
+_PAGE_LABELS = {
+    "/": "Главная", "/index.html": "Главная",
+    "/servers.html": "Серверы", "/leaderboard.html": "Игроки",
+    "/clans.html": "Кланы", "/bans.html": "Баны",
+    "/map.html": "Карта", "/faq.html": "FAQ",
+    "/profile.html": "Профиль", "/login.html": "Вход",
+}
 
 
 class OnlinePingBody(BaseModel):
     visitor_id: str
     is_authed: bool = False
+    username: Optional[str] = None
+    page: str = "Сайт"
 
 
 @app.post("/api/online/ping", status_code=204)
 async def online_ping(body: OnlinePingBody):
     cutoff = time.time() - _GUEST_TTL
-    for vid in list(_guest_sessions):
-        if _guest_sessions[vid] < cutoff:
-            del _guest_sessions[vid]
-    if not body.is_authed and len(body.visitor_id) <= 64:
-        _guest_sessions[body.visitor_id] = time.time()
+    for vid in list(_visitor_data):
+        if _visitor_data[vid]["ts"] < cutoff:
+            del _visitor_data[vid]
+    if len(body.visitor_id) <= 64:
+        _visitor_data[body.visitor_id] = {
+            "ts": time.time(),
+            "page": (body.page or "Сайт")[:64],
+            "username": body.username if body.is_authed else None,
+            "is_authed": body.is_authed,
+        }
     return Response(status_code=204)
 
 
 @app.get("/api/online")
 async def online_status(db: AsyncSession = Depends(get_db)):
-    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=5)).replace(tzinfo=None)
+    cutoff_ts = time.time() - _GUEST_TTL
+    user_pages: dict[str, str] = {}
+    guests = 0
+    for d in _visitor_data.values():
+        if d["ts"] < cutoff_ts:
+            continue
+        if d.get("is_authed") and d.get("username"):
+            user_pages[d["username"]] = d.get("page", "")
+        else:
+            guests += 1
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=2)).replace(tzinfo=None)
     result = await db.execute(
         select(User.username, User.avatar_url, User.role)
         .where(User.is_active == True, User.last_active_at != None, User.last_active_at >= cutoff)
         .order_by(User.last_active_at.desc())
         .limit(20)
     )
-    users = [{"username": r.username, "avatar_url": r.avatar_url, "role": r.role} for r in result.all()]
-    cutoff_ts = time.time() - _GUEST_TTL
-    guests = sum(1 for ts in _guest_sessions.values() if ts > cutoff_ts)
+    users = [
+        {"username": r.username, "avatar_url": r.avatar_url, "role": r.role,
+         "page": user_pages.get(r.username, "")}
+        for r in result.all()
+    ]
     return {"users": users, "guests": guests, "total": len(users) + guests}
 
 

@@ -441,8 +441,10 @@
       padding:.2rem .35rem;border-radius:.35rem;transition:background .15s;
     }
     .online-user-row:hover { background:rgba(110,0,20,.2); }
-    .online-dot { width:.42rem;height:.42rem;border-radius:50%;background:#4ade80;box-shadow:0 0 7px #4ade80;flex-shrink:0; }
-    .online-avatar { width:1.35rem;height:1.35rem;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid rgba(110,0,20,.3); }
+    .online-dot { width:.42rem;height:.42rem;border-radius:50%;background:#4ade80;box-shadow:0 0 7px #4ade80;flex-shrink:0;animation:ow-pulse 2.4s ease-in-out infinite; }
+    @keyframes ow-pulse { 0%,100%{box-shadow:0 0 4px #4ade80;opacity:1} 50%{box-shadow:0 0 12px #4ade80,0 0 20px rgba(74,222,128,.4);opacity:.85} }
+    .online-avatar { width:1.5rem;height:1.5rem;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid rgba(110,0,20,.3); }
+    .online-avatar-ph { width:1.5rem;height:1.5rem;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:700;font-family:'Cinzel',serif; }
     .online-name { font-size:.72rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 
     @media (max-width: 1024px) {
@@ -1346,20 +1348,25 @@
 
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:1.1rem 0;"></div>
 
-    <h3 style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;text-align:center;">— На сайте —</h3>
+    <h3 style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.65rem;text-align:center;">— На сайте —</h3>
 
-    <div style="display:flex;gap:.5rem;margin-bottom:.75rem;">
-      <div class="online-stat" style="background:rgba(0,100,30,.12);border:1px solid rgba(34,197,94,.2);">
-        <div class="online-stat-n" style="color:#4ade80;" id="ow-users">–</div>
-        <div class="online-stat-l">Авторизованных</div>
+    <!-- Total count -->
+    <div style="text-align:center;margin-bottom:.6rem;">
+      <div style="display:inline-flex;align-items:center;gap:.5rem;">
+        <span class="online-dot"></span>
+        <span style="font-size:1.6rem;font-family:'Cinzel',serif;color:#4ade80;line-height:1;" id="ow-total">–</span>
       </div>
-      <div class="online-stat" style="background:rgba(100,80,0,.1);border:1px solid rgba(200,160,60,.2);">
-        <div class="online-stat-n" style="color:var(--gold);" id="ow-guests">–</div>
-        <div class="online-stat-l">Гостей</div>
+      <div style="font-size:.6rem;color:var(--muted);margin-top:.15rem;">
+        <span id="ow-users">–</span> авторизован. · <span id="ow-guests">–</span> гостей
       </div>
     </div>
 
     <div id="ow-list" style="display:flex;flex-direction:column;gap:.2rem;"></div>
+    <div id="ow-more-wrap" style="display:none;margin-top:.3rem;">
+      <button onclick="owShowAll()" style="width:100%;background:none;border:none;color:var(--muted);font-size:.65rem;cursor:pointer;padding:.2rem 0;transition:color .15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
+        <span id="ow-more-label"></span>
+      </button>
+    </div>
 
   </aside>
 
@@ -1839,45 +1846,93 @@ function toggleDrawer() {
 })();
 
 // ── Online widget ──────────────────────────────────────────────────────────
+let _owAllUsers = [];
+
+function owShowAll() {
+  const ul = document.getElementById('ow-list');
+  const mw = document.getElementById('ow-more-wrap');
+  if (ul) ul.innerHTML = _owAllUsers.map(_owRow).join('');
+  if (mw) mw.style.display = 'none';
+}
+
 (function initOnlineWidget() {
   let _vid = localStorage.getItem('_ow_vid');
   if (!_vid) { _vid = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now()); localStorage.setItem('_ow_vid', _vid); }
 
-  const ping = () => {
-    const authed = !!getUser();
-    fetch('/api/online/ping', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visitor_id: _vid, is_authed: authed })
-    }).catch(() => {});
+  const _page = () => {
+    const p = location.pathname;
+    if (p === '/' || p === '/index.html') return 'Главная';
+    if (p === '/servers.html')     return 'Серверы';
+    if (p === '/leaderboard.html') return 'Игроки';
+    if (p === '/clans.html')       return 'Кланы';
+    if (p === '/bans.html')        return 'Баны';
+    if (p === '/map.html')         return 'Карта';
+    if (p === '/faq.html')         return 'FAQ';
+    if (p === '/profile.html')     return 'Профиль';
+    if (p.startsWith('/news/'))    return 'Читает новость';
+    return 'Сайт';
   };
 
-  const roleColor = r => r === 'admin' ? 'var(--crimson)' : r === 'moder' ? 'var(--purple)' : 'var(--text)';
-
-  const load = async () => {
-    try {
-      const d = await fetch('/api/online').then(r => r.json());
-      const uc = document.getElementById('ow-users');
-      const gc = document.getElementById('ow-guests');
-      const ul = document.getElementById('ow-list');
-      if (uc) uc.textContent = d.users.length;
-      if (gc) gc.textContent = d.guests;
-      if (ul) ul.innerHTML = d.users.map(u => {
-        const av = u.avatar_url
-          ? `<img src="${u.avatar_url}" class="online-avatar" alt="" onerror="this.style.display='none'">`
-          : `<span class="online-dot"></span>`;
-        return `<a href="/user.html?u=${encodeURIComponent(u.username)}" class="online-user-row">
-          ${av}
-          <span class="online-name" style="color:${roleColor(u.role)};">${esc(u.username)}</span>
-        </a>`;
-      }).join('') || `<div style="font-size:.68rem;color:var(--muted);text-align:center;padding:.3rem 0;">Нет активных пользователей</div>`;
-    } catch {}
+  const ping = () => {
+    const u = getUser();
+    fetch('/api/online/ping', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitor_id: _vid, is_authed: !!u, username: u?.username || null, page: _page() })
+    }).catch(() => {});
   };
 
   ping();
   setInterval(ping, 30000);
+
+  const load = async () => {
+    try {
+      const d = await fetch('/api/online').then(r => r.json());
+      document.getElementById('ow-total').textContent  = d.total;
+      document.getElementById('ow-users').textContent  = d.users.length;
+      document.getElementById('ow-guests').textContent = d.guests;
+      _owAllUsers = d.users;
+      const LIMIT = 5;
+      const ul = document.getElementById('ow-list');
+      const mw = document.getElementById('ow-more-wrap');
+      const ml = document.getElementById('ow-more-label');
+      if (!ul) return;
+      const visible = d.users.slice(0, LIMIT);
+      ul.innerHTML = visible.map(_owRow).join('')
+        || `<div style="font-size:.68rem;color:var(--muted);text-align:center;padding:.3rem 0;">Нет активных пользователей</div>`;
+      if (d.users.length > LIMIT) {
+        if (ml) ml.textContent = `▾ ещё ${d.users.length - LIMIT}`;
+        if (mw) mw.style.display = '';
+      } else {
+        if (mw) mw.style.display = 'none';
+      }
+    } catch {}
+  };
+
   load();
   setInterval(load, 60000);
 })();
+
+function _owRow(u) {
+  const roleColor = u.role === 'admin' ? 'var(--crimson)' : u.role === 'moder' ? 'var(--purple)' : 'var(--text)';
+  const init = (u.username[0] || '?').toUpperCase();
+  const [bg, bd, cl] = u.role === 'admin'
+    ? ['rgba(200,0,42,.28)', 'rgba(220,0,50,.5)', '#f87171']
+    : u.role === 'moder'
+    ? ['rgba(153,85,238,.28)', 'rgba(153,85,238,.5)', '#c084fc']
+    : ['rgba(60,30,90,.45)', 'rgba(110,70,150,.4)', '#c8c5d4'];
+  const ph = `<span class="online-avatar-ph" style="background:${bg};border:1px solid ${bd};color:${cl};">${init}</span>`;
+  const av = u.avatar_url
+    ? `<img src="${u.avatar_url}" class="online-avatar" alt="" onerror="this.outerHTML='${ph.replace(/'/g, "\\'")}'">` : ph;
+  const sub = u.page ? `<div style="font-size:.58rem;color:var(--muted);margin-top:.05rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(u.page)}</div>` : '';
+  return `<a href="/user.html?u=${encodeURIComponent(u.username)}" class="online-user-row">
+    ${av}
+    <div style="flex:1;min-width:0;">
+      <div class="online-name" style="color:${roleColor};">${esc(u.username)}</div>
+      ${sub}
+    </div>
+    <span class="online-dot"></span>
+  </a>`;
+}
 
 async function loadLatestNews() {
   try {
