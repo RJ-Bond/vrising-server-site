@@ -173,15 +173,6 @@
 
     /* ── Players bar ── */
     .p-bar { height: 3px; background: rgba(110,0,20,0.2); border-radius: 2px; overflow: hidden; }
-
-    /* ── Server mini-card ── */
-    .srv-mini-card {
-      background: rgba(var(--mini-rgb,200,0,42),.04);
-      border: 1px solid rgba(var(--mini-rgb,200,0,42),.2);
-      border-left: 3px solid rgba(var(--mini-rgb,200,0,42),.65);
-      border-radius: .6rem;
-      padding: .85rem .85rem .85rem .75rem;
-    }
     .p-fill { height: 100%; border-radius: 2px; background: linear-gradient(90deg, var(--purple), var(--crimson)); transition: width .8s ease; }
     .left-connect-btn {
       display:flex; align-items:center; justify-content:center; gap:.5rem;
@@ -1453,15 +1444,13 @@
     <!-- Server 1 -->
     <h2 style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.85rem;text-align:center;">— Мониторинг серверов —</h2>
 
-    <div class="srv-mini-card" style="--mini-rgb:200,0,42;">
-      <div id="left-status" style="margin-bottom:.75rem;">
-        <div style="width:100%;height:3rem;border-radius:.5rem;background:rgba(110,0,20,0.1);animation:pulse 2s ease-in-out infinite;"></div>
-      </div>
-      <div id="left-circles"></div>
-      <div id="left-connect" style="margin-top:.75rem;"></div>
-      <div id="left-players" style="margin-top:.6rem;"></div>
-      <div id="left-info" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.55rem;"></div>
+    <div id="left-status" style="margin-bottom:.75rem;">
+      <div style="width:100%;height:3rem;border-radius:.5rem;background:rgba(110,0,20,0.1);animation:pulse 2s ease-in-out infinite;"></div>
     </div>
+    <div id="left-circles"></div>
+    <div id="left-connect" style="margin-top:.75rem;"></div>
+    <div id="left-players" style="margin-top:.6rem;"></div>
+    <div id="left-info" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.55rem;"></div>
 
     <!-- Latency + stats -->
     <div id="monitor-stats" style="display:none;">
@@ -1470,14 +1459,13 @@
     </div>
 
     <!-- Server 2 (shown only when enabled) -->
-    <div id="server2-section" style="display:none;margin-top:.85rem;">
-      <div class="srv-mini-card" style="--mini-rgb:124,58,237;">
-        <div id="left-status2" style="margin-bottom:.75rem;"></div>
-        <div id="left-circles2"></div>
-        <div id="left-connect2" style="margin-top:.75rem;"></div>
-        <div id="left-players2" style="margin-top:.6rem;"></div>
-        <div id="left-info2" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.55rem;"></div>
-      </div>
+    <div id="server2-section" style="display:none;">
+      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.55),transparent);margin:1.1rem 0;"></div>
+      <div id="left-status2" style="margin-bottom:.75rem;"></div>
+      <div id="left-circles2"></div>
+      <div id="left-connect2" style="margin-top:.75rem;"></div>
+      <div id="left-players2" style="margin-top:.6rem;"></div>
+      <div id="left-info2" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.55rem;"></div>
       <div id="stat-uptime7d-s2" style="display:none;"></div>
       <div id="stat-peak7d-s2" style="display:none;"></div>
     </div>
