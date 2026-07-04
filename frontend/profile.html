@@ -388,6 +388,7 @@
   </p>
 </div>
 
+<script src="/common.js"></script>
 <script>
 const API = '/api';
 
@@ -413,22 +414,13 @@ const RANKS = [
 ];
 
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
-function getUser()  { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } }
+// getUser, _dateOpts, fmtDate, fmtDateTime — defined in common.js
 async function doLogout() {
   await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
   localStorage.removeItem('user'); sessionStorage.removeItem('user');
   localStorage.removeItem('token'); sessionStorage.removeItem('token');
   window.location.href = '/login.html';
 }
-window.__TZ = 'Europe/Moscow';
-window.__H12 = false;
-window.__DATEFMT = 'dd.mm.yyyy';
-function _dateOpts() {
-  const m = {'dd.mm.yyyy':{day:'2-digit',month:'2-digit',year:'numeric'},'dd.mm.yy':{day:'2-digit',month:'2-digit',year:'2-digit'},'d mmm yyyy':{day:'numeric',month:'short',year:'numeric'},'d mmmm yyyy':{day:'numeric',month:'long',year:'numeric'}};
-  return { timeZone: window.__TZ||'Europe/Moscow', ...(m[window.__DATEFMT]||m['dd.mm.yyyy']) };
-}
-function fmtDate(iso) { if(!iso) return '—'; return new Date(iso).toLocaleDateString('ru-RU', _dateOpts()); }
-function fmtDateTime(iso) { if(!iso) return '—'; return new Date(iso).toLocaleString('ru-RU', {..._dateOpts(), hour:'2-digit', minute:'2-digit', hour12:!!(window.__H12) }); }
 function fmtSec(s) {
   const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
@@ -701,24 +693,7 @@ async function saveAdminTitle() {
   setTimeout(() => { statusEl.textContent = ''; }, 3000);
 }
 
-// ── Badge section ────────────────────────────────────────────────────────────
-function _renderAdminBadge(u) {
-  if (u.role !== 'admin') return '';
-  const label = _esc(u.admin_title || 'Админ');
-  const icon  = u.badge_icon_url;
-  const style = u.badge_style || 'default';
-  const B = 'display:inline-flex;align-items:center;gap:.28rem;font-size:.6rem;font-weight:700;letter-spacing:.06em;padding:.15rem .6rem;white-space:nowrap;';
-  if (icon) return `<span style="${B}border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;"><img src="${_esc(icon)}" style="width:13px;height:13px;object-fit:contain;border-radius:2px;flex-shrink:0;">${label}</span>`;
-  switch (style) {
-    case 'crown':   return `<span style="${B}border-radius:9999px;background:linear-gradient(135deg,rgba(200,150,0,.28),rgba(255,195,0,.14));border:1px solid rgba(225,175,0,.62);color:#f5c842;box-shadow:0 0 9px rgba(200,150,0,.18);"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;margin-bottom:1px;"><path d="M5 16 3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm2 3a1 1 0 0 0 0 2h10a1 1 0 0 0 0-2H7z"/></svg>${label}</span>`;
-    case 'shield':  return `<span style="${B}border-radius:.42rem;background:linear-gradient(135deg,rgba(160,0,30,.32),rgba(90,0,15,.18));border:1px solid rgba(205,0,42,.52);color:#f87171;"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>${label}</span>`;
-    case 'diamond': return `<span style="${B}border-radius:9999px;background:linear-gradient(135deg,rgba(110,0,210,.3),rgba(155,0,255,.15));border:1px solid rgba(165,0,255,.48);color:#c4b5fd;box-shadow:0 0 8px rgba(130,0,210,.15);">✦ ${label}</span>`;
-    case 'flame':   return `<span style="${B}border-radius:.42rem;background:linear-gradient(135deg,rgba(200,55,0,.3),rgba(255,125,0,.14));border:1px solid rgba(225,80,0,.52);color:#fb923c;">🔥 ${label}</span>`;
-    case 'swords':  return `<span style="${B}border-radius:.42rem;background:linear-gradient(135deg,rgba(25,25,60,.55),rgba(50,50,100,.32));border:1px solid rgba(100,100,185,.42);color:#a5b4fc;">⚔ ${label}</span>`;
-    default:        return `<span style="${B}border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;">${label}</span>`;
-  }
-}
-
+// ── Badge section — _renderAdminBadge defined in common.js ──────────────────
 const _BADGE_STYLES = [
   { key:'default', label:'Стандарт' },
   { key:'crown',   label:'Корона' },
@@ -808,8 +783,8 @@ async function clearBadgeIcon() {
 
 loadProfile();
 
+// _esc → esc (defined in common.js)
 // ── Notification bell ──────────────────────────────────────────────────────
-function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 let _notifOpen = false;
 async function loadNotifications() {
   const res = await fetch('/api/notifications', {credentials:'include'});
@@ -827,10 +802,10 @@ async function loadNotifications() {
       list.innerHTML = d.items.map(n => `
         <div style="padding:.65rem 1rem;border-bottom:1px solid rgba(150,0,28,0.1);background:${n.read?'transparent':'rgba(200,0,40,0.05)'};">
           <div style="font-size:.75rem;color:#e2d8f0;">
-            ${n.type==='reply'?`<strong>@${_esc(n.data?.from_username||'')}</strong> ответил на ваш комментарий`:'Новое уведомление'}
+            ${n.type==='reply'?`<strong>@${esc(n.data?.from_username||'')}</strong> ответил на ваш комментарий`:'Новое уведомление'}
           </div>
-          ${n.data?.preview ? `<div style="font-size:.68rem;color:#9488a8;margin-top:.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(n.data.preview)}</div>` : ''}
-          ${n.data?.news_slug ? `<a href="/?news=${_esc(n.data.news_slug)}" style="font-size:.65rem;color:#c8002a;text-decoration:none;">Перейти →</a>` : ''}
+          ${n.data?.preview ? `<div style="font-size:.68rem;color:#9488a8;margin-top:.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(n.data.preview)}</div>` : ''}
+          ${n.data?.news_slug ? `<a href="/?news=${esc(n.data.news_slug)}" style="font-size:.65rem;color:#c8002a;text-decoration:none;">Перейти →</a>` : ''}
         </div>`).join('');
     }
   }

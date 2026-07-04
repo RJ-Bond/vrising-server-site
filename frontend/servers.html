@@ -272,10 +272,11 @@
   </div>
 </div>
 
+<script src="/common.js"></script>
 <script>
 const API = '/api';
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+// esc — defined in common.js
 function fmtDuration(sec) {
   if (sec < 60) return `${sec}с`;
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
@@ -321,14 +322,7 @@ function applySiteBackground(bg) {
 
 let _wipeSettings = {};
 let _baseTitle = 'V Rising — Сервера';
-window.__TZ = 'Europe/Moscow';
-window.__H12 = false;
-window.__DATEFMT = 'dd.mm.yyyy';
-function _dateOpts() {
-  const m = {'dd.mm.yyyy':{day:'2-digit',month:'2-digit',year:'numeric'},'dd.mm.yy':{day:'2-digit',month:'2-digit',year:'2-digit'},'d mmm yyyy':{day:'numeric',month:'short',year:'numeric'},'d mmmm yyyy':{day:'numeric',month:'long',year:'numeric'}};
-  return { timeZone: window.__TZ||'Europe/Moscow', ...(m[window.__DATEFMT]||m['dd.mm.yyyy']) };
-}
-function fmtDate(iso) { if(!iso) return '—'; return new Date(iso).toLocaleDateString('ru-RU', _dateOpts()); }
+// _dateOpts, fmtDate — defined in common.js
 let _onlineCounts = { 1: 0, 2: 0 };
 
 function updatePageTitle() {

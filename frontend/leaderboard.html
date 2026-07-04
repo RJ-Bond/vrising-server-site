@@ -342,6 +342,7 @@
   </div>
 </div>
 
+<script src="/common.js"></script>
 <script>
 const API = '/api';
 const PER_PAGE = 25;
@@ -351,16 +352,7 @@ let _searchTimer = null;
 let _fetchBarTimer = null;
 
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
-function getUser()  { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } }
-function esc(s)     { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-/* ⑧ Gradient avatar from username hash */
-function nameGradient(name) {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = Math.imul(h, 31) + name.charCodeAt(i) | 0;
-  const hue = Math.abs(h) % 360;
-  return `linear-gradient(135deg,hsl(${hue},60%,20%),hsl(${(hue+50)%360},45%,13%))`;
-}
+// getUser, esc, nameGradient — defined in common.js
 
 /* ③ Fetch progress bar */
 function showFetchBar() {
@@ -392,13 +384,7 @@ function fmtPlaytime(sec) {
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
 }
-window.__TZ = 'Europe/Moscow';
-window.__H12 = false;
-window.__DATEFMT = 'dd.mm.yyyy';
-function _dateOpts() {
-  const m = {'dd.mm.yyyy':{day:'2-digit',month:'2-digit',year:'numeric'},'dd.mm.yy':{day:'2-digit',month:'2-digit',year:'2-digit'},'d mmm yyyy':{day:'numeric',month:'short',year:'numeric'},'d mmmm yyyy':{day:'numeric',month:'long',year:'numeric'}};
-  return { timeZone: window.__TZ||'Europe/Moscow', ...(m[window.__DATEFMT]||m['dd.mm.yyyy']) };
-}
+// _dateOpts — defined in common.js
 function fmtSeen(iso) {
   if (!iso) return '—';
   return new Date(iso).toLocaleDateString('ru-RU', { timeZone:window.__TZ||'Europe/Moscow', day:'2-digit', month:'2-digit', year:'2-digit' });
