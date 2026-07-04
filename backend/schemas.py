@@ -131,6 +131,7 @@ class PlayerRecordOut(BaseModel):
     total_seconds: int
     last_seen: Optional[datetime] = None
     last_duration: int = 0
+    session_count: int = 0
     avatar_url: Optional[str] = None  # populated at runtime from User table, not stored in PlayerRecord
 
     model_config = {"from_attributes": True}

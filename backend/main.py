@@ -277,6 +277,7 @@ async def lifespan(app: FastAPI):
             "CREATE TABLE IF NOT EXISTS revoked_tokens (id INTEGER PRIMARY KEY, token VARCHAR(512) NOT NULL UNIQUE, expires_at DATETIME NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
             "CREATE INDEX IF NOT EXISTS ix_revoked_tokens_token ON revoked_tokens(token)",
             "ALTER TABLE users ADD COLUMN revoke_before DATETIME DEFAULT NULL",
+            "ALTER TABLE player_records ADD COLUMN session_count INTEGER NOT NULL DEFAULT 0",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -743,12 +744,14 @@ async def _track_players(db: AsyncSession, players: list, server_num: int):
                 total_seconds=cur_dur,
                 last_seen=now,
                 last_duration=cur_dur,
+                session_count=1,
             ))
         else:
             if cur_dur >= rec.last_duration:
                 rec.total_seconds += cur_dur - rec.last_duration
             else:
                 rec.total_seconds += cur_dur
+                rec.session_count += 1
             rec.last_duration = cur_dur
             rec.last_seen = now
     await db.commit()
@@ -1738,6 +1741,16 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         select(func.max(PlayerRecord.last_seen)).where(PlayerRecord.player_name == lookup_name)
     )
     last_seen = last_seen_result.scalar_one()
+    session_count_result = await db.execute(
+        select(func.sum(PlayerRecord.session_count)).where(PlayerRecord.player_name == lookup_name)
+    )
+    session_count = int(session_count_result.scalar_one() or 0)
+    last_dur_result = await db.execute(
+        select(PlayerRecord.last_duration).where(
+            PlayerRecord.player_name == lookup_name
+        ).order_by(PlayerRecord.last_seen.desc()).limit(1)
+    )
+    last_duration = last_dur_result.scalar_one_or_none() or 0
     clan = None
     if user.clan_id:
         clan_result = await db.execute(select(Clan).where(Clan.id == user.clan_id))
@@ -1756,6 +1769,8 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         "game_nickname": user.game_nickname,
         "total_seconds": total_seconds,
         "last_seen": last_seen.isoformat() if last_seen else None,
+        "session_count": session_count,
+        "last_duration": last_duration,
         "clan": clan,
         "admin_title": user.admin_title,
         "last_active_at": user.last_active_at.isoformat() if user.last_active_at else None,

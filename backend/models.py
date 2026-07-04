@@ -85,6 +85,7 @@ class PlayerRecord(Base):
     total_seconds = Column(Integer, nullable=False, default=0)
     last_seen = Column(DateTime, nullable=True)
     last_duration = Column(Integer, nullable=False, default=0)
+    session_count = Column(Integer, nullable=False, default=0)
 
     __table_args__ = (UniqueConstraint("server_num", "player_name", name="uq_player_server"),)
 
