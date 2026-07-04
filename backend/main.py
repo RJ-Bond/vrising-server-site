@@ -3010,7 +3010,8 @@ async def vote_poll(
     poll = (await db.execute(select(Poll).where(Poll.news_id == news.id))).scalar_one_or_none()
     if not poll:
         raise HTTPException(404, "Poll not found")
-    if poll.ends_at and datetime.now(timezone.utc) > poll.ends_at:
+    _ends_at = poll.ends_at.replace(tzinfo=timezone.utc) if poll.ends_at and poll.ends_at.tzinfo is None else poll.ends_at
+    if _ends_at and datetime.now(timezone.utc) > _ends_at:
         raise HTTPException(400, "Poll has ended")
 
     existing = (await db.execute(
