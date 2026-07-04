@@ -238,6 +238,7 @@
     .lb-page-label { font-size:.78rem; color:var(--muted); }
 
     @media (max-width:480px) { .lb-seen { display:none; } }
+    @media (max-width:480px) { .lb-col-seen { display:none; } }
 
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
@@ -258,6 +259,16 @@
       .lb-rank { width:1.6rem; font-size:.88rem; }
       .lb-time { font-size:.78rem; }
     }
+    .lb-stat-tile {
+      background:var(--panel); border:1px solid var(--border);
+      border-radius:.75rem; padding:.75rem .6rem;
+      text-align:center; display:flex; flex-direction:column; align-items:center; gap:.2rem;
+    }
+    .lb-stat-icon { font-size:1rem; line-height:1; }
+    .lb-stat-val { font-family:'Oswald',sans-serif; font-size:.92rem; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+    .lb-stat-leader-name { font-size:.78rem; }
+    .lb-stat-label { font-size:.58rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
+    @media (max-width:480px) { .lb-stat-tile { padding:.6rem .4rem; } .lb-stat-val { font-size:.8rem; } }
   </style>
 </head>
 <body>
@@ -326,6 +337,23 @@
     <p style="font-size:.8rem;color:var(--muted);">Рейтинг по суммарному времени в игре</p>
   </div>
 
+  <div id="lb-stats-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;margin-bottom:.85rem;">
+    <div class="lb-stat-tile" id="lb-stat-online">
+      <div class="lb-stat-icon">🟢</div>
+      <div class="lb-stat-val" id="lb-stat-online-val">—</div>
+      <div class="lb-stat-label">Онлайн сейчас</div>
+    </div>
+    <div class="lb-stat-tile" id="lb-stat-leader">
+      <div class="lb-stat-icon">🏆</div>
+      <div class="lb-stat-val lb-stat-leader-name" id="lb-stat-leader-val">—</div>
+      <div class="lb-stat-label">Лидер сервера</div>
+    </div>
+    <div class="lb-stat-tile">
+      <div class="lb-stat-icon">📅</div>
+      <div class="lb-stat-val" id="lb-stat-period-val">Всё время</div>
+      <div class="lb-stat-label">Период</div>
+    </div>
+  </div>
   <div class="g-card">
     <div class="lb-controls">
       <div class="lb-toggle" id="lb-server-toggle">
@@ -342,6 +370,13 @@
       <input id="lb-search" type="text" class="lb-search-input" placeholder="Поиск по нику…" oninput="onSearchInput()">
       <button class="lb-find-me-btn" id="lb-find-me" onclick="findMe()"
               style="display:none;" data-tip="Перейти к своей строке">📍 Найти себя</button>
+    </div>
+    <div id="lb-col-header" style="display:flex;align-items:center;gap:.9rem;padding:.2rem .5rem .35rem;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;border-bottom:1px solid rgba(255,255,255,0.05);margin-bottom:.2rem;">
+      <span style="width:2.2rem;flex-shrink:0;"></span>
+      <span style="width:2rem;flex-shrink:0;"></span>
+      <span style="flex:1;">Игрок</span>
+      <span style="flex-shrink:0;">Время</span>
+      <span class="lb-col-seen" style="min-width:5.5rem;text-align:right;flex-shrink:0;">Последний вход</span>
     </div>
     <div id="lb-list"></div>
     <div class="lb-pagination" id="lb-pagination" style="display:none;">
@@ -418,6 +453,12 @@ function activityBadge(lastSeen) {
   const diff = Date.now() - new Date(lastSeen).getTime();
   if (diff < 86400000)  return '<span class="lb-badge" title="Был онлайн последние 24ч">🔥</span>';
   if (diff < 604800000) return '<span class="lb-badge" title="Был онлайн последние 7 дней">⚡</span>';
+  return '';
+}
+
+function achievementBadge(totalSeconds) {
+  if (totalSeconds >= 1800000) return '<span class="lb-badge" title="500+ часов на сервере">💀</span>';
+  if (totalSeconds >= 360000)  return '<span class="lb-badge" title="100+ часов на сервере">🏆</span>';
   return '';
 }
 
@@ -580,10 +621,10 @@ async function loadLeaderboard() {
           : `<span class="lb-avatar" style="background:${grad}">${esc(name.charAt(0).toUpperCase())}</span>`;
         const lastSession = p.last_duration > 0
           ? `<span class="lb-last-session">посл. сессия: ${fmtPlaytime(p.last_duration)}</span>` : '';
-        const badge    = activityBadge(p.last_seen);
+        const badge    = activityBadge(p.last_seen) + achievementBadge(p.total_seconds);
         const barPct   = Math.round((p.total_seconds / maxSeconds) * 100);
         const barColor = rank === 1 ? '#ffd54a' : rank === 2 ? 'rgba(214,214,232,0.7)' : rank === 3 ? '#e0a361' : 'rgba(160,0,40,0.55)';
-        return `<div class="lb-row${isMe ? ' me' : ''}${podiumCls}" onclick="openPlayerModal('${esc(name)}',${_server},${rank})" style="cursor:pointer;">
+        return `<div class="lb-row${isMe ? ' me' : ''}${podiumCls}" onclick="openPlayerModal('${esc(name)}',${_server},${rank})" style="cursor:pointer;animation:fade-up .35s ease both;animation-delay:${Math.min(i * 25, 300)}ms;">
           <span class="lb-rank ${rankCls}">${medal ? `<span class="lb-medal">${medal}</span>` : rank}</span>
           <span class="lb-avatar-wrap">${avatarHtml}<span class="lb-online-dot${isOnline ? ' show' : ''}"></span></span>
           <span class="lb-name-col">
@@ -599,6 +640,13 @@ async function loadLeaderboard() {
         </div>`;
       }).join('');
     }
+    // update stats tiles
+    const onlineEl = document.getElementById('lb-stat-online-val');
+    const leaderEl = document.getElementById('lb-stat-leader-val');
+    const periodEl = document.getElementById('lb-stat-period-val');
+    if (onlineEl) onlineEl.textContent = _onlineNames.size > 0 ? _onlineNames.size : '0';
+    if (leaderEl && items.length) leaderEl.textContent = items[0].player_name || '—';
+    if (periodEl) periodEl.textContent = _period === 'week' ? 'Неделя' : _period === 'month' ? 'Месяц' : 'Всё время';
     pag.style.display = (items.length === PER_PAGE || _page > 1) ? 'flex' : 'none';
     document.getElementById('lb-page-label').textContent = `Стр. ${_page}`;
     document.getElementById('lb-prev').disabled = _page <= 1;
@@ -762,6 +810,16 @@ async function openPlayerModal(playerName, serverNum, playerRank) {
 function closePlayerModal() {
   if (_playerModal) { _playerModal.remove(); _playerModal = null; }
 }
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePlayerModal();
+  if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+    e.preventDefault();
+    const s = document.getElementById('lb-search');
+    if (s) { s.focus(); s.select(); }
+  }
+});
 </script>
 </body>
 </html>
