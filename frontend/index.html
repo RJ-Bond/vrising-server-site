@@ -2615,7 +2615,9 @@ async function loadFeatured() {
   const wrap = document.getElementById('featured-wrap');
   if (!wrap) return;
   try {
-    const data = await fetch(`${API}/news?tag=featured&per_page=1&page=1`).then(r => r.json());
+    const _fr = await fetch(`${API}/news?tag=featured&per_page=1&page=1`);
+    if (!_fr.ok) { wrap.style.display = 'none'; return; }
+    const data = await _fr.json();
     if (!data.items || !data.items.length) { wrap.style.display = 'none'; return; }
     const n = data.items[0];
     const authorName = esc(n.author.username);
@@ -2708,7 +2710,9 @@ async function loadNews(page = 1, append = false) {
     const params = new URLSearchParams({ page, per_page: 9 });
     if (_activeTag) params.set('tag', _activeTag);
     if (_searchTerm) params.set('search', _searchTerm);
-    const data = await fetch(`${API}/news?${params}`).then(r => r.json());
+    const _lr = await fetch(`${API}/news?${params}`);
+    if (!_lr.ok) throw new Error(`HTTP ${_lr.status}`);
+    const data = await _lr.json();
     _newsPage = data.page;
     _newsTotalPages = data.pages;
     if (!append) list.innerHTML = '';
@@ -2794,6 +2798,7 @@ async function loadNews(page = 1, append = false) {
   });
   } catch(e) {
     if (loadingMore) loadingMore.style.display = 'none';
+    if (!append && list) list.innerHTML = `<div class="news-empty"><div class="news-empty-icon">⚠</div><div class="news-empty-title">Ошибка загрузки</div><p class="news-empty-sub">Не удалось получить новости. Попробуйте обновить страницу.</p></div>`;
   } finally {
     hideFetchBar();
   }

@@ -1838,8 +1838,8 @@ async function openEditor(news) {
     // NewsListOut from the admin list does not include content — fetch it
     if (news.content == null) {
       try {
-        const r = await fetch(`${API}/news/${news.slug}`);
-        if (r.ok) { const full = await r.json(); news = { ...news, content: full.content }; }
+        const r = await fetch(`${API}/admin/news/${news.id}`, { credentials: 'include' });
+        if (r.ok) { news = await r.json(); }
       } catch {}
     }
     document.getElementById('editor-title-label').textContent = 'Редактировать новость';
@@ -3519,7 +3519,13 @@ loadWipeHistory().then(() => {
   const slug = new URLSearchParams(window.location.search).get('edit');
   if (!slug) return;
   try {
-    const res = await fetch(`${API}/news/${slug}`);
+    // Find news by slug via admin list, then load full data via admin endpoint
+    const listRes = await fetch(`${API}/admin/news?per_page=100`, { credentials: 'include' });
+    if (!listRes.ok) return;
+    const listData = await listRes.json();
+    const found = listData.items.find(n => n.slug === slug);
+    if (!found) return;
+    const res = await fetch(`${API}/admin/news/${found.id}`, { credentials: 'include' });
     if (!res.ok) return;
     const news = await res.json();
     openEditor(news);

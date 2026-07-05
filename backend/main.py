@@ -1699,6 +1699,19 @@ async def admin_list_news(
     )
 
 
+@app.get("/api/admin/news/{news_id}", response_model=NewsOut)
+async def admin_get_news(
+    news_id: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(select(News).where(News.id == news_id))
+    news = result.scalar_one_or_none()
+    if news is None:
+        raise HTTPException(status_code=404, detail="News not found")
+    return NewsOut.model_validate(news)
+
+
 @app.post("/api/admin/news", response_model=NewsOut, status_code=201)
 async def create_news(
     body: NewsCreate,
