@@ -199,12 +199,12 @@
           <div id="notif-list" style="max-height:320px;overflow-y:auto;"></div>
         </div>
       </div>
-      <button onclick="doLogout()" class="btn btn-ghost" style="font-size:.72rem;">Выйти</button>
+      <button id="nav-logout-btn" onclick="doLogout()" class="btn btn-ghost" style="font-size:.72rem;display:none;">Выйти</button>
     </div>
   </div>
 </nav>
 
-<div style="max-width:680px;margin:2rem auto 3rem;padding:0 1rem;">
+<div id="profile-main" style="max-width:680px;margin:2rem auto 3rem;padding:0 1rem;display:none;">
 
   <!-- Profile cover + avatar header -->
   <div class="g-card" style="overflow:hidden;padding:0;margin-bottom:1.1rem;">
@@ -384,20 +384,21 @@
     </div>
   </div>
 
-  <div id="profile-error" style="display:none;text-align:center;padding:3rem 1rem 4rem;">
-    <div style="font-size:2.8rem;margin-bottom:.75rem;filter:drop-shadow(0 0 18px rgba(200,0,42,.4));">⚔️</div>
-    <div style="font-family:'Cinzel',serif;font-size:1.25rem;color:var(--text);margin-bottom:.4rem;">Войдите в аккаунт</div>
-    <div style="font-size:.82rem;color:var(--muted);max-width:300px;margin:0 auto 1.8rem;">
-      Чтобы управлять профилем, менять аватар и отслеживать статистику — нужно войти или создать аккаунт.
-    </div>
-    <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;">
-      <a href="/login.html" style="display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1.5rem;background:linear-gradient(135deg,rgba(200,0,42,.7),rgba(140,0,25,.5));border:1px solid rgba(220,0,50,.55);border-radius:.5rem;color:#f8d7da;font-size:.85rem;font-weight:600;text-decoration:none;transition:filter .15s;" onmouseover="this.style.filter='brightness(1.2)'" onmouseout="this.style.filter=''">
-        🔑 Войти
-      </a>
-      <a href="/register.html" style="display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1.5rem;background:rgba(14,5,22,.7);border:1px solid rgba(180,0,35,.35);border-radius:.5rem;color:var(--muted);font-size:.85rem;font-weight:600;text-decoration:none;transition:filter .15s,color .15s;" onmouseover="this.style.color='var(--text)';this.style.filter='brightness(1.15)'" onmouseout="this.style.color='var(--muted)';this.style.filter=''">
-        📜 Зарегистрироваться
-      </a>
-    </div>
+</div>
+
+<div id="profile-error" style="display:none;text-align:center;padding:3rem 1rem 4rem;max-width:680px;margin:2rem auto;">
+  <div style="font-size:2.8rem;margin-bottom:.75rem;filter:drop-shadow(0 0 18px rgba(200,0,42,.4));">⚔️</div>
+  <div style="font-family:'Cinzel',serif;font-size:1.25rem;color:var(--text);margin-bottom:.4rem;">Войдите в аккаунт</div>
+  <div style="font-size:.82rem;color:var(--muted);max-width:300px;margin:0 auto 1.8rem;">
+    Чтобы управлять профилем, менять аватар и отслеживать статистику — нужно войти или создать аккаунт.
+  </div>
+  <div style="display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap;">
+    <a href="/login.html" style="display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1.5rem;background:linear-gradient(135deg,rgba(200,0,42,.7),rgba(140,0,25,.5));border:1px solid rgba(220,0,50,.55);border-radius:.5rem;color:#f8d7da;font-size:.85rem;font-weight:600;text-decoration:none;transition:filter .15s;" onmouseover="this.style.filter='brightness(1.2)'" onmouseout="this.style.filter=''">
+      🔑 Войти
+    </a>
+    <a href="/register.html" style="display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1.5rem;background:rgba(14,5,22,.7);border:1px solid rgba(180,0,35,.35);border-radius:.5rem;color:var(--muted);font-size:.85rem;font-weight:600;text-decoration:none;transition:filter .15s,color .15s;" onmouseover="this.style.color='var(--text)';this.style.filter='brightness(1.15)'" onmouseout="this.style.color='var(--muted)';this.style.filter=''">
+      📜 Зарегистрироваться
+    </a>
   </div>
 </div>
 
@@ -551,7 +552,12 @@ async function loadProfile() {
   buildCoverStars();
   try {
     const res = await fetch(`${API}/auth/me`, { credentials: 'include' });
-    if (!res.ok) { document.getElementById('profile-error').style.display = ''; return; }
+    if (!res.ok) {
+      document.getElementById('profile-error').style.display = '';
+      return;
+    }
+    document.getElementById('profile-main').style.display = '';
+    document.getElementById('nav-logout-btn').style.display = '';
     const u = await res.json();
     loadNotifications();
     setInterval(loadNotifications, 60000);
