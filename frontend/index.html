@@ -450,17 +450,24 @@
     .online-stat-n { font-size:1.1rem;font-family:'Cinzel',serif;line-height:1.2; }
     .online-stat-l { font-size:.58rem;color:var(--muted);margin-top:.1rem; }
     .online-user-row {
-      display:flex;align-items:center;gap:.45rem;text-decoration:none;
-      padding:.2rem .35rem;border-radius:.35rem;transition:background .15s;
+      display:flex;align-items:center;gap:.45rem;
+      padding:.2rem .35rem;border-radius:.35rem;transition:background .15s;cursor:default;
     }
     .online-user-row:hover { background:rgba(110,0,20,.2); }
+    .online-user-row:hover .ow-dm-btn { opacity:1; }
+    .ow-self { background:rgba(74,222,128,.06); }
+    .ow-leaving { animation:ow-fadeout .22s ease forwards;pointer-events:none; }
+    @keyframes ow-fadeout { to{opacity:0;transform:translateX(8px)} }
+    .ow-dm-btn { width:1.35rem;height:1.35rem;border-radius:50%;background:rgba(80,0,40,.5);border:1px solid rgba(150,0,30,.35);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:.6rem;cursor:pointer;flex-shrink:0;opacity:0;transition:opacity .15s,color .15s,background .15s;padding:0; }
+    .ow-dm-btn:hover { color:var(--text);background:rgba(130,0,50,.7); }
+    .ow-group-hdr { font-size:.55rem;color:var(--muted);letter-spacing:.06em;padding:.28rem .35rem .04rem;opacity:.7; }
     .online-dot { width:.42rem;height:.42rem;border-radius:50%;background:#4ade80;box-shadow:0 0 7px #4ade80;flex-shrink:0;animation:ow-pulse 2.4s ease-in-out infinite; }
     @keyframes ow-pulse { 0%,100%{box-shadow:0 0 4px #4ade80;opacity:1} 50%{box-shadow:0 0 12px #4ade80,0 0 20px rgba(74,222,128,.4);opacity:.85} }
     @keyframes ow-fadein { from{opacity:0;transform:translateX(-7px)} to{opacity:1;transform:none} }
     .ow-new { animation:ow-fadein .32s ease both; }
     .online-avatar { width:1.5rem;height:1.5rem;border-radius:50%;object-fit:cover;flex-shrink:0;border:1px solid rgba(110,0,20,.3); }
     .online-avatar-ph { width:1.5rem;height:1.5rem;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;font-size:.58rem;font-weight:700;font-family:'Cinzel',serif; }
-    .online-name { font-size:.72rem;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+    .online-name { font-size:.72rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
 
     @media (max-width: 1024px) {
       .main-grid { flex-direction: column !important; }
@@ -1374,6 +1381,7 @@
       <div style="font-size:.6rem;color:var(--muted);margin-top:.15rem;">
         <span id="ow-users">–</span> авторизован. · <span id="ow-guests">–</span> гостей
       </div>
+      <div id="ow-peak" style="font-size:.56rem;color:var(--muted);opacity:.6;margin-top:.12rem;display:none;"></div>
     </div>
 
     <div id="ow-list" style="display:flex;flex-direction:column;gap:.2rem;"></div>
@@ -1882,7 +1890,7 @@ let _owPrevUsernames = new Set();
 function owShowAll() {
   const ul = document.getElementById('ow-list');
   const mw = document.getElementById('ow-more-wrap');
-  if (ul) ul.innerHTML = _owAllUsers.map(u => _owRow(u, false)).join('');
+  if (ul) ul.innerHTML = _owRenderList(_owAllUsers);
   if (mw) mw.style.display = 'none';
 }
 
@@ -1922,49 +1930,87 @@ function owShowAll() {
       document.getElementById('ow-users').textContent  = d.users.length;
       document.getElementById('ow-guests').textContent = d.guests;
 
-      // Sort: admin → moder → user
-      const sorted = [...d.users].sort((a, b) =>
-        (ROLE_ORDER[a.role] ?? 2) - (ROLE_ORDER[b.role] ?? 2)
-      );
-      _owAllUsers = sorted;
-
-      // Page counters
-      const pc = document.getElementById('ow-pages');
-      if (pc) {
-        const counts = d.page_counts || {};
-        const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-        if (entries.length > 1 || (entries.length === 1 && d.users.length > 1)) {
-          pc.innerHTML = entries.map(([pg, n]) => `${PAGE_ICONS[pg] || '📄'} ${n}`).join(' · ');
-          pc.style.display = '';
-        } else {
-          pc.style.display = 'none';
-        }
+      // Peak today
+      const pk = document.getElementById('ow-peak');
+      if (pk && d.peak_today?.count > 1) {
+        const t = new Date(d.peak_today.at_ts * 1000).toLocaleTimeString('ru-RU',
+          {timeZone: window.__TZ || 'Europe/Moscow', hour:'2-digit', minute:'2-digit'});
+        pk.textContent = `▲ Пик сегодня: ${d.peak_today.count} чел. · ${t}`;
+        pk.style.display = '';
       }
+
+      // Sort: self first, then admin → moder → user
+      const me = getUser();
+      const myName = me ? me.username : null;
+      const sorted = [...d.users].sort((a, b) => {
+        if (myName && a.username === myName) return -1;
+        if (myName && b.username === myName) return 1;
+        return (ROLE_ORDER[a.role] ?? 2) - (ROLE_ORDER[b.role] ?? 2);
+      });
+      _owAllUsers = sorted;
 
       const LIMIT = 5;
       const ul = document.getElementById('ow-list');
       const mw = document.getElementById('ow-more-wrap');
       const ml = document.getElementById('ow-more-label');
       if (!ul) return;
-      const visible = sorted.slice(0, LIMIT);
+
+      // Fade-out users who left
       const newNames = new Set(d.users.map(u => u.username));
-      ul.innerHTML = visible.map(u => _owRow(u, !_owPrevUsernames.has(u.username))).join('')
-        || `<div style="font-size:.68rem;color:var(--muted);text-align:center;padding:.3rem 0;">Нет активных пользователей</div>`;
+      const leaving = [...ul.querySelectorAll('[data-uname]')].filter(el => !newNames.has(el.dataset.uname));
+      if (leaving.length) {
+        leaving.forEach(el => el.classList.add('ow-leaving'));
+        await new Promise(r => setTimeout(r, 240));
+      }
+
+      const visible = sorted.slice(0, LIMIT);
+      ul.innerHTML = _owRenderList(visible);
       _owPrevUsernames = newNames;
+
       if (sorted.length > LIMIT) {
         if (ml) ml.textContent = `▾ ещё ${sorted.length - LIMIT}`;
         if (mw) mw.style.display = '';
       } else {
         if (mw) mw.style.display = 'none';
       }
+
+      // Hide old page-counter strip (replaced by inline grouping)
+      const pc = document.getElementById('ow-pages');
+      if (pc) pc.style.display = 'none';
     } catch {}
   };
 
   load();
-  setInterval(load, 60000);
+  setInterval(load, 30000);
 })();
 
-function _owRow(u, isNew = false) {
+function _owFmtSince(ts) {
+  if (!ts) return '';
+  const sec = Math.floor((Date.now() / 1000) - ts);
+  if (sec < 60) return 'только что';
+  const m = Math.floor(sec / 60);
+  if (m < 60) return `${m} мин`;
+  const h = Math.floor(m / 60), rm = m % 60;
+  return rm > 0 ? `${h}ч ${rm}м` : `${h}ч`;
+}
+
+function _owRenderList(users) {
+  if (!users.length) return `<div style="font-size:.68rem;color:var(--muted);text-align:center;padding:.3rem 0;">Нет активных пользователей</div>`;
+  const me = getUser();
+  const myName = me ? me.username : null;
+  const pages = [...new Set(users.map(u => u.page || ''))];
+  const grouped = pages.length > 1;
+  if (!grouped) return users.map(u => _owRow(u, false, u.username === myName, !!myName && u.username !== myName)).join('');
+  const byPage = {};
+  users.forEach(u => { const k = u.page || ''; (byPage[k] = byPage[k] || []).push(u); });
+  return Object.entries(byPage).map(([pg, us]) => {
+    const icon = PAGE_ICONS[pg] || '📄';
+    const hdr = `<div class="ow-group-hdr">${icon} ${esc(pg || 'Сайт')}</div>`;
+    return hdr + us.map(u => _owRow(u, false, u.username === myName, !!myName && u.username !== myName)).join('');
+  }).join('');
+}
+
+function _owRow(u, isNew = false, isSelf = false, showDm = false) {
   const roleColor = u.role === 'admin' ? 'var(--crimson)' : u.role === 'moder' ? 'var(--purple)' : 'var(--text)';
   const init = (u.username[0] || '?').toUpperCase();
   const [bg, bd, cl] = u.role === 'admin'
@@ -1975,21 +2021,25 @@ function _owRow(u, isNew = false) {
   const ph = `<span class='online-avatar-ph' style='background:${bg};border:1px solid ${bd};color:${cl};'>${init}</span>`;
   const av = u.avatar_url
     ? `<img src="${u.avatar_url}" class="online-avatar" alt="" onerror="this.outerHTML='${ph.replace(/'/g, "\\'")}'">` : ph;
-  const pageIcon = PAGE_ICONS[u.page] || '';
-  const sub = u.page
-    ? `<div style="font-size:.58rem;color:var(--muted);margin-top:.05rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${pageIcon} ${esc(u.page)}</div>`
-    : '';
   const sword = u.in_game
     ? `<span title="Играет на сервере" style="font-size:.72rem;margin-left:.25rem;filter:drop-shadow(0 0 4px rgba(220,80,80,.7));">⚔️</span>`
     : '';
-  return `<a href="/user.html?u=${encodeURIComponent(u.username)}" class="online-user-row${isNew ? ' ow-new' : ''}">
-    ${av}
-    <div style="flex:1;min-width:0;">
-      <div class="online-name" style="color:${roleColor};">${esc(u.username)}${sword}</div>
-      ${sub}
-    </div>
+  const since = u.since ? `<span style="font-size:.55rem;color:var(--muted);opacity:.7;flex-shrink:0;">${_owFmtSince(u.since)}</span>` : '';
+  const dm = showDm
+    ? `<button class="ow-dm-btn" onclick="event.preventDefault();event.stopPropagation();window.location='/messages.html?to=${encodeURIComponent(u.username)}'" title="Написать">✉</button>`
+    : '';
+  const selfCls = isSelf ? ' ow-self' : '';
+  return `<div class="online-user-row${isNew ? ' ow-new' : ''}${selfCls}" data-uname="${esc(u.username)}">
+    <a href="/user.html?u=${encodeURIComponent(u.username)}" style="display:flex;align-items:center;gap:.45rem;flex:1;min-width:0;text-decoration:none;color:inherit;">
+      ${av}
+      <div style="flex:1;min-width:0;">
+        <div class="online-name" style="color:${roleColor};">${esc(u.username)}${sword}</div>
+      </div>
+    </a>
+    ${since}
+    ${dm}
     <span class="online-dot"></span>
-  </a>`;
+  </div>`;
 }
 
 async function loadLatestNews() {
