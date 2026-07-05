@@ -2856,7 +2856,32 @@ async function openNews(slug) {
     loadComments(slug);
     renderCommentForm(slug);
     loadReactions(slug);
-  } catch { alert('Не удалось загрузить новость.'); }
+  } catch(err) {
+    document.getElementById('modal-author').innerHTML = '';
+    document.getElementById('modal-title').textContent = '';
+    document.getElementById('modal-thumb').style.display = 'none';
+    document.getElementById('modal-content').innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2.5rem 1rem;text-align:center;gap:1.2rem;">
+        <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,rgba(140,0,20,0.35),rgba(80,0,10,0.2));border:1px solid rgba(200,0,35,0.3);display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px rgba(180,0,30,0.18);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(220,60,80,0.9)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </div>
+        <div>
+          <div style="font-family:'Cinzel',serif;font-size:1rem;font-weight:700;color:#d4c4e0;letter-spacing:.05em;margin-bottom:.4rem;">Не удалось загрузить новость</div>
+          <div style="font-size:.78rem;color:var(--muted);line-height:1.5;">Произошла ошибка при загрузке материала.<br>Попробуйте ещё раз или вернитесь позже.</div>
+        </div>
+        <div style="display:flex;gap:.6rem;">
+          <button onclick="openNews('${slug}')" style="padding:.5rem 1.1rem;background:linear-gradient(135deg,rgba(120,0,20,0.5),rgba(80,0,10,0.35));border:1px solid rgba(190,0,35,0.4);border-radius:.5rem;color:#d4c4e0;font-size:.8rem;font-weight:600;cursor:pointer;transition:all .2s;" onmouseover="this.style.boxShadow='0 0 14px rgba(180,0,30,0.35)'" onmouseout="this.style.boxShadow=''">⟳ Повторить</button>
+          <button onclick="closeModal()" style="padding:.5rem 1.1rem;background:rgba(14,5,22,0.5);border:1px solid rgba(110,0,20,0.3);border-radius:.5rem;color:var(--muted);font-size:.8rem;cursor:pointer;transition:all .2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">Закрыть</button>
+        </div>
+      </div>`;
+    document.getElementById('modal-reactions').innerHTML = '';
+    document.getElementById('modal-comments').innerHTML = '';
+    document.getElementById('modal-comment-form').innerHTML = '';
+    const pw = document.getElementById('poll-wrap');
+    if (pw) pw.style.display = 'none';
+    document.getElementById('modal-bg').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
 }
 
 function closeModal() {

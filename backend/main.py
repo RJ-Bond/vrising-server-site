@@ -39,6 +39,7 @@ def _fmt_dt(dt: datetime | None) -> str | None:
     return dt.isoformat()
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, text, or_, update
+from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
 from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken
@@ -1265,7 +1266,9 @@ async def get_news(slug: str, request: Request, db: AsyncSession = Depends(get_d
         news.views = (news.views or 0) + 1
         db.add(PageView(path=view_key, ip_hash=ip_hash))
     await db.commit()
-    result2 = await db.execute(select(News).where(News.id == news_id))
+    result2 = await db.execute(
+        select(News).options(selectinload(News.author)).where(News.id == news_id)
+    )
     news = result2.scalar_one()
     return NewsOut.model_validate(news)
 
@@ -1705,7 +1708,9 @@ async def admin_get_news(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
-    result = await db.execute(select(News).where(News.id == news_id))
+    result = await db.execute(
+        select(News).options(selectinload(News.author)).where(News.id == news_id)
+    )
     news = result.scalar_one_or_none()
     if news is None:
         raise HTTPException(status_code=404, detail="News not found")
