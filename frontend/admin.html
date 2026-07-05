@@ -128,6 +128,29 @@
     ::-webkit-scrollbar-track { background: rgba(8,0,16,0.5); }
     ::-webkit-scrollbar-thumb { background: rgba(150,0,28,0.5); border-radius: 3px; }
 
+    /* ── Datetime-local dark ── */
+    input[type="datetime-local"].dark-input { color-scheme: dark; }
+
+    /* ── Media library ── */
+    .media-thumb {
+      background:rgba(8,0,14,0.7); border:1px solid rgba(150,0,28,0.2); border-radius:.6rem;
+      overflow:hidden; cursor:pointer; transition:border-color .2s;
+      display:flex; flex-direction:column;
+    }
+    .media-thumb:hover { border-color:rgba(200,0,42,.45); }
+    .media-thumb-img { width:100%; height:90px; object-fit:cover; display:block; background:rgba(20,5,30,.5); }
+    .media-thumb-img.media-no-img { display:flex; align-items:center; justify-content:center; font-size:1.8rem; }
+    .media-thumb-info { padding:.45rem .5rem; }
+    .media-thumb-name { font-size:.6rem; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; margin-bottom:.3rem; }
+    .media-thumb-actions { display:flex; gap:.3rem; }
+
+    /* ── News analytics cells ── */
+    .news-stat-cell { display:inline-flex; align-items:center; gap:.25rem; font-size:.72rem; color:var(--muted); }
+    .news-stat-cell b { color:var(--text); }
+
+    /* ── Scheduled badge ── */
+    .badge-scheduled { background:rgba(30,60,0,0.3); border:1px solid rgba(90,160,0,0.4); color:#bef264; font-size:.65rem; padding:.15rem .5rem; border-radius:9999px; }
+
     /* ── Quill dark theme ── */
     .ql-toolbar.ql-snow {
       background: rgba(8,0,16,0.95) !important;
@@ -378,6 +401,7 @@
       <div class="sidebar-group-label">Сайт</div>
       <button id="btn-settings"  onclick="showSection('settings')"  class="sidebar-btn">⚙ Настройки</button>
       <button id="btn-files"     onclick="showSection('files')"     class="sidebar-btn">📁 Файлы</button>
+      <button id="btn-media"     onclick="showSection('media')"     class="sidebar-btn">🖼 Медиатека</button>
 
       <div class="sidebar-group-label">Люди</div>
       <button id="btn-users"     onclick="showSection('users')"     class="sidebar-btn">👥 Пользователи<span id="badge-users" class="sidebar-badge" style="display:none;"></span></button>
@@ -394,6 +418,7 @@
 
       <div class="sidebar-group-label">Система</div>
       <button id="btn-log"       onclick="showSection('log')"       class="sidebar-btn">📋 Лог</button>
+      <button id="btn-auditlog"  onclick="showSection('auditlog')"  class="sidebar-btn">📋 Журнал действий</button>
       <button id="btn-errors"    onclick="showSection('errors')"    class="sidebar-btn">❌ Ошибки</button>
     </div>
   </aside>
@@ -606,10 +631,15 @@
               <input id="editor-news-is-template" type="checkbox" style="width:1rem;height:1rem;accent-color:var(--accent);" />
               <label style="margin:0;text-transform:none;font-size:.9rem;color:var(--text);">Шаблон</label>
             </div>
-            <div id="schedule-wrap" style="display:flex;align-items:center;gap:.5rem;">
-              <label style="margin:0;text-transform:none;font-size:.85rem;color:var(--muted);">Запланировать:</label>
-              <input id="editor-news-publish-at" type="datetime-local" class="dark-input" style="width:auto;font-size:.82rem;padding:.35rem .6rem;" />
-              <button type="button" onclick="document.getElementById('editor-news-publish-at').value=''" style="font-size:.75rem;background:none;border:none;color:var(--muted);cursor:pointer;padding:0;">✕</button>
+            <div id="schedule-wrap" style="margin-top:.65rem;">
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.35rem;">
+                <input type="checkbox" id="schedule-cb" onchange="toggleSchedule()" style="cursor:pointer;">
+                Запланировать публикацию
+              </label>
+              <div id="schedule-dt-wrap" style="display:none;">
+                <input type="datetime-local" id="schedule-dt" class="dark-input" style="max-width:240px;">
+                <div style="font-size:.65rem;color:var(--muted);margin-top:.2rem;">Публикация произойдёт автоматически в указанное время</div>
+              </div>
             </div>
           </div>
           <div id="editor-error" class="error-box hidden" style="flex:1;margin:0 1rem;min-width:0;"></div>
@@ -1370,7 +1400,8 @@
       <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h1 class="section-title">Комментарии</h1>
         <div style="display:flex;align-items:center;gap:.75rem;">
-          <input id="comments-search" type="text" class="dark-input" placeholder="Поиск по автору, тексту, новости…" style="width:auto;max-width:260px;font-size:.82rem;padding:.4rem .7rem;" oninput="_commentsSearchDebounced()">
+          <input id="comments-search" type="text" class="dark-input" placeholder="Поиск по автору, тексту, новости…" style="width:auto;max-width:220px;font-size:.82rem;padding:.4rem .7rem;" oninput="_commentsSearchDebounced()">
+          <input id="comments-filter-news" type="text" class="dark-input" placeholder="Слаг новости…" style="width:auto;max-width:160px;font-size:.82rem;padding:.4rem .7rem;" oninput="_commentsSearchDebounced()">
           <span id="comments-total" style="font-size:.78rem;color:var(--muted);white-space:nowrap;"></span>
         </div>
       </div>
@@ -1537,6 +1568,39 @@
       <div id="errors-pagination" class="flex gap-2 mt-4"></div>
     </div>
 
+    <!-- MEDIA LIBRARY -->
+    <div id="section-media" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
+        <h2 class="section-title">Медиатека</h2>
+        <button onclick="loadMedia()" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
+      </div>
+      <div id="media-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;">
+        <div style="color:var(--muted);font-size:.82rem;grid-column:1/-1;text-align:center;padding:2rem 0;">Загрузка…</div>
+      </div>
+      <div id="media-empty" style="display:none;text-align:center;padding:3rem 1rem;color:var(--muted);font-size:.85rem;">Нет загруженных файлов</div>
+    </div>
+
+    <!-- AUDIT LOG (Журнал действий) -->
+    <div id="section-auditlog" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
+        <h2 class="section-title">Журнал действий</h2>
+        <button onclick="loadAuditLogSection(1)" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
+      </div>
+      <div class="glass-card" style="border-radius:.75rem;overflow:hidden;">
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Время</th><th>Администратор</th><th>Действие</th><th>Объект</th><th>Детали</th>
+            </tr></thead>
+            <tbody id="auditlog-body">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div id="auditlog-pagination" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:1rem;justify-content:center;"></div>
+    </div>
+
   </main>
 </div>
 
@@ -1673,9 +1737,12 @@ loadSidebarBadges();
 
 // ─── Sections ─────────────────────────────────────────────────────────────
 function showSection(name) {
-  ['dashboard','news','editor','settings','users','comments','players','files','log','resets','clans','reports','analytics','backups','errors'].forEach(s => {
+  ['dashboard','news','editor','settings','users','comments','players','files','log','resets','clans','reports','analytics','backups','errors','media','auditlog'].forEach(s => {
     const el = document.getElementById(`section-${s}`);
-    if (el) el.classList.toggle('hidden', s !== name);
+    if (el) {
+      if (s === 'media' || s === 'auditlog') el.style.display = (s === name ? '' : 'none');
+      else el.classList.toggle('hidden', s !== name);
+    }
     const btn = document.getElementById(`btn-${s}`);
     if (btn) btn.className = 'sidebar-btn' + (s === name ? ' active' : '');
   });
@@ -1694,6 +1761,8 @@ function showSection(name) {
   if (name === 'analytics')  loadAnalytics();
   if (name === 'backups')    loadBackups();
   if (name === 'errors')     loadErrors(1);
+  if (name === 'media')      loadMedia();
+  if (name === 'auditlog')   loadAuditLogSection(1);
 }
 
 // ─── News list ────────────────────────────────────────────────────────────
@@ -1708,14 +1777,22 @@ async function loadAdminNews(page = 1) {
   data.items.forEach(n => {
     const el = document.createElement('div');
     el.className = 'glass-card rounded-xl p-4 flex items-start justify-between gap-4';
+    const _schedBadge = n.publish_at && !n.published
+      ? `<span class="badge-scheduled">⏱ ${fmtDateTime(n.publish_at)}</span>`
+      : '';
     el.innerHTML = `
       <div style="flex:1;min-width:0;">
-        <div class="flex items-center gap-2 mb-1">
+        <div class="flex items-center gap-2 mb-1" style="flex-wrap:wrap;">
           <span class="${n.published ? 'badge-pub' : 'badge-draft'}">${n.published ? 'Опубл.' : 'Черновик'}</span>
+          ${_schedBadge}
           <span style="color:var(--muted);font-size:.7rem;">${fmtDate(n.created_at)}</span>
         </div>
         <p style="color:var(--text);font-weight:600;font-size:.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.title}</p>
         <p style="color:var(--muted);font-size:.8rem;margin-top:.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${n.summary}</p>
+        <div style="display:flex;gap:.75rem;margin-top:.35rem;">
+          <span class="news-stat-cell">👁 <b>${n.views != null ? n.views : '—'}</b></span>
+          <span class="news-stat-cell">💬 <b>${n.comment_count != null ? n.comment_count : '—'}</b></span>
+        </div>
       </div>
       <div style="display:flex;gap:.5rem;flex-shrink:0;">
         <button class="btn-ghost" onclick='openEditor(${JSON.stringify(n).replace(/'/g,"&#39;")})'>Ред.</button>
@@ -1850,8 +1927,20 @@ async function openEditor(news) {
     document.getElementById('editor-news-tags').value    = news.tags || '';
     document.getElementById('editor-news-published').checked = !!news.published;
     document.getElementById('editor-news-is-template').checked = !!news.is_template;
-    const pa = document.getElementById('editor-news-publish-at');
-    if (pa) pa.value = news.publish_at ? new Date(news.publish_at).toISOString().slice(0,16) : '';
+    {
+      const scb = document.getElementById('schedule-cb');
+      const sdtw = document.getElementById('schedule-dt-wrap');
+      const sdt = document.getElementById('schedule-dt');
+      if (news.publish_at && scb && sdt) {
+        scb.checked = true;
+        if (sdtw) sdtw.style.display = '';
+        sdt.value = new Date(news.publish_at).toISOString().slice(0,16);
+      } else {
+        if (scb) scb.checked = false;
+        if (sdtw) sdtw.style.display = 'none';
+        if (sdt) sdt.value = '';
+      }
+    }
     // dangerouslyPasteHTML keeps Quill's internal Delta in sync; defer so DOM is ready
     const html = news.content || '';
     setTimeout(() => quill.clipboard.dangerouslyPasteHTML(html), 0);
@@ -1860,8 +1949,14 @@ async function openEditor(news) {
     document.getElementById('editor-news-id').value      = '';
     document.getElementById('editor-news-published').checked = true;
     document.getElementById('editor-news-is-template').checked = false;
-    const pa = document.getElementById('editor-news-publish-at');
-    if (pa) pa.value = '';
+    {
+      const scb = document.getElementById('schedule-cb');
+      const sdtw = document.getElementById('schedule-dt-wrap');
+      const sdt = document.getElementById('schedule-dt');
+      if (scb) scb.checked = false;
+      if (sdtw) sdtw.style.display = 'none';
+      if (sdt) sdt.value = '';
+    }
     // Restore draft if available
     const saved = (() => { try { return JSON.parse(localStorage.getItem(DRAFT_KEY)); } catch { return null; } })();
     if (saved && (saved.title || saved.content?.replace(/<[^>]+>/g,'').trim())) {
@@ -1890,6 +1985,15 @@ async function openEditor(news) {
 
 function closeEditor() {
   showSection('news');
+}
+
+function toggleSchedule() {
+  const cb = document.getElementById('schedule-cb');
+  const wrap = document.getElementById('schedule-dt-wrap');
+  const publishCb = document.getElementById('editor-news-published');
+  if (!wrap) return;
+  wrap.style.display = cb.checked ? '' : 'none';
+  if (cb.checked && publishCb) publishCb.checked = false;
 }
 
 // ─── Discord embed preview ─────────────────────────────────────────────────
@@ -1941,11 +2045,14 @@ async function submitEditor() {
     btn.disabled = false; btn.textContent = 'Сохранить'; return;
   }
 
-  const publishAt = document.getElementById('editor-news-publish-at')?.value;
+  const scheduleCb = document.getElementById('schedule-cb');
+  const isScheduled = !!scheduleCb?.checked;
+  const scheduleDt = document.getElementById('schedule-dt');
+  const publishAt = isScheduled ? (scheduleDt?.value || null) : null;
   const isTemplate = document.getElementById('editor-news-is-template')?.checked;
   const payload = { title, summary, content, thumbnail_url: thumb || null,
                     tags: tags || null,
-                    published: document.getElementById('editor-news-published').checked,
+                    published: isScheduled ? false : document.getElementById('editor-news-published').checked,
                     is_template: !!isTemplate,
                     publish_at: publishAt ? new Date(publishAt).toISOString() : null };
   try {
@@ -3058,8 +3165,11 @@ const _commentsSearchDebounced = debounce(() => loadAdminComments(1), 350);
 async function loadAdminComments(page = 1) {
   _commentsPage = page;
   const q = encodeURIComponent((document.getElementById('comments-search')?.value || '').trim());
+  const newsSlug = encodeURIComponent((document.getElementById('comments-filter-news')?.value || '').trim());
   try {
-    const res = await fetch(`${API}/admin/comments?page=${page}&per_page=20&q=${q}`, { credentials: 'include', headers: authH() });
+    let url = `${API}/admin/comments?page=${page}&per_page=20&q=${q}`;
+    if (newsSlug) url += `&news_slug=${newsSlug}`;
+    const res = await fetch(url, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const d = await res.json();
     document.getElementById('comments-total').textContent = `Всего: ${d.total}`;
@@ -3093,11 +3203,26 @@ async function deleteAdminComment(id) {
     title: 'Удалить комментарий?',
     text: 'Комментарий будет удалён без возможности восстановления.',
     onOk: async () => {
-      await fetch(`${API}/comments/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() });
+      const r = await fetch(`${API}/admin/comments/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() });
+      if (!r.ok) await fetch(`${API}/comments/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() }); // fallback
       loadAdminComments(_commentsPage);
       loadSidebarBadges();
     },
   });
+}
+
+async function deleteComment(id) {
+  if (!confirm('Удалить комментарий?')) return;
+  try {
+    const r = await fetch(`${API}/admin/comments/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() });
+    if (r.ok) {
+      const row = document.getElementById(`comment-row-${id}`);
+      if (row) row.remove();
+    } else {
+      const d = await r.json().catch(() => {});
+      showToast(d?.detail || 'Ошибка удаления', 'error');
+    }
+  } catch { showToast('Ошибка', 'error'); }
 }
 
 // ─── Players ──────────────────────────────────────────────────────────────
@@ -3614,6 +3739,114 @@ function applyTemplate(t) {
   if (quill && t.content) setTimeout(() => quill.clipboard.dangerouslyPasteHTML(t.content), 0);
   closeTemplates();
   _updateDiscordPreview();
+}
+
+// ─── Media library ────────────────────────────────────────────────────────
+async function loadMedia() {
+  const grid = document.getElementById('media-grid');
+  const empty = document.getElementById('media-empty');
+  if (!grid) return;
+  grid.innerHTML = '<div style="color:var(--muted);font-size:.82rem;grid-column:1/-1;text-align:center;padding:2rem 0;">Загрузка…</div>';
+  if (empty) empty.style.display = 'none';
+  try {
+    const d = await fetch(`${API}/admin/media`, { credentials: 'include', headers: authH() }).then(r => r.json());
+    const items = d.items || [];
+    if (!items.length) {
+      grid.innerHTML = '';
+      if (empty) empty.style.display = '';
+      return;
+    }
+    const imgExts = ['jpg','jpeg','png','gif','webp','svg','ico'];
+    grid.innerHTML = items.map(f => {
+      const ext = f.filename.split('.').pop().toLowerCase();
+      const isImg = imgExts.includes(ext);
+      const kb = (f.size_bytes / 1024).toFixed(1);
+      const thumb = isImg
+        ? `<img class="media-thumb-img" src="${esc(f.url)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'media-thumb-img media-no-img\\'>📄</div>'">`
+        : `<div class="media-thumb-img media-no-img">📄</div>`;
+      return `<div class="media-thumb">
+        ${thumb}
+        <div class="media-thumb-info">
+          <div class="media-thumb-name" title="${esc(f.filename)}">${esc(f.filename)}</div>
+          <div style="font-size:.58rem;color:var(--muted);margin-bottom:.3rem;">${kb} КБ</div>
+          <div class="media-thumb-actions">
+            <button onclick="copyMediaUrl('${esc(f.url)}')" class="btn-ghost" style="font-size:.6rem;padding:.2rem .45rem;flex:1;" title="Скопировать URL">📋</button>
+            <button onclick="deleteMedia('${esc(f.url)}',this.closest('.media-thumb'))" class="btn-danger" style="font-size:.6rem;padding:.2rem .45rem;" title="Удалить">🗑</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  } catch {
+    grid.innerHTML = '<div style="color:#f87171;text-align:center;padding:2rem;grid-column:1/-1;">Ошибка загрузки</div>';
+  }
+}
+
+function copyMediaUrl(url) {
+  const full = location.origin + url;
+  navigator.clipboard?.writeText(full).then(
+    () => showToast('URL скопирован', 'success'),
+    () => alert('Скопировано: ' + full),
+  );
+}
+
+async function deleteMedia(url, el) {
+  if (!confirm('Удалить файл?')) return;
+  const rel = url.replace(/^\/uploads\//, '');
+  try {
+    const r = await fetch(`${API}/admin/media/${encodeURIComponent(rel)}`, { method: 'DELETE', credentials: 'include', headers: authH() });
+    if (r.ok) { el?.remove(); }
+    else { const d = await r.json().catch(() => {}); showToast(d?.detail || 'Ошибка удаления', 'error'); }
+  } catch { showToast('Ошибка', 'error'); }
+}
+
+// ─── Audit log section (Журнал действий) ──────────────────────────────────
+let _auditSectionPage = 1;
+async function loadAuditLogSection(page) {
+  _auditSectionPage = page || 1;
+  const tbody = document.getElementById('auditlog-body');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>';
+  try {
+    const d = await fetch(`${API}/admin/audit-log?page=${_auditSectionPage}&per_page=50`, { credentials: 'include', headers: authH() }).then(r => r.json());
+    const items = d.items || [];
+    if (!items.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Нет записей</td></tr>';
+      return;
+    }
+    const actionLabels = {
+      'news.create':'Создана новость','news.update':'Обновлена новость','news.delete':'Удалена новость',
+      'user.ban':'Заблокирован пользователь','user.unban':'Разблокирован пользователь',
+      'settings.update':'Изменены настройки',
+    };
+    tbody.innerHTML = items.map(item => {
+      const dt = new Date(item.created_at).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+      const label = actionLabels[item.action] || item.action;
+      const adminName = item.admin_username || item.admin || '?';
+      const targetType = item.target_type || '';
+      const targetId = item.target_id || '';
+      const target = targetType && targetId ? `${targetType} #${targetId}` : (targetType || '—');
+      return `<tr>
+        <td style="white-space:nowrap;font-size:.75rem;color:var(--muted);">${dt}</td>
+        <td><span style="font-size:.78rem;">${esc(adminName)}</span></td>
+        <td><code style="font-size:.72rem;background:rgba(40,0,60,.4);padding:.1rem .35rem;border-radius:.3rem;color:#c4b5fd;">${esc(label)}</code></td>
+        <td style="font-size:.72rem;color:var(--muted);">${esc(target)}</td>
+        <td style="font-size:.72rem;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(item.detail || '')}</td>
+      </tr>`;
+    }).join('');
+
+    const total = d.total || 0;
+    const pages = Math.ceil(total / 50);
+    const pgEl = document.getElementById('auditlog-pagination');
+    if (pgEl) {
+      pgEl.innerHTML = pages > 1
+        ? Array.from({ length: Math.min(pages, 10) }, (_, i) => i + 1).map(p =>
+            `<button class="pagination-btn${p === _auditSectionPage ? ' active' : ''}" onclick="loadAuditLogSection(${p})">${p}</button>`
+          ).join('')
+        : '';
+    }
+  } catch {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>';
+  }
 }
 
 // ─── Reports ──────────────────────────────────────────────────────────────
