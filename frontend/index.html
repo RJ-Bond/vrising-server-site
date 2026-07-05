@@ -3696,7 +3696,7 @@ loadStats();
 loadSparklines();
 setInterval(() => { loadStatus(); loadStatus2(); }, 30000);
 setInterval(loadStats, 300000);
-setInterval(loadSparklines, 300000);
+setInterval(loadSparklines, 60000);
 window.addEventListener('resize', loadSparklines);
 loadFeatured();
 loadLatestNews();
