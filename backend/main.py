@@ -29,6 +29,8 @@ logger = logging.getLogger(__name__)
 UPLOAD_DIR = Path("/data/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+_totp_pending: dict[int, str] = {}
+
 
 def _fmt_dt(dt: datetime | None) -> str | None:
     """Return ISO-8601 string with explicit UTC offset so JS always parses as UTC."""
@@ -129,6 +131,19 @@ def slugify(text: str) -> str:
 
 async def log_audit(db: AsyncSession, admin: User, action: str, detail: str = "") -> None:
     db.add(AuditLog(admin_username=admin.username, action=action, detail=detail[:512]))
+
+
+async def _audit(db: AsyncSession, admin_id: int, action: str, target_type: str = None, target_id: int = None, detail: str = None) -> None:
+    """Structured audit log entry with target_type/target_id support."""
+    res = await db.execute(select(User).where(User.id == admin_id))
+    u = res.scalar_one_or_none()
+    db.add(AuditLog(
+        admin_username=u.username if u else str(admin_id),
+        action=action,
+        target_type=target_type,
+        target_id=target_id,
+        detail=(detail or "")[:500],
+    ))
 
 
 async def _send_reset_email(to_email: str, reset_url: str) -> bool:
@@ -297,6 +312,11 @@ async def lifespan(app: FastAPI):
             "CREATE INDEX IF NOT EXISTS ix_revoked_tokens_token ON revoked_tokens(token)",
             "ALTER TABLE users ADD COLUMN revoke_before DATETIME DEFAULT NULL",
             "ALTER TABLE player_records ADD COLUMN session_count INTEGER NOT NULL DEFAULT 0",
+            "ALTER TABLE users ADD COLUMN cover_url VARCHAR(512) DEFAULT NULL",
+            "ALTER TABLE users ADD COLUMN totp_secret VARCHAR(64) DEFAULT NULL",
+            "ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN NOT NULL DEFAULT 0",
+            "ALTER TABLE audit_log ADD COLUMN target_type VARCHAR(50) DEFAULT NULL",
+            "ALTER TABLE audit_log ADD COLUMN target_id INTEGER DEFAULT NULL",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -338,11 +358,13 @@ async def lifespan(app: FastAPI):
     task_backup = asyncio.create_task(_auto_backup_task())
     task_cleanup = asyncio.create_task(_cleanup_task())
     task_monitor = asyncio.create_task(_monitor_poll_task())
+    task_scheduler = asyncio.create_task(_scheduler_task())
     yield
     task_publish.cancel()
     task_backup.cancel()
     task_cleanup.cancel()
     task_monitor.cancel()
+    task_scheduler.cancel()
 
 
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
@@ -582,6 +604,10 @@ async def login(request: Request, body: UserLogin, response: Response, db: Async
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Ваш аккаунт был заблокирован.")
+    if user.totp_enabled:
+        import pyotp
+        if not body.totp_code or not pyotp.TOTP(user.totp_secret).verify(body.totp_code, valid_window=1):
+            raise HTTPException(status_code=401, detail="Требуется код 2FA")
     token = create_access_token({"sub": str(user.id)})
     _set_auth_cookie(response, token)
     return TokenOut(access_token=token, user=UserOut.model_validate(user))
@@ -834,6 +860,64 @@ async def change_password(
     return {"ok": True}
 
 
+class TotpCodeBody(BaseModel):
+    code: str
+
+
+@app.get("/api/auth/2fa/setup")
+async def totp_setup(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.totp_enabled:
+        raise HTTPException(400, "2FA уже включена")
+    import pyotp
+    secret = pyotp.random_base32()
+    _totp_pending[current_user.id] = secret
+    uri = pyotp.totp.TOTP(secret).provisioning_uri(current_user.email, issuer_name="V Rising")
+    return {"secret": secret, "otpauth_uri": uri}
+
+
+@app.post("/api/auth/2fa/enable")
+async def totp_enable(
+    body: TotpCodeBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    import pyotp
+    secret = _totp_pending.get(current_user.id)
+    if not secret:
+        raise HTTPException(400, "Сначала вызовите /api/auth/2fa/setup")
+    if not pyotp.TOTP(secret).verify(body.code):
+        raise HTTPException(400, "Неверный код")
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one()
+    user.totp_secret = secret
+    user.totp_enabled = True
+    await db.commit()
+    _totp_pending.pop(current_user.id, None)
+    return {"ok": True}
+
+
+@app.post("/api/auth/2fa/disable")
+async def totp_disable(
+    body: TotpCodeBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    import pyotp
+    if not current_user.totp_enabled:
+        raise HTTPException(400, "2FA не включена")
+    if not pyotp.TOTP(current_user.totp_secret).verify(body.code, valid_window=1):
+        raise HTTPException(400, "Неверный код")
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one()
+    user.totp_enabled = False
+    user.totp_secret = None
+    await db.commit()
+    return {"ok": True}
+
+
 @app.post("/api/auth/forgot-password")
 @limiter.limit("3/minute;10/hour")
 async def forgot_password(request: Request, body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
@@ -948,6 +1032,42 @@ async def upload_avatar(
     user.avatar_url = f"/api/uploads/{fname}"
     await db.commit()
     return {"avatar_url": user.avatar_url}
+
+
+# ─── Profile cover ───────────────────────────────────────────────────────────
+
+@app.post("/api/profile/cover")
+@limiter.limit("10/minute")
+async def upload_cover(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(400, "Only image files are allowed")
+    ext = Path(file.filename).suffix.lower() if file.filename else ".jpg"
+    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+        ext = ".jpg"
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(400, "File too large (max 10 MB)")
+    covers_dir = UPLOAD_DIR / "covers"
+    covers_dir.mkdir(parents=True, exist_ok=True)
+    fname = f"cover_{current_user.id}_{uuid.uuid4().hex[:10]}{ext}"
+    (covers_dir / fname).write_bytes(content)
+    # Remove old cover file
+    old = current_user.cover_url or ""
+    if old:
+        old_name = old.rsplit("/", 1)[-1]
+        old_path = covers_dir / old_name
+        if old_name.startswith("cover_") and old_path.exists():
+            old_path.unlink(missing_ok=True)
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one()
+    user.cover_url = f"/api/uploads/covers/{fname}"
+    await db.commit()
+    return {"cover_url": user.cover_url}
 
 
 # ─── Monitor ────────────────────────────────────────────────────────────────
@@ -1090,8 +1210,8 @@ async def server_history2(db: AsyncSession = Depends(get_db)):
 
 
 @app.get("/api/monitor/snapshots")
-async def get_snapshots(server: int = Query(1), db: AsyncSession = Depends(get_db)):
-    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+async def get_snapshots(server: int = Query(1), days: int = Query(default=7, ge=1, le=90), db: AsyncSession = Depends(get_db)):
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     result = await db.execute(
         select(ServerSnapshot)
         .where(ServerSnapshot.server_num == server, ServerSnapshot.recorded_at >= cutoff)
@@ -1734,6 +1854,15 @@ async def create_news(
             break
         slug = f"{base_slug}-{counter}"
         counter += 1
+    _published = body.published
+    _publish_at = None
+    if body.publish_at:
+        _pa = body.publish_at
+        if _pa.tzinfo is None:
+            _pa = _pa.replace(tzinfo=timezone.utc)
+        if _pa > datetime.now(timezone.utc):
+            _published = False
+            _publish_at = _pa
     news = News(
         title=body.title,
         slug=slug,
@@ -1742,10 +1871,13 @@ async def create_news(
         thumbnail_url=body.thumbnail_url,
         tags=body.tags or "",
         author_id=current_user.id,
-        published=body.published,
+        published=_published,
+        publish_at=_publish_at,
+        is_template=body.is_template,
     )
     db.add(news)
-    await log_audit(db, current_user, "news.create", news.title)
+    await db.flush()  # get news.id for audit
+    await _audit(db, current_user.id, "news.create", target_type="news", target_id=news.id, detail=news.title)
     await db.commit()
     await db.refresh(news)
     if news.published:
@@ -1776,8 +1908,20 @@ async def update_news(
     if 'tags'          in fields: news.tags          = body.tags
     if 'published'     in fields: news.published     = body.published
     if 'pinned'        in fields: news.pinned        = body.pinned
+    if 'publish_at'    in fields:
+        _pa = body.publish_at
+        if _pa:
+            if _pa.tzinfo is None:
+                _pa = _pa.replace(tzinfo=timezone.utc)
+            if _pa > datetime.now(timezone.utc):
+                news.published = False
+                news.publish_at = _pa
+            else:
+                news.publish_at = None
+        else:
+            news.publish_at = None
     news.updated_at = datetime.now(timezone.utc)
-    await log_audit(db, admin_u, "news.update", news.title)
+    await _audit(db, admin_u.id, "news.update", target_type="news", target_id=news.id, detail=news.title)
     await db.commit()
     await db.refresh(news)
     result2 = await db.execute(select(News).where(News.id == news.id))
@@ -1794,8 +1938,9 @@ async def delete_news(
     news = result.scalar_one_or_none()
     if news is None:
         raise HTTPException(status_code=404, detail="News not found")
+    _news_title = news.title
     await db.delete(news)
-    await log_audit(db, admin_u, "news.delete", str(news_id))
+    await _audit(db, admin_u.id, "news.delete", target_type="news", target_id=news_id, detail=_news_title)
     await db.commit()
 
 
@@ -1826,6 +1971,16 @@ async def upload_file(
     dest = UPLOAD_DIR / filename
     dest.write_bytes(content)
     return {"url": f"/api/uploads/{filename}"}
+
+
+@app.get("/api/uploads/covers/{filename}")
+async def serve_cover_upload(filename: str):
+    if ".." in filename or "/" in filename:
+        raise HTTPException(404)
+    path = UPLOAD_DIR / "covers" / filename
+    if not path.exists() or not path.is_file():
+        raise HTTPException(404)
+    return FileResponse(str(path), headers={"Cache-Control": "public, max-age=31536000, immutable"})
 
 
 @app.get("/api/uploads/{filename}")
@@ -2052,7 +2207,7 @@ async def update_setting(
     key: str,
     body: SettingUpdate,
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_admin_user),
+    _admin: User = Depends(get_admin_user),
 ):
     if key not in ALLOWED_SETTING_KEYS:
         raise HTTPException(400, f"Unknown setting key: {key}")
@@ -2064,6 +2219,7 @@ async def update_setting(
     else:
         setting.value = body.value
         setting.updated_at = datetime.now(timezone.utc)
+    await _audit(db, _admin.id, "settings.update", detail=f"{key}={body.value[:100]}")
     await db.commit()
     await db.refresh(setting)
     if key == "maintenance_mode":
@@ -2116,7 +2272,8 @@ async def toggle_active(
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
     user.is_active = not user.is_active
-    await log_audit(db, current_user, "user.toggle", user.username)
+    _ban_action = "user.unban" if user.is_active else "user.ban"
+    await _audit(db, current_user.id, _ban_action, target_type="user", target_id=user.id, detail=user.username)
     await db.commit()
     return {"ok": True, "is_active": user.is_active}
 
@@ -2197,6 +2354,7 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
     return {
         "username": user.username,
         "avatar_url": user.avatar_url,
+        "cover_url": user.cover_url,
         "role": user.role,
         "created_at": _fmt_dt(user.created_at),
         "game_nickname": user.game_nickname,
@@ -2211,6 +2369,53 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         "badge_style": user.badge_style or "default",
         "comment_count": comment_count,
     }
+
+
+# ─── User activity feed ──────────────────────────────────────────────────────
+
+@app.get("/api/users/{username}/activity")
+async def get_user_activity(username: str, db: AsyncSession = Depends(get_db)):
+    user_res = await db.execute(select(User).where(User.username == username, User.is_active == True))
+    user = user_res.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+
+    # Query last 20 comments by this user
+    comments_res = await db.execute(
+        select(Comment.id, Comment.content, Comment.created_at, News.slug.label("news_slug"), News.title.label("news_title"))
+        .join(News, Comment.news_id == News.id)
+        .where(Comment.author_id == user.id)
+        .order_by(Comment.created_at.desc())
+        .limit(20)
+    )
+    comment_rows = comments_res.all()
+
+    # Query last 20 reactions by this user
+    reactions_res = await db.execute(
+        select(Reaction.id, Reaction.emoji, Reaction.created_at, News.slug.label("news_slug"), News.title.label("news_title"))
+        .join(News, Reaction.news_id == News.id)
+        .where(Reaction.user_id == user.id)
+        .order_by(Reaction.created_at.desc())
+        .limit(20)
+    )
+    reaction_rows = reactions_res.all()
+
+    _strip_html = re.compile(r'<[^>]+>')
+    items = []
+    for r in comment_rows:
+        dt = r.created_at
+        if dt and dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        preview = _strip_html.sub('', r.content)[:120]
+        items.append({"type": "comment", "created_at": _fmt_dt(dt), "news_slug": r.news_slug, "news_title": r.news_title, "preview": preview})
+    for r in reaction_rows:
+        dt = r.created_at
+        if dt and dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        items.append({"type": "reaction", "created_at": _fmt_dt(dt), "news_slug": r.news_slug, "news_title": r.news_title, "emoji": r.emoji})
+
+    items.sort(key=lambda x: x["created_at"] or "", reverse=True)
+    return {"username": username, "items": items[:20]}
 
 
 # ─── Leaderboard ─────────────────────────────────────────────────────────────
@@ -2700,8 +2905,9 @@ async def admin_stats(
 @app.get("/api/admin/comments")
 async def list_all_comments(
     page: int = Query(1, ge=1),
-    per_page: int = Query(20, ge=1, le=100),
+    per_page: int = Query(30, ge=1, le=100),
     q: str = Query(""),
+    news_slug: Optional[str] = Query(None),
     _: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -2709,11 +2915,13 @@ async def list_all_comments(
     if q.strip():
         like = f"%{q.strip()}%"
         filters.append(or_(Comment.content.ilike(like), User.username.ilike(like), News.title.ilike(like)))
+    if news_slug:
+        filters.append(News.slug == news_slug)
     count_q = select(func.count(Comment.id)).join(News, Comment.news_id == News.id).outerjoin(User, Comment.author_id == User.id).where(*filters)
     total = (await db.execute(count_q)).scalar_one()
     rows = (await db.execute(
-        select(Comment, News.title.label("ntitle"), News.slug.label("nslug"),
-               User.username.label("uname"))
+        select(Comment, News.id.label("news_id"), News.title.label("ntitle"), News.slug.label("nslug"),
+               User.id.label("uid"), User.username.label("uname"), User.avatar_url.label("uavatar"))
         .join(News, Comment.news_id == News.id)
         .outerjoin(User, Comment.author_id == User.id)
         .where(*filters)
@@ -2722,14 +2930,37 @@ async def list_all_comments(
     )).all()
     return {
         "total": total,
+        "page": page,
+        "per_page": per_page,
         "items": [
-            {"id": r.Comment.id, "content": r.Comment.content,
-             "news_title": r.ntitle, "news_slug": r.nslug,
-             "author": r.uname or "Аноним",
-             "created_at": r.Comment.created_at.isoformat()}
+            {
+                "id": r.Comment.id,
+                "content": r.Comment.content[:200],
+                "created_at": r.Comment.created_at.isoformat(),
+                "user_id": r.uid,
+                "username": r.uname or "Аноним",
+                "avatar_url": r.uavatar,
+                "news_id": r.news_id,
+                "news_slug": r.nslug,
+                "news_title": r.ntitle,
+            }
             for r in rows
         ],
     }
+
+
+@app.delete("/api/admin/comments/{comment_id}", status_code=204)
+async def admin_delete_comment(
+    comment_id: int,
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Comment).where(Comment.id == comment_id))
+    comment = result.scalar_one_or_none()
+    if comment is None:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    await db.delete(comment)
+    await db.commit()
 
 
 # ─── File manager ────────────────────────────────────────────────────────────
@@ -2782,6 +3013,51 @@ async def delete_upload(filename: str, _: User = Depends(get_admin_user)):
     if not path.exists() or not path.is_file():
         raise HTTPException(404, "File not found")
     path.unlink()
+
+
+# ─── Media library ───────────────────────────────────────────────────────────
+
+@app.get("/api/admin/media")
+async def list_media(_: User = Depends(get_admin_user)):
+    items = []
+    if not UPLOAD_DIR.exists():
+        return {"items": items}
+    # scan root-level files
+    for f in UPLOAD_DIR.iterdir():
+        if f.is_file():
+            st = f.stat()
+            items.append({
+                "filename": f.name,
+                "url": f"/api/uploads/{f.name}",
+                "size_bytes": st.st_size,
+                "modified_at": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat(),
+            })
+    # scan one level of subdirectories
+    for subdir in UPLOAD_DIR.iterdir():
+        if subdir.is_dir():
+            for f in subdir.iterdir():
+                if f.is_file():
+                    rel = f"{subdir.name}/{f.name}"
+                    st = f.stat()
+                    items.append({
+                        "filename": f.name,
+                        "url": f"/api/uploads/{rel}",
+                        "size_bytes": st.st_size,
+                        "modified_at": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat(),
+                    })
+    items.sort(key=lambda x: x["modified_at"], reverse=True)
+    return {"items": items}
+
+
+@app.delete("/api/admin/media/{filename:path}", status_code=200)
+async def delete_media(filename: str, _: User = Depends(get_admin_user)):
+    if ".." in filename or os.path.isabs(filename):
+        raise HTTPException(400, "Invalid filename")
+    full_path = UPLOAD_DIR / filename
+    if not full_path.exists() or not full_path.is_file():
+        raise HTTPException(404, "File not found")
+    full_path.unlink()
+    return {"ok": True}
 
 
 # ─── Settings import ─────────────────────────────────────────────────────────
@@ -2913,9 +3189,18 @@ async def get_audit_log(
     )).scalars().all()
     return {
         "total": total,
+        "page": page,
+        "per_page": per_page,
         "items": [
-            {"id": r.id, "admin": r.admin_username, "action": r.action,
-             "detail": r.detail, "created_at": r.created_at.isoformat()}
+            {
+                "id": r.id,
+                "admin": r.admin_username,
+                "action": r.action,
+                "target_type": r.target_type,
+                "target_id": r.target_id,
+                "detail": r.detail,
+                "created_at": r.created_at.isoformat(),
+            }
             for r in rows
         ],
     }
@@ -2948,6 +3233,35 @@ async def _scheduled_publish_task():
             break
         except Exception as e:
             logger.error("_scheduled_publish_task error: %s", e)
+
+
+async def _scheduler_task():
+    """Scheduled publishing task (15s initial delay, 60s interval)."""
+    await asyncio.sleep(15)
+    while True:
+        try:
+            async with AsyncSession(engine, expire_on_commit=False) as db:
+                now = datetime.now(timezone.utc)
+                result = await db.execute(
+                    select(News).where(
+                        News.published == False,
+                        News.publish_at.isnot(None),
+                        News.publish_at <= now
+                    )
+                )
+                items = result.scalars().all()
+                for news_item in items:
+                    news_item.published = True
+                    news_item.publish_at = None
+                    db.add(news_item)
+                    logger.info("_scheduler_task: auto-published news id=%s", news_item.id)
+                if items:
+                    await db.commit()
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error("_scheduler_task error: %s", e)
+        await asyncio.sleep(60)
 
 
 BACKUP_DIR = Path("/data/backups")

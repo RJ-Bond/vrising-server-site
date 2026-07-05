@@ -25,6 +25,9 @@ class User(Base):
     last_active_at = Column(DateTime, nullable=True)
     badge_icon_url = Column(String(512), nullable=True)
     badge_style = Column(String(32), nullable=True, default='default')
+    cover_url = Column(String(512), nullable=True)
+    totp_secret = Column(String(64), nullable=True)
+    totp_enabled = Column(Boolean, default=False, nullable=False, server_default="0")
 
 
 class Clan(Base):
@@ -142,6 +145,8 @@ class AuditLog(Base):
     id = Column(Integer, primary_key=True, index=True)
     admin_username = Column(String(64), nullable=False)
     action = Column(String(128), nullable=False)
+    target_type = Column(String(50), nullable=True)
+    target_id = Column(Integer, nullable=True)
     detail = Column(Text, nullable=True, default="")
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 

@@ -12,3 +12,4 @@ pydantic-settings==2.2.1
 anthropic==0.40.0
 slowapi==0.1.9
 aiosmtplib>=3.0
+pyotp>=2.9.0

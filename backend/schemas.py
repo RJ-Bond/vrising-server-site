@@ -29,6 +29,7 @@ class UserRegister(BaseModel):
 class UserLogin(BaseModel):
     username: str
     password: str
+    totp_code: Optional[str] = None
 
 
 class UserOut(BaseModel):
@@ -39,12 +40,14 @@ class UserOut(BaseModel):
     is_active: bool
     created_at: datetime
     avatar_url: Optional[str] = None
+    cover_url: Optional[str] = None
     rules_accepted_at: Optional[datetime] = None
     game_nickname: Optional[str] = None
     admin_title: Optional[str] = None
     last_active_at: Optional[datetime] = None
     badge_icon_url: Optional[str] = None
     badge_style: Optional[str] = 'default'
+    totp_enabled: bool = False
 
     model_config = {"from_attributes": True}
 
