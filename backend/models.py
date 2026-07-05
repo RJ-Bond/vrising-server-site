@@ -262,3 +262,33 @@ class RevokedToken(Base):
     token = Column(String(512), unique=True, nullable=False, index=True)
     expires_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class Event(Base):
+    __tablename__ = "events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    event_type = Column(String(32), nullable=False, default="pvp")  # pvp | pve | social | other
+    start_date = Column(DateTime, nullable=False)
+    end_date = Column(DateTime, nullable=True)
+    max_participants = Column(Integer, nullable=True)
+    status = Column(String(32), nullable=False, default="upcoming")  # upcoming | active | ended | cancelled
+    cover_url = Column(String(512), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    participants = relationship("EventParticipant", back_populates="event", cascade="all, delete-orphan", lazy="noload")
+    creator = relationship("User", foreign_keys=[created_by], lazy="selectin")
+
+
+class EventParticipant(Base):
+    __tablename__ = "event_participants"
+
+    event_id = Column(Integer, ForeignKey("events.id", ondelete="CASCADE"), primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    registered_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    event = relationship("Event", back_populates="participants")
+    user = relationship("User", lazy="selectin")

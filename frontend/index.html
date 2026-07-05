@@ -4,6 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title id="page-title">Just-Skill.Ru — Игровое сообщество V Rising</title>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "V Rising Server",
+    "url": "https://v.just-skill.ru",
+    "description": "Официальный сайт игрового сервера V Rising",
+    "image": "https://v.just-skill.ru/uploads/og-default.png"
+  }
+  </script>
   <meta id="meta-description" name="description" content="Just-Skill.Ru — русскоязычное сообщество серверов V Rising. Новости, статус серверов, лидерборд игроков, кланы, карта и правила." />
   <meta name="keywords" content="V Rising сервер, V Rising русский сервер, Just-Skill, игровое сообщество, V Rising PvP, V Rising PvE" />
   <link rel="canonical" href="https://just-skill.ru/" />
@@ -1161,6 +1171,11 @@
     .sb-status-dot.offline { background:#f87171; box-shadow:0 0 4px rgba(248,113,113,0.4); }
 
   </style>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#06000f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 <div id="scroll-progress"></div>
@@ -2666,6 +2681,61 @@ async function loadStatus2() {
   } catch {}
 }
 
+// ── SSE for real-time status updates ───────────────────────────────────────
+let _sseConn = null;
+let _sseFailed = false;
+
+function startStatusSSE() {
+  if (_sseConn) return;
+  try {
+    _sseConn = new EventSource('/api/monitor/status/stream');
+    _sseConn.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.ping) return; // initial ping
+        if (data.server === 1) _applyStatusData(data, '');
+        else if (data.server === 2) _applyStatusData2(data);
+      } catch {}
+    };
+    _sseConn.onerror = () => {
+      _sseConn.close();
+      _sseConn = null;
+      if (!_sseFailed) {
+        _sseFailed = true;
+        // Fall back to polling — already running via setInterval
+      }
+      // Retry SSE after 30s
+      setTimeout(() => { _sseFailed = false; startStatusSSE(); }, 30000);
+    };
+  } catch { _sseFailed = true; }
+}
+
+function _applyStatusData(d, sfx) {
+  try {
+    const { lbl, cls } = renderServerBlock(d, sfx);
+    if (sfx === '') {
+      const heroEl = document.getElementById('hero-status');
+      if (heroEl) heroEl.innerHTML = `<span class="${cls}" style="font-size:.72rem;font-weight:700;padding:.2rem .75rem;border-radius:9999px;">${lbl}</span><span style="color:var(--text);margin:0 .6rem;font-size:.78rem;font-weight:500;">${esc(d.name)}</span><span style="color:var(--muted);font-size:.75rem;">${d.players} / ${d.max_players} игроков</span>`;
+      updateHunters(d.players_list || []);
+      window._sb_online1 = d.online ? d.players : 0;
+      window._sb_max1 = d.max_players || 0;
+      _updateStatusBarOnline?.();
+    }
+  } catch {}
+}
+
+function _applyStatusData2(d) {
+  try {
+    const section = document.getElementById('server2-section');
+    if (!d.enabled) { if(section) section.style.display='none'; return; }
+    if(section) section.style.display='block';
+    renderServerBlock(d, '2');
+    window._sb_online2 = d.online ? d.players : 0;
+    window._sb_max2 = d.max_players || 0;
+    _updateStatusBarOnline?.();
+  } catch {}
+}
+
 // ── Featured news ──────────────────────────────────────────────────────────
 async function loadFeatured() {
   const wrap = document.getElementById('featured-wrap');
@@ -2883,6 +2953,17 @@ async function openNews(slug) {
     const modalAdminBadge = _renderAdminBadge(n.author);
     const tags = (n.tags || '').split(',').map(t => t.trim()).filter(Boolean);
     const tagHtml = tags.map(t => `<span class="modal-tag">${esc(t)}</span>`).join('');
+
+    // Update OG meta for social sharing
+    const setMeta = (prop, val) => {
+      let el = document.querySelector(`meta[property="${prop}"]`) || document.querySelector(`meta[name="${prop}"]`);
+      if (!el) { el = document.createElement('meta'); el.setAttribute(prop.includes(':') ? 'property' : 'name', prop); document.head.appendChild(el); }
+      el.setAttribute('content', val);
+    };
+    setMeta('og:title', n.title);
+    setMeta('og:description', (n.content||'').replace(/<[^>]+>/g,'').slice(0,160));
+    if (n.thumbnail_url) setMeta('og:image', n.thumbnail_url);
+    setMeta('og:url', location.origin + '/?news=' + n.slug);
 
     // ── Hero section ──────────────────────────────────────────────────────────
     const heroEl = document.getElementById('modal-hero');
@@ -3692,6 +3773,7 @@ loadSiteSettings();
 loadVersion();
 loadStatus();
 loadStatus2();
+startStatusSSE();
 loadStats();
 loadSparklines();
 setInterval(() => { loadStatus(); loadStatus2(); }, 30000);
@@ -4184,5 +4266,10 @@ async function votePoll(slug, optionId) {
 
 </script>
 <div id="ow-hover-card"></div>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
 </body>
 </html>

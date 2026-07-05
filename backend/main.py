@@ -1,4 +1,6 @@
-﻿import logging
+﻿import csv
+import io
+import logging
 import os
 import math
 import re
@@ -44,7 +46,7 @@ from sqlalchemy import select, func, delete, text, or_, update
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant
 from .auth import (
     verify_password,
     get_password_hash,
@@ -467,9 +469,72 @@ async def sitemap(request: Request, db: AsyncSession = Depends(get_db)):
     for slug, updated_at in slugs:
         lastmod = updated_at.strftime("%Y-%m-%d") if updated_at else ""
         urls.append(f"  <url><loc>{base}/news/{slug}</loc><lastmod>{lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>")
+    # Add events URLs
+    try:
+        events_res = await db.execute(
+            select(Event.id).where(Event.status != "cancelled").order_by(Event.start_date.desc())
+        )
+        for (ev_id,) in events_res.all():
+            urls.append(f"  <url><loc>{base}/events.html#{ev_id}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>")
+    except Exception:
+        pass
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     xml += "\n".join(urls) + "\n</urlset>"
     return Response(content=xml, media_type="application/xml")
+
+
+@app.get("/api/rss.xml")
+async def rss_feed(db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(News).options(selectinload(News.author))
+        .where(News.published == True)
+        .order_by(News.created_at.desc())
+        .limit(20)
+    )
+    news_items = result.scalars().all()
+
+    base_url = "https://v.just-skill.ru"
+    # Try to read site URL from settings
+    try:
+        su_res = await db.execute(select(Setting).where(Setting.key == "https_domain"))
+        su = su_res.scalar_one_or_none()
+        if su and su.value.strip():
+            base_url = f"https://{su.value.strip()}"
+    except Exception:
+        pass
+
+    _strip_html = re.compile(r"<[^>]+>")
+    items_xml = ""
+    for n in news_items:
+        title = (n.title or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        desc = _strip_html.sub("", n.content or "")[:300].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        link = f"{base_url}/?news={n.slug}"
+        pub_date = ""
+        if n.created_at:
+            dt = n.created_at
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            pub_date = dt.strftime("%a, %d %b %Y %H:%M:%S +0000")
+        items_xml += f"""
+    <item>
+      <title>{title}</title>
+      <link>{link}</link>
+      <description>{desc}</description>
+      <pubDate>{pub_date}</pubDate>
+      <guid>{link}</guid>
+    </item>"""
+
+    rss = f"""<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>V Rising — Новости</title>
+    <link>{base_url}</link>
+    <description>Последние новости игрового сервера V Rising</description>
+    <language>ru</language>
+    <ttl>30</ttl>{items_xml}
+  </channel>
+</rss>"""
+    return Response(content=rss, media_type="application/rss+xml; charset=utf-8")
 
 
 # ─── Setup ──────────────────────────────────────────────────────────────────
@@ -1113,6 +1178,27 @@ async def _track_players(db: AsyncSession, players: list, server_num: int):
 _last_snapshot: dict[int, float] = {}
 SNAPSHOT_INTERVAL = 300  # 5 minutes
 
+# ─── Server status SSE broadcast & in-memory cache ───────────────────────────
+_sse_queues: list[asyncio.Queue] = []
+_status_cache: dict[int, dict] = {}
+_status_cache_ts: dict[int, float] = {}
+STATUS_CACHE_TTL = 28  # seconds
+
+
+def _broadcast_status(data: dict) -> None:
+    """Put server status update into all active SSE client queues."""
+    dead = []
+    for q in _sse_queues:
+        try:
+            q.put_nowait(data)
+        except asyncio.QueueFull:
+            dead.append(q)
+    for q in dead:
+        try:
+            _sse_queues.remove(q)
+        except ValueError:
+            pass
+
 
 async def _upsert_setting(db: AsyncSession, key: str, value: str):
     result = await db.execute(select(Setting).where(Setting.key == key))
@@ -1164,6 +1250,11 @@ async def _save_snapshot(db: AsyncSession, data: dict, server_num: int):
 
 @app.get("/api/monitor/status")
 async def server_status(db: AsyncSession = Depends(get_db)):
+    # Serve from cache if fresh
+    cached = _status_cache.get(1)
+    cached_ts = _status_cache_ts.get(1, 0)
+    if cached and (time.time() - cached_ts) < STATUS_CACHE_TTL:
+        return cached
     result = await db.execute(
         select(Setting).where(Setting.key.in_(["server_ip", "server_port", "server_name", "server_game_port", "server_connect_ip"]))
     )
@@ -1181,6 +1272,8 @@ async def server_status(db: AsyncSession = Depends(get_db)):
     data = {**data, "ip": connect_ip, "game_port": int(game_port_str) if game_port_str.isdigit() else None}
     await _track_players(db, data.get("players_list", []), 1)
     await _save_snapshot(db, data, 1)
+    _status_cache[1] = data
+    _status_cache_ts[1] = time.time()
     return data
 
 
@@ -1271,8 +1364,41 @@ async def get_monitor_stats(server: int = Query(1), db: AsyncSession = Depends(g
     }
 
 
+@app.get("/api/monitor/status/stream")
+async def monitor_status_stream():
+    """SSE endpoint — pushes server status updates to connected clients."""
+    q: asyncio.Queue = asyncio.Queue(maxsize=10)
+    _sse_queues.append(q)
+
+    async def generator():
+        try:
+            yield "data: {\"ping\": true}\n\n"
+            while True:
+                try:
+                    data = await asyncio.wait_for(q.get(), timeout=25)
+                    yield f"data: {json.dumps(data)}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+        finally:
+            try:
+                _sse_queues.remove(q)
+            except ValueError:
+                pass
+
+    return StreamingResponse(
+        generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 @app.get("/api/monitor/status2")
 async def server_status2(db: AsyncSession = Depends(get_db)):
+    # Serve from cache if fresh
+    cached = _status_cache.get(2)
+    cached_ts = _status_cache_ts.get(2, 0)
+    if cached and (time.time() - cached_ts) < STATUS_CACHE_TTL:
+        return cached
     result = await db.execute(
         select(Setting).where(Setting.key.in_(["server2_ip", "server2_port", "server2_name", "server2_game_port", "server2_connect_ip"]))
     )
@@ -1294,6 +1420,8 @@ async def server_status2(db: AsyncSession = Depends(get_db)):
     data = {**data, "ip": connect_ip, "game_port": int(game_port_str) if game_port_str.isdigit() else None}
     await _track_players(db, data.get("players_list", []), 2)
     await _save_snapshot(db, data, 2)
+    _status_cache[2] = {"enabled": True, **data}
+    _status_cache_ts[2] = time.time()
     return {"enabled": True, **data}
 
 
@@ -1441,7 +1569,9 @@ async def get_reactions(
 
 
 @app.post("/api/news/{slug}/react")
+@limiter.limit("30/minute")
 async def toggle_reaction(
+    request: Request,
     slug: str,
     body: ReactBody,
     db: AsyncSession = Depends(get_db),
@@ -1535,7 +1665,9 @@ async def get_comments(
 
 
 @app.post("/api/news/{slug}/comments", response_model=CommentOut, status_code=201)
+@limiter.limit("20/minute")
 async def add_comment(
+    request: Request,
     slug: str,
     body: CommentCreate,
     db: AsyncSession = Depends(get_db),
@@ -3206,6 +3338,265 @@ async def get_audit_log(
     }
 
 
+# ─── Events & Tournaments ─────────────────────────────────────────────────────
+
+class EventCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    event_type: str = "pvp"
+    start_date: datetime
+    end_date: Optional[datetime] = None
+    max_participants: Optional[int] = None
+    cover_url: Optional[str] = None
+
+
+class EventUpdate(EventCreate):
+    status: Optional[str] = None
+
+
+@app.get("/api/events")
+async def list_events(
+    request: Request,
+    status: str = Query("upcoming"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    filters = []
+    if status:
+        filters.append(Event.status == status)
+    total = (await db.execute(select(func.count(Event.id)).where(*filters))).scalar_one()
+    rows = (await db.execute(
+        select(Event).where(*filters)
+        .order_by(Event.start_date.asc())
+        .offset((page - 1) * per_page).limit(per_page)
+    )).scalars().all()
+
+    # Resolve current user if authenticated
+    current_user_id: Optional[int] = None
+    try:
+        token = request.cookies.get(COOKIE_NAME)
+        if token:
+            revoked = await db.execute(select(RevokedToken.id).where(RevokedToken.token == token))
+            if revoked.scalar_one_or_none() is None:
+                payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                current_user_id = int(payload.get("sub", 0)) or None
+    except Exception:
+        pass
+
+    items = []
+    for ev in rows:
+        cnt = (await db.execute(
+            select(func.count(EventParticipant.user_id)).where(EventParticipant.event_id == ev.id)
+        )).scalar_one()
+        is_joined = False
+        if current_user_id:
+            ep = (await db.execute(
+                select(EventParticipant).where(
+                    EventParticipant.event_id == ev.id,
+                    EventParticipant.user_id == current_user_id,
+                )
+            )).scalar_one_or_none()
+            is_joined = ep is not None
+        items.append({
+            "id": ev.id, "title": ev.title, "description": ev.description,
+            "event_type": ev.event_type, "start_date": _fmt_dt(ev.start_date),
+            "end_date": _fmt_dt(ev.end_date), "max_participants": ev.max_participants,
+            "status": ev.status, "cover_url": ev.cover_url,
+            "created_by": ev.created_by, "created_at": _fmt_dt(ev.created_at),
+            "participant_count": cnt, "is_joined": is_joined,
+        })
+    return {"items": items, "total": total}
+
+
+@app.get("/api/events/{event_id}")
+async def get_event(
+    event_id: int,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    ev = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
+    if ev is None:
+        raise HTTPException(404, "Event not found")
+    cnt = (await db.execute(
+        select(func.count(EventParticipant.user_id)).where(EventParticipant.event_id == ev.id)
+    )).scalar_one()
+    current_user_id: Optional[int] = None
+    try:
+        token = request.cookies.get(COOKIE_NAME)
+        if token:
+            revoked = await db.execute(select(RevokedToken.id).where(RevokedToken.token == token))
+            if revoked.scalar_one_or_none() is None:
+                payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+                current_user_id = int(payload.get("sub", 0)) or None
+    except Exception:
+        pass
+    is_joined = False
+    if current_user_id:
+        ep = (await db.execute(
+            select(EventParticipant).where(
+                EventParticipant.event_id == ev.id,
+                EventParticipant.user_id == current_user_id,
+            )
+        )).scalar_one_or_none()
+        is_joined = ep is not None
+    return {
+        "id": ev.id, "title": ev.title, "description": ev.description,
+        "event_type": ev.event_type, "start_date": _fmt_dt(ev.start_date),
+        "end_date": _fmt_dt(ev.end_date), "max_participants": ev.max_participants,
+        "status": ev.status, "cover_url": ev.cover_url,
+        "created_by": ev.created_by, "created_at": _fmt_dt(ev.created_at),
+        "participant_count": cnt, "is_joined": is_joined,
+    }
+
+
+@app.post("/api/admin/events", status_code=201)
+async def admin_create_event(
+    body: EventCreate,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    ev = Event(
+        title=body.title[:200],
+        description=body.description,
+        event_type=body.event_type or "pvp",
+        start_date=body.start_date,
+        end_date=body.end_date,
+        max_participants=body.max_participants,
+        cover_url=body.cover_url,
+        created_by=current_user.id,
+    )
+    db.add(ev)
+    await db.commit()
+    await db.refresh(ev)
+    await _audit(db, current_user.id, "event.create", target_type="event", target_id=ev.id, detail=ev.title)
+    await db.commit()
+    return {"id": ev.id, "title": ev.title, "status": ev.status, "event_type": ev.event_type}
+
+
+@app.put("/api/admin/events/{event_id}")
+async def admin_update_event(
+    event_id: int,
+    body: EventUpdate,
+    admin_u: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    ev = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
+    if ev is None:
+        raise HTTPException(404, "Event not found")
+    ev.title = body.title[:200]
+    ev.description = body.description
+    ev.event_type = body.event_type or "pvp"
+    ev.start_date = body.start_date
+    ev.end_date = body.end_date
+    ev.max_participants = body.max_participants
+    ev.cover_url = body.cover_url
+    if body.status:
+        ev.status = body.status
+    await _audit(db, admin_u.id, "event.update", target_type="event", target_id=ev.id, detail=ev.title)
+    await db.commit()
+    await db.refresh(ev)
+    cnt = (await db.execute(
+        select(func.count(EventParticipant.user_id)).where(EventParticipant.event_id == ev.id)
+    )).scalar_one()
+    return {
+        "id": ev.id, "title": ev.title, "description": ev.description,
+        "event_type": ev.event_type, "start_date": _fmt_dt(ev.start_date),
+        "end_date": _fmt_dt(ev.end_date), "max_participants": ev.max_participants,
+        "status": ev.status, "cover_url": ev.cover_url,
+        "created_by": ev.created_by, "created_at": _fmt_dt(ev.created_at),
+        "participant_count": cnt,
+    }
+
+
+@app.delete("/api/admin/events/{event_id}", status_code=204)
+async def admin_delete_event(
+    event_id: int,
+    admin_u: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    ev = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
+    if ev is None:
+        raise HTTPException(404, "Event not found")
+    await db.execute(delete(EventParticipant).where(EventParticipant.event_id == event_id))
+    await _audit(db, admin_u.id, "event.delete", target_type="event", target_id=event_id, detail=ev.title)
+    await db.delete(ev)
+    await db.commit()
+
+
+@app.post("/api/events/{event_id}/join")
+async def join_event(
+    event_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    ev = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
+    if ev is None:
+        raise HTTPException(404, "Event not found")
+    if ev.status in ("ended", "cancelled"):
+        raise HTTPException(400, "Event is no longer accepting participants")
+    existing = (await db.execute(
+        select(EventParticipant).where(
+            EventParticipant.event_id == event_id,
+            EventParticipant.user_id == current_user.id,
+        )
+    )).scalar_one_or_none()
+    if existing:
+        raise HTTPException(400, "Already joined this event")
+    if ev.max_participants is not None:
+        cnt = (await db.execute(
+            select(func.count(EventParticipant.user_id)).where(EventParticipant.event_id == event_id)
+        )).scalar_one()
+        if cnt >= ev.max_participants:
+            raise HTTPException(400, "Event is full")
+    db.add(EventParticipant(event_id=event_id, user_id=current_user.id))
+    await db.commit()
+    return {"ok": True}
+
+
+@app.delete("/api/events/{event_id}/leave", status_code=204)
+async def leave_event(
+    event_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    ep = (await db.execute(
+        select(EventParticipant).where(
+            EventParticipant.event_id == event_id,
+            EventParticipant.user_id == current_user.id,
+        )
+    )).scalar_one_or_none()
+    if ep is None:
+        raise HTTPException(404, "Not a participant")
+    await db.delete(ep)
+    await db.commit()
+
+
+@app.get("/api/admin/events/{event_id}/participants")
+async def admin_event_participants(
+    event_id: int,
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    ev = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
+    if ev is None:
+        raise HTTPException(404, "Event not found")
+    rows = (await db.execute(
+        select(EventParticipant).where(EventParticipant.event_id == event_id)
+        .order_by(EventParticipant.registered_at.asc())
+    )).scalars().all()
+    result = []
+    for ep in rows:
+        u = await db.get(User, ep.user_id)
+        result.append({
+            "user_id": ep.user_id,
+            "username": u.username if u else str(ep.user_id),
+            "avatar_url": u.avatar_url if u else None,
+            "registered_at": _fmt_dt(ep.registered_at),
+        })
+    return result
+
+
 # ─── Background tasks ────────────────────────────────────────────────────────
 
 async def _scheduled_publish_task():
@@ -3242,6 +3633,9 @@ async def _scheduler_task():
         try:
             async with AsyncSession(engine, expire_on_commit=False) as db:
                 now = datetime.now(timezone.utc)
+                now_naive = now.replace(tzinfo=None)
+
+                # Auto-publish scheduled news
                 result = await db.execute(
                     select(News).where(
                         News.published == False,
@@ -3257,6 +3651,36 @@ async def _scheduler_task():
                     logger.info("_scheduler_task: auto-published news id=%s", news_item.id)
                 if items:
                     await db.commit()
+
+                # Auto-update event statuses
+                try:
+                    # upcoming → active when start_date <= now
+                    upcoming_res = await db.execute(
+                        select(Event).where(
+                            Event.status == "upcoming",
+                            Event.start_date <= now_naive,
+                        )
+                    )
+                    for ev in upcoming_res.scalars().all():
+                        ev.status = "active"
+                        logger.info("_scheduler_task: event id=%s → active", ev.id)
+
+                    # active → ended when end_date <= now
+                    active_res = await db.execute(
+                        select(Event).where(
+                            Event.status == "active",
+                            Event.end_date.isnot(None),
+                            Event.end_date <= now_naive,
+                        )
+                    )
+                    for ev in active_res.scalars().all():
+                        ev.status = "ended"
+                        logger.info("_scheduler_task: event id=%s → ended", ev.id)
+
+                    await db.commit()
+                except Exception as ev_err:
+                    logger.error("_scheduler_task event update error: %s", ev_err)
+
         except asyncio.CancelledError:
             break
         except Exception as e:
@@ -3343,6 +3767,9 @@ async def _monitor_poll_task():
                     await _track_players(db, data.get("players_list", []), server_num)
                     _last_snapshot[server_num] = 0  # bypass TTL — task owns timing
                     await _save_snapshot(db, data, server_num)
+                _status_cache[server_num] = data
+                _status_cache_ts[server_num] = time.time()
+                _broadcast_status({"server": server_num, **data})
         except asyncio.CancelledError:
             break
         except Exception as e:
@@ -3884,12 +4311,127 @@ async def get_analytics(
         select(func.count(PageView.id)).where(PageView.created_at >= cutoff)
     )).scalar_one()
 
+    # Extended analytics: totals, users_by_day, top_news
+    thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+    thirty_days_ago_naive = thirty_days_ago.replace(tzinfo=None)
+    seven_days_ago_naive = (datetime.now(timezone.utc) - timedelta(days=7)).replace(tzinfo=None)
+
+    total_users = (await db.execute(select(func.count(User.id)))).scalar_one()
+    total_news_count = (await db.execute(
+        select(func.count(News.id)).where(News.published == True)
+    )).scalar_one()
+    total_comments_count = (await db.execute(select(func.count(Comment.id)))).scalar_one()
+    active_users_7d = (await db.execute(
+        select(func.count(User.id)).where(
+            User.last_active_at.isnot(None),
+            User.last_active_at >= seven_days_ago_naive,
+        )
+    )).scalar_one()
+
+    users_by_day_rows = (await db.execute(
+        select(
+            func.strftime("%Y-%m-%d", User.created_at).label("date"),
+            func.count(User.id).label("count"),
+        )
+        .where(User.created_at >= thirty_days_ago_naive)
+        .group_by(func.strftime("%Y-%m-%d", User.created_at))
+        .order_by(func.strftime("%Y-%m-%d", User.created_at).asc())
+    )).all()
+
+    top_news_rows = (await db.execute(
+        select(
+            News.slug, News.title, News.views,
+            func.count(Comment.id).label("comment_count"),
+        )
+        .outerjoin(Comment, News.id == Comment.news_id)
+        .where(News.published == True)
+        .group_by(News.id)
+        .order_by(News.views.desc())
+        .limit(10)
+    )).all()
+
     return {
         "days": days,
         "total_views": total_views,
         "by_day": [{"day": r.day, "views": r.views, "unique": r.unique} for r in rows],
         "top_pages": [{"path": r.path, "views": r.cnt} for r in top_pages],
+        "totals": {
+            "users": total_users,
+            "news": total_news_count,
+            "comments": total_comments_count,
+            "active_users_7d": active_users_7d,
+        },
+        "users_by_day": [{"date": r.date, "count": r.count} for r in users_by_day_rows],
+        "top_news": [
+            {"slug": r.slug, "title": r.title, "views": r.views, "comment_count": r.comment_count}
+            for r in top_news_rows
+        ],
     }
+
+
+# ─── CSV export ───────────────────────────────────────────────────────────────
+
+@app.get("/api/admin/export/users")
+async def export_users(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(select(User).order_by(User.created_at.desc()))
+    users = result.scalars().all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["id", "username", "email", "role", "is_active", "created_at", "last_active_at"])
+    for u in users:
+        w.writerow([u.id, u.username, u.email, u.role, u.is_active, u.created_at, u.last_active_at])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=users.csv"},
+    )
+
+
+@app.get("/api/admin/export/audit-log")
+async def export_audit_log(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    rows = (await db.execute(
+        select(AuditLog).order_by(AuditLog.created_at.desc())
+    )).scalars().all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["id", "admin_username", "action", "target_type", "target_id", "detail", "created_at"])
+    for r in rows:
+        w.writerow([r.id, r.admin_username, r.action, r.target_type, r.target_id, r.detail, r.created_at])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=audit_log.csv"},
+    )
+
+
+@app.get("/api/admin/export/bans")
+async def export_bans(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    # Banned users are those with is_active=False
+    rows = (await db.execute(
+        select(User).where(User.is_active == False).order_by(User.created_at.desc())
+    )).scalars().all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["id", "username", "email", "role", "created_at"])
+    for u in rows:
+        w.writerow([u.id, u.username, u.email, u.role, u.created_at])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=bans.csv"},
+    )
 
 
 # ─── Error log ────────────────────────────────────────────────────────────────

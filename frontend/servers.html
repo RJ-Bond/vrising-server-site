@@ -249,6 +249,11 @@
     }
     .srv-cal-cell:hover { opacity:.75; }
   </style>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#06000f">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 
@@ -262,6 +267,7 @@
   <a href="/map.html">Карта</a>
   <a href="/bans.html">Баны</a>
   <a href="/faq.html">FAQ</a>
+  <a href="/events.html">События</a>
   <a href="/profile.html">Профиль</a>
 </div>
 <nav class="glass-nav">
@@ -275,6 +281,7 @@
       <a href="/map.html" class="topnav-link">Карта</a>
       <a href="/bans.html" class="topnav-link">Баны</a>
       <a href="/faq.html" class="topnav-link">FAQ</a>
+      <a href="/events.html" class="topnav-link">События</a>
       <a id="nav-profile-link" href="/profile.html" class="topnav-link" style="display:none;">Профиль</a>
       <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
     </div>
@@ -1189,12 +1196,64 @@ async function refreshAll() {
   updatePageTitle();
 }
 
+let _srvSseConn = null;
+
+function startSrvSSE() {
+  if (_srvSseConn) return;
+  try {
+    _srvSseConn = new EventSource('/api/monitor/status/stream');
+    _srvSseConn.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.ping || !data.server) return;
+        const num = data.server;
+        if (num === 2 && data.enabled === false) {
+          _serverEnabled[2] = false;
+          const card = document.getElementById(`srv-card-2`);
+          if (card) card.style.display = 'none';
+          return;
+        }
+
+        _serverEnabled[num] = true;
+        const card = document.getElementById(`srv-card-${num}`);
+        if (card) card.style.display = '';
+
+        if (document.getElementById(`srv-name-${num}`))
+          document.getElementById(`srv-name-${num}`).textContent = data.name || `Сервер ${num}`;
+
+        const badge = document.getElementById(`srv-badge-${num}`);
+        if (badge) {
+          badge.className = 'srv-badge ' + (data.online ? 'on' : 'off');
+          badge.innerHTML = `<span class="srv-dot${data.online?' pulse':''}"></span>${data.online?'Онлайн':'Офлайн'}`;
+        }
+        setStat(`srv-players-${num}`, `${data.players??0}/${data.max_players??0}`);
+        setStat(`srv-ping-${num}`, data.latency_ms!=null?`${data.latency_ms} мс`:'—', pingColor(data.latency_ms));
+
+        const capacity = document.getElementById(`srv-capacity-${num}`);
+        if (capacity) {
+          const pct = data.max_players>0 ? Math.min(100,Math.round((data.players/data.max_players)*100)) : 0;
+          capacity.style.width = `${pct}%`;
+        }
+
+        _onlineCounts[num] = data.online ? (data.players??0) : 0;
+        updatePageTitle();
+        renderServerPlayers(num, data.players_list||[]);
+      } catch {}
+    };
+    _srvSseConn.onerror = () => {
+      _srvSseConn.close(); _srvSseConn = null;
+      setTimeout(startSrvSSE, 30000);
+    };
+  } catch {}
+}
+
 async function init() {
   const wrap = document.getElementById('servers-wrap');
   wrap.innerHTML = srvCardSkeleton(1) + srvCardSkeleton(2);
   await refreshAll();
   document.getElementById('compare-btn-wrap').style.display = '';
   [1, 2].filter(n => _serverEnabled[n]).forEach(num => { loadServerStats(num); loadServerGraph(num); });
+  startSrvSSE();
 }
 
 init();
@@ -1426,6 +1485,11 @@ document.addEventListener('click', e => {
   }
 });
 
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>
