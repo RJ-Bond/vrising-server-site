@@ -2207,7 +2207,7 @@ function _owRow(u, isNew = false, isSelf = false, showDm = false) {
   const sinceInfo = _owFmtSince(u.since);
   const since = sinceInfo ? `<span class="ow-since ${sinceInfo.cls}" data-tip="На сайте">${sinceInfo.text}</span>` : '';
   const dm = showDm
-    ? `<button class="ow-dm-btn" onclick="event.preventDefault();event.stopPropagation();window.location='/messages.html?to=${encodeURIComponent(u.username)}'" title="Написать">✉</button>`
+    ? `<button class="ow-dm-btn" onclick="event.preventDefault();event.stopPropagation();openDmChat('${u.username.replace(/'/g,"\\'")}')" title="Написать">✉</button>`
     : '';
   const selfCls = isSelf ? ' ow-self' : '';
   const regAt = u.registered_at ? `зарег. ${fmtDate(u.registered_at)}` : '';
