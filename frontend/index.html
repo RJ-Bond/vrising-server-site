@@ -2130,6 +2130,9 @@ function _owRow(u, isNew = false, isSelf = false, showDm = false) {
   const sword = u.in_game
     ? `<span title="Играет на сервере" style="font-size:.72rem;margin-left:.25rem;filter:drop-shadow(0 0 4px rgba(220,80,80,.7));">⚔️</span>`
     : '';
+  const deviceIcon = u.device === 'mobile'
+    ? `<span title="Мобильный" style="font-size:.65rem;margin-left:.2rem;opacity:.8;">📱</span>`
+    : '';
   const sinceInfo = _owFmtSince(u.since);
   const since = sinceInfo ? `<span class="ow-since ${sinceInfo.cls}" data-tip="На сайте">${sinceInfo.text}</span>` : '';
   const dm = showDm
@@ -2144,7 +2147,7 @@ function _owRow(u, isNew = false, isSelf = false, showDm = false) {
     <a href="/user.html?u=${encodeURIComponent(u.username)}" style="display:flex;align-items:center;gap:.45rem;flex:1;min-width:0;text-decoration:none;color:inherit;">
       ${av}
       <div style="flex:1;min-width:0;">
-        <div class="online-name" style="color:${roleColor};">${esc(u.username)}${sword}</div>
+        <div class="online-name" style="color:${roleColor};">${esc(u.username)}${sword}${deviceIcon}</div>
       </div>
     </a>
     ${since}

@@ -616,6 +616,10 @@ _BOT_UA = re.compile(
     r'|pingdom|uptimerobot|checkly|chrome-lighthouse|headlesschrome|phantomjs',
     re.I,
 )
+_MOBILE_UA = re.compile(
+    r'Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|webOS|Windows Phone',
+    re.I,
+)
 _peak_today: dict = {"count": 0, "at_ts": 0.0, "date": ""}
 _activity_history: list[dict] = []   # [{ts, count}] каждые 5 мин, макс 24ч
 _sse_clients: set = set()            # asyncio.Queue для каждого SSE-клиента
@@ -658,6 +662,7 @@ async def online_ping(request: Request, body: OnlinePingBody, db: AsyncSession =
             del _visitor_data[vid]
     ua = request.headers.get("user-agent", "")
     is_bot = bool(_BOT_UA.search(ua))
+    is_mobile = bool(_MOBILE_UA.search(ua)) and not is_bot
     if len(body.visitor_id) <= 64:
         now_ts = time.time()
         existing = _visitor_data.get(body.visitor_id, {})
@@ -669,6 +674,7 @@ async def online_ping(request: Request, body: OnlinePingBody, db: AsyncSession =
             "username": body.username if body.is_authed else None,
             "is_authed": body.is_authed,
             "is_bot": is_bot,
+            "device": "mobile" if is_mobile else "desktop",
         }
     # Keep last_active_at fresh so the user appears in the online widget immediately.
     if body.is_authed and body.username:
@@ -723,6 +729,7 @@ async def online_status(db: AsyncSession = Depends(get_db)):
          "page": user_pages.get(r.username, ""),
          "in_game": _ingame_players.get(r.username.lower(), 0) > ingame_cutoff,
          "since": user_since.get(r.username, now_ts),
+         "device": next((d.get("device","desktop") for d in _visitor_data.values() if d.get("username")==r.username and d.get("is_authed")), "desktop"),
          "registered_at": _fmt_dt(r.created_at)}
         for r in result.all()
         if r.username not in _explicit_logouts

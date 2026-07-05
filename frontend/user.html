@@ -97,6 +97,31 @@
       .g-card{padding:.85rem !important;}
       .stat-row{padding:.45rem 0;}
     }
+
+/* ── Mobile ── */
+#nav-mob-btn2 {
+  display:none; align-items:center; justify-content:center;
+  width:34px; height:34px; background:rgba(18,5,28,0.8);
+  border:1px solid rgba(110,0,20,0.35); border-radius:.4rem; cursor:pointer; flex-shrink:0;
+}
+#nav-mob-btn2 span { display:block; width:15px; height:1.5px; background:var(--text); border-radius:1px; margin:3px auto; }
+#mob-menu2 {
+  display:none; position:fixed; top:0; right:-260px; width:240px; height:100vh;
+  background:rgba(10,2,18,0.98); border-left:1px solid rgba(110,0,20,0.3);
+  z-index:310; transition:right .3s ease; padding:4rem 1.2rem 1.5rem; flex-direction:column; gap:.5rem;
+}
+#mob-menu2.open { right:0; display:flex; }
+#mob-overlay2 { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:300; }
+#mob-overlay2.open { display:block; }
+.mob-link { display:block; padding:.6rem .75rem; color:var(--muted); text-decoration:none; border-radius:.4rem;
+  border:1px solid transparent; font-size:.82rem; transition:all .15s; }
+.mob-link:hover { color:var(--text); border-color:rgba(110,0,20,0.3); background:rgba(110,0,20,0.1); }
+@media (max-width:640px) {
+  #nav-mob-btn2 { display:flex; }
+  .user-page-nav-links { display:none !important; }
+  .u-stat-grid { grid-template-columns:repeat(2,1fr) !important; }
+  .u-main-wrap { flex-direction:column !important; }
+}
   </style>
 </head>
 <body>
@@ -104,10 +129,20 @@
 <nav class="glass-nav">
   <div style="max-width:680px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">V RISING</a>
-    <div style="display:flex;gap:.5rem;">
+    <div class="user-page-nav-links" style="display:flex;gap:.5rem;">
       <a href="/leaderboard.html" class="btn btn-ghost" style="font-size:.72rem;">🏆 Лидерборд</a>
       <a href="/" class="btn btn-ghost" style="font-size:.72rem;">← Главная</a>
     </div>
+      <div id="mob-overlay2" onclick="closeMobMenu2()"></div>
+      <div id="mob-menu2">
+        <a href="/" class="mob-link">🏠 Главная</a>
+        <a href="/servers.html" class="mob-link">⚔️ Серверы</a>
+        <a href="/leaderboard.html" class="mob-link">🏆 Игроки</a>
+        <a href="/profile.html" class="mob-link">👤 Профиль</a>
+      </div>
+      <button id="nav-mob-btn2" onclick="openMobMenu2()" aria-label="Меню">
+        <span></span><span></span><span></span>
+      </button>
   </div>
 </nav>
 
@@ -316,6 +351,15 @@ async function loadUser(){
   }
 }
 loadUser();
+
+function openMobMenu2() {
+  document.getElementById('mob-menu2').classList.add('open');
+  document.getElementById('mob-overlay2').classList.add('open');
+}
+function closeMobMenu2() {
+  document.getElementById('mob-menu2').classList.remove('open');
+  document.getElementById('mob-overlay2').classList.remove('open');
+}
 </script>
 </body>
 </html>

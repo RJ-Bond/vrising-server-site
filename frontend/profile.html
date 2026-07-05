@@ -173,6 +173,33 @@
       #profile-email { word-break:break-all; }
     }
 
+/* ── Mobile ── */
+.glass-nav > div { display:flex;align-items:center;justify-content:space-between; }
+#nav-mob-btn {
+  display:none; align-items:center; justify-content:center;
+  width:34px; height:34px; background:rgba(18,5,28,0.8);
+  border:1px solid rgba(110,0,20,0.35); border-radius:.4rem; cursor:pointer; flex-shrink:0;
+}
+#nav-mob-btn span { display:block; width:15px; height:1.5px; background:var(--text); border-radius:1px; margin:3px auto; }
+#mob-menu {
+  display:none; position:fixed; top:0; right:-260px; width:240px; height:100vh;
+  background:rgba(10,2,18,0.98); border-left:1px solid rgba(110,0,20,0.3);
+  z-index:310; transition:right .3s ease; padding:4rem 1.2rem 1.5rem; flex-direction:column; gap:.5rem;
+}
+#mob-menu.open { right:0; display:flex; }
+#mob-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:300; }
+#mob-overlay.open { display:block; }
+.mob-link { display:block; padding:.6rem .75rem; color:var(--muted); text-decoration:none; border-radius:.4rem;
+  border:1px solid transparent; font-size:.82rem; transition:all .15s; }
+.mob-link:hover { color:var(--text); border-color:rgba(110,0,20,0.3); background:rgba(110,0,20,0.1); }
+@media (max-width:640px) {
+  #nav-mob-btn { display:flex; }
+  #nav-logout-btn { display:none !important; }
+  #notif-bell-wrap { display:none !important; }
+  #profile-main { padding:0 .5rem !important; }
+  #profile-main .g-card { margin-bottom:.75rem !important; }
+}
+
   </style>
 </head>
 <body>
@@ -199,6 +226,19 @@
           <div id="notif-list" style="max-height:320px;overflow-y:auto;"></div>
         </div>
       </div>
+      <div id="mob-overlay" onclick="closeMobMenu()"></div>
+      <div id="mob-menu">
+        <a href="/" class="mob-link">🏠 Главная</a>
+        <a href="/servers.html" class="mob-link">⚔️ Серверы</a>
+        <a href="/leaderboard.html" class="mob-link">🏆 Игроки</a>
+        <a href="/profile.html" class="mob-link" style="color:var(--text);">👤 Профиль</a>
+        <div style="margin-top:auto;padding-top:1rem;border-top:1px solid rgba(110,0,20,0.2);">
+          <button onclick="doLogout();closeMobMenu();" style="width:100%;padding:.6rem;background:rgba(200,0,42,.15);border:1px solid rgba(200,0,42,.3);border-radius:.4rem;color:#f87171;cursor:pointer;font-size:.82rem;">Выйти</button>
+        </div>
+      </div>
+      <button id="nav-mob-btn" onclick="openMobMenu()" aria-label="Меню">
+        <span></span><span></span><span></span>
+      </button>
       <button id="nav-logout-btn" onclick="doLogout()" class="btn btn-ghost" style="font-size:.72rem;display:none;">Выйти</button>
     </div>
   </div>
@@ -848,6 +888,15 @@ document.addEventListener('click', e => {
     if (panel) panel.style.display = 'none';
   }
 });
+
+function openMobMenu() {
+  document.getElementById('mob-menu').classList.add('open');
+  document.getElementById('mob-overlay').classList.add('open');
+}
+function closeMobMenu() {
+  document.getElementById('mob-menu').classList.remove('open');
+  document.getElementById('mob-overlay').classList.remove('open');
+}
 
 </script>
 </body>

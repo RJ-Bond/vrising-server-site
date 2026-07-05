@@ -190,7 +190,7 @@
       color: var(--text);
       border-radius: .55rem;
       padding: .72rem 1rem .72rem 2.6rem;
-      font-size: .9rem;
+      font-size: 1rem; /* ≥16px prevents iOS zoom on focus */
       font-family: 'Inter', sans-serif;
       transition: border-color .2s, box-shadow .2s;
       outline: none;
@@ -274,6 +274,23 @@
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: rgba(8,0,16,0.5); }
     ::-webkit-scrollbar-thumb { background: rgba(150,0,28,0.5); border-radius: 3px; }
+
+    /* ── Mobile ── */
+    @media (max-width:480px) {
+      /* Nav */
+      nav { padding:.6rem 1rem !important; }
+      /* Form card */
+      .login-card, .auth-card, [class*="card"], form > div[style*="max-width"] {
+        padding:1.5rem 1rem !important;
+        margin:1rem !important;
+      }
+      /* Inputs */
+      input[type="text"], input[type="email"], input[type="password"] {
+        font-size:16px !important; /* prevents iOS zoom */
+      }
+      /* Reduce heading sizes */
+      .gothic, [class*="gothic"], h1, h2 { font-size:clamp(1.2rem, 5vw, 1.8rem) !important; }
+    }
   </style>
 </head>
 <body>
