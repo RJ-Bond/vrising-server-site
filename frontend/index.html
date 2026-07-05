@@ -1126,17 +1126,29 @@
     }
 
     /* ── Modal close button ── */
-    .modal-close-btn {
-      width:28px; height:28px; border-radius:50%;
-      background:rgba(70,0,14,0.35); border:1px solid rgba(140,0,28,0.35);
-      color:var(--muted); font-size:.9rem; cursor:pointer;
-      display:flex; align-items:center; justify-content:center;
-      transition:all .2s;
+    .modal-btn {
+      width:34px; height:34px; border-radius:50%;
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:all .22s cubic-bezier(.4,0,.2,1); flex-shrink:0;
     }
-    .modal-close-btn:hover {
-      background:rgba(180,0,32,0.45); color:#fff;
-      border-color:rgba(220,0,45,0.7); box-shadow:0 0 14px rgba(200,0,40,0.4);
-      transform:scale(1.1) rotate(90deg);
+    .modal-btn-share {
+      background:rgba(50,0,90,0.55); border:1px solid rgba(120,0,180,0.35);
+      color:rgba(180,140,220,0.75);
+    }
+    .modal-btn-share:hover {
+      background:rgba(80,0,140,0.65); border-color:rgba(160,0,220,0.65);
+      color:#c4a8f0; box-shadow:0 0 16px rgba(120,0,200,0.35);
+      transform:scale(1.08);
+    }
+    .modal-btn-close {
+      background:rgba(50,0,16,0.55); border:1px solid rgba(150,0,30,0.35);
+      color:rgba(200,100,120,0.7); font-size:.95rem; font-weight:400;
+    }
+    .modal-btn-close:hover {
+      background:rgba(160,0,28,0.55); border-color:rgba(220,0,45,0.7);
+      color:#fff; box-shadow:0 0 18px rgba(200,0,40,0.4);
+      transform:scale(1.08) rotate(90deg);
     }
 
     /* ── Status bar server online dot ── */
@@ -1626,8 +1638,10 @@
   <div class="modal-box">
     <!-- Sticky top bar -->
     <div class="modal-top-bar">
-      <button onclick="shareNews()" title="Поделиться" style="width:30px;height:30px;border-radius:50%;background:rgba(20,5,40,0.85);border:1px solid rgba(110,0,20,0.4);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseover="this.style.color='#d4c4e0';this.style.borderColor='rgba(180,0,30,0.6)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='rgba(110,0,20,0.4)'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
-      <button onclick="closeModal()" class="modal-close-btn" title="Закрыть" style="position:static;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;">✕</button>
+      <button onclick="shareNews()" title="Поделиться" class="modal-btn modal-btn-share">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      </button>
+      <button onclick="closeModal()" title="Закрыть" class="modal-btn modal-btn-close">✕</button>
     </div>
 
     <!-- Hero: populated by JS (thumbnail + title + tags) -->
@@ -2968,10 +2982,10 @@ async function loadReactions(slug) {
   const el = document.getElementById('modal-reactions');
   if (!el) return;
   const data = await fetch(`${API}/news/${slug}/reactions`, { credentials: 'include' }).then(r => r.json()).catch(() => ({counts:{}, user_reactions:[]}));
-  renderReactions(el, slug, data);
+  renderNewsReactions(el, slug, data);
 }
 
-function renderReactions(el, slug, data) {
+function renderNewsReactions(el, slug, data) {
   const emojis = [
     {key:'fire',     icon:'🔥', label:'Огонь'},
     {key:'heart',    icon:'❤️',  label:'Нравится'},
@@ -2985,14 +2999,14 @@ function renderReactions(el, slug, data) {
     const activeStyle = active
       ? 'background:rgba(140,0,22,0.45);border-color:rgba(200,0,40,0.65);color:#fca5a5;'
       : 'background:rgba(20,5,35,0.55);border-color:rgba(110,0,20,0.25);color:var(--muted);';
-    return `<button onclick="toggleReaction('${slug}','${e.key}')" title="${e.label}" data-rkey="${e.key}" style="${activeStyle}display:inline-flex;align-items:center;gap:.3rem;padding:.28rem .6rem;border:1px solid;border-radius:9999px;font-size:.75rem;cursor:${user ? 'pointer' : 'default'};transition:all .18s;font-family:'Inter',sans-serif;" ${!user ? 'disabled' : ''}>
+    return `<button onclick="toggleNewsReaction('${slug}','${e.key}')" title="${e.label}" data-rkey="${e.key}" style="${activeStyle}display:inline-flex;align-items:center;gap:.3rem;padding:.28rem .6rem;border:1px solid;border-radius:9999px;font-size:.75rem;cursor:${user ? 'pointer' : 'default'};transition:all .18s;font-family:'Inter',sans-serif;" ${!user ? 'disabled' : ''}>
       <span style="font-size:.85rem;line-height:1;">${e.icon}</span>
       <span style="font-size:.72rem;font-weight:600;min-width:.6rem;text-align:center;">${count}</span>
     </button>`;
   }).join('') + (!user ? `<span style="font-size:.65rem;color:var(--muted);margin-left:.25rem;">Войдите чтобы реагировать</span>` : '');
 }
 
-async function toggleReaction(slug, emoji) {
+async function toggleNewsReaction(slug, emoji) {
   const data = await fetch(`${API}/news/${slug}/react`, {
     method: 'POST',
     credentials: 'include',
@@ -3001,7 +3015,7 @@ async function toggleReaction(slug, emoji) {
   }).then(r => r.json()).catch(() => null);
   if (!data) return;
   const el = document.getElementById('modal-reactions');
-  if (el) renderReactions(el, slug, data);
+  if (el) renderNewsReactions(el, slug, data);
 }
 
 document.getElementById('modal-bg').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
