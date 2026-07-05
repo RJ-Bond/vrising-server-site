@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Технические работы</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html, body { width:100%; height:100%; overflow:hidden; background:#06000f; color:#e2d8f0; font-family:'Inter',sans-serif; }
+
+    /* YouTube background */
+    #yt-bg { position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; background:#06000f; }
+    #yt-bg iframe {
+      position:absolute; top:50%; left:50%;
+      width:calc(100vh * 16 / 9); height:calc(100vw * 9 / 16);
+      min-width:100%; min-height:100%;
+      transform:translate(-50%,-50%); border:none; opacity:0; transition:opacity 1.5s;
+    }
+    #yt-bg iframe.loaded { opacity:.35; }
+
+    /* Dark overlays */
+    #overlay {
+      position:fixed; inset:0; z-index:1; pointer-events:none;
+      background: radial-gradient(ellipse at center bottom, rgba(200,0,42,0.18) 0%, transparent 65%),
+                  radial-gradient(ellipse at center top, rgba(124,58,237,0.12) 0%, transparent 60%),
+                  linear-gradient(to bottom, rgba(6,0,15,0.55) 0%, rgba(6,0,15,0.35) 50%, rgba(6,0,15,0.75) 100%);
+    }
+    /* Noise/stars overlay */
+    #overlay::after {
+      content:''; position:absolute; inset:0;
+      background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size:28px 28px;
+    }
+
+    /* Content */
+    #content {
+      position:relative; z-index:2; height:100vh; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; text-align:center; padding:2rem;
+    }
+
+    .site-logo { font-family:'Cinzel',serif; font-size:clamp(1.8rem,5vw,3.2rem); font-weight:900; letter-spacing:.18em;
+      color:#d4c4e0; text-shadow:0 0 40px rgba(200,0,42,0.6), 0 0 80px rgba(124,58,237,0.3); margin-bottom:.5rem; }
+
+    .divider { width:120px; height:1px; background:linear-gradient(90deg,transparent,#c8002a,#7c3aed,transparent); margin:.8rem auto; }
+
+    .maint-icon { font-size:clamp(2rem,6vw,3.5rem); margin-bottom:.75rem; filter:drop-shadow(0 0 20px rgba(200,0,42,0.5)); }
+
+    .maint-title { font-family:'Cinzel',serif; font-size:clamp(1.1rem,3.5vw,1.8rem); font-weight:700; color:#e2d8f0;
+      text-shadow:0 2px 20px rgba(200,0,42,0.4); margin-bottom:.6rem; letter-spacing:.05em; }
+
+    .maint-msg { font-size:clamp(.78rem,2vw,1rem); color:#9488a8; max-width:480px; line-height:1.7; margin-bottom:1.5rem; }
+
+    /* Countdown */
+    #countdown { display:flex; gap:1.2rem; justify-content:center; margin-bottom:1.5rem; }
+    .cd-unit { display:flex; flex-direction:column; align-items:center; }
+    .cd-num { font-family:'Cinzel',serif; font-size:clamp(1.6rem,4vw,2.4rem); font-weight:700; color:#e2d8f0; line-height:1;
+      background:rgba(14,5,22,0.8); border:1px solid rgba(180,0,35,0.35); border-radius:.5rem;
+      padding:.3rem .7rem; min-width:3rem; text-shadow:0 0 20px rgba(200,0,42,0.5); }
+    .cd-label { font-size:.6rem; color:#9488a8; margin-top:.3rem; letter-spacing:.08em; text-transform:uppercase; }
+
+    /* Buttons */
+    .btn-row { display:flex; gap:.75rem; justify-content:center; flex-wrap:wrap; }
+    .btn-discord {
+      display:inline-flex; align-items:center; gap:.5rem; padding:.55rem 1.3rem;
+      background:rgba(88,101,242,0.2); border:1px solid rgba(88,101,242,0.45);
+      border-radius:.45rem; color:#a5b4fc; font-size:.82rem; font-weight:600;
+      text-decoration:none; transition:all .2s;
+    }
+    .btn-discord:hover { background:rgba(88,101,242,0.35); color:#e0e7ff; }
+    .btn-admin {
+      display:inline-flex; align-items:center; gap:.5rem; padding:.55rem 1.3rem;
+      background:rgba(200,0,42,0.15); border:1px solid rgba(200,0,42,0.4);
+      border-radius:.45rem; color:#f87171; font-size:.82rem; font-weight:600;
+      text-decoration:none; transition:all .2s;
+    }
+    .btn-admin:hover { background:rgba(200,0,42,0.3); }
+
+    /* Pulse animation for icon */
+    @keyframes pulse-glow { 0%,100%{filter:drop-shadow(0 0 20px rgba(200,0,42,0.5))} 50%{filter:drop-shadow(0 0 35px rgba(200,0,42,0.85))} }
+    .maint-icon { animation:pulse-glow 2.5s ease-in-out infinite; }
+  </style>
+</head>
+<body>
+  <!-- YouTube фон -->
+  <div id="yt-bg"><iframe id="yt-iframe" allow="autoplay; encrypted-media"></iframe></div>
+
+  <!-- Тёмный оверлей -->
+  <div id="overlay"></div>
+
+  <!-- Контент -->
+  <div id="content">
+    <div id="site-logo" class="site-logo">V RISING</div>
+    <div class="divider"></div>
+    <div class="maint-icon">⚙️</div>
+    <div id="maint-title" class="maint-title">Технические работы</div>
+    <p id="maint-msg" class="maint-msg">Сайт временно недоступен. Мы скоро вернёмся.</p>
+    <div id="countdown" style="display:none;"></div>
+    <div class="btn-row" id="btn-row"></div>
+  </div>
+
+  <script>
+    function getUser() {
+      try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; }
+    }
+
+    function ytVideoId(url) {
+      if (!url) return null;
+      const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
+      return m ? m[1] : null;
+    }
+
+    function startCountdown(endTime) {
+      const box = document.getElementById('countdown');
+      const target = new Date(endTime).getTime();
+      if (isNaN(target)) return;
+
+      const update = () => {
+        const diff = target - Date.now();
+        if (diff <= 0) { box.style.display = 'none'; return; }
+        const h = Math.floor(diff / 3600000);
+        const m = Math.floor((diff % 3600000) / 60000);
+        const s = Math.floor((diff % 60000) / 1000);
+        box.innerHTML = [
+          [h, 'часов'], [m, 'минут'], [s, 'секунд']
+        ].map(([n, l]) => `<div class="cd-unit"><div class="cd-num">${String(n).padStart(2, '0')}</div><div class="cd-label">${l}</div></div>`).join('');
+        box.style.display = 'flex';
+      };
+      update();
+      setInterval(update, 1000);
+    }
+
+    async function init() {
+      try {
+        const s = await fetch('/api/settings/public').then(r => r.json());
+
+        // Logo/title
+        if (s.site_logo_url) {
+          document.getElementById('site-logo').innerHTML = `<img src="${s.site_logo_url}" style="height:3rem;object-fit:contain;">`;
+        } else if (s.site_title) {
+          document.getElementById('site-logo').textContent = s.site_title;
+        }
+
+        // Content
+        if (s.maintenance_title) document.getElementById('maint-title').textContent = s.maintenance_title;
+        if (s.maintenance_message) document.getElementById('maint-msg').textContent = s.maintenance_message;
+
+        // Countdown
+        if (s.maintenance_end_time) startCountdown(s.maintenance_end_time);
+
+        // YouTube background
+        const vid = ytVideoId(s.maintenance_video_url || '');
+        if (vid) {
+          const iframe = document.getElementById('yt-iframe');
+          iframe.src = `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=1&loop=1&playlist=${vid}&controls=0&disablekb=1&fs=0&rel=0&showinfo=0&modestbranding=1&iv_load_policy=3`;
+          iframe.onload = () => iframe.classList.add('loaded');
+        }
+
+        // Buttons
+        const row = document.getElementById('btn-row');
+        if (s.discord_url) {
+          row.innerHTML += `<a href="${s.discord_url}" target="_blank" rel="noopener" class="btn-discord">💬 Discord</a>`;
+        }
+        const u = getUser();
+        if (u && u.role === 'admin') {
+          row.innerHTML += `<a href="/admin.html" class="btn-admin">⚙️ Панель управления</a>`;
+        }
+      } catch {}
+    }
+
+    init();
+  </script>
+</body>
+</html>

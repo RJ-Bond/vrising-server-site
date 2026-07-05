@@ -863,6 +863,66 @@
             <p class="s-desc">JPG/PNG/WEBP — накрывается тёмным оверлеем. Оставьте пустым — стандартный фон</p>
           </div>
 
+          <!-- Maintenance mode -->
+          <div style="border-top:1px solid rgba(110,0,150,0.2);margin-top:1.2rem;padding-top:1.2rem;">
+            <div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.9rem;">⚙️ Режим обслуживания</div>
+
+            <div class="s-field">
+              <label>Режим обслуживания</label>
+              <div style="display:flex;align-items:center;gap:.75rem;margin-top:.3rem;">
+                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
+                  <input type="checkbox" id="setting-maintenance_mode_cb"
+                    onchange="document.getElementById('setting-maintenance_mode').value=this.checked?'true':'false'; saveSetting('maintenance_mode');"
+                    style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                  Включить
+                </label>
+                <input type="hidden" id="setting-maintenance_mode">
+                <span id="maint-status-badge" style="font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;display:none;"></span>
+              </div>
+              <p class="s-desc">Неавторизованные пользователи и не-администраторы будут перенаправлены на страницу с сообщением</p>
+            </div>
+
+            <div class="s-field">
+              <label>Заголовок страницы</label>
+              <div class="s-field-row">
+                <input id="setting-maintenance_title" type="text" class="dark-input" placeholder="Технические работы">
+                <button class="s-save-btn" onclick="saveSetting('maintenance_title')">Сохранить</button>
+              </div>
+            </div>
+
+            <div class="s-field">
+              <label>Сообщение</label>
+              <div class="s-field-row">
+                <input id="setting-maintenance_message" type="text" class="dark-input" placeholder="Сайт временно недоступен. Скоро вернёмся.">
+                <button class="s-save-btn" onclick="saveSetting('maintenance_message')">Сохранить</button>
+              </div>
+            </div>
+
+            <div class="s-field">
+              <label>Видео-фон (YouTube URL)</label>
+              <div class="s-field-row">
+                <input id="setting-maintenance_video_url" type="url" class="dark-input" placeholder="https://www.youtube.com/watch?v=...">
+                <button class="s-save-btn" onclick="saveSetting('maintenance_video_url')">Сохранить</button>
+              </div>
+              <p class="s-desc">Видео будет воспроизводиться беззвучно как фон страницы обслуживания</p>
+            </div>
+
+            <div class="s-field">
+              <label>Ожидаемое время окончания (необязательно)</label>
+              <div class="s-field-row">
+                <input id="setting-maintenance_end_time" type="datetime-local" class="dark-input">
+                <button class="s-save-btn" onclick="saveSetting('maintenance_end_time')">Сохранить</button>
+              </div>
+              <p class="s-desc">Если задано — на странице обслуживания появится обратный отсчёт</p>
+            </div>
+
+            <div style="margin-top:.6rem;">
+              <a href="/maintenance.html" target="_blank" style="font-size:.72rem;color:var(--muted);text-decoration:none;border:1px solid rgba(110,0,150,0.3);padding:.3rem .7rem;border-radius:.35rem;transition:color .15s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
+                👁 Предпросмотр страницы
+              </a>
+            </div>
+          </div>
+
           <div class="s-field">
             <label style="display:flex;align-items:center;gap:.4rem;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="#5865F2"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.01.043.027.056a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
@@ -1865,7 +1925,7 @@ async function submitEditor() {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
-const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port'];
+const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time'];
 let _settingsBaseline = {};
 
 async function loadSettings() {
@@ -1879,6 +1939,17 @@ async function loadSettings() {
     if (el && map[key] !== undefined) el.value = map[key];
   });
   _settingsBaseline = Object.fromEntries(SETTINGS_FIELD_KEYS.map(k => [k, map[k] ?? '']));
+  // Maintenance mode checkbox sync
+  const mmCb = document.getElementById('setting-maintenance_mode_cb');
+  const mmVal = map['maintenance_mode'] === 'true';
+  if (mmCb) mmCb.checked = mmVal;
+  const mmBadge = document.getElementById('maint-status-badge');
+  if (mmBadge) {
+    mmBadge.textContent = mmVal ? '🔴 Включён' : '🟢 Выключен';
+    mmBadge.style.cssText = mmVal
+      ? 'display:inline;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(200,0,42,.2);color:#f87171;border:1px solid rgba(200,0,42,.4);'
+      : 'display:inline;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(0,150,50,.15);color:#86efac;border:1px solid rgba(0,180,60,.3);';
+  }
   if (map['site_logo_url']) previewLogo(map['site_logo_url']);
   const badge = document.getElementById('https-badge');
   if (badge && map['https_domain']?.trim()) {

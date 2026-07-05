@@ -230,6 +230,11 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="rcon2_port", value="25575"),
         Setting(key="rcon2_password", value=""),
         Setting(key="discord_webhook_url", value=""),
+        Setting(key="maintenance_mode",    value="false"),
+        Setting(key="maintenance_title",   value="Технические работы"),
+        Setting(key="maintenance_message", value="Сайт временно недоступен. Скоро вернёмся."),
+        Setting(key="maintenance_video_url", value=""),
+        Setting(key="maintenance_end_time",  value=""),
     ]
     for s in default_settings:
         existing = await db.execute(select(Setting).where(Setting.key == s.key))
@@ -1797,7 +1802,7 @@ async def serve_upload(filename: str):
 
 @app.get("/api/settings/public")
 async def get_public_settings(db: AsyncSession = Depends(get_db)):
-    keys = ["site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id", "max_url", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules", "timezone", "time_format", "date_format"]
+    keys = ["site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id", "max_url", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules", "timezone", "time_format", "date_format", "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time"]
     result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
     settings = result.scalars().all()
     return {s.key: s.value for s in settings}
@@ -1814,6 +1819,7 @@ ALLOWED_SETTING_KEYS = {
     "rules", "https_domain", "https_email",
     "timezone", "time_format", "date_format",
     "rcon_port", "rcon_password", "rcon2_port", "rcon2_password", "discord_webhook_url",
+    "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time",
 }
 
 @app.get("/api/admin/settings", response_model=list[SettingOut])

@@ -47,6 +47,22 @@ window.__DATEFMT = window.__DATEFMT || 'dd.mm.yyyy';
       window.__H12     = (s.time_format || '24h') === '12h';
       window.__DATEFMT = s.date_format  || 'dd.mm.yyyy';
       window.__settingsLoaded = true;
+
+      // Maintenance mode redirect
+      if (s.maintenance_mode === 'true' || s.maintenance_mode === true) {
+        const path = location.pathname.replace(/\/+$/, '') || '/';
+        const exempt = ['/maintenance.html', '/admin.html', '/login.html'];
+        if (!exempt.includes(path)) {
+          try {
+            const u = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || 'null');
+            if (!u || u.role !== 'admin') {
+              window.location.replace('/maintenance.html');
+            }
+          } catch {
+            window.location.replace('/maintenance.html');
+          }
+        }
+      }
     }
   } catch {}
 })();
