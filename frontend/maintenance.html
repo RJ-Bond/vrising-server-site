@@ -4,162 +4,381 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Технические работы</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing:border-box; margin:0; padding:0; }
-    html, body { width:100%; height:100%; overflow:hidden; background:#06000f; color:#e2d8f0; font-family:'Inter',sans-serif; }
-
-    /* YouTube background */
-    #yt-bg { position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; background:#06000f; }
-    #yt-bg iframe {
-      position:absolute; top:50%; left:50%;
-      width:calc(100vh * 16 / 9); height:calc(100vw * 9 / 16);
-      min-width:100%; min-height:100%;
-      transform:translate(-50%,-50%); border:none; opacity:0; transition:opacity 1.5s;
+    :root {
+      --bg:      #06000f;
+      --panel:   rgba(10,3,18,0.88);
+      --border:  rgba(110,0,150,0.22);
+      --border-r:rgba(180,0,35,0.35);
+      --crimson: #c8002a;
+      --purple:  #7c3aed;
+      --glow-r:  rgba(200,0,42,0.5);
+      --glow-p:  rgba(124,58,237,0.45);
+      --text:    #e2d8f0;
+      --muted:   #9488a8;
+      --gold:    #c9a94a;
     }
-    #yt-bg iframe.loaded { opacity:.35; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html, body { width:100%; height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; }
 
-    /* Dark overlays */
+    /* ── Video / image background ── */
+    #vid-bg {
+      position:fixed; inset:0; z-index:0; overflow:hidden;
+      background:var(--bg);
+    }
+    #vid-bg iframe {
+      position:absolute; top:50%; left:50%;
+      width:calc(100vh * 16/9); height:calc(100vw * 9/16);
+      min-width:100%; min-height:100%;
+      transform:translate(-50%,-50%); border:none;
+      opacity:0; transition:opacity 2s ease;
+    }
+    #vid-bg iframe.loaded { opacity:.32; }
+    #vid-bg.has-img {
+      background-size:cover; background-position:center;
+    }
+
+    /* ── Overlays ── */
     #overlay {
       position:fixed; inset:0; z-index:1; pointer-events:none;
-      background: radial-gradient(ellipse at center bottom, rgba(200,0,42,0.18) 0%, transparent 65%),
-                  radial-gradient(ellipse at center top, rgba(124,58,237,0.12) 0%, transparent 60%),
-                  linear-gradient(to bottom, rgba(6,0,15,0.55) 0%, rgba(6,0,15,0.35) 50%, rgba(6,0,15,0.75) 100%);
+      background:
+        radial-gradient(ellipse 80% 50% at 50% 100%, rgba(200,0,42,0.22) 0%, transparent 65%),
+        radial-gradient(ellipse 70% 50% at 50% 0%,   rgba(124,58,237,0.14) 0%, transparent 60%),
+        linear-gradient(to bottom, rgba(6,0,15,0.6) 0%, rgba(6,0,15,0.25) 40%, rgba(6,0,15,0.8) 100%);
     }
-    /* Noise/stars overlay */
+    /* dot-grid — same as main site */
     #overlay::after {
       content:''; position:absolute; inset:0;
-      background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-image:radial-gradient(rgba(255,255,255,0.045) 1px, transparent 1px);
       background-size:28px 28px;
     }
 
-    /* Content */
-    #content {
-      position:relative; z-index:2; height:100vh; display:flex; flex-direction:column;
-      align-items:center; justify-content:center; text-align:center; padding:2rem;
+    /* ── Fog — same animation as main site ── */
+    #fog { position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden; }
+    #fog::before {
+      content:''; position:absolute; width:180%; height:180%; top:-40%; left:-40%;
+      background:radial-gradient(ellipse at 38% 55%, rgba(80,0,150,0.10) 0%, transparent 55%);
+      animation:fog1 30s ease-in-out infinite alternate;
+    }
+    #fog::after {
+      content:''; position:absolute; width:180%; height:180%; top:-40%; left:-40%;
+      background:radial-gradient(ellipse at 68% 28%, rgba(160,0,30,0.07) 0%, transparent 50%);
+      animation:fog2 42s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes fog1 { to { transform:translate(6%,8%) scale(1.12); } }
+    @keyframes fog2 { to { transform:translate(-7%,5%) scale(0.94); } }
+
+    /* ── Animated edge lines ── */
+    .edge-line {
+      position:fixed; z-index:2; pointer-events:none;
+      background:linear-gradient(90deg, transparent, rgba(200,0,42,0.35), rgba(124,58,237,0.25), transparent);
+    }
+    .edge-line.top    { top:0;    left:0; right:0; height:1px; }
+    .edge-line.bottom { bottom:0; left:0; right:0; height:1px; }
+
+    /* ── Scrollable content wrapper ── */
+    #scroll-wrap {
+      position:relative; z-index:3; height:100vh;
+      overflow-y:auto; overflow-x:hidden;
+      display:flex; flex-direction:column; align-items:center;
+      justify-content:center; padding:1.5rem 1rem;
+      scrollbar-width:thin; scrollbar-color:rgba(110,0,150,0.3) transparent;
     }
 
-    .site-logo { font-family:'Cinzel',serif; font-size:clamp(1.8rem,5vw,3.2rem); font-weight:900; letter-spacing:.18em;
-      color:#d4c4e0; text-shadow:0 0 40px rgba(200,0,42,0.6), 0 0 80px rgba(124,58,237,0.3); margin-bottom:.5rem; }
+    /* ── Main card ── */
+    .maint-card {
+      width:100%; max-width:520px;
+      background:var(--panel);
+      border:1px solid rgba(110,0,150,0.28);
+      border-radius:1rem;
+      box-shadow:
+        0 0 0 1px rgba(180,0,35,0.08),
+        0 8px 40px rgba(0,0,0,0.55),
+        0 0 80px rgba(124,58,237,0.06),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+      backdrop-filter:blur(20px);
+      padding:2.2rem 2rem;
+      text-align:center;
+      position:relative;
+      overflow:hidden;
+    }
+    /* corner glow */
+    .maint-card::before {
+      content:''; position:absolute; top:-60px; left:50%; transform:translateX(-50%);
+      width:200px; height:120px;
+      background:radial-gradient(ellipse, rgba(200,0,42,0.18) 0%, transparent 70%);
+      pointer-events:none;
+    }
 
-    .divider { width:120px; height:1px; background:linear-gradient(90deg,transparent,#c8002a,#7c3aed,transparent); margin:.8rem auto; }
+    /* ── Site header ── */
+    .site-logo {
+      font-family:'Cinzel',serif; font-weight:900;
+      font-size:clamp(1.25rem,4vw,1.85rem); letter-spacing:.18em;
+      color:#d4c4e0;
+      text-shadow:0 0 30px rgba(200,0,42,0.5), 0 0 60px rgba(124,58,237,0.25);
+      margin-bottom:.5rem;
+    }
+    .site-subtitle {
+      font-family:'Cormorant Garamond',serif; font-style:italic;
+      font-size:clamp(.72rem,2vw,.88rem); color:var(--muted); letter-spacing:.08em;
+      margin-bottom:1rem;
+    }
 
-    .maint-icon { font-size:clamp(2rem,6vw,3.5rem); margin-bottom:.75rem; filter:drop-shadow(0 0 20px rgba(200,0,42,0.5)); }
+    /* ── Divider ── */
+    .divider {
+      width:100%; height:1px; margin:.2rem 0 1.1rem;
+      background:linear-gradient(90deg, transparent, rgba(200,0,42,0.5), rgba(124,58,237,0.4), transparent);
+      position:relative;
+    }
+    .divider::after {
+      content:'✦'; position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%);
+      color:rgba(200,0,42,0.7); font-size:.55rem; line-height:1;
+      background:rgba(10,3,18,0.9); padding:0 .5rem;
+    }
 
-    .maint-title { font-family:'Cinzel',serif; font-size:clamp(1.1rem,3.5vw,1.8rem); font-weight:700; color:#e2d8f0;
-      text-shadow:0 2px 20px rgba(200,0,42,0.4); margin-bottom:.6rem; letter-spacing:.05em; }
+    /* ── Icon ── */
+    .maint-icon {
+      font-size:clamp(2rem,6vw,3rem); margin-bottom:.6rem; display:block;
+      animation:pulse-glow 3s ease-in-out infinite;
+    }
+    @keyframes pulse-glow {
+      0%,100% { filter:drop-shadow(0 0 12px rgba(200,0,42,0.45)); }
+      50%      { filter:drop-shadow(0 0 28px rgba(200,0,42,0.85)); }
+    }
 
-    .maint-msg { font-size:clamp(.78rem,2vw,1rem); color:#9488a8; max-width:480px; line-height:1.7; margin-bottom:1.5rem; }
+    /* ── Title & message ── */
+    .maint-title {
+      font-family:'Cinzel',serif; font-size:clamp(1rem,3vw,1.45rem);
+      font-weight:700; color:var(--text); letter-spacing:.07em;
+      text-shadow:0 2px 16px rgba(200,0,42,0.35); margin-bottom:.55rem;
+    }
+    .maint-msg {
+      font-size:clamp(.76rem,2vw,.9rem); color:var(--muted);
+      line-height:1.75; margin-bottom:0; max-width:380px; margin-inline:auto;
+    }
 
-    /* Countdown */
-    #countdown { display:flex; gap:1.2rem; justify-content:center; margin-bottom:1.5rem; }
+    /* ── Countdown — human-readable ── */
+    #countdown-human {
+      font-family:'Cinzel',serif; font-size:clamp(.78rem,2.2vw,.95rem);
+      color:#c4b5fd; font-weight:600; letter-spacing:.04em;
+      background:rgba(124,58,237,0.08); border:1px solid rgba(124,58,237,0.2);
+      border-radius:.45rem; padding:.3rem .9rem; display:inline-block;
+      margin-top:.9rem; margin-bottom:.4rem;
+    }
+    #countdown { display:flex; gap:.8rem; justify-content:center; margin-bottom:.4rem; flex-wrap:wrap; }
     .cd-unit { display:flex; flex-direction:column; align-items:center; }
-    .cd-num { font-family:'Cinzel',serif; font-size:clamp(1.6rem,4vw,2.4rem); font-weight:700; color:#e2d8f0; line-height:1;
-      background:rgba(14,5,22,0.8); border:1px solid rgba(180,0,35,0.35); border-radius:.5rem;
-      padding:.3rem .7rem; min-width:3rem; text-shadow:0 0 20px rgba(200,0,42,0.5); }
-    .cd-label { font-size:.6rem; color:#9488a8; margin-top:.3rem; letter-spacing:.08em; text-transform:uppercase; }
-
-    /* Buttons */
-    .btn-row { display:flex; gap:.75rem; justify-content:center; flex-wrap:wrap; }
-    .btn-discord {
-      display:inline-flex; align-items:center; gap:.5rem; padding:.55rem 1.3rem;
-      background:rgba(88,101,242,0.2); border:1px solid rgba(88,101,242,0.45);
-      border-radius:.45rem; color:#a5b4fc; font-size:.82rem; font-weight:600;
-      text-decoration:none; transition:all .2s;
+    .cd-num {
+      font-family:'Cinzel',serif; font-size:clamp(1.3rem,3.5vw,1.9rem); font-weight:700;
+      color:var(--text); line-height:1;
+      background:rgba(14,5,22,0.85); border:1px solid rgba(180,0,35,0.3);
+      border-radius:.45rem; padding:.25rem .6rem; min-width:2.6rem;
+      text-shadow:0 0 16px rgba(200,0,42,0.45);
     }
-    .btn-discord:hover { background:rgba(88,101,242,0.35); color:#e0e7ff; }
-    .btn-admin {
-      display:inline-flex; align-items:center; gap:.5rem; padding:.55rem 1.3rem;
-      background:rgba(200,0,42,0.15); border:1px solid rgba(200,0,42,0.4);
-      border-radius:.45rem; color:#f87171; font-size:.82rem; font-weight:600;
-      text-decoration:none; transition:all .2s;
-    }
-    .btn-admin:hover { background:rgba(200,0,42,0.3); }
+    .cd-label { font-size:.55rem; color:var(--muted); margin-top:.25rem; letter-spacing:.1em; text-transform:uppercase; }
 
-    /* Pulse animation for icon */
-    @keyframes pulse-glow { 0%,100%{filter:drop-shadow(0 0 20px rgba(200,0,42,0.5))} 50%{filter:drop-shadow(0 0 35px rgba(200,0,42,0.85))} }
-    .maint-icon { animation:pulse-glow 2.5s ease-in-out infinite; }
+    /* ── Progress bar ── */
+    #progress-wrap { width:100%; margin:.4rem 0 .2rem; }
+    .prog-labels { display:flex; justify-content:space-between; font-size:.6rem; color:var(--muted); margin-bottom:.35rem; }
+    .prog-track { height:3px; background:rgba(255,255,255,0.07); border-radius:9999px; overflow:hidden; }
+    .prog-bar {
+      height:100%; width:0%;
+      background:linear-gradient(90deg, #7c3aed, #c8002a);
+      border-radius:9999px; transition:width 1s linear;
+    }
+
+    /* ── Status feed ── */
+    #status-feed {
+      width:100%; text-align:left; margin:.2rem 0;
+    }
+    .feed-header {
+      font-size:.55rem; text-transform:uppercase; letter-spacing:.12em;
+      color:var(--muted); text-align:center; margin-bottom:.5rem;
+    }
+    .feed-item {
+      display:flex; gap:.55rem; align-items:flex-start;
+      padding:.4rem .65rem; margin-bottom:.3rem;
+      background:rgba(6,0,15,0.6); border:1px solid rgba(110,0,150,0.18);
+      border-radius:.45rem; font-size:.73rem;
+    }
+    .feed-item-icon { flex-shrink:0; font-size:.88rem; }
+    .feed-item-text { flex:1; color:var(--text); line-height:1.5; }
+    .feed-item-time { color:var(--muted); flex-shrink:0; font-size:.62rem; margin-top:.15rem; font-variant-numeric:tabular-nums; }
+
+    /* ── Separator in card ── */
+    .card-sep { width:100%; height:1px; background:rgba(110,0,150,0.15); margin:.9rem 0; }
+
+    /* ── Buttons ── */
+    .btn-row { display:flex; gap:.65rem; justify-content:center; flex-wrap:wrap; }
+    .btn {
+      display:inline-flex; align-items:center; gap:.45rem;
+      padding:.5rem 1.2rem; border-radius:.45rem;
+      font-size:.8rem; font-weight:600; text-decoration:none;
+      transition:all .2s; cursor:pointer; border:1px solid;
+      white-space:nowrap;
+    }
+    .btn-discord { background:rgba(88,101,242,0.15); border-color:rgba(88,101,242,0.4); color:#a5b4fc; }
+    .btn-discord:hover { background:rgba(88,101,242,0.3); color:#e0e7ff; }
+    .btn-admin   { background:rgba(200,0,42,0.12); border-color:rgba(200,0,42,0.38); color:#fca5a5; }
+    .btn-admin:hover { background:rgba(200,0,42,0.28); }
+
+    /* ── Admin login ── */
+    #admin-login-wrap { width:100%; margin-top:.6rem; }
+    #al-toggle {
+      width:100%; background:none;
+      border:1px solid rgba(110,0,150,0.22); border-radius:.45rem;
+      color:var(--muted); font-size:.7rem; padding:.4rem;
+      cursor:pointer; transition:all .2s;
+    }
+    #al-toggle:hover { color:var(--text); border-color:rgba(180,0,35,0.35); }
+    #admin-login-form {
+      flex-direction:column; gap:.55rem; margin-top:.65rem;
+      background:rgba(6,0,15,0.85); border:1px solid rgba(110,0,150,0.22);
+      border-radius:.55rem; padding:.9rem;
+    }
+    .al-input {
+      background:rgba(4,0,10,0.8); border:1px solid rgba(110,0,30,0.35);
+      border-radius:.4rem; padding:.45rem .7rem; color:var(--text);
+      font-size:.82rem; outline:none; width:100%; font-size:1rem;
+    }
+    .al-input:focus { border-color:rgba(180,0,35,0.5); }
+    #al-err { font-size:.7rem; color:#f87171; display:none; }
+    #al-btn {
+      background:linear-gradient(135deg, rgba(200,0,42,.65), rgba(140,0,25,.45));
+      border:1px solid rgba(220,0,50,.5); border-radius:.4rem;
+      color:#f8d7da; font-size:.8rem; font-weight:600; padding:.45rem;
+      cursor:pointer; transition:filter .15s;
+    }
+    #al-btn:hover { filter:brightness(1.25); }
+
+    /* ── Responsive ── */
+    @media (max-width:480px) {
+      .maint-card { padding:1.5rem 1.2rem; border-radius:.75rem; }
+      .site-logo  { font-size:1.1rem; }
+    }
   </style>
 </head>
 <body>
-  <!-- YouTube фон -->
-  <div id="yt-bg"><iframe id="yt-iframe" allow="autoplay; encrypted-media"></iframe></div>
+  <!-- Video background -->
+  <div id="vid-bg"><iframe id="vid-iframe" allow="autoplay; encrypted-media" allowfullscreen></iframe></div>
 
-  <!-- Тёмный оверлей -->
+  <!-- Overlays -->
   <div id="overlay"></div>
+  <div id="fog"></div>
+  <div class="edge-line top"></div>
+  <div class="edge-line bottom"></div>
 
-  <!-- Контент -->
-  <div id="content">
-    <div id="site-logo" class="site-logo">V RISING</div>
-    <div class="divider"></div>
-    <div class="maint-icon">⚙️</div>
-    <div id="maint-title" class="maint-title">Технические работы</div>
-    <p id="maint-msg" class="maint-msg">Сайт временно недоступен. Мы скоро вернёмся.</p>
-    <div id="countdown-human" style="font-size:clamp(.85rem,2.5vw,1.05rem);color:#c4b5fd;margin-bottom:.4rem;font-weight:500;"></div>
-    <div id="countdown" style="display:none;"></div>
-    <div id="progress-wrap" style="display:none;width:100%;max-width:400px;margin:.5rem auto 1.2rem;">
-      <div style="display:flex;justify-content:space-between;font-size:.6rem;color:#9488a8;margin-bottom:.4rem;">
-        <span id="prog-start">Начало</span>
-        <span id="prog-pct">0%</span>
-        <span id="prog-end">Конец</span>
+  <!-- Scrollable wrapper -->
+  <div id="scroll-wrap">
+    <div class="maint-card">
+
+      <!-- Header -->
+      <div id="site-logo" class="site-logo">V RISING</div>
+      <div id="site-sub"  class="site-subtitle">Игровое сообщество</div>
+      <div class="divider"></div>
+
+      <!-- Icon + title + message -->
+      <span class="maint-icon" id="maint-icon">⚙️</span>
+      <div  class="maint-title" id="maint-title">Технические работы</div>
+      <p    class="maint-msg"   id="maint-msg">Сайт временно недоступен. Мы скоро вернёмся.</p>
+
+      <!-- Countdown -->
+      <div id="countdown-human" style="display:none;"></div>
+      <div id="countdown"       style="display:none; margin-top:.5rem;"></div>
+
+      <!-- Progress -->
+      <div id="progress-wrap" style="display:none; margin-top:.9rem;">
+        <div class="prog-labels">
+          <span id="prog-start">Начало</span>
+          <span id="prog-pct">0%</span>
+          <span id="prog-end">Конец</span>
+        </div>
+        <div class="prog-track"><div class="prog-bar" id="progress-bar"></div></div>
       </div>
-      <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden;">
-        <div id="progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#c8002a);border-radius:9999px;transition:width 1s linear;"></div>
+
+      <!-- Status feed -->
+      <div id="status-feed" style="display:none; margin-top:.9rem;"></div>
+
+      <!-- Buttons -->
+      <div class="card-sep" id="card-sep-btns" style="display:none;"></div>
+      <div class="btn-row" id="btn-row"></div>
+
+      <!-- Admin login -->
+      <div id="admin-login-wrap">
+        <div class="card-sep" style="margin:.8rem 0 .6rem;"></div>
+        <button id="al-toggle" onclick="toggleLogin()">🔑 Войти как администратор</button>
+        <form id="admin-login-form" onsubmit="adminLogin(event)" style="display:none;">
+          <input id="al-user" class="al-input" type="text"     placeholder="Логин"  autocomplete="username">
+          <input id="al-pass" class="al-input" type="password" placeholder="Пароль" autocomplete="current-password">
+          <div id="al-err"></div>
+          <button type="submit" id="al-btn">Войти</button>
+        </form>
       </div>
-    </div>
-    <div id="status-feed" style="display:none;width:100%;max-width:420px;margin:0 auto 1.2rem;text-align:left;"></div>
-    <div class="btn-row" id="btn-row"></div>
-    <div id="admin-login-wrap" style="margin-top:1.5rem;width:100%;max-width:300px;">
-      <button onclick="document.getElementById('admin-login-form').style.display=document.getElementById('admin-login-form').style.display==='none'?'flex':'none'" style="width:100%;background:none;border:1px solid rgba(110,0,150,0.3);border-radius:.45rem;color:#9488a8;font-size:.72rem;padding:.45rem;cursor:pointer;transition:all .2s;" onmouseover="this.style.color='#e2d8f0';this.style.borderColor='rgba(180,0,35,0.4)'" onmouseout="this.style.color='#9488a8';this.style.borderColor='rgba(110,0,150,0.3)'">
-        🔑 Войти как администратор
-      </button>
-      <form id="admin-login-form" onsubmit="adminLogin(event)" style="display:none;flex-direction:column;gap:.6rem;margin-top:.75rem;background:rgba(14,5,22,0.9);border:1px solid rgba(110,0,150,0.25);border-radius:.55rem;padding:1rem;">
-        <input id="al-user" type="text" placeholder="Логин" autocomplete="username" style="background:rgba(8,0,14,0.8);border:1px solid rgba(110,0,20,0.4);border-radius:.4rem;padding:.5rem .75rem;color:#e2d8f0;font-size:.85rem;outline:none;width:100%;">
-        <input id="al-pass" type="password" placeholder="Пароль" autocomplete="current-password" style="background:rgba(8,0,14,0.8);border:1px solid rgba(110,0,20,0.4);border-radius:.4rem;padding:.5rem .75rem;color:#e2d8f0;font-size:.85rem;outline:none;width:100%;">
-        <div id="al-err" style="font-size:.72rem;color:#f87171;display:none;"></div>
-        <button type="submit" id="al-btn" style="background:linear-gradient(135deg,rgba(200,0,42,.7),rgba(140,0,25,.5));border:1px solid rgba(220,0,50,.55);border-radius:.4rem;color:#f8d7da;font-size:.82rem;font-weight:600;padding:.5rem;cursor:pointer;transition:filter .15s;" onmouseover="this.style.filter='brightness(1.2)'" onmouseout="this.style.filter=''">Войти</button>
-      </form>
-    </div>
-  </div>
+
+    </div><!-- .maint-card -->
+  </div><!-- #scroll-wrap -->
 
   <script>
     function getUser() {
       try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; }
     }
 
-    function ytVideoId(url) {
+    // ── Extract video ID ──────────────────────────────────────────
+    function parseVideoUrl(url) {
       if (!url) return null;
-      const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
-      return m ? m[1] : null;
+      // YouTube
+      const yt = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([A-Za-z0-9_-]{11})/);
+      if (yt) return { type: 'youtube', id: yt[1] };
+      // Rutube: https://rutube.ru/video/HASH/ or /play/embed/HASH/
+      const rt = url.match(/rutube\.ru\/(?:video|play\/embed)\/([a-f0-9]{32})/i);
+      if (rt) return { type: 'rutube', id: rt[1] };
+      return null;
     }
 
+    function buildEmbedUrl(parsed) {
+      if (!parsed) return null;
+      if (parsed.type === 'youtube') {
+        return `https://www.youtube-nocookie.com/embed/${parsed.id}?autoplay=1&mute=1&loop=1&playlist=${parsed.id}&controls=0&disablekb=1&fs=0&rel=0&showinfo=0&modestbranding=1&iv_load_policy=3`;
+      }
+      if (parsed.type === 'rutube') {
+        return `https://rutube.ru/play/embed/${parsed.id}/?autoPlay=1&isMuted=1&isLoop=1&controls=0&rel=0`;
+      }
+      return null;
+    }
+
+    // ── Countdown ─────────────────────────────────────────────────
     function startCountdown(endTime) {
       const target = new Date(endTime).getTime();
       if (isNaN(target)) return;
-      const box = document.getElementById('countdown');
+      const box      = document.getElementById('countdown');
       const humanBox = document.getElementById('countdown-human');
+
+      const wordMin = n => n===1?'минуту':n<5?'минуты':'минут';
+      const wordH   = n => n===1?'час':n<5?'часа':'часов';
 
       const fmt = (diff) => {
         if (diff <= 0) return 'завершается…';
         const totalMin = Math.floor(diff / 60000);
         const h = Math.floor(totalMin / 60), m = totalMin % 60;
         if (h === 0 && m === 0) return 'менее минуты';
-        if (h === 0) return `примерно ${m} ${m===1?'минуту':m<5?'минуты':'минут'}`;
-        const hWord = h===1?'час':h<5?'часа':'часов';
-        if (m === 0) return `примерно ${h} ${hWord}`;
-        const mWord = m===1?'минуту':m<5?'минуты':'минут';
-        return `примерно ${h} ${hWord} ${m} ${mWord}`;
+        if (h === 0) return `примерно ${m} ${wordMin(m)}`;
+        if (m === 0) return `примерно ${h} ${wordH(h)}`;
+        return `примерно ${h} ${wordH(h)} ${m} ${wordMin(m)}`;
       };
 
       const update = () => {
         const diff = target - Date.now();
-        if (diff <= 0) { if(humanBox) humanBox.textContent = 'Завершается…'; return; }
-        if (humanBox) humanBox.textContent = fmt(diff);
-        // Also keep numeric for progress reference
+        if (humanBox) {
+          humanBox.textContent = fmt(diff > 0 ? diff : 0);
+          humanBox.style.display = 'inline-block';
+        }
+        if (diff <= 0) return;
         const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
-        box.innerHTML = [
-          [h,'ч'], [m,'м'], [s,'с']
-        ].filter(([n]) => n > 0 || h > 0).slice(0,3).map(([n,l]) =>
+        const parts = h > 0 ? [[h,'ч'],[m,'м'],[s,'с']] : m > 0 ? [[m,'м'],[s,'с']] : [[s,'с']];
+        box.innerHTML = parts.map(([n,l]) =>
           `<div class="cd-unit"><div class="cd-num">${String(n).padStart(2,'0')}</div><div class="cd-label">${l}</div></div>`
         ).join('');
         box.style.display = 'flex';
@@ -168,118 +387,51 @@
       setInterval(update, 1000);
     }
 
+    // ── Progress bar ──────────────────────────────────────────────
     function startProgress(startTime, endTime) {
-      const s = new Date(startTime).getTime();
-      const e = new Date(endTime).getTime();
+      const s = new Date(startTime).getTime(), e = new Date(endTime).getTime();
       if (isNaN(s) || isNaN(e) || e <= s) return;
       const wrap = document.getElementById('progress-wrap');
-      const bar = document.getElementById('progress-bar');
-      const pct = document.getElementById('prog-pct');
-      const startEl = document.getElementById('prog-start');
-      const endEl = document.getElementById('prog-end');
-      startEl.textContent = new Date(s).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
-      endEl.textContent   = new Date(e).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+      const bar  = document.getElementById('progress-bar');
+      const pct  = document.getElementById('prog-pct');
+      document.getElementById('prog-start').textContent = new Date(s).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+      document.getElementById('prog-end').textContent   = new Date(e).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
       wrap.style.display = '';
       const update = () => {
-        const now = Date.now();
-        const p = Math.min(Math.max((now - s) / (e - s) * 100, 0), 100);
+        const p = Math.min(Math.max((Date.now()-s)/(e-s)*100, 0), 100);
         bar.style.width = p.toFixed(1) + '%';
         pct.textContent = Math.round(p) + '%';
       };
-      update();
-      setInterval(update, 2000);
+      update(); setInterval(update, 3000);
     }
 
+    // ── Status feed ───────────────────────────────────────────────
     function renderStatusFeed(updates) {
       if (!updates || !updates.length) return;
       const feed = document.getElementById('status-feed');
       if (!feed) return;
+      const CAT = { done:'✅', progress:'🔄', pending:'⏳' };
       feed.style.display = '';
-      const CAT_ICONS = { done: '✅', progress: '🔄', pending: '⏳' };
-      feed.innerHTML = `
-        <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:#9488a8;margin-bottom:.5rem;text-align:center;">📋 Статус обновлений</div>
-        ${updates.map(u => {
-          const t = new Date(u.ts * 1000).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
-          const icon = CAT_ICONS[u.cat] || '📌';
-          return `<div style="display:flex;gap:.6rem;align-items:flex-start;padding:.4rem .6rem;margin-bottom:.3rem;background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.2);border-radius:.4rem;font-size:.75rem;">
-        <span style="flex-shrink:0;font-size:.9rem;">${icon}</span>
-        <span style="flex:1;color:#e2d8f0;">${u.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
-        <span style="color:#9488a8;flex-shrink:0;font-size:.65rem;margin-top:.1rem;">${t}</span>
-      </div>`;
-        }).join('')}`;
+      feed.innerHTML = `<div class="feed-header">📋 Статус обновлений</div>` +
+        updates.map(u => {
+          const t = new Date(u.ts*1000).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+          const icon = CAT[u.cat] || '📌';
+          return `<div class="feed-item">
+            <span class="feed-item-icon">${icon}</span>
+            <span class="feed-item-text">${u.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
+            <span class="feed-item-time">${t}</span>
+          </div>`;
+        }).join('');
     }
 
-    async function init() {
-      try {
-        const s = await fetch('/api/settings/public').then(r => r.json());
-
-        // Logo/title
-        if (s.site_logo_url) {
-          document.getElementById('site-logo').innerHTML = `<img src="${s.site_logo_url}" style="height:3rem;object-fit:contain;">`;
-        } else if (s.site_title) {
-          document.getElementById('site-logo').textContent = s.site_title;
-        }
-
-        // Content
-        if (s.maintenance_title) document.getElementById('maint-title').textContent = s.maintenance_title;
-        if (s.maintenance_message) document.getElementById('maint-msg').textContent = s.maintenance_message;
-
-        // Countdown
-        if (s.maintenance_end_time) startCountdown(s.maintenance_end_time);
-
-        // Progress bar
-        if (s.maintenance_start_time && s.maintenance_end_time) {
-          startProgress(s.maintenance_start_time, s.maintenance_end_time);
-        }
-
-        // Status feed
-        try {
-          const updates = JSON.parse(s.maintenance_status_updates || '[]');
-          renderStatusFeed(updates);
-        } catch {}
-
-        // YouTube background
-        const vid = ytVideoId(s.maintenance_video_url || '');
-        if (vid) {
-          const iframe = document.getElementById('yt-iframe');
-          iframe.src = `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=1&loop=1&playlist=${vid}&controls=0&disablekb=1&fs=0&rel=0&showinfo=0&modestbranding=1&iv_load_policy=3`;
-          iframe.onload = () => iframe.classList.add('loaded');
-          // Fallback: if iframe didn't appear after 4s, show static background
-          setTimeout(() => {
-            if (!iframe.classList.contains('loaded')) {
-              const bg = document.getElementById('yt-bg');
-              if (bg && s.maintenance_fallback_image) {
-                bg.style.backgroundImage = `url(${s.maintenance_fallback_image})`;
-                bg.style.backgroundSize = 'cover';
-                bg.style.backgroundPosition = 'center';
-                bg.style.opacity = '1';
-              }
-            }
-          }, 4000);
-        }
-
-        // Buttons
-        const row = document.getElementById('btn-row');
-        if (s.discord_url) {
-          row.innerHTML += `<a href="${s.discord_url}" target="_blank" rel="noopener" class="btn-discord">💬 Discord</a>`;
-        }
-        const u = getUser();
-        if (u && u.role === 'admin') {
-          row.innerHTML += `<a href="/admin.html" class="btn-admin">⚙️ Панель управления</a>`;
-        }
-
-        // Auto-check: redirect back when maintenance ends
-        setInterval(async () => {
-          try {
-            const fresh = await fetch('/api/settings/public').then(r => r.json());
-            if (fresh.maintenance_mode !== 'true' && fresh.maintenance_mode !== true) {
-              window.location.replace('/');
-            }
-          } catch {}
-        }, 30000);
-      } catch {}
+    // ── Admin login toggle ────────────────────────────────────────
+    function toggleLogin() {
+      const f = document.getElementById('admin-login-form');
+      f.style.display = f.style.display === 'flex' ? 'none' : 'flex';
+      f.style.flexDirection = 'column';
     }
 
+    // ── Admin login submit ────────────────────────────────────────
     async function adminLogin(e) {
       e.preventDefault();
       const btn = document.getElementById('al-btn');
@@ -287,21 +439,23 @@
       const user = document.getElementById('al-user').value.trim();
       const pass = document.getElementById('al-pass').value;
       if (!user || !pass) return;
-      btn.disabled = true; btn.textContent = '...';
+      btn.disabled = true; btn.textContent = '…';
       err.style.display = 'none';
       try {
         const res = await fetch('/api/auth/login', {
-          method: 'POST',
-          credentials: 'include',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({username: user, password: pass})
+          method:'POST', credentials:'include',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({username:user, password:pass})
         });
         const d = await res.json();
-        if (!res.ok) { err.textContent = d.detail || 'Неверный логин или пароль'; err.style.display = ''; btn.disabled=false; btn.textContent='Войти'; return; }
-        // Save user to storage
+        if (!res.ok) {
+          err.textContent = d.detail || 'Неверный логин или пароль';
+          err.style.display = '';
+          btn.disabled = false; btn.textContent = 'Войти';
+          return;
+        }
         localStorage.setItem('user', JSON.stringify(d.user || d));
         if (d.token) localStorage.setItem('token', d.token);
-        // If admin — go to admin panel, else show error
         const role = (d.user || d).role;
         if (role === 'admin') {
           window.location.href = '/admin.html';
@@ -310,7 +464,88 @@
           err.style.display = '';
           btn.disabled = false; btn.textContent = 'Войти';
         }
-      } catch { err.textContent = 'Ошибка соединения'; err.style.display = ''; btn.disabled=false; btn.textContent='Войти'; }
+      } catch {
+        err.textContent = 'Ошибка соединения';
+        err.style.display = '';
+        btn.disabled = false; btn.textContent = 'Войти';
+      }
+    }
+
+    // ── Init ──────────────────────────────────────────────────────
+    async function init() {
+      try {
+        const s = await fetch('/api/settings/public').then(r => r.json());
+
+        // Logo / site title
+        const logoEl = document.getElementById('site-logo');
+        const subEl  = document.getElementById('site-sub');
+        if (s.site_logo_url) {
+          logoEl.innerHTML = `<img src="${s.site_logo_url}" style="height:2.8rem;object-fit:contain;">`;
+          subEl.style.display = 'none';
+        } else if (s.site_title) {
+          logoEl.textContent = s.site_title;
+        }
+
+        // Content
+        if (s.maintenance_title)   document.getElementById('maint-title').textContent = s.maintenance_title;
+        if (s.maintenance_message) document.getElementById('maint-msg').textContent   = s.maintenance_message;
+
+        // Countdown + progress
+        if (s.maintenance_end_time) startCountdown(s.maintenance_end_time);
+        if (s.maintenance_start_time && s.maintenance_end_time)
+          startProgress(s.maintenance_start_time, s.maintenance_end_time);
+
+        // Status feed
+        try { renderStatusFeed(JSON.parse(s.maintenance_status_updates || '[]')); } catch {}
+
+        // Video background (YouTube or Rutube)
+        const parsed = parseVideoUrl(s.maintenance_video_url);
+        const embedUrl = buildEmbedUrl(parsed);
+        if (embedUrl) {
+          const iframe = document.getElementById('vid-iframe');
+          iframe.src = embedUrl;
+          iframe.addEventListener('load', () => iframe.classList.add('loaded'), {once:true});
+          // Fallback to static image if video doesn't load in 5s
+          setTimeout(() => {
+            if (!iframe.classList.contains('loaded') && s.maintenance_fallback_image) {
+              const bg = document.getElementById('vid-bg');
+              bg.style.backgroundImage = `url(${s.maintenance_fallback_image})`;
+              bg.classList.add('has-img');
+              iframe.style.display = 'none';
+            }
+          }, 5000);
+        } else if (s.maintenance_fallback_image) {
+          // No video — use static image immediately
+          const bg = document.getElementById('vid-bg');
+          bg.style.backgroundImage = `url(${s.maintenance_fallback_image})`;
+          bg.classList.add('has-img');
+          document.getElementById('vid-iframe').style.display = 'none';
+        }
+
+        // Buttons
+        const row = document.getElementById('btn-row');
+        let hasBtn = false;
+        if (s.discord_url) {
+          row.innerHTML += `<a href="${s.discord_url}" target="_blank" rel="noopener" class="btn btn-discord">💬 Discord</a>`;
+          hasBtn = true;
+        }
+        const u = getUser();
+        if (u && u.role === 'admin') {
+          row.innerHTML += `<a href="/admin.html" class="btn btn-admin">⚙️ Панель</a>`;
+          hasBtn = true;
+        }
+        if (hasBtn) document.getElementById('card-sep-btns').style.display = '';
+
+        // Auto-refresh: redirect to home when maintenance ends
+        setInterval(async () => {
+          try {
+            const fresh = await fetch('/api/settings/public').then(r => r.json());
+            if (fresh.maintenance_mode !== 'true' && fresh.maintenance_mode !== true)
+              window.location.replace('/');
+          } catch {}
+        }, 30000);
+
+      } catch {}
     }
 
     init();
