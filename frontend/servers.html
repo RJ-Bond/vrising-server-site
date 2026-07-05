@@ -243,6 +243,11 @@
       .srv-connect-btn { font-size:.72rem; }
       .srv-metric-val { font-size:1.05rem; }
     }
+    .srv-cal-cell {
+      width:14px; height:14px; border-radius:2px; cursor:default;
+      transition:opacity .15s; flex-shrink:0;
+    }
+    .srv-cal-cell:hover { opacity:.75; }
   </style>
 </head>
 <body>
@@ -303,6 +308,26 @@
     <p style="font-size:.8rem;color:var(--muted);">Статус, онлайн игроков и активность за последние 7 дней</p>
   </div>
 
+  <div id="compare-btn-wrap" style="text-align:center;margin-bottom:1rem;display:none;">
+    <button id="compare-toggle" onclick="toggleCompare()" style="background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.3);color:var(--muted);border-radius:.5rem;padding:.4rem 1rem;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='rgba(160,0,200,0.6)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(110,0,150,0.3)';this.style.color='var(--muted)'">
+      ⚡ Сравнить серверы
+    </button>
+  </div>
+  <div id="compare-card" class="g-card" style="display:none;--accent:#9955ee;--accent-rgb:153,85,238;margin-bottom:1.5rem;">
+    <div class="srv-header-zone" style="padding:1rem 1.5rem .9rem;">
+      <div style="font-family:'Philosopher',serif;font-weight:700;font-size:1rem;color:#ece3f7;">Сравнение серверов</div>
+    </div>
+    <div class="g-card-body">
+      <div class="srv-graph-wrap">
+        <canvas id="compare-canvas" height="150" style="width:100%;display:block;cursor:crosshair;"></canvas>
+        <div class="srv-graph-tooltip" id="compare-tip" style="display:none;"></div>
+      </div>
+      <div style="display:flex;gap:1.5rem;justify-content:center;margin-top:.5rem;font-size:.72rem;">
+        <span style="display:flex;align-items:center;gap:.35rem;"><span style="width:12px;height:3px;background:#e05575;display:inline-block;border-radius:2px;"></span> Сервер 1</span>
+        <span style="display:flex;align-items:center;gap:.35rem;"><span style="width:12px;height:3px;background:#9955ee;display:inline-block;border-radius:2px;"></span> Сервер 2</span>
+      </div>
+    </div>
+  </div>
   <div id="servers-wrap" style="display:flex;flex-direction:column;gap:1.5rem;">
     <p style="color:var(--muted);text-align:center;font-size:.85rem;">Загрузка…</p>
   </div>
@@ -360,6 +385,12 @@ let _wipeSettings = {};
 let _baseTitle = 'V Rising — Сервера';
 // _dateOpts, fmtDate — defined in common.js
 let _onlineCounts = { 1: 0, 2: 0 };
+let _prevPlayerNames = { 1: null, 2: null };
+let _playersData = { 1: [], 2: [] };
+let _playersSortBy = { 1: 'time', 2: 'time' };
+let _compareMode = false;
+let _eventQueue = [];
+let _eventShowing = false;
 
 function updatePageTitle() {
   const total = (_serverEnabled[1] ? _onlineCounts[1] : 0) + (_serverEnabled[2] ? _onlineCounts[2] : 0);
@@ -612,9 +643,29 @@ function srvCardSkeleton(num) {
       </div>
       <div class="srv-heat-labels"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
     </div>
+    <div id="srv-cal-wrap-${num}" style="margin-bottom:1.25rem;">
+      <div class="srv-section-title" style="margin-bottom:.5rem;">Аптайм за 28 дней</div>
+      <div id="srv-cal-${num}" style="display:flex;gap:3px;flex-wrap:wrap;"></div>
+      <div style="display:flex;align-items:center;gap:.5rem;margin-top:.4rem;font-size:.58rem;color:var(--muted);">
+        <span>Меньше</span>
+        <span id="srv-cal-legend-${num}" style="display:flex;gap:2px;"></span>
+        <span>Больше</span>
+      </div>
+    </div>
     <div class="srv-divider"></div>
     <div>
-      <div class="srv-section-title">Игроки онлайн</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap;">
+        <div class="srv-section-title" style="margin-bottom:0;">Игроки онлайн</div>
+        <div style="display:flex;align-items:center;gap:.35rem;">
+          <input id="srv-search-${num}" type="text" placeholder="Поиск…" oninput="filterPlayers(${num})"
+            style="background:rgba(8,0,14,0.6);border:1px solid rgba(110,0,150,0.25);border-radius:.4rem;padding:.3rem .6rem;color:var(--text);font-size:.72rem;width:110px;outline:none;transition:border-color .2s;"
+            onfocus="this.style.borderColor='rgba(160,0,200,0.5)'" onblur="this.style.borderColor='rgba(110,0,150,0.25)'">
+          <button onclick="setSortPlayers(${num},'time',this)" data-sort="time"
+            style="font-size:.6rem;padding:.28rem .5rem;border-radius:.35rem;background:rgba(110,0,150,0.2);border:1px solid rgba(110,0,150,0.35);color:var(--muted);cursor:pointer;transition:all .15s;" title="По времени">⏱</button>
+          <button onclick="setSortPlayers(${num},'name',this)" data-sort="name"
+            style="font-size:.6rem;padding:.28rem .5rem;border-radius:.35rem;background:none;border:1px solid rgba(110,0,150,0.2);color:var(--muted);cursor:pointer;transition:all .15s;" title="По имени">А-Я</button>
+        </div>
+      </div>
       <div class="srv-players-list" id="srv-players-list-${num}"><p class="srv-empty skel">Загрузка…</p></div>
     </div>
     </div>
@@ -697,6 +748,19 @@ async function loadServer(num) {
       }
     }
 
+    // Live join/leave events
+    const currentNames = new Set((d.players_list||[]).map(p=>p.name).filter(Boolean));
+    if (_prevPlayerNames[num] !== null) {
+      const prevNames = _prevPlayerNames[num];
+      currentNames.forEach(name => {
+        if (!prevNames.has(name)) _showServerEvent(`⚔ ${name} зашёл на сервер`, SERVER_THEMES[num].accent);
+      });
+      prevNames.forEach(name => {
+        if (!currentNames.has(name)) _showServerEvent(`💨 ${name} покинул сервер`, 'rgba(150,150,170,0.9)');
+      });
+    }
+    _prevPlayerNames[num] = currentNames;
+
     renderServerPlayers(num, d.players_list || []);
   } catch {
     const badge = document.getElementById(`srv-badge-${num}`);
@@ -721,16 +785,43 @@ function copyServerAddr(num, btn) {
 }
 
 function renderServerPlayers(num, players) {
+  _playersData[num] = players;
+  filterPlayers(num);
+}
+
+function setSortPlayers(num, by, btn) {
+  _playersSortBy[num] = by;
+  const wrap = btn.parentElement;
+  wrap.querySelectorAll('button[data-sort]').forEach(b => {
+    b.style.background = b.dataset.sort === by ? 'rgba(110,0,150,0.35)' : 'none';
+    b.style.color = b.dataset.sort === by ? 'var(--text)' : 'var(--muted)';
+  });
+  filterPlayers(num);
+}
+
+function filterPlayers(num) {
   const el = document.getElementById(`srv-players-list-${num}`);
+  const searchInput = document.getElementById(`srv-search-${num}`);
   if (!el) return;
-  if (!players.length) {
+  const query = (searchInput?.value || '').toLowerCase().trim();
+  const players = _playersData[num] || [];
+  let filtered = query ? players.filter(p => (p.name||'').toLowerCase().includes(query)) : [...players];
+  if (_playersSortBy[num] === 'name') {
+    filtered.sort((a,b) => (a.name||'').localeCompare(b.name||'', 'ru'));
+  } else {
+    filtered.sort((a,b) => b.duration - a.duration);
+  }
+  if (!filtered.length && players.length) {
+    el.innerHTML = `<p class="srv-empty">Нет игроков по запросу</p>`;
+    return;
+  }
+  if (!filtered.length) {
     el.innerHTML = `<p class="srv-empty">Нет игроков онлайн</p>`;
     return;
   }
-  const sorted = [...players].sort((a, b) => b.duration - a.duration);
-  el.innerHTML = sorted.map(p => {
+  el.innerHTML = filtered.map(p => {
     const name = p.name || 'Аноним';
-    const hue = name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 55 + 330;
+    const hue = name.split('').reduce((a,c)=>a+c.charCodeAt(0),0)%55+330;
     return `<div class="srv-players-row">
       <a class="srv-player-link" href="/user.html?u=${encodeURIComponent(name)}" title="Профиль игрока">
         <span class="srv-player-dot" style="background:hsl(${hue},78%,55%);box-shadow:0 0 5px hsl(${hue},78%,55%);"></span>
@@ -861,6 +952,8 @@ async function loadServerGraph(num) {
   }
   drawGraph(num);
   drawHeatmap(num);
+  drawUptimeCalendar(num);
+  if (_compareMode) drawCompareChart();
 }
 
 function setGraphPeriod(num, days, btn) {
@@ -1100,6 +1193,7 @@ async function init() {
   const wrap = document.getElementById('servers-wrap');
   wrap.innerHTML = srvCardSkeleton(1) + srvCardSkeleton(2);
   await refreshAll();
+  document.getElementById('compare-btn-wrap').style.display = '';
   [1, 2].filter(n => _serverEnabled[n]).forEach(num => { loadServerStats(num); loadServerGraph(num); });
 }
 
@@ -1107,6 +1201,175 @@ init();
 setInterval(refreshAll, 30000);
 setInterval(() => [1, 2].filter(n => _serverEnabled[n]).forEach(num => { loadServerStats(num); loadServerGraph(num); }), 300000);
 window.addEventListener('resize', () => [1, 2].filter(n => _serverEnabled[n]).forEach(drawGraph));
+
+function drawUptimeCalendar(num) {
+  const wrap = document.getElementById(`srv-cal-wrap-${num}`);
+  const grid = document.getElementById(`srv-cal-${num}`);
+  const legend = document.getElementById(`srv-cal-legend-${num}`);
+  if (!grid || !_graphData[num]) { if(wrap) wrap.style.display='none'; return; }
+  const accentRgb = SERVER_THEMES[num].accentRgb;
+
+  const now = Date.now() / 1000;
+  const days = 28;
+  const dayBuckets = {};
+  for (let i = 0; i < days; i++) {
+    const d = new Date((now - i * 86400) * 1000);
+    const key = d.toISOString().slice(0, 10);
+    dayBuckets[key] = { total: 0, online: 0 };
+  }
+  (_graphData[num] || []).forEach(s => {
+    const d = new Date(s.ts * 1000);
+    const key = d.toISOString().slice(0, 10);
+    if (dayBuckets[key] !== undefined) {
+      dayBuckets[key].total++;
+      if (s.online) dayBuckets[key].online++;
+    }
+  });
+
+  const dayKeys = Object.keys(dayBuckets).sort();
+  const hasAny = dayKeys.some(k => dayBuckets[k].total > 0);
+  if (!hasAny) { if(wrap) wrap.style.display='none'; return; }
+  if(wrap) wrap.style.display='';
+
+  grid.innerHTML = dayKeys.map(key => {
+    const { total, online } = dayBuckets[key];
+    const pct = total > 0 ? online / total : 0;
+    const alpha = total === 0 ? 0.08 : 0.15 + pct * 0.85;
+    const color = total === 0 ? 'rgba(255,255,255,0.06)' : `rgba(${accentRgb},${alpha.toFixed(2)})`;
+    const dateStr = new Date(key + 'T12:00:00Z').toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit'});
+    const pctStr = total > 0 ? Math.round(pct * 100) + '% онлайн' : 'Нет данных';
+    return `<div class="srv-cal-cell" style="background:${color};" title="${dateStr}: ${pctStr}"></div>`;
+  }).join('');
+
+  legend.innerHTML = [0.1, 0.35, 0.6, 0.85, 1.0].map(a =>
+    `<span style="width:12px;height:12px;border-radius:2px;background:rgba(${accentRgb},${a});display:inline-block;"></span>`
+  ).join('');
+}
+
+function toggleCompare() {
+  _compareMode = !_compareMode;
+  const btn = document.getElementById('compare-toggle');
+  const card = document.getElementById('compare-card');
+  if (_compareMode) {
+    btn.style.borderColor = 'rgba(160,0,200,0.7)';
+    btn.style.color = '#c4b5fd';
+    btn.style.background = 'rgba(80,0,150,0.2)';
+    card.style.display = '';
+    drawCompareChart();
+  } else {
+    btn.style.borderColor = 'rgba(110,0,150,0.3)';
+    btn.style.color = 'var(--muted)';
+    btn.style.background = 'rgba(14,5,22,0.7)';
+    card.style.display = 'none';
+  }
+}
+
+function drawCompareChart() {
+  const canvas = document.getElementById('compare-canvas');
+  const tip = document.getElementById('compare-tip');
+  if (!canvas) return;
+  const d1 = _graphData[1] || [];
+  const d2 = _graphData[2] || [];
+  if (!d1.length && !d2.length) { canvas.style.display='none'; return; }
+  canvas.style.display = '';
+
+  const days = Math.max(_graphPeriod[1]||7, _graphPeriod[2]||7);
+  const cutoff = Date.now()/1000 - days*86400;
+  const s1 = d1.filter(s=>s.ts>=cutoff);
+  const s2 = d2.filter(s=>s.ts>=cutoff);
+
+  const dpr = window.devicePixelRatio||1;
+  const w = canvas.clientWidth||canvas.parentElement.clientWidth;
+  const h = 150;
+  canvas.width = w*dpr; canvas.height = h*dpr;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+
+  const allSnaps = [...s1,...s2];
+  if (!allSnaps.length) return;
+  const tMin = Math.min(...allSnaps.map(s=>s.ts));
+  const tMax = Math.max(...allSnaps.map(s=>s.ts));
+  const maxP = Math.max(1,...allSnaps.map(s=>s.players));
+  const padL=28, padR=4, padT=8, padB=4;
+  const plotW=w-padL-padR, plotH=h-padT-padB;
+  const tSpan = Math.max(1,tMax-tMin);
+  const xf = ts => padL + ((ts-tMin)/tSpan)*plotW;
+  const yf = p => padT + plotH - (p/maxP)*plotH;
+
+  [0,0.5,1].forEach(f => {
+    const gy = padT+plotH*(1-f);
+    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(padL,gy); ctx.lineTo(padL+plotW,gy); ctx.stroke();
+    ctx.fillStyle='rgba(182,168,210,0.55)'; ctx.font='500 8px Inter,sans-serif';
+    ctx.textAlign='right'; ctx.textBaseline='middle';
+    ctx.fillText(Math.round(maxP*f), padL-4, gy);
+  });
+
+  const drawSeries = (snaps, rgb) => {
+    if (!snaps.length) return;
+    const pts = snaps.map(s=>({x:xf(s.ts),y:yf(s.players)}));
+    ctx.beginPath(); ctx.moveTo(pts[0].x,padT+plotH); ctx.lineTo(pts[0].x,pts[0].y);
+    for(let i=1;i<pts.length-1;i++){const xc=(pts[i].x+pts[i+1].x)/2,yc=(pts[i].y+pts[i+1].y)/2;ctx.quadraticCurveTo(pts[i].x,pts[i].y,xc,yc);}
+    if(pts.length>1)ctx.quadraticCurveTo(pts[pts.length-2].x,pts[pts.length-2].y,pts[pts.length-1].x,pts[pts.length-1].y);
+    ctx.lineTo(pts[pts.length-1].x,padT+plotH); ctx.closePath();
+    const g=ctx.createLinearGradient(0,padT,0,padT+plotH);
+    g.addColorStop(0,`rgba(${rgb},0.25)`); g.addColorStop(1,`rgba(${rgb},0.01)`);
+    ctx.fillStyle=g; ctx.fill();
+    ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y);
+    for(let i=1;i<pts.length-1;i++){const xc=(pts[i].x+pts[i+1].x)/2,yc=(pts[i].y+pts[i+1].y)/2;ctx.quadraticCurveTo(pts[i].x,pts[i].y,xc,yc);}
+    if(pts.length>1)ctx.quadraticCurveTo(pts[pts.length-2].x,pts[pts.length-2].y,pts[pts.length-1].x,pts[pts.length-1].y);
+    ctx.strokeStyle=`rgb(${rgb})`; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.stroke();
+  };
+
+  drawSeries(s1, '224,85,117');
+  drawSeries(s2, '153,85,238');
+
+  if (!canvas._cmpHover) {
+    canvas._cmpHover = true;
+    canvas.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const find = (snaps) => {
+        if (!snaps.length) return null;
+        return snaps.reduce((b,s) => Math.abs(xf(s.ts)-mx) < Math.abs(xf(b.ts)-mx) ? s : b);
+      };
+      const n1 = find(s1), n2 = find(s2);
+      let html = '';
+      if (n1) html += `<div style="color:#e05575;font-weight:700;">${n1.players} игр. (Сервер 1)</div>`;
+      if (n2) html += `<div style="color:#9955ee;font-weight:700;">${n2.players} игр. (Сервер 2)</div>`;
+      const ref = n1||n2;
+      if (ref) {
+        const dt = new Date(ref.ts*1000).toLocaleString('ru-RU',{timeZone:window.__TZ||'Europe/Moscow',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+        html += `<span style="font-size:.62rem;color:var(--muted);">${dt}</span>`;
+        tip.innerHTML = html; tip.style.display='block';
+        let left = xf(ref.ts)+8; if(left+130>w) left=xf(ref.ts)-140;
+        tip.style.left=Math.max(0,left)+'px'; tip.style.top='4px';
+      }
+    });
+    canvas.addEventListener('mouseleave', () => tip.style.display='none');
+  }
+}
+
+function _showServerEvent(text, color) {
+  _eventQueue.push({text, color});
+  if (!_eventShowing) _flushEventQueue();
+}
+
+function _flushEventQueue() {
+  if (!_eventQueue.length) { _eventShowing = false; return; }
+  _eventShowing = true;
+  const {text, color} = _eventQueue.shift();
+  const el = document.createElement('div');
+  el.textContent = text;
+  el.style.cssText = `position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(1rem);background:rgba(8,0,14,0.96);border:1px solid ${color};color:#e2d8f0;padding:.5rem 1.1rem;border-radius:.5rem;font-size:.78rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:9999;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none;`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => { el.style.opacity='1'; el.style.transform='translateX(-50%) translateY(0)'; });
+  setTimeout(() => {
+    el.style.opacity='0'; el.style.transform='translateX(-50%) translateY(1rem)';
+    setTimeout(() => { el.remove(); _flushEventQueue(); }, 300);
+  }, 2800);
+}
 
 function toggleMobileNav() {
   const overlay = document.getElementById('mob-overlay');
