@@ -157,6 +157,20 @@
     @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
     .g-card { animation:fade-up .4s ease both; }
 
+    /* COVER CHANGE OVERLAY */
+    .cover-change-overlay {
+      position:absolute; inset:0; background:rgba(0,0,0,0); cursor:pointer;
+      display:flex; align-items:flex-end; justify-content:flex-end;
+      padding:.6rem .75rem; transition:background .2s; z-index:5;
+    }
+    .cover-change-overlay:hover { background:rgba(0,0,0,0.38); }
+    .cover-change-overlay span {
+      font-size:.62rem; font-weight:600; color:#fff; background:rgba(0,0,0,0.55);
+      padding:.25rem .6rem; border-radius:.3rem; border:1px solid rgba(255,255,255,0.2);
+      opacity:0; transition:opacity .2s; letter-spacing:.04em;
+    }
+    .cover-change-overlay:hover span { opacity:1; }
+
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
     ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
@@ -253,6 +267,10 @@
       <div class="cover-stars" id="cover-stars"></div>
       <div class="cover-title" id="cover-subtitle">— Профиль игрока —</div>
       <div class="cover-glow"></div>
+      <div class="cover-change-overlay" id="cover-change-overlay" onclick="document.getElementById('cover-file-input').click()" title="Изменить обложку">
+        <span>Изменить обложку</span>
+      </div>
+      <input type="file" id="cover-file-input" accept="image/*" style="display:none" onchange="uploadCover(this)">
     </div>
     <div style="padding:0 1.5rem 1.5rem;">
       <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
@@ -301,6 +319,19 @@
     <div class="stat-row">
       <span class="stat-key">Email</span>
       <span id="profile-email" class="stat-val">—</span>
+      <button onclick="document.getElementById('email-change-form').style.display=document.getElementById('email-change-form').style.display==='none'?'':'none'" style="margin-left:.5rem;font-size:.62rem;background:none;border:1px solid rgba(110,0,20,0.3);color:var(--muted);padding:.15rem .45rem;border-radius:.3rem;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='rgba(180,0,35,0.5)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(110,0,20,0.3)';this.style.color='var(--muted)'">изменить</button>
+    </div>
+    <div id="email-change-form" style="display:none;margin-top:.5rem;padding:.75rem;background:rgba(8,0,14,0.5);border:1px solid rgba(110,0,20,0.2);border-radius:.5rem;">
+      <div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem;">Новый email</div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+        <input id="new-email-input" type="email" class="field" placeholder="новый@email.com" style="flex:1;min-width:160px;">
+        <input id="email-pw-input" type="password" class="field" placeholder="Текущий пароль" style="flex:1;min-width:140px;">
+      </div>
+      <div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem;flex-wrap:wrap;">
+        <button onclick="submitEmailChange()" class="btn" style="font-size:.72rem;">Сохранить</button>
+        <button onclick="document.getElementById('email-change-form').style.display='none'" class="btn btn-ghost" style="font-size:.72rem;">Отмена</button>
+        <span id="email-change-msg" style="font-size:.75rem;display:none;"></span>
+      </div>
     </div>
     <div class="stat-row">
       <span class="stat-key">Роль</span>
@@ -415,12 +446,50 @@
     </div>
   </div>
 
+  <!-- 2FA -->
+  <div id="twofa-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Двухфакторная аутентификация —</h2>
+    <div id="twofa-status" style="font-size:.82rem;color:var(--muted);margin-bottom:.85rem;">Загрузка…</div>
+    <div id="twofa-setup-area" style="display:none;">
+      <div style="font-size:.78rem;color:var(--text);margin-bottom:.6rem;">
+        Откройте приложение <strong>Google Authenticator</strong> или <strong>Authy</strong>, добавьте аккаунт вручную, введите секрет:
+      </div>
+      <div id="twofa-secret-display" style="font-family:monospace;background:rgba(8,0,14,0.7);border:1px solid rgba(110,0,150,0.3);border-radius:.5rem;padding:.65rem 1rem;font-size:.85rem;color:#c4b5fd;letter-spacing:.1em;margin-bottom:.75rem;word-break:break-all;"></div>
+      <div style="font-size:.68rem;color:var(--muted);margin-bottom:.75rem;">Введите 6-значный код из приложения для подтверждения:</div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+        <input id="twofa-code-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="field" placeholder="123456" style="width:130px;">
+        <button onclick="enableTwoFA()" class="btn" style="font-size:.75rem;">Подтвердить</button>
+        <button onclick="cancelTwofaSetup()" class="btn btn-ghost" style="font-size:.75rem;">Отмена</button>
+      </div>
+      <div id="twofa-enable-msg" style="font-size:.75rem;margin-top:.4rem;display:none;"></div>
+    </div>
+    <div id="twofa-disable-area" style="display:none;">
+      <div style="font-size:.78rem;color:var(--text);margin-bottom:.6rem;">Введите код из приложения чтобы отключить 2FA:</div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+        <input id="twofa-disable-code" type="text" inputmode="numeric" maxlength="6" class="field" placeholder="123456" style="width:130px;">
+        <button onclick="disableTwoFA()" class="btn btn-ghost" style="font-size:.75rem;border-color:rgba(200,0,42,.4);color:#fca5a5;">Отключить 2FA</button>
+      </div>
+      <div id="twofa-disable-msg" style="font-size:.75rem;margin-top:.4rem;display:none;"></div>
+    </div>
+    <div id="twofa-actions" style="display:none;margin-top:.25rem;">
+      <button onclick="startTwofaSetup()" class="btn" style="font-size:.75rem;">Включить 2FA</button>
+    </div>
+  </div>
+
   <!-- Actions -->
-  <div class="g-card" style="padding:1.4rem 1.5rem;">
+  <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
     <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Действия —</h2>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
       <a href="/" class="btn btn-ghost">← На главную</a>
       <button onclick="doLogout()" class="btn btn-ghost">Выйти</button>
+    </div>
+  </div>
+
+  <!-- Activity timeline -->
+  <div id="activity-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
+    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Последняя активность —</h2>
+    <div id="activity-list" style="display:flex;flex-direction:column;gap:.5rem;">
+      <div style="color:var(--muted);font-size:.78rem;text-align:center;padding:.5rem 0;">Загрузка…</div>
     </div>
   </div>
 
@@ -603,6 +672,9 @@ async function loadProfile() {
     setInterval(loadNotifications, 60000);
 
     setAvatarEl(u.avatar_url||'', (u.username||'?').charAt(0).toUpperCase());
+    applyCoverUrl(u.cover_url);
+    loadActivity(u.username);
+    _initTwoFACard(u.totp_enabled || false);
     document.getElementById('profile-name').textContent  = u.username;
     document.getElementById('profile-email').textContent = u.email;
     const roleEl = document.getElementById('profile-role');
@@ -838,6 +910,151 @@ async function clearBadgeIcon() {
     st.textContent = '✔ Иконка удалена'; st.style.color = '#4ade80';
   } catch { st.textContent = '✘ Ошибка'; st.style.color = '#f87171'; }
   setTimeout(() => { st.textContent = ''; }, 3000);
+}
+
+// ── Cover upload ──────────────────────────────────────────────────────────────
+async function uploadCover(input) {
+  if (!input.files?.[0]) return;
+  const form = new FormData();
+  form.append('file', input.files[0]);
+  try {
+    const res = await fetch(`${API}/profile/cover`, { method:'POST', credentials:'include', body:form });
+    if (!res.ok) { const e = await res.json().catch(()=>{}); showToast?.(e?.detail||'Ошибка загрузки', 'error'); return; }
+    const { cover_url } = await res.json();
+    applyCoverUrl(cover_url);
+  } catch { showToast?.('Ошибка загрузки обложки', 'error'); }
+  finally { input.value = ''; }
+}
+function applyCoverUrl(url) {
+  if (!url) return;
+  const cover = document.getElementById('profile-cover');
+  if (cover) {
+    cover.style.backgroundImage = `url('${url}')`;
+    cover.style.backgroundSize = 'cover';
+    cover.style.backgroundPosition = 'center';
+  }
+}
+
+// ── Activity timeline ─────────────────────────────────────────────────────────
+async function loadActivity(username) {
+  const card = document.getElementById('activity-card');
+  const list = document.getElementById('activity-list');
+  if (!card || !list) return;
+  try {
+    const d = await fetch(`${API}/users/${encodeURIComponent(username)}/activity`).then(r => r.json());
+    if (!d.items || !d.items.length) { list.innerHTML = '<div style="color:var(--muted);font-size:.78rem;text-align:center;padding:.5rem 0;">Нет активности</div>'; card.style.display=''; return; }
+    list.innerHTML = d.items.map(item => {
+      const icon = item.type === 'comment' ? '💬' : '⚡';
+      const label = item.type === 'comment'
+        ? `Комментарий к <a href="/?news=${esc(item.news_slug)}" style="color:var(--crimson);text-decoration:none;">${esc(item.news_title||item.news_slug)}</a>`
+        : `Реакция ${esc(item.emoji||'')} к <a href="/?news=${esc(item.news_slug)}" style="color:var(--crimson);text-decoration:none;">${esc(item.news_title||item.news_slug)}</a>`;
+      const preview = item.preview ? `<div style="font-size:.72rem;color:var(--muted);margin-top:.18rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(item.preview)}</div>` : '';
+      const ago = _timeAgo(new Date(item.created_at));
+      return `<div style="display:flex;gap:.65rem;align-items:flex-start;padding:.45rem 0;border-bottom:1px solid rgba(110,0,20,0.1);">
+        <span style="font-size:.9rem;margin-top:.05rem;flex-shrink:0;">${icon}</span>
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:.78rem;">${label}</div>
+          ${preview}
+          <div style="font-size:.62rem;color:var(--muted);margin-top:.12rem;">${ago}</div>
+        </div>
+      </div>`;
+    }).join('');
+    card.style.display = '';
+  } catch { card.style.display = 'none'; }
+}
+
+function _timeAgo(date) {
+  const s = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (s < 60) return 'только что';
+  if (s < 3600) return `${Math.floor(s/60)} мин. назад`;
+  if (s < 86400) return `${Math.floor(s/3600)} ч. назад`;
+  return `${Math.floor(s/86400)} дн. назад`;
+}
+
+// ── Email change ──────────────────────────────────────────────────────────────
+async function submitEmailChange() {
+  const newEmail = document.getElementById('new-email-input').value.trim();
+  const password = document.getElementById('email-pw-input').value;
+  const msg = document.getElementById('email-change-msg');
+  const show = (text, ok) => { msg.textContent = text; msg.style.color = ok?'#4ade80':'#f87171'; msg.style.display=''; };
+  if (!newEmail || !password) return show('Заполните все поля', false);
+  if (!newEmail.includes('@')) return show('Некорректный email', false);
+  try {
+    const res = await fetch(`${API}/auth/change-email`, {
+      method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({new_email: newEmail, password}),
+    });
+    const data = await res.json().catch(()=>({}));
+    if (!res.ok) return show(data.detail||'Ошибка', false);
+    show('Email обновлён', true);
+    document.getElementById('profile-email').textContent = newEmail;
+    setTimeout(() => { document.getElementById('email-change-form').style.display='none'; msg.style.display='none'; }, 2000);
+  } catch { show('Ошибка соединения', false); }
+}
+
+// ── 2FA ───────────────────────────────────────────────────────────────────────
+function _initTwoFACard(totp_enabled) {
+  const statusEl = document.getElementById('twofa-status');
+  const actions = document.getElementById('twofa-actions');
+  const setupArea = document.getElementById('twofa-setup-area');
+  const disableArea = document.getElementById('twofa-disable-area');
+  if (totp_enabled) {
+    statusEl.innerHTML = '<span style="color:#4ade80;">✔ 2FA включена</span> — аккаунт защищён кодом из приложения';
+    actions.style.display = 'none';
+    disableArea.style.display = '';
+    setupArea.style.display = 'none';
+  } else {
+    statusEl.innerHTML = '<span style="color:#f87171;">✘ 2FA выключена</span> — рекомендуем включить для безопасности аккаунта';
+    actions.style.display = '';
+    disableArea.style.display = 'none';
+    setupArea.style.display = 'none';
+  }
+}
+
+async function startTwofaSetup() {
+  document.getElementById('twofa-actions').style.display = 'none';
+  document.getElementById('twofa-setup-area').style.display = '';
+  document.getElementById('twofa-secret-display').textContent = 'Загрузка…';
+  try {
+    const d = await fetch(`${API}/auth/2fa/setup`, {credentials:'include'}).then(r=>r.json());
+    document.getElementById('twofa-secret-display').textContent = d.secret || 'Ошибка';
+  } catch {
+    document.getElementById('twofa-secret-display').textContent = 'Ошибка загрузки';
+  }
+}
+
+function cancelTwofaSetup() {
+  document.getElementById('twofa-setup-area').style.display = 'none';
+  document.getElementById('twofa-actions').style.display = '';
+}
+
+async function enableTwoFA() {
+  const code = document.getElementById('twofa-code-input').value.trim();
+  const msg = document.getElementById('twofa-enable-msg');
+  const show = (t, ok) => { msg.textContent=t; msg.style.color=ok?'#4ade80':'#f87171'; msg.style.display=''; };
+  if (code.length !== 6) return show('Введите 6-значный код', false);
+  try {
+    const res = await fetch(`${API}/auth/2fa/enable`, {method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code})});
+    const d = await res.json().catch(()=>({}));
+    if (!res.ok) return show(d.detail||'Неверный код', false);
+    show('2FA включена!', true);
+    setTimeout(() => _initTwoFACard(true), 1500);
+  } catch { show('Ошибка соединения', false); }
+}
+
+async function disableTwoFA() {
+  const code = document.getElementById('twofa-disable-code').value.trim();
+  const msg = document.getElementById('twofa-disable-msg');
+  const show = (t, ok) => { msg.textContent=t; msg.style.color=ok?'#4ade80':'#f87171'; msg.style.display=''; };
+  if (code.length !== 6) return show('Введите 6-значный код', false);
+  try {
+    const res = await fetch(`${API}/auth/2fa/disable`, {method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code})});
+    const d = await res.json().catch(()=>({}));
+    if (!res.ok) return show(d.detail||'Неверный код', false);
+    show('2FA отключена', true);
+    setTimeout(() => _initTwoFACard(false), 1500);
+  } catch { show('Ошибка соединения', false); }
 }
 
 loadProfile();
