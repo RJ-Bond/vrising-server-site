@@ -23,6 +23,7 @@ services:
       - ./backend:/app/backend
       - .:/opt/vrising-site
       - /var/run/docker.sock:/var/run/docker.sock
+      - maintenance_flag:/var/maintenance
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/version')"]
       interval: 30s
@@ -44,6 +45,7 @@ services:
       - ./frontend:/usr/share/nginx/html:ro
       - letsencrypt_data:/etc/letsencrypt:ro
       - certbot_webroot:/var/www/certbot:ro
+      - maintenance_flag:/var/maintenance:ro
     depends_on:
       web:
         condition: service_healthy
@@ -56,6 +58,7 @@ volumes:
     name: vrising_letsencrypt
   certbot_webroot:
     name: vrising_certbot_webroot
+  maintenance_flag:
 
 networks:
   vrising_net:

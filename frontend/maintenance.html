@@ -95,6 +95,7 @@
     <div class="maint-icon">⚙️</div>
     <div id="maint-title" class="maint-title">Технические работы</div>
     <p id="maint-msg" class="maint-msg">Сайт временно недоступен. Мы скоро вернёмся.</p>
+    <div id="countdown-human" style="font-size:clamp(.85rem,2.5vw,1.05rem);color:#c4b5fd;margin-bottom:.4rem;font-weight:500;"></div>
     <div id="countdown" style="display:none;"></div>
     <div id="progress-wrap" style="display:none;width:100%;max-width:400px;margin:.5rem auto 1.2rem;">
       <div style="display:flex;justify-content:space-between;font-size:.6rem;color:#9488a8;margin-bottom:.4rem;">
@@ -133,19 +134,34 @@
     }
 
     function startCountdown(endTime) {
-      const box = document.getElementById('countdown');
       const target = new Date(endTime).getTime();
       if (isNaN(target)) return;
+      const box = document.getElementById('countdown');
+      const humanBox = document.getElementById('countdown-human');
+
+      const fmt = (diff) => {
+        if (diff <= 0) return 'завершается…';
+        const totalMin = Math.floor(diff / 60000);
+        const h = Math.floor(totalMin / 60), m = totalMin % 60;
+        if (h === 0 && m === 0) return 'менее минуты';
+        if (h === 0) return `примерно ${m} ${m===1?'минуту':m<5?'минуты':'минут'}`;
+        const hWord = h===1?'час':h<5?'часа':'часов';
+        if (m === 0) return `примерно ${h} ${hWord}`;
+        const mWord = m===1?'минуту':m<5?'минуты':'минут';
+        return `примерно ${h} ${hWord} ${m} ${mWord}`;
+      };
 
       const update = () => {
         const diff = target - Date.now();
-        if (diff <= 0) { box.style.display = 'none'; return; }
-        const h = Math.floor(diff / 3600000);
-        const m = Math.floor((diff % 3600000) / 60000);
-        const s = Math.floor((diff % 60000) / 1000);
+        if (diff <= 0) { if(humanBox) humanBox.textContent = 'Завершается…'; return; }
+        if (humanBox) humanBox.textContent = fmt(diff);
+        // Also keep numeric for progress reference
+        const h = Math.floor(diff/3600000), m = Math.floor((diff%3600000)/60000), s = Math.floor((diff%60000)/1000);
         box.innerHTML = [
-          [h, 'часов'], [m, 'минут'], [s, 'секунд']
-        ].map(([n, l]) => `<div class="cd-unit"><div class="cd-num">${String(n).padStart(2, '0')}</div><div class="cd-label">${l}</div></div>`).join('');
+          [h,'ч'], [m,'м'], [s,'с']
+        ].filter(([n]) => n > 0 || h > 0).slice(0,3).map(([n,l]) =>
+          `<div class="cd-unit"><div class="cd-num">${String(n).padStart(2,'0')}</div><div class="cd-label">${l}</div></div>`
+        ).join('');
         box.style.display = 'flex';
       };
       update();
@@ -179,14 +195,17 @@
       const feed = document.getElementById('status-feed');
       if (!feed) return;
       feed.style.display = '';
+      const CAT_ICONS = { done: '✅', progress: '🔄', pending: '⏳' };
       feed.innerHTML = `
         <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:#9488a8;margin-bottom:.5rem;text-align:center;">📋 Статус обновлений</div>
         ${updates.map(u => {
           const t = new Date(u.ts * 1000).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+          const icon = CAT_ICONS[u.cat] || '📌';
           return `<div style="display:flex;gap:.6rem;align-items:flex-start;padding:.4rem .6rem;margin-bottom:.3rem;background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.2);border-radius:.4rem;font-size:.75rem;">
-            <span style="color:#9488a8;flex-shrink:0;font-size:.65rem;margin-top:.1rem;">${t}</span>
-            <span style="color:#e2d8f0;">${u.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
-          </div>`;
+        <span style="flex-shrink:0;font-size:.9rem;">${icon}</span>
+        <span style="flex:1;color:#e2d8f0;">${u.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
+        <span style="color:#9488a8;flex-shrink:0;font-size:.65rem;margin-top:.1rem;">${t}</span>
+      </div>`;
         }).join('')}`;
     }
 

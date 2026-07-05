@@ -936,12 +936,22 @@
 
             <div class="s-field">
               <label>Статус-обновления</label>
-              <div style="display:flex;gap:.5rem;margin-bottom:.6rem;">
-                <input id="maint-status-input" type="text" class="dark-input" placeholder="Например: БД мигрирована, осталось ~5 мин" maxlength="200" style="flex:1;">
+              <div style="display:flex;gap:.5rem;margin-bottom:.6rem;flex-wrap:wrap;">
+                <select id="maint-status-cat" class="dark-input" style="flex-shrink:0;width:auto;padding:.4rem .6rem;">
+                  <option value="progress">🔄 В процессе</option>
+                  <option value="done">✅ Выполнено</option>
+                  <option value="pending">⏳ Ожидает</option>
+                </select>
+                <input id="maint-status-input" type="text" class="dark-input" placeholder="Например: БД мигрирована, осталось ~5 мин" maxlength="200" style="flex:1;min-width:140px;">
                 <button class="s-save-btn" onclick="addMaintenanceStatus()">+ Добавить</button>
               </div>
               <div id="maint-status-list" style="display:flex;flex-direction:column;gap:.35rem;"></div>
               <p class="s-desc">Обновления видны посетителям на странице обслуживания в реальном времени</p>
+            </div>
+
+            <div class="s-field" style="margin-top:.8rem;">
+              <label>История обслуживаний</label>
+              <div id="maint-history-list" style="display:flex;flex-direction:column;gap:.3rem;margin-top:.5rem;max-height:200px;overflow-y:auto;"></div>
             </div>
 
             <div style="margin-top:.6rem;">
@@ -1670,7 +1680,7 @@ function showSection(name) {
     if (btn) btn.className = 'sidebar-btn' + (s === name ? ' active' : '');
   });
   if (name === 'editor')   document.getElementById('btn-news').className = 'sidebar-btn active';
-  if (name === 'settings') { loadSettings(); loadRules(); loadMaintenanceStatuses(); }
+  if (name === 'settings') { loadSettings(); loadRules(); loadMaintenanceStatuses(); loadMaintenanceHistory(); }
   if (name === 'users')    loadUsers();
   if (name === 'news')     loadAdminNews(adminNewsPage);
   if (name === 'dashboard')  loadDashboard();
@@ -1997,6 +2007,33 @@ async function loadMaintenanceStatuses() {
   } catch {}
 }
 
+async function loadMaintenanceHistory() {
+  try {
+    const res = await fetch(`${API}/admin/settings`, { credentials:'include', headers:authH() });
+    if (!res.ok) return;
+    const all = await res.json();
+    const s = all.find(x => x.key === 'maintenance_history');
+    const history = JSON.parse(s?.value || '[]');
+    renderMaintenanceHistory(history);
+  } catch {}
+}
+
+function renderMaintenanceHistory(history) {
+  const el = document.getElementById('maint-history-list');
+  if (!el) return;
+  if (!history.length) { el.innerHTML = '<div style="font-size:.72rem;color:var(--muted);">История пуста</div>'; return; }
+  el.innerHTML = history.map(ep => {
+    const start = ep.start ? new Date(ep.start).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+    const end   = ep.end   ? new Date(ep.end).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '⏳ Активно';
+    const dur   = ep.duration != null ? (ep.duration < 3600 ? `${Math.round(ep.duration/60)} мин` : `${(ep.duration/3600).toFixed(1)} ч`) : '—';
+    return `<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:.5rem;padding:.4rem .6rem;background:rgba(14,5,22,0.6);border:1px solid rgba(110,0,150,0.18);border-radius:.4rem;font-size:.72rem;align-items:center;">
+      <span style="color:var(--muted);">▶ ${start}</span>
+      <span style="color:var(--muted);">⏹ ${end}</span>
+      <span style="color:var(--text);font-weight:600;">${dur}</span>
+    </div>`;
+  }).join('');
+}
+
 function renderMaintenanceStatuses(updates) {
   const list = document.getElementById('maint-status-list');
   if (!list) return;
@@ -2018,7 +2055,7 @@ async function addMaintenanceStatus() {
   try {
     const res = await fetch(`${API}/admin/maintenance/status`, {
       method:'POST', credentials:'include', headers:{...authH(),'Content-Type':'application/json'},
-      body: JSON.stringify({text})
+      body: JSON.stringify({text, cat: document.getElementById('maint-status-cat')?.value || 'progress'})
     });
     if (!res.ok) throw new Error();
     const d = await res.json();

@@ -75,12 +75,31 @@ window.__DATEFMT = window.__DATEFMT || 'dd.mm.yyyy';
               banner.id = 'maint-admin-banner';
               banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(180,0,30,0.95);backdrop-filter:blur(8px);border-top:1px solid rgba(255,80,80,0.4);padding:.55rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;font-size:.78rem;font-family:Inter,sans-serif;color:#fff;';
               banner.innerHTML = `
-                <span>⚠️ <strong>Режим обслуживания включён</strong> — посетители видят страницу обслуживания</span>
-                <div style="display:flex;gap:.6rem;flex-shrink:0;">
-                  <a href="/maintenance.html" target="_blank" style="color:rgba(255,255,255,.7);text-decoration:none;font-size:.72rem;padding:.25rem .6rem;border:1px solid rgba(255,255,255,.25);border-radius:.3rem;">👁 Просмотр</a>
-                  <button onclick="(async()=>{await fetch('/api/admin/settings',{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'maintenance_mode',value:'false'})});location.reload();})()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:.3rem;color:#fff;padding:.25rem .7rem;cursor:pointer;font-size:.72rem;">✕ Выключить</button>
+                <span style="flex-shrink:0;">⚠️ <strong>Режим обслуживания включён</strong></span>
+                <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+                  <span style="font-size:.68rem;opacity:.7;flex-shrink:0;">Продлить:</span>
+                  <button onclick="_maintExtend(15)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:.3rem;color:#fff;padding:.2rem .5rem;cursor:pointer;font-size:.68rem;">+15м</button>
+                  <button onclick="_maintExtend(30)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:.3rem;color:#fff;padding:.2rem .5rem;cursor:pointer;font-size:.68rem;">+30м</button>
+                  <button onclick="_maintExtend(60)" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:.3rem;color:#fff;padding:.2rem .5rem;cursor:pointer;font-size:.68rem;">+1ч</button>
+                  <a href="/maintenance.html" target="_blank" style="color:rgba(255,255,255,.7);text-decoration:none;font-size:.68rem;padding:.2rem .5rem;border:1px solid rgba(255,255,255,.2);border-radius:.3rem;">👁</a>
+                  <button onclick="(async()=>{await fetch('/api/admin/settings',{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'maintenance_mode',value:'false'})});location.reload();})()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:.3rem;color:#fff;padding:.2rem .6rem;cursor:pointer;font-size:.68rem;">✕ Выкл</button>
                 </div>`;
               document.body.appendChild(banner);
+              window._maintExtend = async (min) => {
+                try {
+                  const r = await fetch('/api/admin/maintenance/extend', {
+                    method:'POST', credentials:'include',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({minutes: min})
+                  });
+                  if (r.ok) {
+                    const d = await r.json();
+                    const t = new Date(d.new_end).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+                    const span = banner.querySelector('span');
+                    if(span) span.textContent = `⚠️ Обслуживание · конец в ${t}`;
+                  }
+                } catch {}
+              };
             }
           } catch {}
         }

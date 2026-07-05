@@ -238,6 +238,7 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="maintenance_start_time",    value=""),
         Setting(key="maintenance_fallback_image", value=""),
         Setting(key="maintenance_status_updates", value="[]"),
+        Setting(key="maintenance_history", value="[]"),
     ]
     for s in default_settings:
         existing = await db.execute(select(Setting).where(Setting.key == s.key))
@@ -302,6 +303,13 @@ async def lifespan(app: FastAPI):
                 pass  # column already exists
     async with AsyncSession(engine, expire_on_commit=False) as db:
         await _seed_defaults(db)
+        # Restore maintenance flag file on startup
+        try:
+            res = await db.execute(select(Setting).where(Setting.key == "maintenance_mode"))
+            s = res.scalar_one_or_none()
+            _write_maintenance_flag(s is not None and s.value == "true")
+        except Exception:
+            pass
         # Pre-populate monitor history from DB snapshots (last 24h)
         from .monitor import init_history
         cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
@@ -1844,9 +1852,52 @@ async def _send_maintenance_webhook(db: AsyncSession, enabled: bool) -> None:
         pass
 
 
+async def _record_maintenance_history(db: AsyncSession, enabled: bool) -> None:
+    """Record maintenance episode start/end in history."""
+    try:
+        res = await db.execute(select(Setting).where(Setting.key == "maintenance_history"))
+        s = res.scalar_one_or_none()
+        history = json.loads(s.value if s and s.value else "[]")
+        now_iso = datetime.now(timezone.utc).isoformat()
+        if enabled:
+            # Start new episode
+            history.insert(0, {"start": now_iso, "end": None, "duration": None})
+        else:
+            # Close last open episode
+            for ep in history:
+                if ep.get("end") is None:
+                    ep["end"] = now_iso
+                    start_dt = datetime.fromisoformat(ep["start"])
+                    end_dt = datetime.fromisoformat(now_iso)
+                    ep["duration"] = int((end_dt - start_dt).total_seconds())
+                    break
+        # Keep last 50 episodes
+        history = history[:50]
+        await _set_setting_value(db, "maintenance_history", json.dumps(history, ensure_ascii=False))
+    except Exception:
+        pass
+
+
+MAINTENANCE_FLAG_PATH = "/var/maintenance/.flag"
+
+
+def _write_maintenance_flag(enabled: bool) -> None:
+    """Write or remove the maintenance flag file for nginx."""
+    import os, pathlib
+    try:
+        flag = pathlib.Path(MAINTENANCE_FLAG_PATH)
+        if enabled:
+            flag.parent.mkdir(parents=True, exist_ok=True)
+            flag.touch()
+        else:
+            flag.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 @app.get("/api/settings/public")
 async def get_public_settings(db: AsyncSession = Depends(get_db)):
-    keys = ["site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id", "max_url", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules", "timezone", "time_format", "date_format", "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time", "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates"]
+    keys = ["site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id", "max_url", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules", "timezone", "time_format", "date_format", "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time", "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates", "maintenance_history"]
     result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
     settings = result.scalars().all()
     d = {s.key: s.value for s in settings}
@@ -1862,12 +1913,16 @@ async def get_public_settings(db: AsyncSession = Depends(get_db)):
         await _set_setting_value(db, "maintenance_mode", "true")
         d["maintenance_mode"] = "true"
         asyncio.create_task(_send_maintenance_webhook(db, enabled=True))
+        asyncio.create_task(_record_maintenance_history(db, True))
+        _write_maintenance_flag(True)
 
     if end_t and mode == "true" and end_t <= now_iso:
         # Auto-disable
         await _set_setting_value(db, "maintenance_mode", "false")
         d["maintenance_mode"] = "false"
         asyncio.create_task(_send_maintenance_webhook(db, enabled=False))
+        asyncio.create_task(_record_maintenance_history(db, False))
+        _write_maintenance_flag(False)
 
     return d
 
@@ -1914,6 +1969,38 @@ async def delete_maintenance_status(
     return {"ok": True, "updates": updates}
 
 
+class MaintenanceExtendBody(BaseModel):
+    minutes: int  # 15, 30, 60, etc.
+
+@app.post("/api/admin/maintenance/extend")
+async def extend_maintenance(
+    body: MaintenanceExtendBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(403)
+    if body.minutes not in (15, 30, 60, 120):
+        raise HTTPException(400, "Invalid duration")
+    # Get current end time
+    res = await db.execute(select(Setting).where(Setting.key == "maintenance_end_time"))
+    s = res.scalar_one_or_none()
+    end_val = s.value if s and s.value else ""
+    try:
+        if end_val:
+            base = datetime.fromisoformat(end_val)
+            if base.tzinfo is None:
+                base = base.replace(tzinfo=timezone.utc)
+        else:
+            base = datetime.now(timezone.utc)
+        new_end = base + timedelta(minutes=body.minutes)
+        new_end_iso = new_end.isoformat()
+    except Exception:
+        new_end_iso = (datetime.now(timezone.utc) + timedelta(minutes=body.minutes)).isoformat()
+    await _set_setting_value(db, "maintenance_end_time", new_end_iso)
+    return {"ok": True, "new_end": new_end_iso}
+
+
 # ─── Settings (admin) ────────────────────────────────────────────────────────
 
 ALLOWED_SETTING_KEYS = {
@@ -1926,7 +2013,7 @@ ALLOWED_SETTING_KEYS = {
     "timezone", "time_format", "date_format",
     "rcon_port", "rcon_password", "rcon2_port", "rcon2_password", "discord_webhook_url",
     "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time",
-    "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates",
+    "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates", "maintenance_history",
 }
 
 @app.get("/api/admin/settings", response_model=list[SettingOut])
@@ -1959,6 +2046,8 @@ async def update_setting(
     await db.refresh(setting)
     if key == "maintenance_mode":
         asyncio.create_task(_send_maintenance_webhook(db, body.value == "true"))
+        asyncio.create_task(_record_maintenance_history(db, body.value == "true"))
+        _write_maintenance_flag(body.value == "true")
     return SettingOut.model_validate(setting)
 
 
