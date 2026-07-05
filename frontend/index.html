@@ -278,30 +278,60 @@
     .chat-welcome .rune-big { font-size:2.5rem; opacity:.4; }
 
     /* ── Modal ── */
-    .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:50; align-items:center; justify-content:center; padding:1rem; backdrop-filter:blur(5px); }
+    .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:50; align-items:flex-start; justify-content:center; padding:1.5rem 1rem; backdrop-filter:blur(8px); overflow-y:auto; }
     .modal-bg.open { display:flex; }
     .modal-box {
-      background:rgba(12,2,20,0.98); border:1px solid rgba(130,0,25,0.45);
-      box-shadow:0 0 60px rgba(0,0,0,0.8), 0 0 30px rgba(100,0,20,0.15);
-      border-radius:1rem; max-width:700px; width:100%; max-height:88vh;
-      overflow-y:auto; padding:1.75rem; position:relative;
+      background:rgba(8,0,16,0.99);
+      border:1px solid rgba(130,0,25,0.4);
+      box-shadow:0 0 0 1px rgba(255,255,255,0.03) inset, 0 4px 80px rgba(0,0,0,0.95), 0 0 40px rgba(100,0,20,0.2);
+      border-radius:1.1rem; max-width:780px; width:100%;
+      overflow:hidden; position:relative; margin:auto;
+    }
+    .modal-top-bar {
+      position:sticky; top:0; z-index:20;
+      display:flex; justify-content:flex-end; gap:.4rem;
+      padding:.6rem .8rem;
+      background:linear-gradient(180deg,rgba(6,0,14,0.97) 60%,transparent);
+      pointer-events:none;
+    }
+    .modal-top-bar button { pointer-events:auto; }
+    .modal-body { padding:1.4rem 1.75rem 2rem; }
+    .modal-article-meta {
+      display:flex; align-items:center; gap:.75rem;
+      padding:.9rem 0 1.1rem;
+      border-bottom:1px solid rgba(150,0,25,0.18);
+      margin-bottom:1.35rem;
+    }
+    .modal-tag {
+      display:inline-flex; align-items:center;
+      font-size:.62rem; font-weight:700; letter-spacing:.08em;
+      text-transform:uppercase;
+      padding:.18rem .55rem; border-radius:9999px;
+      background:rgba(140,0,28,0.18); border:1px solid rgba(181,0,42,0.3); color:#e07090;
     }
     /* Rich content styles */
-    .rich-content { font-size:.9rem; line-height:1.75; color:var(--text); }
-    .rich-content h1,.rich-content h2,.rich-content h3 { font-family:'Cinzel',serif; color:#c9a04a; margin:1.2rem 0 .5rem; }
-    .rich-content h1 { font-size:1.4rem; }
-    .rich-content h2 { font-size:1.15rem; }
-    .rich-content h3 { font-size:1rem; }
-    .rich-content p { margin-bottom:.65rem; }
-    .rich-content ul,.rich-content ol { padding-left:1.5rem; margin-bottom:.65rem; }
-    .rich-content li { margin-bottom:.25rem; }
-    .rich-content blockquote { border-left:3px solid rgba(181,0,42,0.6); color:#9a7aaa; padding-left:1rem; margin:.75rem 0; font-style:italic; }
-    .rich-content code { background:rgba(40,0,60,0.5); border-radius:.3rem; padding:.1rem .4rem; color:#c9a04a; font-size:.85rem; }
-    .rich-content pre { background:rgba(40,0,60,0.5); border-radius:.5rem; padding:.75rem 1rem; overflow-x:auto; margin-bottom:.65rem; }
-    .rich-content pre code { background:none; padding:0; }
-    .rich-content a { color:#b5002a; text-decoration:underline; }
-    .rich-content img { max-width:100%; border-radius:.5rem; margin:.5rem 0; display:block; }
-    .rich-content strong { color:#d4c4e0; font-weight:700; }
+    .rich-content { font-size:.92rem; line-height:1.8; color:#ccc0dc; }
+    .rich-content h1,.rich-content h2,.rich-content h3 { font-family:'Cinzel',serif; color:#c9a04a; margin:1.5rem 0 .6rem; line-height:1.25; }
+    .rich-content h1 { font-size:1.35rem; }
+    .rich-content h2 { font-size:1.12rem; border-bottom:1px solid rgba(180,0,30,0.18); padding-bottom:.35rem; }
+    .rich-content h3 { font-size:.98rem; color:#d4b87c; }
+    .rich-content p { margin-bottom:.8rem; }
+    .rich-content ul,.rich-content ol { padding-left:1.5rem; margin-bottom:.8rem; }
+    .rich-content li { margin-bottom:.3rem; }
+    .rich-content blockquote { border-left:3px solid rgba(181,0,42,0.55); background:rgba(100,0,20,0.1); color:#a891be; padding:.7rem 1rem; margin:1rem 0; font-style:italic; border-radius:0 .4rem .4rem 0; }
+    .rich-content code { background:rgba(50,0,80,0.55); border-radius:.3rem; padding:.1rem .4rem; color:#c9a04a; font-size:.82rem; border:1px solid rgba(100,0,120,0.3); }
+    .rich-content pre { background:rgba(6,0,14,0.8); border:1px solid rgba(110,0,150,0.2); border-radius:.6rem; padding:.9rem 1.1rem; overflow-x:auto; margin-bottom:.8rem; }
+    .rich-content pre code { background:none; padding:0; border:none; }
+    .rich-content a { color:#e05070; text-decoration:underline; text-underline-offset:2px; }
+    .rich-content a:hover { color:#ff7090; }
+    .rich-content img { max-width:100%; border-radius:.6rem; margin:.75rem auto; display:block; box-shadow:0 4px 20px rgba(0,0,0,0.5); border:1px solid rgba(110,0,20,0.25); }
+    .rich-content strong { color:#e2d8f0; font-weight:700; }
+    .rich-content em { color:#b8a8cc; }
+    .rich-content hr { border:none; height:1px; background:linear-gradient(90deg,transparent,rgba(180,0,30,0.4),transparent); margin:1.5rem 0; }
+    .rich-content table { width:100%; border-collapse:collapse; margin-bottom:.8rem; font-size:.85rem; }
+    .rich-content th { background:rgba(100,0,20,0.25); color:#c9a04a; padding:.4rem .75rem; border:1px solid rgba(150,0,25,0.3); text-align:left; font-family:'Cinzel',serif; font-size:.78rem; }
+    .rich-content td { padding:.4rem .75rem; border:1px solid rgba(110,0,20,0.2); vertical-align:top; }
+    .rich-content tr:nth-child(even) td { background:rgba(60,0,10,0.15); }
     .rich-content em { color:#b8a0cc; }
 
     /* ── Buttons ── */
@@ -1592,23 +1622,35 @@
 <div id="toast-container"></div>
 
 <!-- ══ MODAL ═════════════════════════════════════════════════════════════════ -->
-<div id="modal-bg" class="modal-bg">
+<div id="modal-bg" class="modal-bg" onclick="if(event.target===this)closeModal()">
   <div class="modal-box">
-    <div style="position:absolute;top:.75rem;right:.75rem;display:flex;gap:.4rem;">
-      <button onclick="shareNews()" data-tip="Поделиться" style="width:28px;height:28px;border-radius:50%;background:rgba(20,5,40,0.8);border:1px solid rgba(110,0,20,0.35);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:color .15s,border-color .15s;" onmouseover="this.style.color='#d4c4e0';this.style.borderColor='rgba(180,0,30,0.55)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='rgba(110,0,20,0.35)'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
-      <button onclick="closeModal()" class="modal-close-btn" title="Закрыть" style="position:static;">✕</button>
+    <!-- Sticky top bar -->
+    <div class="modal-top-bar">
+      <button onclick="shareNews()" title="Поделиться" style="width:30px;height:30px;border-radius:50%;background:rgba(20,5,40,0.85);border:1px solid rgba(110,0,20,0.4);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;" onmouseover="this.style.color='#d4c4e0';this.style.borderColor='rgba(180,0,30,0.6)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='rgba(110,0,20,0.4)'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg></button>
+      <button onclick="closeModal()" class="modal-close-btn" title="Закрыть" style="position:static;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;">✕</button>
     </div>
-    <div id="modal-author" style="display:flex;align-items:center;gap:.6rem;margin-bottom:.75rem;"></div>
-    <h3 id="modal-title" class="gothic" style="font-size:1.2rem;font-weight:700;color:#d4c4e0;margin-bottom:.75rem;"></h3>
-    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(180,0,30,0.5),transparent);margin-bottom:1rem;"></div>
-    <div id="modal-thumb" style="display:none;margin-bottom:1rem;border-radius:8px;overflow:hidden;max-height:320px;"><img id="modal-thumb-img" src="" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;max-height:320px;"></div>
-    <div id="modal-content" class="rich-content"></div>
-    <div id="poll-wrap" style="display:none;"></div>
-    <div id="modal-reactions" style="display:flex;align-items:center;gap:.5rem;padding:.75rem 0;border-top:1px solid rgba(110,0,20,0.13);border-bottom:1px solid rgba(110,0,20,0.13);margin:.75rem 0;flex-wrap:wrap;"></div>
-    <div class="comments-section">
-      <div style="font-size:.75rem;font-weight:700;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-bottom:.75rem;">Комментарии</div>
-      <div id="modal-comments"></div>
-      <div id="modal-comment-form"></div>
+
+    <!-- Hero: populated by JS (thumbnail + title + tags) -->
+    <div id="modal-hero" style="margin-top:-52px;"></div>
+
+    <!-- Hidden legacy anchors (kept for backward compat in error handler) -->
+    <h3 id="modal-title" style="display:none;"></h3>
+    <div id="modal-thumb" style="display:none;"><img id="modal-thumb-img" src="" alt=""></div>
+
+    <!-- Article body -->
+    <div class="modal-body">
+      <div id="modal-author" class="modal-article-meta"></div>
+      <div id="modal-content" class="rich-content"></div>
+      <div id="poll-wrap" style="display:none;margin-top:1.25rem;"></div>
+      <div id="modal-reactions" style="display:flex;align-items:center;gap:.45rem;padding:.9rem 0;border-top:1px solid rgba(110,0,20,0.15);border-bottom:1px solid rgba(110,0,20,0.15);margin:1.25rem 0;flex-wrap:wrap;"></div>
+      <div class="comments-section">
+        <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          Комментарии
+        </div>
+        <div id="modal-comments"></div>
+        <div id="modal-comment-form"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -2825,30 +2867,50 @@ async function openNews(slug) {
     document.getElementById('modal-title').textContent = n.title;
     const authorName = esc(n.author.username);
     const modalAdminBadge = _renderAdminBadge(n.author);
+    const tags = (n.tags || '').split(',').map(t => t.trim()).filter(Boolean);
+    const tagHtml = tags.map(t => `<span class="modal-tag">${esc(t)}</span>`).join('');
+
+    // ── Hero section ──────────────────────────────────────────────────────────
+    const heroEl = document.getElementById('modal-hero');
+    if (n.thumbnail_url) {
+      heroEl.innerHTML = `
+        <div style="position:relative;height:300px;overflow:hidden;">
+          <img src="${esc(n.thumbnail_url)}" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;">
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,0,14,0.25) 0%,rgba(6,0,14,0.6) 50%,rgba(6,0,14,0.97) 100%);"></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;padding:1.6rem 1.75rem 1.3rem;">
+            ${tagHtml ? `<div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.65rem;">${tagHtml}</div>` : ''}
+            <h2 style="font-family:'Cinzel',serif;font-size:1.5rem;font-weight:700;color:#f0ebfa;line-height:1.3;text-shadow:0 2px 16px rgba(0,0,0,0.9);">${esc(n.title)}</h2>
+          </div>
+        </div>`;
+    } else {
+      heroEl.innerHTML = `
+        <div style="position:relative;overflow:hidden;padding:2rem 1.75rem 1.4rem;background:linear-gradient(135deg,rgba(50,0,80,0.5) 0%,rgba(100,0,20,0.25) 100%);">
+          <div style="position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,0.03) 1px,transparent 1px);background-size:24px 24px;pointer-events:none;"></div>
+          <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(181,0,42,0.45),transparent);"></div>
+          ${tagHtml ? `<div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.75rem;position:relative;">${tagHtml}</div>` : ''}
+          <h2 style="font-family:'Cinzel',serif;font-size:1.5rem;font-weight:700;color:#f0ebfa;line-height:1.3;position:relative;">${esc(n.title)}</h2>
+        </div>`;
+    }
+
+    // ── Author meta row ───────────────────────────────────────────────────────
     const avatarEl = n.author.avatar_url
-      ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:44px;height:44px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.3);flex-shrink:0;">`
-      : `<span style="width:44px;height:44px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(80,0,150,0.6),rgba(120,0,20,0.4));border:1px solid rgba(190,0,40,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:.95rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
+      ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(181,0,42,0.35);flex-shrink:0;box-shadow:0 0 12px rgba(181,0,42,0.2);">`
+      : `<span style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(80,0,150,0.7),rgba(120,0,20,0.5));border:2px solid rgba(181,0,42,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:.9rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
     document.getElementById('modal-author').innerHTML = `
       ${avatarEl}
-      <div style="display:flex;flex-direction:column;gap:.2rem;">
-        <div style="display:flex;align-items:center;gap:.35rem;">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;">
           <span style="font-size:.88rem;color:#d4c4e0;font-weight:600;">${authorName}</span>
           ${modalAdminBadge}
         </div>
-        <div style="display:flex;align-items:center;gap:.5rem;">
-          <span style="font-size:.68rem;color:var(--muted);">${fmtDate(n.created_at)}</span>
-          <span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.68rem;color:var(--muted);"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${n.views || 0}</span>
+        <div style="display:flex;align-items:center;gap:.7rem;margin-top:.15rem;">
+          <span style="font-size:.7rem;color:var(--muted);">${fmtDate(n.created_at)}</span>
+          <span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.7rem;color:var(--muted);">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            ${n.views || 0}
+          </span>
         </div>
       </div>`;
-    const thumbWrap = document.getElementById('modal-thumb');
-    const thumbImg  = document.getElementById('modal-thumb-img');
-    if (n.thumbnail_url) {
-      thumbImg.src = esc(n.thumbnail_url);
-      thumbWrap.style.display = 'block';
-    } else {
-      thumbWrap.style.display = 'none';
-      thumbImg.src = '';
-    }
     document.getElementById('modal-content').innerHTML = DOMPurify.sanitize(n.content || '');
     document.getElementById('modal-bg').classList.add('open');
     document.body.style.overflow = 'hidden';
@@ -2859,7 +2921,7 @@ async function openNews(slug) {
   } catch(err) {
     document.getElementById('modal-author').innerHTML = '';
     document.getElementById('modal-title').textContent = '';
-    document.getElementById('modal-thumb').style.display = 'none';
+    document.getElementById('modal-hero').innerHTML = '';
     document.getElementById('modal-content').innerHTML = `
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2.5rem 1rem;text-align:center;gap:1.2rem;">
         <div style="width:64px;height:64px;border-radius:50%;background:linear-gradient(135deg,rgba(140,0,20,0.35),rgba(80,0,10,0.2));border:1px solid rgba(200,0,35,0.3);display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px rgba(180,0,30,0.18);">
