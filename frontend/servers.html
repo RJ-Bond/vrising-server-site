@@ -244,7 +244,7 @@
       .srv-metric-val { font-size:1.05rem; }
     }
     .srv-cal-cell {
-      width:14px; height:14px; border-radius:2px; cursor:default;
+      width:14px; height:14px; border-radius:2px; cursor:pointer;
       transition:opacity .15s; flex-shrink:0;
     }
     .srv-cal-cell:hover { opacity:.75; }
@@ -330,8 +330,8 @@
         <div class="srv-graph-tooltip" id="compare-tip" style="display:none;"></div>
       </div>
       <div style="display:flex;gap:1.5rem;justify-content:center;margin-top:.5rem;font-size:.72rem;">
-        <span style="display:flex;align-items:center;gap:.35rem;"><span style="width:12px;height:3px;background:#e05575;display:inline-block;border-radius:2px;"></span> Сервер 1</span>
-        <span style="display:flex;align-items:center;gap:.35rem;"><span style="width:12px;height:3px;background:#9955ee;display:inline-block;border-radius:2px;"></span> Сервер 2</span>
+        <span style="display:flex;align-items:center;gap:.35rem;"><span style="width:12px;height:3px;background:#e05575;display:inline-block;border-radius:2px;"></span> <span class="compare-leg-1">Сервер 1</span></span>
+        <span style="display:flex;align-items:center;gap:.35rem;"><span style="width:12px;height:3px;background:#9955ee;display:inline-block;border-radius:2px;"></span> <span class="compare-leg-2">Сервер 2</span></span>
       </div>
     </div>
   </div>
@@ -349,6 +349,13 @@ function fmtDuration(sec) {
   if (sec < 60) return `${sec}с`;
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
+}
+
+function _timeAgoShort(ts) {
+  const diff = (Date.now() - ts) / 1000;
+  if (diff < 60) return 'только что';
+  if (diff < 3600) return `${Math.floor(diff / 60)}м назад`;
+  return `${Math.floor(diff / 3600)}ч назад`;
 }
 
 function applySiteBackground(bg) {
@@ -398,6 +405,9 @@ let _playersSortBy = { 1: 'time', 2: 'time' };
 let _compareMode = false;
 let _eventQueue = [];
 let _eventShowing = false;
+let _graphZoom = {};
+let _recentDeparted = { 1: [], 2: [] };
+let _serverNames = { 1: 'Сервер 1', 2: 'Сервер 2' };
 
 function updatePageTitle() {
   const total = (_serverEnabled[1] ? _onlineCounts[1] : 0) + (_serverEnabled[2] ? _onlineCounts[2] : 0);
@@ -604,6 +614,7 @@ function srvCardSkeleton(num) {
           <span class="srv-vac-badge" id="srv-vac-${num}" style="display:none;">🛡 VAC</span>
         </div>
       </div>
+      <div id="srv-top-player-${num}" style="display:none;"></div>
     </div>
     <div class="srv-wipe-banner" id="srv-wipe-${num}" style="display:none;"></div>
     <div class="g-card-body">
@@ -615,6 +626,7 @@ function srvCardSkeleton(num) {
     <div class="srv-metrics">
       <div class="srv-metric">
         <div class="srv-metric-val skel" id="srv-players-${num}">—</div><div class="srv-metric-lbl">Игроков</div>
+        <div id="srv-online-ctx-${num}" style="font-size:.58rem;margin-top:.2rem;font-weight:600;letter-spacing:.03em;"></div>
         <div class="srv-capacity-track"><div class="srv-capacity-fill" id="srv-capacity-${num}" style="width:0%;"></div></div>
       </div>
       <div class="srv-metric"><div class="srv-metric-val skel" id="srv-ping-${num}">—</div><div class="srv-metric-lbl">Пинг</div></div>
@@ -633,6 +645,7 @@ function srvCardSkeleton(num) {
           <button class="srv-period-btn" data-period="3" onclick="setGraphPeriod(${num},3,this)">3д</button>
           <button class="srv-period-btn active" data-period="7" onclick="setGraphPeriod(${num},7,this)">7д</button>
         </div>
+        <button id="srv-zoom-reset-${num}" onclick="resetGraphZoom(${num})" style="display:none;font-size:.6rem;color:var(--crimson);background:none;border:none;cursor:pointer;padding:.2rem .4rem;">✕ Сбросить</button>
       </div>
       <div class="srv-graph-wrap">
         <canvas id="srv-graph-${num}" height="130" style="width:100%;display:block;cursor:crosshair;"></canvas>
@@ -674,6 +687,7 @@ function srvCardSkeleton(num) {
         </div>
       </div>
       <div class="srv-players-list" id="srv-players-list-${num}"><p class="srv-empty skel">Загрузка…</p></div>
+      <div id="srv-departed-${num}" style="display:none;margin-top:.75rem;"></div>
     </div>
     </div>
   </div>`;
@@ -720,12 +734,14 @@ async function loadServer(num) {
     if (card) card.style.display = '';
 
     document.getElementById(`srv-name-${num}`).textContent = d.name || `Сервер ${num}`;
+    _serverNames[num] = d.name || `Сервер ${num}`;
     const badge = document.getElementById(`srv-badge-${num}`);
     if (badge) {
       badge.className = 'srv-badge ' + (d.online ? 'on' : 'off');
       badge.innerHTML = `<span class="srv-dot${d.online ? ' pulse' : ''}"></span>${d.online ? 'Онлайн' : 'Офлайн'}`;
     }
     setStat(`srv-players-${num}`, `${d.players ?? 0}/${d.max_players ?? 0}`);
+    updateOnlineContext(num, d.players ?? 0, !!d.online);
     setStat(`srv-ping-${num}`, d.latency_ms != null ? `${d.latency_ms} мс` : '—', pingColor(d.latency_ms));
     setStat(`srv-map-${num}`, d.map && d.map !== 'N/A' ? d.map : '—');
     setStat(`srv-version-${num}`, d.version && d.version !== 'N/A' ? d.version : '—');
@@ -763,12 +779,19 @@ async function loadServer(num) {
         if (!prevNames.has(name)) _showServerEvent(`⚔ ${name} зашёл на сервер`, SERVER_THEMES[num].accent);
       });
       prevNames.forEach(name => {
-        if (!currentNames.has(name)) _showServerEvent(`💨 ${name} покинул сервер`, 'rgba(150,150,170,0.9)');
+        if (!currentNames.has(name)) {
+          _showServerEvent(`💨 ${name} покинул сервер`, 'rgba(150,150,170,0.9)');
+          _recentDeparted[num].unshift({ name, leftAt: Date.now() });
+        }
       });
+      _recentDeparted[num] = _recentDeparted[num].slice(0, 5);
+    } else {
+      _recentDeparted[num] = [];
     }
     _prevPlayerNames[num] = currentNames;
 
     renderServerPlayers(num, d.players_list || []);
+    renderDeparted(num);
   } catch {
     const badge = document.getElementById(`srv-badge-${num}`);
     if (badge) { badge.className = 'srv-badge off'; badge.innerHTML = '<span class="srv-dot"></span>Ошибка'; }
@@ -810,6 +833,26 @@ function filterPlayers(num) {
   const el = document.getElementById(`srv-players-list-${num}`);
   const searchInput = document.getElementById(`srv-search-${num}`);
   if (!el) return;
+
+  // Top player by duration (always from full list, not filtered)
+  const topEl = document.getElementById(`srv-top-player-${num}`);
+  if (topEl) {
+    const allPlayers = _playersData[num] || [];
+    if (allPlayers.length > 0) {
+      const top = allPlayers.reduce((a, b) => b.duration > a.duration ? b : a);
+      const topName = top.name || 'Аноним';
+      topEl.style.display = '';
+      topEl.innerHTML = `<div style="font-size:.62rem;color:var(--muted);display:flex;align-items:center;gap:.35rem;margin-top:.3rem;">
+        <span style="color:var(--gold);">🏅</span>
+        <span>Дольше всех:</span>
+        <a href="/user.html?u=${encodeURIComponent(topName)}" style="color:var(--gold);font-weight:700;text-decoration:none;">${esc(topName)}</a>
+        <span style="color:var(--muted);">· ${fmtDuration(top.duration)}</span>
+      </div>`;
+    } else {
+      topEl.style.display = 'none';
+    }
+  }
+
   const query = (searchInput?.value || '').toLowerCase().trim();
   const players = _playersData[num] || [];
   let filtered = query ? players.filter(p => (p.name||'').toLowerCase().includes(query)) : [...players];
@@ -837,6 +880,33 @@ function filterPlayers(num) {
       <span class="srv-player-time">${fmtDuration(p.duration)}</span>
     </div>`;
   }).join('');
+}
+
+function updateOnlineContext(num, players, online) {
+  const el = document.getElementById(`srv-online-ctx-${num}`);
+  if (!el) return;
+  if (!online || !_graphData[num] || !_graphData[num].length) { el.textContent = ''; return; }
+  const hour = new Date().getUTCHours();
+  const buckets = computeHourBuckets(_graphData[num]);
+  const bucket = buckets[hour];
+  if (!bucket || bucket.count < 3) { el.textContent = ''; return; }
+  const ratio = players / Math.max(1, bucket.avg);
+  let text, color;
+  if (ratio >= 1.3) { text = '▲ выше обычного'; color = 'var(--green)'; }
+  else if (ratio <= 0.7) { text = '▼ ниже обычного'; color = 'var(--red)'; }
+  else { text = '≈ обычно'; color = 'var(--muted)'; }
+  el.textContent = text;
+  el.style.color = color;
+}
+
+function renderDeparted(num) {
+  const el = document.getElementById(`srv-departed-${num}`);
+  if (!el) return;
+  const list = _recentDeparted[num] || [];
+  if (!list.length) { el.style.display = 'none'; return; }
+  el.style.display = '';
+  el.innerHTML = `<div class="srv-section-title" style="margin-bottom:.4rem;">🕐 Недавно покинули</div>` +
+    list.map(p => `<div style="font-size:.62rem;color:var(--muted);padding:.15rem 0;">💨 ${esc(p.name)} · ${_timeAgoShort(p.leftAt)}</div>`).join('');
 }
 
 async function loadServerStats(num) {
@@ -965,6 +1035,9 @@ async function loadServerGraph(num) {
 
 function setGraphPeriod(num, days, btn) {
   _graphPeriod[num] = days;
+  _graphZoom[num] = null;
+  const resetBtn = document.getElementById(`srv-zoom-reset-${num}`);
+  if (resetBtn) resetBtn.style.display = 'none';
   const wrap = document.getElementById(`srv-period-${num}`);
   if (wrap) wrap.querySelectorAll('.srv-period-btn').forEach(b => b.classList.toggle('active', b === btn));
   drawGraph(num);
@@ -976,6 +1049,38 @@ function drawGraph(num) {
   const empty  = document.getElementById(`srv-graph-empty-${num}`);
   const axis   = document.getElementById(`srv-graph-axis-${num}`);
   if (!canvas) return;
+
+  // Zoom mode: render a single day
+  if (_graphZoom[num]) {
+    const { snaps, key } = _graphZoom[num];
+    if (!snaps.length) {
+      canvas.style.display = 'none';
+      if (axis) axis.innerHTML = '';
+      if (empty) { empty.style.display = ''; empty.textContent = 'Нет данных за этот день.'; }
+      return;
+    }
+    canvas.style.display = '';
+    if (empty) empty.style.display = 'none';
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth || canvas.parentElement.clientWidth;
+    const h = 130;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const accent = SERVER_THEMES[num].accentRgb;
+    const maxPlayers = Math.max(1, ...snaps.map(s => s.players));
+    const padL = 28, padR = 4, padT = 8, padB = 4;
+    const plotW = w - padL - padR, plotH = h - padT - padB;
+    const tMin = snaps[0].ts, tMax = snaps[snaps.length - 1].ts;
+    const tSpan = Math.max(1, tMax - tMin);
+    const x = s => padL + ((s.ts - tMin) / tSpan) * plotW;
+    const y = s => padT + plotH - (s.players / maxPlayers) * plotH;
+    _graphGeom[num] = { snaps, x, y, padL, padT, plotW, plotH, w, h, accent };
+    renderChart(num);
+    renderAxisLabels(num, snaps, 1);
+    setupGraphHover(num);
+    return;
+  }
 
   if (_graphData[num] === null) {
     canvas.style.display = 'none';
@@ -1111,6 +1216,35 @@ function renderChart(num) {
     const dotEl = document.getElementById(`srv-live-dot-${num}`);
     if (dotEl) dotEl.style.display = 'none';
   }
+
+  // Wipe annotations — vertical dashed lines
+  const wipeEntries = [...(_wipeHistory[num] || [])];
+  if (_wipeSettings[num] && _wipeSettings[num].date) {
+    wipeEntries.push({ wipe_date: _wipeSettings[num].date, type: _wipeSettings[num].type });
+  }
+  wipeEntries.forEach(wipe => {
+    const dateStr = wipe.wipe_date || wipe.date;
+    if (!dateStr) return;
+    const ts = new Date(dateStr).getTime() / 1000;
+    const px = geom.x({ ts });
+    if (px < padL || px > padL + plotW) return;
+    const wipeType = wipe.type || 'full';
+    const lineColor = wipeType === 'map' ? 'rgba(201,169,74,0.7)' : wipeType === 'progress' ? 'rgba(153,85,238,0.7)' : 'rgba(200,0,42,0.7)';
+    ctx.save();
+    ctx.strokeStyle = lineColor;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(px, padT);
+    ctx.lineTo(px, padT + plotH);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = lineColor;
+    ctx.beginPath();
+    ctx.arc(px, padT + 4, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
 }
 
 function renderAxisLabels(num, snaps, days) {
@@ -1297,12 +1431,34 @@ function drawUptimeCalendar(num) {
     const color = total === 0 ? 'rgba(255,255,255,0.06)' : `rgba(${accentRgb},${alpha.toFixed(2)})`;
     const dateStr = new Date(key + 'T12:00:00Z').toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit'});
     const pctStr = total > 0 ? Math.round(pct * 100) + '% онлайн' : 'Нет данных';
-    return `<div class="srv-cal-cell" style="background:${color};" title="${dateStr}: ${pctStr}"></div>`;
+    return `<div class="srv-cal-cell" style="background:${color};" title="${dateStr}: ${pctStr}" onclick="calCellClick(${num},'${key}')"></div>`;
   }).join('');
 
   legend.innerHTML = [0.1, 0.35, 0.6, 0.85, 1.0].map(a =>
     `<span style="width:12px;height:12px;border-radius:2px;background:rgba(${accentRgb},${a});display:inline-block;"></span>`
   ).join('');
+}
+
+function calCellClick(num, key) {
+  const startTs = new Date(key + 'T00:00:00Z').getTime() / 1000;
+  const snaps = (_graphData[num] || []).filter(s => s.ts >= startTs && s.ts < startTs + 86400);
+  drawGraphZoomed(num, snaps, key);
+  const graphEl = document.getElementById(`srv-graph-${num}`);
+  if (graphEl) graphEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function drawGraphZoomed(num, snaps, key) {
+  _graphZoom[num] = { snaps, key };
+  const resetBtn = document.getElementById(`srv-zoom-reset-${num}`);
+  if (resetBtn) resetBtn.style.display = '';
+  drawGraph(num);
+}
+
+function resetGraphZoom(num) {
+  _graphZoom[num] = null;
+  const resetBtn = document.getElementById(`srv-zoom-reset-${num}`);
+  if (resetBtn) resetBtn.style.display = 'none';
+  drawGraph(num);
 }
 
 function toggleCompare() {
@@ -1327,6 +1483,11 @@ function drawCompareChart() {
   const canvas = document.getElementById('compare-canvas');
   const tip = document.getElementById('compare-tip');
   if (!canvas) return;
+  // Update legend labels with real server names
+  const leg1 = document.querySelector('#compare-card .compare-leg-1');
+  const leg2 = document.querySelector('#compare-card .compare-leg-2');
+  if (leg1) leg1.textContent = _serverNames[1];
+  if (leg2) leg2.textContent = _serverNames[2];
   const d1 = _graphData[1] || [];
   const d2 = _graphData[2] || [];
   if (!d1.length && !d2.length) { canvas.style.display='none'; return; }
@@ -1395,8 +1556,8 @@ function drawCompareChart() {
       };
       const n1 = find(s1), n2 = find(s2);
       let html = '';
-      if (n1) html += `<div style="color:#e05575;font-weight:700;">${n1.players} игр. (Сервер 1)</div>`;
-      if (n2) html += `<div style="color:#9955ee;font-weight:700;">${n2.players} игр. (Сервер 2)</div>`;
+      if (n1) html += `<div style="color:#e05575;font-weight:700;">${n1.players} игр. (${_serverNames[1]})</div>`;
+      if (n2) html += `<div style="color:#9955ee;font-weight:700;">${n2.players} игр. (${_serverNames[2]})</div>`;
       const ref = n1||n2;
       if (ref) {
         const dt = new Date(ref.ts*1000).toLocaleString('ru-RU',{timeZone:window.__TZ||'Europe/Moscow',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
