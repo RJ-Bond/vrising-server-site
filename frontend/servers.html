@@ -86,12 +86,39 @@
     }
     @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
     .g-card { animation:fade-up .4s ease both; }
+    @keyframes digit-up { from { transform:translateY(100%); opacity:0; } to { transform:translateY(0); opacity:1; } }
 
     .srv-header-zone {
       padding:1.35rem 1.5rem 1.15rem;
-      background:linear-gradient(135deg, rgba(var(--accent-rgb,110,0,150),.13) 0%, rgba(var(--accent-rgb,110,0,150),.04) 55%, transparent 100%);
-      border-bottom:1px solid rgba(var(--accent-rgb,110,0,150),.15);
+      background:
+        linear-gradient(135deg,
+          rgba(var(--accent-rgb,110,0,150),.18) 0%,
+          rgba(var(--accent-rgb,110,0,150),.06) 55%,
+          transparent 100%),
+        repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 14px,
+          rgba(var(--accent-rgb,110,0,150),.025) 14px,
+          rgba(var(--accent-rgb,110,0,150),.025) 15px
+        );
+      border-bottom:1px solid rgba(var(--accent-rgb,110,0,150),.18);
       position:relative;
+      overflow:hidden;
+    }
+    .srv-header-zone::after {
+      content:'';
+      position:absolute;
+      top:-40px; right:-40px;
+      width:160px; height:160px;
+      border-radius:50%;
+      background: radial-gradient(circle, rgba(var(--accent-rgb,110,0,150),.15) 0%, transparent 70%);
+      pointer-events:none;
+      animation: orb-drift 8s ease-in-out infinite alternate;
+    }
+    @keyframes orb-drift {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(-20px, 15px) scale(1.15); }
     }
     .g-card-body { padding:1.25rem 1.5rem 1.5rem; }
 
@@ -122,8 +149,22 @@
       border:1px solid rgba(201,169,74,0.2); border-radius:.5rem;
     }
 
-    @keyframes skel-pulse { 0%,100%{opacity:.35} 50%{opacity:.85} }
-    .skel { animation:skel-pulse 1.3s ease-in-out infinite; }
+    @keyframes skel-shimmer {
+      0%   { background-position: -200% center; }
+      100% { background-position:  200% center; }
+    }
+    .skel {
+      background: linear-gradient(
+        90deg,
+        rgba(255,255,255,0.04) 25%,
+        rgba(255,255,255,0.12) 50%,
+        rgba(255,255,255,0.04) 75%
+      );
+      background-size: 200% 100%;
+      animation: skel-shimmer 1.6s ease-in-out infinite;
+      color: transparent !important;
+      border-radius: 4px;
+    }
 
     .srv-wipe-banner {
       padding:.85rem 1.25rem .95rem 1.4rem;
@@ -159,10 +200,38 @@
       background:var(--panel); border:1px solid rgba(255,255,255,0.08);
       border-radius:.75rem; margin-bottom:1.25rem; overflow:hidden;
     }
-    .srv-metric { text-align:center; padding:.85rem .4rem; border-right:1px solid rgba(255,255,255,0.07); border-bottom:1px solid rgba(255,255,255,0.07); }
+    .srv-metric {
+      text-align:center; padding:.85rem .4rem;
+      border-right:1px solid rgba(255,255,255,0.07);
+      border-bottom:1px solid rgba(255,255,255,0.07);
+      transition: background .2s, box-shadow .2s;
+      cursor:default;
+      position: relative;
+    }
+    .srv-metric:hover {
+      background: rgba(var(--accent-rgb, 110,0,150), 0.08);
+      box-shadow: inset 0 0 0 1px rgba(var(--accent-rgb, 110,0,150), 0.2);
+    }
+    .srv-metric::after {
+      content:'';
+      position:absolute;
+      top:0; left:0; right:0; height:2px;
+      background:rgba(var(--accent-rgb,110,0,150),0);
+      transition:background .2s;
+    }
+    .srv-metric:hover::after {
+      background:rgba(var(--accent-rgb,110,0,150),.35);
+    }
     .srv-metric:nth-child(4n) { border-right:none; }
     .srv-metric:nth-child(n+5) { border-bottom:none; }
-    .srv-metric-val { font-family:'Oswald',sans-serif; font-size:1.2rem; font-weight:600; color:#fff; line-height:1; font-variant-numeric:tabular-nums; }
+    .srv-metric-val {
+      font-family:'Oswald',sans-serif; font-size:1.2rem; font-weight:600;
+      color:#fff; line-height:1; font-variant-numeric:tabular-nums;
+      transition: color .3s, text-shadow .3s;
+    }
+    .srv-metric:hover .srv-metric-val {
+      text-shadow: 0 0 12px rgba(var(--accent-rgb,110,0,150),.6);
+    }
     .srv-metric-lbl { font-size:.58rem; color:var(--label); font-weight:600; text-transform:uppercase; letter-spacing:.07em; margin-top:.35rem; }
 
     @media (max-width:680px) {
@@ -627,7 +696,17 @@ function srvCardSkeleton(num) {
       <div class="srv-metric">
         <div class="srv-metric-val skel" id="srv-players-${num}">—</div><div class="srv-metric-lbl">Игроков</div>
         <div id="srv-online-ctx-${num}" style="font-size:.58rem;margin-top:.2rem;font-weight:600;letter-spacing:.03em;"></div>
-        <div class="srv-capacity-track"><div class="srv-capacity-fill" id="srv-capacity-${num}" style="width:0%;"></div></div>
+        <div style="position:relative;display:inline-block;margin-top:.3rem;">
+          <svg id="srv-gauge-${num}" width="44" height="44" viewBox="0 0 44 44" style="transform:rotate(-90deg);">
+            <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="3.5"/>
+            <circle id="srv-gauge-arc-${num}" cx="22" cy="22" r="18" fill="none"
+              stroke="rgba(var(--accent-rgb,110,0,150),0.8)" stroke-width="3.5"
+              stroke-dasharray="113.1" stroke-dashoffset="113.1"
+              stroke-linecap="round"
+              style="transition: stroke-dashoffset 0.7s cubic-bezier(.4,0,.2,1);"/>
+          </svg>
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.48rem;color:var(--muted);font-weight:600;" id="srv-gauge-pct-${num}">0%</div>
+        </div>
       </div>
       <div class="srv-metric"><div class="srv-metric-val skel" id="srv-ping-${num}">—</div><div class="srv-metric-lbl">Пинг</div></div>
       <div class="srv-metric"><div class="srv-metric-val skel" id="srv-map-${num}" style="font-size:.92rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</div><div class="srv-metric-lbl">Карта</div></div>
@@ -697,10 +776,31 @@ let _serverEnabled = { 1: true, 2: true };
 
 let _connectInfo = {};
 
+function animateCounter(el, newText) {
+  if (el.dataset.val === newText) return;
+  el.dataset.val = newText;
+  const wrapper = document.createElement('span');
+  wrapper.style.cssText = 'overflow:hidden;display:inline-block;vertical-align:bottom;';
+  const span = document.createElement('span');
+  span.textContent = newText;
+  span.style.cssText = 'display:block;animation:digit-up 0.35s cubic-bezier(0.4,0,0.2,1) both;';
+  wrapper.appendChild(span);
+  el.innerHTML = '';
+  el.appendChild(wrapper);
+  span.addEventListener('animationend', () => {
+    el.textContent = newText;
+    el.dataset.val = newText;
+  }, { once: true });
+}
+
 function setStat(id, text, color) {
   const el = document.getElementById(id);
   if (!el) return;
-  el.textContent = text;
+  if (id.includes('srv-players-')) {
+    animateCounter(el, text);
+  } else {
+    el.textContent = text;
+  }
   el.classList.remove('skel');
   el.style.color = color || '';
 }
@@ -746,11 +846,15 @@ async function loadServer(num) {
     setStat(`srv-map-${num}`, d.map && d.map !== 'N/A' ? d.map : '—');
     setStat(`srv-version-${num}`, d.version && d.version !== 'N/A' ? d.version : '—');
 
-    const capacity = document.getElementById(`srv-capacity-${num}`);
-    if (capacity) {
-      const pct = d.max_players > 0 ? Math.min(100, Math.round((d.players / d.max_players) * 100)) : 0;
-      capacity.style.width = `${pct}%`;
+    const arc = document.getElementById(`srv-gauge-arc-${num}`);
+    const pctEl = document.getElementById(`srv-gauge-pct-${num}`);
+    const pct = d.max_players > 0 ? Math.min(100, Math.round((d.players / d.max_players) * 100)) : 0;
+    if (arc) {
+      arc.style.strokeDashoffset = 113.1 * (1 - pct / 100);
+      const color = pct >= 80 ? '200,0,42' : pct >= 50 ? '201,169,74' : SERVER_THEMES[num].accentRgb;
+      arc.style.stroke = `rgba(${color},0.85)`;
     }
+    if (pctEl) pctEl.textContent = pct + '%';
 
     const vacBadge = document.getElementById(`srv-vac-${num}`);
     if (vacBadge) {
@@ -1363,11 +1467,15 @@ function startSrvSSE() {
         setStat(`srv-players-${num}`, `${data.players??0}/${data.max_players??0}`);
         setStat(`srv-ping-${num}`, data.latency_ms!=null?`${data.latency_ms} мс`:'—', pingColor(data.latency_ms));
 
-        const capacity = document.getElementById(`srv-capacity-${num}`);
-        if (capacity) {
-          const pct = data.max_players>0 ? Math.min(100,Math.round((data.players/data.max_players)*100)) : 0;
-          capacity.style.width = `${pct}%`;
+        const arc = document.getElementById(`srv-gauge-arc-${num}`);
+        const pctEl = document.getElementById(`srv-gauge-pct-${num}`);
+        const pct = data.max_players > 0 ? Math.min(100, Math.round((data.players / data.max_players) * 100)) : 0;
+        if (arc) {
+          arc.style.strokeDashoffset = 113.1 * (1 - pct / 100);
+          const color = pct >= 80 ? '200,0,42' : pct >= 50 ? '201,169,74' : SERVER_THEMES[num].accentRgb;
+          arc.style.stroke = `rgba(${color},0.85)`;
         }
+        if (pctEl) pctEl.textContent = pct + '%';
 
         _onlineCounts[num] = data.online ? (data.players??0) : 0;
         updatePageTitle();
@@ -1388,6 +1496,18 @@ async function init() {
   document.getElementById('compare-btn-wrap').style.display = '';
   [1, 2].filter(n => _serverEnabled[n]).forEach(num => { loadServerStats(num); loadServerGraph(num); });
   startSrvSSE();
+  // Parallax header zones
+  document.querySelectorAll('.srv-header-zone').forEach(zone => {
+    zone.addEventListener('mousemove', e => {
+      const rect = zone.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width - 0.5;
+      const y = (e.clientY - rect.top) / rect.height - 0.5;
+      zone.style.backgroundPosition = `${50 + x * 8}% ${50 + y * 8}%`;
+    });
+    zone.addEventListener('mouseleave', () => {
+      zone.style.backgroundPosition = '';
+    });
+  });
 }
 
 init();
