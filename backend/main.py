@@ -337,10 +337,12 @@ async def lifespan(app: FastAPI):
     task_publish = asyncio.create_task(_scheduled_publish_task())
     task_backup = asyncio.create_task(_auto_backup_task())
     task_cleanup = asyncio.create_task(_cleanup_task())
+    task_monitor = asyncio.create_task(_monitor_poll_task())
     yield
     task_publish.cancel()
     task_backup.cancel()
     task_cleanup.cancel()
+    task_monitor.cancel()
 
 
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
@@ -2996,6 +2998,42 @@ async def _cleanup_task():
             break
         except Exception as e:
             logger.error("_cleanup_task error: %s", e)
+
+
+async def _monitor_poll_task():
+    """Poll game servers every 5 min so snapshots stay current even with no browsers open."""
+    await asyncio.sleep(30)  # let startup finish
+    while True:
+        try:
+            all_keys = ["server_ip", "server_port", "server_name",
+                        "server2_ip", "server2_port", "server2_name"]
+            async with AsyncSession(engine, expire_on_commit=False) as db:
+                res = await db.execute(select(Setting).where(Setting.key.in_(all_keys)))
+                cfg = {s.key: s.value for s in res.scalars().all()}
+            for server_num, ip_key, port_key, name_key in [
+                (1, "server_ip",  "server_port",  "server_name"),
+                (2, "server2_ip", "server2_port", "server2_name"),
+            ]:
+                ip       = cfg.get(ip_key, "").strip()
+                port_str = cfg.get(port_key, "0").strip()
+                if not ip or not port_str.isdigit():
+                    continue
+                try:
+                    data = await get_server_status(ip, int(port_str))
+                except Exception:
+                    continue
+                admin_name = cfg.get(name_key, "").strip()
+                if admin_name:
+                    data = {**data, "name": admin_name}
+                async with AsyncSession(engine, expire_on_commit=False) as db:
+                    await _track_players(db, data.get("players_list", []), server_num)
+                    _last_snapshot[server_num] = 0  # bypass TTL — task owns timing
+                    await _save_snapshot(db, data, server_num)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error("_monitor_poll_task error: %s", e)
+        await asyncio.sleep(SNAPSHOT_INTERVAL)
 
 
 # ─── Game nickname ────────────────────────────────────────────────────────────

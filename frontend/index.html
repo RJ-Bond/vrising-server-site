@@ -2303,7 +2303,7 @@ function renderServerBlock(d, sfx) {
             <span style="font-size:.6rem;color:var(--muted);white-space:nowrap;flex-shrink:0;">${fmtDuration(p.duration)}</span>
           </div>`;
         }).join('')}
-        ${list.length > 3 ? `<div style="font-size:.58rem;color:var(--muted);text-align:right;margin-top:.2rem;">ещё ${list.length - 3}…</div>` : ''}`;
+        ${list.length > 3 ? `<a href="/servers.html" style="display:block;font-size:.58rem;color:rgba(181,0,42,0.7);text-align:right;margin-top:.35rem;text-decoration:none;transition:color .15s;" onmouseover="this.style.color='#e05070'" onmouseout="this.style.color='rgba(181,0,42,0.7)'">ещё ${list.length - 3} → все игроки</a>` : ''}`;
     } else {
       playersEl.innerHTML = '';
     }
