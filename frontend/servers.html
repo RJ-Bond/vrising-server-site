@@ -317,6 +317,83 @@
       transition:opacity .15s; flex-shrink:0;
     }
     .srv-cal-cell:hover { opacity:.75; }
+
+    /* ── 1. Flip-clock ── */
+    .flip-digit {
+      display: inline-block;
+      position: relative;
+      width: 2.1rem; height: 2.4rem;
+      perspective: 200px;
+    }
+    .flip-digit-top, .flip-digit-bot {
+      position: absolute; left:0; right:0; height:50%;
+      overflow: hidden;
+      background: rgba(20,8,32,0.85);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+    .flip-digit-top { top:0; border-radius:.3rem .3rem 0 0; border-bottom: 1px solid rgba(0,0,0,0.4); }
+    .flip-digit-bot { bottom:0; border-radius:0 0 .3rem .3rem; align-items:flex-end; display:flex; }
+    .flip-digit-top span, .flip-digit-bot span {
+      display:block; width:100%; text-align:center;
+      font-family:'Oswald',sans-serif; font-weight:700; line-height:1;
+    }
+    .flip-digit-top span { padding-top:.18rem; }
+    .flip-digit-bot span { padding-bottom:.18rem; }
+    .flip-anim-top {
+      position:absolute; top:0; left:0; right:0; height:50%;
+      overflow:hidden; border-radius:.3rem .3rem 0 0;
+      transform-origin: bottom center;
+      animation: flip-top .18s ease-in forwards;
+      background: rgba(20,8,32,0.95);
+      border: 1px solid rgba(255,255,255,0.07);
+      z-index:2;
+    }
+    .flip-anim-bot {
+      position:absolute; bottom:0; left:0; right:0; height:50%;
+      overflow:hidden; border-radius:0 0 .3rem .3rem;
+      transform-origin: top center;
+      transform: rotateX(-90deg);
+      animation: flip-bot .18s .17s ease-out forwards;
+      background: rgba(20,8,32,0.95);
+      border: 1px solid rgba(255,255,255,0.07);
+      z-index:2; display:flex; align-items:flex-end;
+    }
+    .flip-anim-top span { padding-top:.18rem; }
+    .flip-anim-bot span { padding-bottom:.18rem; }
+    @keyframes flip-top { to { transform: rotateX(90deg); } }
+    @keyframes flip-bot { to { transform: rotateX(0deg); } }
+
+    /* ── 3. Player hover-card ── */
+    .player-hovercard {
+      position:fixed; z-index:9999; pointer-events:none;
+      background:rgba(10,2,20,0.97); border:1px solid rgba(150,0,28,0.4);
+      border-radius:.65rem; padding:.75rem 1rem;
+      box-shadow:0 8px 32px rgba(0,0,0,0.7), 0 0 20px rgba(var(--hc-rgb,110,0,150),0.15);
+      min-width:160px; opacity:0; transition:opacity .15s;
+      font-family:'Inter',sans-serif;
+    }
+    .player-hovercard.visible { opacity:1; }
+    .player-hc-avatar {
+      width:36px; height:36px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+      font-size:1.1rem; font-weight:700; color:#fff; margin-bottom:.5rem;
+      flex-shrink:0;
+    }
+    .player-hc-session-bar {
+      height:3px; border-radius:2px; background:rgba(255,255,255,0.08);
+      margin-top:.4rem; overflow:hidden;
+    }
+    .player-hc-session-fill {
+      height:100%; border-radius:2px;
+      transition:width .4s ease;
+    }
+
+    /* ── 5. Stagger metrics ── */
+    .srv-metric { opacity:0; animation: metric-appear .35s ease both; }
+    @keyframes metric-appear {
+      from { opacity:0; transform:translateY(8px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
   </style>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#06000f">
@@ -530,7 +607,7 @@ function _wipeDigitEl(id, lbl, big = true) {
   const sz = big ? '1.7rem' : '1.1rem';
   const mw = big ? '2.1rem' : '1.6rem';
   return `<div style="text-align:center;min-width:${mw};">
-    <span class="wipe-digit-val" id="${id}" style="font-family:'Oswald',sans-serif;font-size:${sz};font-weight:700;line-height:1;color:#e8ddf5;">00</span>
+    <span class="wipe-digit-val" id="${id}" data-big="${big}" style="font-family:'Oswald',sans-serif;font-size:${sz};font-weight:700;line-height:1;color:#e8ddf5;">00</span>
     <div style="font-size:.44rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-top:.1rem;">${lbl}</div>
   </div>`;
 }
@@ -607,21 +684,50 @@ function renderWipeChip(num) {
 function _setWipeDigit(id, val, color, glow) {
   const el = document.getElementById(id);
   if (!el) return;
-  const str = String(val).padStart(2,'0');
-  if (el.textContent !== str) {
-    el.style.transform = 'rotateX(90deg)';
-    el.style.opacity = '0';
-    setTimeout(() => {
-      el.textContent = str;
-      el.style.transform = 'rotateX(-90deg)';
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        el.style.transform = 'rotateX(0)';
-        el.style.opacity = '1';
-      }));
-    }, 120);
+  const str = String(val).padStart(2, '0');
+  const fontSize = el.dataset.big === 'false' ? '1.1rem' : '1.7rem';
+
+  if (!el._flipInitialized) {
+    el._flipInitialized = true;
+    el._flipVal = str;
+    el.innerHTML = `
+      <div class="flip-digit">
+        <div class="flip-digit-top"><span style="font-size:${fontSize};color:${color};">${str}</span></div>
+        <div class="flip-digit-bot"><span style="font-size:${fontSize};color:${color};">${str}</span></div>
+      </div>`;
+    return;
   }
-  el.style.color = color;
-  el.style.textShadow = glow ? `0 0 16px ${color}` : 'none';
+  if (el._flipVal === str) {
+    el.querySelectorAll('.flip-digit-top span, .flip-digit-bot span').forEach(s => { s.style.color = color; });
+    return;
+  }
+  const oldVal = el._flipVal;
+  el._flipVal = str;
+
+  const digit = el.querySelector('.flip-digit');
+  if (!digit) return;
+
+  digit.querySelectorAll('.flip-anim-top, .flip-anim-bot').forEach(e => e.remove());
+
+  digit.querySelector('.flip-digit-bot span').textContent = str;
+  digit.querySelector('.flip-digit-bot span').style.color = color;
+
+  const animTop = document.createElement('div');
+  animTop.className = 'flip-anim-top';
+  animTop.innerHTML = `<span style="font-size:${fontSize};color:${color};width:100%;text-align:center;display:block;padding-top:.18rem;">${oldVal}</span>`;
+  digit.appendChild(animTop);
+
+  const animBot = document.createElement('div');
+  animBot.className = 'flip-anim-bot';
+  animBot.innerHTML = `<span style="font-size:${fontSize};color:${color};width:100%;text-align:center;display:block;padding-bottom:.18rem;">${str}</span>`;
+  digit.appendChild(animBot);
+
+  animTop.addEventListener('animationend', () => {
+    digit.querySelector('.flip-digit-top span').textContent = str;
+    digit.querySelector('.flip-digit-top span').style.color = color;
+    animTop.remove();
+  });
+  animBot.addEventListener('animationend', () => animBot.remove());
 }
 
 function tickWipeCountdown(num) {
@@ -976,7 +1082,9 @@ function filterPlayers(num) {
   el.innerHTML = filtered.map(p => {
     const name = p.name || 'Аноним';
     const hue = name.split('').reduce((a,c)=>a+c.charCodeAt(0),0)%55+330;
-    return `<div class="srv-players-row">
+    return `<div class="srv-players-row" data-player-name="${esc(name)}" data-player-duration="${p.duration}" data-srv-num="${num}"
+      onmouseenter="(_hcTimeout=setTimeout(()=>_showPlayerCard(this,${num}),200))"
+      onmouseleave="_hidePlayerCard();clearTimeout(_hcTimeout)">
       <a class="srv-player-link" href="/user.html?u=${encodeURIComponent(name)}" title="Профиль игрока">
         <span class="srv-player-dot" style="background:hsl(${hue},78%,55%);box-shadow:0 0 5px hsl(${hue},78%,55%);"></span>
         <span class="srv-player-name" style="font-family:'Philosopher',serif;color:#e6def2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s;">${esc(name)}</span>
@@ -1287,6 +1395,12 @@ function renderChart(num) {
   ctx.lineWidth = 2;
   ctx.lineJoin = 'round';
   ctx.lineCap = 'round';
+  ctx.save();
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = `rgba(${accent}, 0.7)`;
+  ctx.stroke();
+  ctx.restore();
+  ctx.shadowBlur = 0;
   ctx.stroke();
 
   ctx.fillStyle = 'rgb(255,93,126)';
@@ -1492,6 +1606,11 @@ function startSrvSSE() {
 async function init() {
   const wrap = document.getElementById('servers-wrap');
   wrap.innerHTML = srvCardSkeleton(1) + srvCardSkeleton(2);
+  // ── 5. Stagger metrics animation ──
+  [1, 2].forEach(num => {
+    const metrics = document.querySelectorAll(`#srv-card-${num} .srv-metric`);
+    metrics.forEach((m, i) => { m.style.animationDelay = `${i * 55}ms`; });
+  });
   await refreshAll();
   document.getElementById('compare-btn-wrap').style.display = '';
   [1, 2].filter(n => _serverEnabled[n]).forEach(num => { loadServerStats(num); loadServerGraph(num); });
@@ -1700,16 +1819,99 @@ function _flushEventQueue() {
   if (!_eventQueue.length) { _eventShowing = false; return; }
   _eventShowing = true;
   const {text, color} = _eventQueue.shift();
+
+  const isJoin = text.startsWith('⚔');
+  const name = text.replace(/^[⚔💨]\s/, '').replace(/ (зашёл|покинул) на сервер$/, '').replace(/ покинул сервер$/, '').trim();
+  const initial = name[0] ? name[0].toUpperCase() : '?';
+  const hue = name.split('').reduce((a,c)=>a+c.charCodeAt(0),0)%55+330;
+  const label = isJoin ? 'подключился' : 'отключился';
+  const borderColor = isJoin ? 'rgba(46,230,155,0.5)' : 'rgba(150,150,170,0.4)';
+  const stripColor = isJoin ? '#2ee69b' : '#9488a8';
+
   const el = document.createElement('div');
-  el.textContent = text;
-  el.style.cssText = `position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(1rem);background:rgba(8,0,14,0.96);border:1px solid ${color};color:#e2d8f0;padding:.5rem 1.1rem;border-radius:.5rem;font-size:.78rem;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:9999;opacity:0;transition:all .3s;white-space:nowrap;pointer-events:none;`;
+  el.style.cssText = `
+    position:fixed; bottom:1.5rem; right:1.5rem;
+    display:flex; align-items:center; gap:.6rem;
+    background:rgba(8,0,14,0.97);
+    border:1px solid ${borderColor};
+    border-left:3px solid ${stripColor};
+    color:#e2d8f0; padding:.55rem .9rem .55rem .7rem;
+    border-radius:.55rem; font-size:.78rem; font-weight:600;
+    box-shadow:0 4px 24px rgba(0,0,0,0.6), 0 0 12px ${isJoin?'rgba(46,230,155,0.1)':'rgba(0,0,0,0)'};
+    z-index:9999; pointer-events:none;
+    opacity:0; transform:translateX(1.5rem);
+    transition:opacity .25s, transform .25s cubic-bezier(.32,.72,0,1);
+    max-width:240px; white-space:nowrap;`;
+
+  el.innerHTML = `
+    <div style="width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,hsl(${hue},70%,30%),hsl(${hue},78%,50%));display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:700;color:#fff;flex-shrink:0;">${esc(initial)}</div>
+    <div>
+      <div style="font-size:.74rem;font-weight:700;color:#ece3f7;overflow:hidden;text-overflow:ellipsis;max-width:160px;">${esc(name)}</div>
+      <div style="font-size:.6rem;color:${stripColor};font-weight:600;letter-spacing:.04em;">${label}</div>
+    </div>`;
+
   document.body.appendChild(el);
-  requestAnimationFrame(() => { el.style.opacity='1'; el.style.transform='translateX(-50%) translateY(0)'; });
+  requestAnimationFrame(() => { el.style.opacity='1'; el.style.transform='translateX(0)'; });
+
   setTimeout(() => {
-    el.style.opacity='0'; el.style.transform='translateX(-50%) translateY(1rem)';
-    setTimeout(() => { el.remove(); _flushEventQueue(); }, 300);
+    el.style.opacity='0'; el.style.transform='translateX(1.5rem)';
+    setTimeout(() => { el.remove(); _flushEventQueue(); }, 250);
   }, 2800);
 }
+
+// ── 3. Player hover-card ────────────────────────────────────────────────────
+const _hcEl = (() => {
+  const d = document.createElement('div');
+  d.className = 'player-hovercard';
+  document.body.appendChild(d);
+  return d;
+})();
+let _hcTimeout = null;
+
+function _showPlayerCard(row, num) {
+  const name = row.dataset.playerName;
+  const duration = parseInt(row.dataset.playerDuration || '0', 10);
+  if (!name) return;
+
+  const hue = name.split('').reduce((a,c)=>a+c.charCodeAt(0),0)%55+330;
+  const accentRgb = SERVER_THEMES[num].accentRgb;
+  const maxDur = Math.max(1, ...(_playersData[num]||[]).map(p=>p.duration));
+  const pct = Math.min(100, Math.round((duration/maxDur)*100));
+
+  _hcEl.style.setProperty('--hc-rgb', accentRgb);
+  _hcEl.innerHTML = `
+    <div style="display:flex;align-items:center;gap:.55rem;margin-bottom:.4rem;">
+      <div class="player-hc-avatar" style="background:linear-gradient(135deg,hsl(${hue},70%,35%),hsl(${hue},78%,55%));">
+        ${esc(name[0].toUpperCase())}
+      </div>
+      <div>
+        <div style="font-weight:700;font-size:.82rem;color:#ece3f7;">${esc(name)}</div>
+        <div style="font-size:.62rem;color:var(--muted);">в игре</div>
+      </div>
+    </div>
+    <div style="font-size:.68rem;color:var(--muted);margin-bottom:.2rem;">Сессия</div>
+    <div style="font-family:'Oswald',sans-serif;font-size:1.3rem;font-weight:700;color:#fff;line-height:1;">${fmtDuration(duration)}</div>
+    <div class="player-hc-session-bar">
+      <div class="player-hc-session-fill" style="width:${pct}%;background:linear-gradient(90deg,rgba(${accentRgb},0.6),rgba(${accentRgb},1));"></div>
+    </div>`;
+
+  _hcEl.classList.add('visible');
+}
+
+function _hidePlayerCard() {
+  _hcEl.classList.remove('visible');
+}
+
+document.addEventListener('mousemove', e => {
+  if (_hcEl.classList.contains('visible')) {
+    let x = e.clientX + 16;
+    let y = e.clientY - 20;
+    if (x + 180 > window.innerWidth) x = e.clientX - 196;
+    if (y + 140 > window.innerHeight) y = e.clientY - 150;
+    _hcEl.style.left = x + 'px';
+    _hcEl.style.top = y + 'px';
+  }
+});
 
 function toggleMobileNav() {
   const overlay = document.getElementById('mob-overlay');
