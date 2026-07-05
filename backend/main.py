@@ -1260,11 +1260,13 @@ async def get_news(slug: str, request: Request, db: AsyncSession = Depends(get_d
             PageView.created_at >= cutoff,
         ).limit(1)
     )
+    news_id = news.id
     if recent.scalar_one_or_none() is None:
         news.views = (news.views or 0) + 1
         db.add(PageView(path=view_key, ip_hash=ip_hash))
     await db.commit()
-    await db.refresh(news)
+    result2 = await db.execute(select(News).where(News.id == news_id))
+    news = result2.scalar_one()
     return NewsOut.model_validate(news)
 
 

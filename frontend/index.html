@@ -2814,7 +2814,9 @@ async function openNews(slug) {
   _modalSlug = slug;
   history.pushState({newsSlug: slug}, '', '?news=' + encodeURIComponent(slug));
   try {
-    const n = await fetch(`${API}/news/${slug}`).then(r => r.json());
+    const _nr = await fetch(`${API}/news/${slug}`);
+    if (!_nr.ok) throw new Error(`HTTP ${_nr.status}`);
+    const n = await _nr.json();
     document.getElementById('modal-title').textContent = n.title;
     const authorName = esc(n.author.username);
     const modalAdminBadge = _renderAdminBadge(n.author);
