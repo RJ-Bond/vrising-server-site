@@ -460,6 +460,23 @@
     @keyframes ow-fadeout { to{opacity:0;transform:translateX(8px)} }
     .ow-dm-btn { width:1.35rem;height:1.35rem;border-radius:50%;background:rgba(80,0,40,.5);border:1px solid rgba(150,0,30,.35);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:.6rem;cursor:pointer;flex-shrink:0;opacity:0;transition:opacity .15s,color .15s,background .15s;padding:0; }
     .ow-dm-btn:hover { color:var(--text);background:rgba(130,0,50,.7); }
+    /* since badge */
+    .ow-since { font-size:.52rem;flex-shrink:0;padding:.06rem .3rem;border-radius:.25rem;line-height:1.5; }
+    .ow-since-new  { color:#4ade80;background:rgba(74,222,128,.12); }
+    .ow-since-mid  { color:#f59e0b;background:rgba(245,158,11,.12); }
+    .ow-since-old  { color:var(--muted);background:rgba(148,136,168,.08); }
+    /* new user flash */
+    @keyframes ow-appear { from{opacity:0;box-shadow:0 0 12px rgba(74,222,128,.35);background:rgba(74,222,128,.08);} to{opacity:1;} }
+    .ow-new { animation:ow-appear .5s ease; }
+    /* hover card */
+    #ow-hover-card { position:fixed;z-index:9000;pointer-events:none;opacity:0;transition:opacity .15s;
+      background:rgba(6,0,15,.97);border:1px solid rgba(180,0,35,.4);border-radius:.55rem;
+      padding:.7rem .9rem;min-width:160px;max-width:210px;box-shadow:0 8px 28px rgba(0,0,0,.6); }
+    #ow-hover-card.visible { opacity:1; }
+    .owc-name { font-size:.82rem;font-weight:700;color:var(--text);margin-bottom:.25rem; }
+    .owc-row  { font-size:.62rem;color:var(--muted);display:flex;gap:.35rem;align-items:center;margin-top:.18rem; }
+    /* sparkline */
+    #ow-sparkline { margin:.55rem .35rem 0;opacity:.7; }
     .ow-group-hdr { font-size:.55rem;color:var(--muted);letter-spacing:.06em;padding:.28rem .35rem .04rem;opacity:.7; }
     .online-dot { width:.42rem;height:.42rem;border-radius:50%;background:#4ade80;box-shadow:0 0 7px #4ade80;flex-shrink:0;animation:ow-pulse 2.4s ease-in-out infinite; }
     @keyframes ow-pulse { 0%,100%{box-shadow:0 0 4px #4ade80;opacity:1} 50%{box-shadow:0 0 12px #4ade80,0 0 20px rgba(74,222,128,.4);opacity:.85} }
@@ -1382,6 +1399,7 @@
         <span data-tip="Пользователи" style="cursor:default;">👤</span> <span id="ow-users">–</span> · <span data-tip="Гости" style="cursor:default;">👁</span> <span id="ow-guests">–</span><span id="ow-bots-wrap" style="display:none;"> · <span data-tip="Боты" style="cursor:default;">🤖</span> <span id="ow-bots">0</span></span>
       </div>
       <div id="ow-peak" style="font-size:.56rem;color:var(--muted);opacity:.6;margin-top:.12rem;display:none;"></div>
+      <div id="ow-sparkline"></div>
     </div>
 
     <div id="ow-list" style="display:flex;flex-direction:column;gap:.2rem;"></div>
@@ -1884,6 +1902,19 @@ const PAGE_ICONS = {
 };
 const ROLE_ORDER = { admin: 0, moder: 1, user: 2 };
 
+function _owAnimCount(el, to) {
+  if (!el) return;
+  const from = parseInt(el.textContent) || 0;
+  if (from === to) return;
+  const dur = 350, t0 = performance.now();
+  const tick = now => {
+    const p = Math.min((now - t0) / dur, 1);
+    el.textContent = Math.round(from + (to - from) * (p < 0.5 ? 2*p*p : -1+(4-2*p)*p));
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
 let _owAllUsers = [];
 let _owPrevUsernames = new Set();
 
@@ -1926,9 +1957,9 @@ function owShowAll() {
   const load = async () => {
     try {
       const d = await fetch('/api/online').then(r => r.json());
-      document.getElementById('ow-total').textContent  = d.total;
-      document.getElementById('ow-users').textContent  = d.users.length;
-      document.getElementById('ow-guests').textContent = d.guests;
+      _owAnimCount(document.getElementById('ow-total'),  d.total);
+      _owAnimCount(document.getElementById('ow-users'),  d.users.length);
+      _owAnimCount(document.getElementById('ow-guests'), d.guests);
       const bw = document.getElementById('ow-bots-wrap');
       if (bw) {
         if (d.bots > 0) { document.getElementById('ow-bots').textContent = d.bots; bw.style.display = ''; }
@@ -1979,6 +2010,8 @@ function owShowAll() {
         if (mw) mw.style.display = 'none';
       }
 
+      _owDrawSparkline(d.history || []);
+
       // Hide old page-counter strip (replaced by inline grouping)
       const pc = document.getElementById('ow-pages');
       if (pc) pc.style.display = 'none';
@@ -1986,17 +2019,29 @@ function owShowAll() {
   };
 
   load();
-  setInterval(load, 30000);
+  let _owSseOk = false;
+  try {
+    const es = new EventSource('/api/online/stream');
+    es.onmessage = () => { _owSseOk = true; load(); };
+    es.onerror = () => { es.close(); _owSseOk = false; };
+    // fallback polling if SSE dies
+    setInterval(() => { if (!_owSseOk) load(); }, 30000);
+    setTimeout(() => { if (!_owSseOk) setInterval(load, 30000); }, 5000);
+  } catch {
+    setInterval(load, 30000);
+  }
 })();
 
 function _owFmtSince(ts) {
-  if (!ts) return '';
-  const sec = Math.floor((Date.now() / 1000) - ts);
-  if (sec < 60) return 'только что';
+  if (!ts) return null;
+  const sec = Math.floor(Date.now() / 1000 - ts);
+  if (sec < 60)  return { text: 'только что', cls: 'ow-since-new' };
   const m = Math.floor(sec / 60);
-  if (m < 60) return `${m} мин`;
+  if (m < 10)    return { text: `${m} мин`,   cls: 'ow-since-new' };
+  if (m < 30)    return { text: `${m} мин`,   cls: 'ow-since-mid' };
+  if (m < 60)    return { text: `${m} мин`,   cls: 'ow-since-old' };
   const h = Math.floor(m / 60), rm = m % 60;
-  return rm > 0 ? `${h}ч ${rm}м` : `${h}ч`;
+  return { text: rm > 0 ? `${h}ч ${rm}м` : `${h}ч`, cls: 'ow-since-old' };
 }
 
 function _owRenderList(users) {
@@ -2015,6 +2060,62 @@ function _owRenderList(users) {
   }).join('');
 }
 
+let _owCardTimer = null;
+function _owShowCard(e, data) {
+  clearTimeout(_owCardTimer);
+  _owCardTimer = setTimeout(() => {
+    const c = document.getElementById('ow-hover-card');
+    if (!c) return;
+    const roleLabel = data.role === 'admin' ? '👑 Администратор' : data.role === 'moder' ? '🛡 Модератор' : '⚔ Игрок';
+    const av = data.avatar_url
+      ? `<img src="${esc(data.avatar_url)}" style="width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover;flex-shrink:0;">`
+      : `<span style="width:2.2rem;height:2.2rem;border-radius:50%;background:rgba(60,30,90,.8);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;">${(data.username[0]||'?').toUpperCase()}</span>`;
+    c.innerHTML = `
+      <div style="display:flex;gap:.55rem;align-items:center;margin-bottom:.35rem;">${av}
+        <div><div class="owc-name">${esc(data.username)}</div>
+        <div style="font-size:.58rem;color:var(--muted);">${roleLabel}</div></div>
+      </div>
+      ${data.page ? `<div class="owc-row">📄 ${esc(data.page)}</div>` : ''}
+      ${data.regAt ? `<div class="owc-row">📅 ${esc(data.regAt)}</div>` : ''}`;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const left = Math.min(rect.right + 8, window.innerWidth - 220);
+    const top  = Math.max(rect.top - 10, 8);
+    c.style.left = left + 'px';
+    c.style.top  = top  + 'px';
+    c.classList.add('visible');
+  }, 250);
+}
+function _owHideCard() {
+  clearTimeout(_owCardTimer);
+  const c = document.getElementById('ow-hover-card');
+  if (c) c.classList.remove('visible');
+}
+
+function _owDrawSparkline(history) {
+  const el = document.getElementById('ow-sparkline');
+  if (!el || !history || history.length < 3) { if(el) el.innerHTML=''; return; }
+  const W = 176, H = 30, now = Date.now() / 1000;
+  const buckets = new Array(24).fill(0);
+  history.forEach(({ts, count}) => {
+    const h = Math.floor((now - ts) / 3600);
+    if (h >= 0 && h < 24) buckets[23 - h] = Math.max(buckets[23 - h], count);
+  });
+  const max = Math.max(...buckets, 1);
+  const pts = buckets.map((v, i) => `${(i/23*W).toFixed(1)},${(H - v/max*(H-2) - 1).toFixed(1)}`).join(' ');
+  el.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;margin:0 auto;overflow:visible;">
+    <defs>
+      <linearGradient id="owSpkG" x1="0" y1="0" x2="${W}" y2="0" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#c8002a"/>
+      </linearGradient>
+      <linearGradient id="owSpkA" x1="0" y1="0" x2="0" y2="${H}" gradientUnits="userSpaceOnUse">
+        <stop offset="0" stop-color="#7c3aed" stop-opacity=".25"/><stop offset="1" stop-color="#7c3aed" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <polygon points="${pts} ${W},${H} 0,${H}" fill="url(#owSpkA)"/>
+    <polyline points="${pts}" fill="none" stroke="url(#owSpkG)" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
 function _owRow(u, isNew = false, isSelf = false, showDm = false) {
   const roleColor = u.role === 'admin' ? 'var(--crimson)' : u.role === 'moder' ? 'var(--purple)' : 'var(--text)';
   const init = (u.username[0] || '?').toUpperCase();
@@ -2029,12 +2130,17 @@ function _owRow(u, isNew = false, isSelf = false, showDm = false) {
   const sword = u.in_game
     ? `<span title="Играет на сервере" style="font-size:.72rem;margin-left:.25rem;filter:drop-shadow(0 0 4px rgba(220,80,80,.7));">⚔️</span>`
     : '';
-  const since = u.since ? `<span style="font-size:.55rem;color:var(--muted);opacity:.7;flex-shrink:0;">${_owFmtSince(u.since)}</span>` : '';
+  const sinceInfo = _owFmtSince(u.since);
+  const since = sinceInfo ? `<span class="ow-since ${sinceInfo.cls}" data-tip="На сайте">${sinceInfo.text}</span>` : '';
   const dm = showDm
     ? `<button class="ow-dm-btn" onclick="event.preventDefault();event.stopPropagation();window.location='/messages.html?to=${encodeURIComponent(u.username)}'" title="Написать">✉</button>`
     : '';
   const selfCls = isSelf ? ' ow-self' : '';
-  return `<div class="online-user-row${isNew ? ' ow-new' : ''}${selfCls}" data-uname="${esc(u.username)}">
+  const regAt = u.registered_at ? `зарег. ${fmtDate(u.registered_at)}` : '';
+  const cardData = JSON.stringify({username:u.username,avatar_url:u.avatar_url||'',role:u.role,page:u.page||'',regAt});
+  return `<div class="online-user-row${isNew ? ' ow-new' : ''}${selfCls}" data-uname="${esc(u.username)}"
+    onmouseenter="_owShowCard(event,${cardData.replace(/"/g,'&quot;')})"
+    onmouseleave="_owHideCard()">
     <a href="/user.html?u=${encodeURIComponent(u.username)}" style="display:flex;align-items:center;gap:.45rem;flex:1;min-width:0;text-decoration:none;color:inherit;">
       ${av}
       <div style="flex:1;min-width:0;">
@@ -3966,5 +4072,6 @@ async function votePoll(slug, optionId) {
 }
 
 </script>
+<div id="ow-hover-card"></div>
 </body>
 </html>

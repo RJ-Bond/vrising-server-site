@@ -612,6 +612,8 @@ _BOT_UA = re.compile(
     re.I,
 )
 _peak_today: dict = {"count": 0, "at_ts": 0.0, "date": ""}
+_activity_history: list[dict] = []   # [{ts, count}] каждые 5 мин, макс 24ч
+_sse_clients: set = set()            # asyncio.Queue для каждого SSE-клиента
 _explicit_logouts: dict[str, float] = {}  # username -> logout timestamp
 _ingame_players: dict[str, float] = {}   # player_name_lower -> last_seen_ts
 _GUEST_TTL = 120   # 2 minutes
@@ -624,6 +626,16 @@ _PAGE_LABELS = {
     "/map.html": "Карта", "/faq.html": "FAQ",
     "/profile.html": "Профиль", "/login.html": "Вход",
 }
+
+
+async def _sse_broadcast(payload: str) -> None:
+    dead = set()
+    for q in _sse_clients:
+        try:
+            q.put_nowait(payload)
+        except Exception:
+            dead.add(q)
+    _sse_clients.difference_update(dead)
 
 
 class OnlinePingBody(BaseModel):
@@ -663,6 +675,7 @@ async def online_ping(request: Request, body: OnlinePingBody, db: AsyncSession =
                 user.last_active_at = datetime.now(timezone.utc)
                 await db.commit()
                 _visitor_data[body.visitor_id]["db_ts"] = time.time()
+    asyncio.create_task(_sse_broadcast("update"))
     return Response(status_code=204)
 
 
@@ -695,7 +708,7 @@ async def online_status(db: AsyncSession = Depends(get_db)):
     ingame_cutoff = now_ts - _INGAME_TTL
     cutoff = (datetime.now(timezone.utc) - timedelta(minutes=2)).replace(tzinfo=None)
     result = await db.execute(
-        select(User.username, User.avatar_url, User.role)
+        select(User.username, User.avatar_url, User.role, User.created_at)
         .where(User.is_active == True, User.last_active_at != None, User.last_active_at >= cutoff)
         .order_by(User.last_active_at.desc())
         .limit(20)
@@ -704,7 +717,8 @@ async def online_status(db: AsyncSession = Depends(get_db)):
         {"username": r.username, "avatar_url": r.avatar_url, "role": r.role,
          "page": user_pages.get(r.username, ""),
          "in_game": _ingame_players.get(r.username.lower(), 0) > ingame_cutoff,
-         "since": user_since.get(r.username, now_ts)}
+         "since": user_since.get(r.username, now_ts),
+         "registered_at": _fmt_dt(r.created_at)}
         for r in result.all()
         if r.username not in _explicit_logouts
     ]
@@ -718,6 +732,13 @@ async def online_status(db: AsyncSession = Depends(get_db)):
         _peak_today["count"] = total
         _peak_today["at_ts"] = now_ts
 
+    # Sample activity history every 5 min
+    if not _activity_history or now_ts - _activity_history[-1]["ts"] >= 300:
+        _activity_history.append({"ts": now_ts, "count": total})
+        cutoff_hist = now_ts - 86400
+        while _activity_history and _activity_history[0]["ts"] < cutoff_hist:
+            _activity_history.pop(0)
+
     page_counts: dict[str, int] = {}
     for u in users:
         if u["page"]:
@@ -725,7 +746,32 @@ async def online_status(db: AsyncSession = Depends(get_db)):
     return {
         "users": users, "guests": guests, "bots": bots, "total": total, "page_counts": page_counts,
         "peak_today": {"count": _peak_today["count"], "at_ts": _peak_today["at_ts"]},
+        "history": list(_activity_history),
     }
+
+
+@app.get("/api/online/stream")
+async def online_stream():
+    import asyncio as _aio
+    queue: _aio.Queue = _aio.Queue(maxsize=20)
+    _sse_clients.add(queue)
+
+    async def generate():
+        try:
+            while True:
+                try:
+                    await _aio.wait_for(queue.get(), timeout=25)
+                    yield "data: update\n\n"
+                except _aio.TimeoutError:
+                    yield ": keepalive\n\n"
+        finally:
+            _sse_clients.discard(queue)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @app.post("/api/auth/accept-rules", response_model=UserOut)
