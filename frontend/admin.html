@@ -397,6 +397,7 @@
       <div class="sidebar-group-label">Контент</div>
       <button id="btn-news"      onclick="showSection('news')"      class="sidebar-btn">📰 Новости</button>
       <button id="btn-comments"  onclick="showSection('comments')"  class="sidebar-btn">💬 Комментарии<span id="badge-comments" class="sidebar-badge" style="display:none;"></span></button>
+      <button id="btn-events"    onclick="showSection('events')"    class="sidebar-btn">🗓 События</button>
 
       <div class="sidebar-group-label">Сайт</div>
       <button id="btn-settings"  onclick="showSection('settings')"  class="sidebar-btn">⚙ Настройки</button>
@@ -1364,10 +1365,7 @@
             <option value="active">Активен</option>
             <option value="blocked">Заблокирован</option>
           </select>
-          <button onclick="exportUsersCsv()" class="btn-ghost" style="display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            CSV
-          </button>
+          <a href="/api/admin/export/users" class="btn-ghost" style="font-size:.75rem;" download>⬇ CSV</a>
         </div>
       </div>
       <!-- Bulk panel -->
@@ -1510,30 +1508,39 @@
 
     <!-- ANALYTICS -->
     <div id="section-analytics" class="hidden">
-      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
-        <h1 class="section-title">Аналитика</h1>
-        <select id="analytics-days" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="loadAnalytics()">
-          <option value="7">7 дней</option>
-          <option value="14">14 дней</option>
-          <option value="30">30 дней</option>
-          <option value="90">90 дней</option>
-        </select>
-      </div>
-      <div class="grid" style="grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;">
-        <div class="glass-card rounded-xl p-4">
-          <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem;">Всего просмотров</div>
-          <div id="analytics-total" style="font-size:2rem;font-weight:700;color:var(--gold);">—</div>
+      <h2 class="section-title" style="margin-bottom:1.5rem;">Аналитика сайта</h2>
+
+      <!-- KPI tiles -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.85rem;margin-bottom:1.5rem;" id="analytics-kpis">
+        <div class="glass-card" style="border-radius:.75rem;padding:1.25rem;text-align:center;">
+          <div style="font-family:'Cinzel',serif;font-size:1.8rem;font-weight:700;color:var(--gold);" id="kpi-users">—</div>
+          <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.3rem;">Пользователей</div>
+        </div>
+        <div class="glass-card" style="border-radius:.75rem;padding:1.25rem;text-align:center;">
+          <div style="font-family:'Cinzel',serif;font-size:1.8rem;font-weight:700;color:#c8002a;" id="kpi-news">—</div>
+          <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.3rem;">Новостей</div>
+        </div>
+        <div class="glass-card" style="border-radius:.75rem;padding:1.25rem;text-align:center;">
+          <div style="font-family:'Cinzel',serif;font-size:1.8rem;font-weight:700;color:#9955ee;" id="kpi-comments">—</div>
+          <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.3rem;">Комментариев</div>
         </div>
       </div>
-      <div class="glass-card rounded-xl p-4 mb-4">
-        <h3 style="font-size:.82rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:1rem;">Просмотры по дням</h3>
-        <div id="analytics-chart" style="display:flex;align-items:flex-end;gap:4px;height:100px;"></div>
-        <div id="analytics-labels" style="display:flex;gap:4px;margin-top:4px;font-size:.65rem;color:var(--muted);overflow:hidden;"></div>
+
+      <!-- User registrations chart (simple bar) -->
+      <div class="glass-card" style="border-radius:.75rem;padding:1.25rem;margin-bottom:1.25rem;">
+        <div style="font-size:.72rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.85rem;">Регистрации за 30 дней</div>
+        <div id="analytics-reg-chart" style="display:flex;align-items:flex-end;gap:2px;height:80px;"></div>
+        <div style="font-size:.58rem;color:var(--muted);margin-top:.35rem;text-align:right;" id="analytics-reg-total"></div>
       </div>
-      <div class="glass-card rounded-xl overflow-hidden">
+
+      <!-- Top news table -->
+      <div class="glass-card" style="border-radius:.75rem;overflow:hidden;">
+        <div style="padding:.85rem 1rem;border-bottom:1px solid var(--border);">
+          <span style="font-size:.72rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;">Топ новостей по просмотрам</span>
+        </div>
         <table>
-          <thead><tr><th>Страница</th><th>Просмотры</th></tr></thead>
-          <tbody id="analytics-pages-body"></tbody>
+          <thead><tr><th>#</th><th>Новость</th><th>Просмотры</th><th>Комментарии</th></tr></thead>
+          <tbody id="analytics-top-news"></tbody>
         </table>
       </div>
     </div>
@@ -1580,11 +1587,77 @@
       <div id="media-empty" style="display:none;text-align:center;padding:3rem 1rem;color:var(--muted);font-size:.85rem;">Нет загруженных файлов</div>
     </div>
 
+    <!-- EVENTS -->
+    <div id="section-events" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
+        <h2 class="section-title">События и турниры</h2>
+        <button onclick="openEventEditor(null)" class="btn-primary" style="font-size:.82rem;">+ Создать событие</button>
+      </div>
+
+      <!-- Events list -->
+      <div id="events-list-wrap" class="glass-card" style="border-radius:.75rem;overflow:hidden;margin-bottom:1rem;">
+        <table>
+          <thead><tr>
+            <th>Название</th><th>Тип</th><th>Начало</th><th>Статус</th><th>Участники</th><th>Действия</th>
+          </tr></thead>
+          <tbody id="events-tbody">
+            <tr><td colspan="6" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Event editor modal -->
+      <div id="event-editor-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
+        <div style="max-width:560px;margin:3rem auto;background:var(--card);border:1px solid var(--border);border-radius:1rem;padding:2rem;box-shadow:0 16px 64px rgba(0,0,0,0.7);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+            <h3 class="section-title" id="event-editor-title">Новое событие</h3>
+            <button onclick="closeEventEditor()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">✕</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.85rem;">
+            <div><label>Название</label><input id="ev-title" class="dark-input" type="text" maxlength="200" placeholder="Название события"></div>
+            <div><label>Описание</label><textarea id="ev-desc" class="dark-input" rows="3" placeholder="Описание события"></textarea></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+              <div><label>Тип</label>
+                <select id="ev-type" class="dark-input">
+                  <option value="pvp">PvP турнир</option>
+                  <option value="pve">PvE событие</option>
+                  <option value="social">Социальное</option>
+                  <option value="other">Другое</option>
+                </select>
+              </div>
+              <div><label>Статус</label>
+                <select id="ev-status" class="dark-input">
+                  <option value="upcoming">Предстоящее</option>
+                  <option value="active">Активное</option>
+                  <option value="ended">Завершено</option>
+                  <option value="cancelled">Отменено</option>
+                </select>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+              <div><label>Начало</label><input id="ev-start" class="dark-input" type="datetime-local" style="color-scheme:dark;"></div>
+              <div><label>Конец (необязательно)</label><input id="ev-end" class="dark-input" type="datetime-local" style="color-scheme:dark;"></div>
+            </div>
+            <div><label>Макс. участников (необязательно)</label><input id="ev-max" class="dark-input" type="number" min="1" placeholder="Без ограничений"></div>
+            <div><label>URL обложки (необязательно)</label><input id="ev-cover" class="dark-input" type="url" placeholder="https://..."></div>
+          </div>
+          <div style="display:flex;gap:.75rem;margin-top:1.5rem;flex-wrap:wrap;">
+            <button onclick="saveEvent()" class="btn-primary">Сохранить</button>
+            <button onclick="closeEventEditor()" class="btn-ghost">Отмена</button>
+            <span id="ev-save-msg" style="font-size:.78rem;display:none;align-self:center;"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- AUDIT LOG (Журнал действий) -->
     <div id="section-auditlog" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
         <h2 class="section-title">Журнал действий</h2>
-        <button onclick="loadAuditLogSection(1)" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
+        <div style="display:flex;gap:.5rem;align-items:center;">
+          <button onclick="loadAuditLogSection(1)" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
+          <a href="/api/admin/export/audit-log" class="btn-ghost" style="font-size:.75rem;" download>⬇ CSV</a>
+        </div>
       </div>
       <div class="glass-card" style="border-radius:.75rem;overflow:hidden;">
         <div style="overflow-x:auto;">
@@ -1737,10 +1810,10 @@ loadSidebarBadges();
 
 // ─── Sections ─────────────────────────────────────────────────────────────
 function showSection(name) {
-  ['dashboard','news','editor','settings','users','comments','players','files','log','resets','clans','reports','analytics','backups','errors','media','auditlog'].forEach(s => {
+  ['dashboard','news','editor','settings','users','comments','players','files','log','resets','clans','reports','analytics','backups','errors','media','auditlog','events'].forEach(s => {
     const el = document.getElementById(`section-${s}`);
     if (el) {
-      if (s === 'media' || s === 'auditlog') el.style.display = (s === name ? '' : 'none');
+      if (s === 'media' || s === 'auditlog' || s === 'events') el.style.display = (s === name ? '' : 'none');
       else el.classList.toggle('hidden', s !== name);
     }
     const btn = document.getElementById(`btn-${s}`);
@@ -1763,6 +1836,7 @@ function showSection(name) {
   if (name === 'errors')     loadErrors(1);
   if (name === 'media')      loadMedia();
   if (name === 'auditlog')   loadAuditLogSection(1);
+  if (name === 'events')     loadEvents();
 }
 
 // ─── News list ────────────────────────────────────────────────────────────
@@ -3883,25 +3957,143 @@ async function reviewReport(id, status) {
   loadReports(_reportsPage);
 }
 
+// ─── Events ───────────────────────────────────────────────────────────────
+let _editingEventId = null;
+const EVENT_TYPE_LABELS = {pvp:'PvP',pve:'PvE',social:'Социальное',other:'Другое'};
+const EVENT_STATUS_LABELS = {upcoming:'Предстоящее',active:'Активное',ended:'Завершено',cancelled:'Отменено'};
+const EVENT_STATUS_COLORS = {upcoming:'#c9a04a',active:'#4ade80',ended:'var(--muted)',cancelled:'#f87171'};
+
+async function loadEvents() {
+  const tbody = document.getElementById('events-tbody');
+  if (!tbody) return;
+  try {
+    const d = await fetch(`${API}/events?per_page=50`, {credentials:'include'}).then(r=>r.json());
+    const items = d.items||[];
+    if (!items.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);">Нет событий</td></tr>'; return; }
+    tbody.innerHTML = items.map(ev => {
+      const dt = ev.start_date ? new Date(ev.start_date).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+      const statusColor = EVENT_STATUS_COLORS[ev.status]||'var(--muted)';
+      const pCount = ev.participant_count||0;
+      const pMax = ev.max_participants ? `/${ev.max_participants}` : '';
+      return `<tr>
+        <td><span style="font-weight:600;">${esc(ev.title)}</span></td>
+        <td style="font-size:.78rem;">${EVENT_TYPE_LABELS[ev.event_type]||ev.event_type}</td>
+        <td style="font-size:.75rem;color:var(--muted);">${dt}</td>
+        <td><span style="font-size:.72rem;color:${statusColor};font-weight:600;">${EVENT_STATUS_LABELS[ev.status]||ev.status}</span></td>
+        <td style="text-align:center;">${pCount}${pMax}</td>
+        <td>
+          <div style="display:flex;gap:.35rem;">
+            <button onclick="openEventEditor(${ev.id})" class="btn-ghost" style="font-size:.7rem;padding:.28rem .6rem;">Изменить</button>
+            <button onclick="deleteEvent(${ev.id})" class="btn-danger" style="font-size:.7rem;padding:.28rem .6rem;">Удалить</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+}
+
+async function openEventEditor(id) {
+  _editingEventId = id;
+  document.getElementById('event-editor-title').textContent = id ? 'Редактировать событие' : 'Новое событие';
+  ['ev-title','ev-desc','ev-start','ev-end','ev-cover'].forEach(i => { const el=document.getElementById(i); if(el) el.value=''; });
+  document.getElementById('ev-max').value = '';
+  document.getElementById('ev-type').value = 'pvp';
+  document.getElementById('ev-status').value = 'upcoming';
+  const msg = document.getElementById('ev-save-msg');
+  if (msg) msg.style.display = 'none';
+  if (id) {
+    try {
+      const ev = await fetch(`${API}/events/${id}`, {credentials:'include'}).then(r=>r.json());
+      document.getElementById('ev-title').value = ev.title||'';
+      document.getElementById('ev-desc').value = ev.description||'';
+      document.getElementById('ev-type').value = ev.event_type||'pvp';
+      document.getElementById('ev-status').value = ev.status||'upcoming';
+      document.getElementById('ev-max').value = ev.max_participants||'';
+      document.getElementById('ev-cover').value = ev.cover_url||'';
+      if (ev.start_date) document.getElementById('ev-start').value = ev.start_date.slice(0,16);
+      if (ev.end_date) document.getElementById('ev-end').value = ev.end_date.slice(0,16);
+    } catch {}
+  }
+  document.getElementById('event-editor-modal').style.display = '';
+}
+
+function closeEventEditor() {
+  document.getElementById('event-editor-modal').style.display = 'none';
+  _editingEventId = null;
+}
+
+async function saveEvent() {
+  const msg = document.getElementById('ev-save-msg');
+  const show = (t, ok) => { msg.textContent=t; msg.style.color=ok?'#4ade80':'#f87171'; msg.style.display='inline'; };
+  const body = {
+    title: document.getElementById('ev-title').value.trim(),
+    description: document.getElementById('ev-desc').value.trim()||null,
+    event_type: document.getElementById('ev-type').value,
+    status: document.getElementById('ev-status').value,
+    start_date: document.getElementById('ev-start').value||null,
+    end_date: document.getElementById('ev-end').value||null,
+    max_participants: parseInt(document.getElementById('ev-max').value)||null,
+    cover_url: document.getElementById('ev-cover').value.trim()||null,
+  };
+  if (!body.title) return show('Введите название', false);
+  if (!body.start_date) return show('Укажите дату начала', false);
+  try {
+    const url = _editingEventId ? `${API}/admin/events/${_editingEventId}` : `${API}/admin/events`;
+    const method = _editingEventId ? 'PUT' : 'POST';
+    const r = await fetch(url, {method, credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const d = await r.json().catch(()=>({}));
+    if (!r.ok) return show(d.detail||'Ошибка', false);
+    show('Сохранено!', true);
+    setTimeout(() => { closeEventEditor(); loadEvents(); }, 800);
+  } catch { show('Ошибка соединения', false); }
+}
+
+async function deleteEvent(id) {
+  if (!confirm('Удалить событие?')) return;
+  await fetch(`${API}/admin/events/${id}`, {method:'DELETE', credentials:'include'});
+  loadEvents();
+}
+
 // ─── Analytics ────────────────────────────────────────────────────────────
 async function loadAnalytics() {
-  const days = document.getElementById('analytics-days').value;
-  const data = await fetch(`${API}/admin/analytics?days=${days}`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => null);
-  if (!data) return;
-  document.getElementById('analytics-total').textContent = data.total_views.toLocaleString('ru-RU');
-  // Chart
-  const chart = document.getElementById('analytics-chart');
-  const labels = document.getElementById('analytics-labels');
-  const max = Math.max(...data.by_day.map(d => d.views), 1);
-  chart.innerHTML = data.by_day.map(d => {
-    const h = Math.max(4, Math.round((d.views / max) * 96));
-    return `<div title="${d.day}: ${d.views} просмотров" style="flex:1;background:linear-gradient(to top,rgba(181,0,42,.6),rgba(181,0,42,.3));border-radius:3px 3px 0 0;height:${h}px;min-width:4px;"></div>`;
-  }).join('');
-  labels.innerHTML = data.by_day.map(d => `<div style="flex:1;text-align:center;overflow:hidden;font-size:.6rem;">${d.day.slice(5)}</div>`).join('');
-  // Top pages
-  document.getElementById('analytics-pages-body').innerHTML = data.top_pages.map(p =>
-    `<tr><td>${esc(p.path)}</td><td>${p.views}</td></tr>`
-  ).join('') || '<tr><td colspan="2" style="text-align:center;color:var(--muted);">Нет данных</td></tr>';
+  try {
+    const d = await fetch(`${API}/admin/analytics`, {credentials:'include'}).then(r=>r.json());
+
+    // KPIs
+    const setKpi = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val??'—'; };
+    setKpi('kpi-users', d.totals?.users);
+    setKpi('kpi-news', d.totals?.news);
+    setKpi('kpi-comments', d.totals?.comments);
+
+    // Registration bar chart
+    const chartEl = document.getElementById('analytics-reg-chart');
+    const totalEl = document.getElementById('analytics-reg-total');
+    if (chartEl && d.users_by_day?.length) {
+      const days = d.users_by_day;
+      const maxVal = Math.max(1, ...days.map(dy=>dy.count));
+      const total = days.reduce((s,dy)=>s+dy.count,0);
+      chartEl.innerHTML = days.map(day => {
+        const pct = Math.max(4, Math.round((day.count/maxVal)*80));
+        const isToday = day.date === new Date().toISOString().slice(0,10);
+        return `<div style="flex:1;background:${isToday?'rgba(201,160,74,.8)':'rgba(181,0,42,.5)'};border-radius:2px 2px 0 0;height:${pct}px;min-height:2px;transition:opacity .15s;" title="${day.date}: ${day.count} регистраций" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'"></div>`;
+      }).join('');
+      if (totalEl) totalEl.textContent = `Итого за период: ${total} регистраций`;
+    }
+
+    // Top news
+    const tbody = document.getElementById('analytics-top-news');
+    if (tbody && d.top_news?.length) {
+      tbody.innerHTML = d.top_news.map((n,i) => `
+        <tr>
+          <td style="color:var(--muted);font-size:.78rem;">${i+1}</td>
+          <td><a href="/?news=${esc(n.slug)}" target="_blank" style="color:var(--accent);text-decoration:none;font-size:.82rem;">${esc(n.title)}</a></td>
+          <td style="text-align:center;font-weight:600;">${n.views||0}</td>
+          <td style="text-align:center;color:var(--muted);">${n.comment_count||0}</td>
+        </tr>`).join('');
+    } else if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Нет данных</td></tr>';
+    }
+  } catch(e) { console.error('Analytics error:', e); }
 }
 
 // ─── Backups ──────────────────────────────────────────────────────────────
