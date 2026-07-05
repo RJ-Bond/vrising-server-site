@@ -1379,7 +1379,7 @@
         <span style="font-size:1.6rem;font-family:'Cinzel',serif;color:#4ade80;line-height:1;" id="ow-total">–</span>
       </div>
       <div style="font-size:.6rem;color:var(--muted);margin-top:.15rem;">
-        Пользователи: <span id="ow-users">–</span> · Гости: <span id="ow-guests">–</span>
+        👤 <span id="ow-users">–</span> · 👁 <span id="ow-guests">–</span><span id="ow-bots-wrap" style="display:none;"> · 🤖 <span id="ow-bots">0</span></span>
       </div>
       <div id="ow-peak" style="font-size:.56rem;color:var(--muted);opacity:.6;margin-top:.12rem;display:none;"></div>
     </div>
@@ -1929,6 +1929,11 @@ function owShowAll() {
       document.getElementById('ow-total').textContent  = d.total;
       document.getElementById('ow-users').textContent  = d.users.length;
       document.getElementById('ow-guests').textContent = d.guests;
+      const bw = document.getElementById('ow-bots-wrap');
+      if (bw) {
+        if (d.bots > 0) { document.getElementById('ow-bots').textContent = d.bots; bw.style.display = ''; }
+        else bw.style.display = 'none';
+      }
 
       // Peak today
       const pk = document.getElementById('ow-peak');

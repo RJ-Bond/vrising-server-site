@@ -602,7 +602,16 @@ async def me(current_user: User = Depends(get_current_user), db: AsyncSession = 
 
 
 # ─── Who's online ─────────────────────────────────────────────────────────────
-_visitor_data: dict[str, dict] = {}  # visitor_id -> {ts, page, username, is_authed}
+_visitor_data: dict[str, dict] = {}  # visitor_id -> {ts, first_ts, db_ts, page, username, is_authed, is_bot}
+
+_BOT_UA = re.compile(
+    r'bot|crawler|spider|slurp|yandex|baidu|bing|google|duckduck|semrush|ahrefs'
+    r'|mj12|dataprovider|proximic|gigabot|dotbot|rogerbot|facebookexternalhit'
+    r'|twitterbot|discordbot|telegrambot|whatsapp|slackbot|linkedinbot|applebot'
+    r'|pingdom|uptimerobot|checkly|chrome-lighthouse|headlesschrome|phantomjs',
+    re.I,
+)
+_peak_today: dict = {"count": 0, "at_ts": 0.0, "date": ""}
 _explicit_logouts: dict[str, float] = {}  # username -> logout timestamp
 _ingame_players: dict[str, float] = {}   # player_name_lower -> last_seen_ts
 _GUEST_TTL = 120   # 2 minutes
@@ -625,25 +634,29 @@ class OnlinePingBody(BaseModel):
 
 
 @app.post("/api/online/ping", status_code=204)
-async def online_ping(body: OnlinePingBody, db: AsyncSession = Depends(get_db)):
+async def online_ping(request: Request, body: OnlinePingBody, db: AsyncSession = Depends(get_db)):
     cutoff = time.time() - _GUEST_TTL
     for vid in list(_visitor_data):
         if _visitor_data[vid]["ts"] < cutoff:
             del _visitor_data[vid]
+    ua = request.headers.get("user-agent", "")
+    is_bot = bool(_BOT_UA.search(ua))
     if len(body.visitor_id) <= 64:
+        now_ts = time.time()
+        existing = _visitor_data.get(body.visitor_id, {})
         _visitor_data[body.visitor_id] = {
-            "ts": time.time(),
+            "ts": now_ts,
+            "first_ts": existing.get("first_ts", now_ts),
+            "db_ts": existing.get("db_ts", 0),
             "page": (body.page or "Сайт")[:64],
             "username": body.username if body.is_authed else None,
             "is_authed": body.is_authed,
+            "is_bot": is_bot,
         }
     # Keep last_active_at fresh so the user appears in the online widget immediately.
-    # Throttled: only write to DB if last ping was >55s ago (ping interval is 30s,
-    # /api/auth/me already updates every 60s — this covers the gap on first page load).
     if body.is_authed and body.username:
-        prev = _visitor_data.get(body.visitor_id, {})
-        prev_db_ts = prev.get("db_ts", 0)
-        if time.time() - prev_db_ts > 55:
+        db_ts = _visitor_data.get(body.visitor_id, {}).get("db_ts", 0)
+        if time.time() - db_ts > 55:
             result = await db.execute(select(User).where(User.username == body.username, User.is_active == True))
             user = result.scalar_one_or_none()
             if user:
@@ -664,12 +677,18 @@ async def online_status(db: AsyncSession = Depends(get_db)):
             del _explicit_logouts[u]
 
     user_pages: dict[str, str] = {}
+    user_since: dict[str, float] = {}
     guests = 0
+    bots = 0
     for d in _visitor_data.values():
         if d["ts"] < cutoff_ts:
             continue
-        if d.get("is_authed") and d.get("username"):
-            user_pages[d["username"]] = d.get("page", "")
+        if d.get("is_bot"):
+            bots += 1
+        elif d.get("is_authed") and d.get("username"):
+            uname = d["username"]
+            user_pages[uname] = d.get("page", "")
+            user_since[uname] = d.get("first_ts", d["ts"])
         else:
             guests += 1
 
@@ -684,15 +703,29 @@ async def online_status(db: AsyncSession = Depends(get_db)):
     users = [
         {"username": r.username, "avatar_url": r.avatar_url, "role": r.role,
          "page": user_pages.get(r.username, ""),
-         "in_game": _ingame_players.get(r.username.lower(), 0) > ingame_cutoff}
+         "in_game": _ingame_players.get(r.username.lower(), 0) > ingame_cutoff,
+         "since": user_since.get(r.username, now_ts)}
         for r in result.all()
         if r.username not in _explicit_logouts
     ]
+
+    # Track peak online today (reset at UTC midnight)
+    total = len(users) + guests
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    if _peak_today.get("date") != today:
+        _peak_today.update({"count": 0, "at_ts": 0.0, "date": today})
+    if total > _peak_today["count"]:
+        _peak_today["count"] = total
+        _peak_today["at_ts"] = now_ts
+
     page_counts: dict[str, int] = {}
     for u in users:
         if u["page"]:
             page_counts[u["page"]] = page_counts.get(u["page"], 0) + 1
-    return {"users": users, "guests": guests, "total": len(users) + guests, "page_counts": page_counts}
+    return {
+        "users": users, "guests": guests, "bots": bots, "total": total, "page_counts": page_counts,
+        "peak_today": {"count": _peak_today["count"], "at_ts": _peak_today["at_ts"]},
+    }
 
 
 @app.post("/api/auth/accept-rules", response_model=UserOut)
