@@ -908,12 +908,40 @@
             </div>
 
             <div class="s-field">
+              <label>Запланированное начало (необязательно)</label>
+              <div class="s-field-row">
+                <input id="setting-maintenance_start_time" type="datetime-local" class="dark-input">
+                <button class="s-save-btn" onclick="saveSetting('maintenance_start_time')">Сохранить</button>
+              </div>
+              <p class="s-desc">Режим обслуживания включится автоматически в указанное время</p>
+            </div>
+
+            <div class="s-field">
               <label>Ожидаемое время окончания (необязательно)</label>
               <div class="s-field-row">
                 <input id="setting-maintenance_end_time" type="datetime-local" class="dark-input">
                 <button class="s-save-btn" onclick="saveSetting('maintenance_end_time')">Сохранить</button>
               </div>
               <p class="s-desc">Если задано — на странице обслуживания появится обратный отсчёт</p>
+            </div>
+
+            <div class="s-field">
+              <label>Fallback-фон (если YouTube недоступен)</label>
+              <div class="s-field-row">
+                <input id="setting-maintenance_fallback_image" type="url" class="dark-input" placeholder="https://example.com/bg.jpg">
+                <button class="s-save-btn" onclick="saveSetting('maintenance_fallback_image')">Сохранить</button>
+              </div>
+              <p class="s-desc">Статичное изображение-фон, если видео не загружается</p>
+            </div>
+
+            <div class="s-field">
+              <label>Статус-обновления</label>
+              <div style="display:flex;gap:.5rem;margin-bottom:.6rem;">
+                <input id="maint-status-input" type="text" class="dark-input" placeholder="Например: БД мигрирована, осталось ~5 мин" maxlength="200" style="flex:1;">
+                <button class="s-save-btn" onclick="addMaintenanceStatus()">+ Добавить</button>
+              </div>
+              <div id="maint-status-list" style="display:flex;flex-direction:column;gap:.35rem;"></div>
+              <p class="s-desc">Обновления видны посетителям на странице обслуживания в реальном времени</p>
             </div>
 
             <div style="margin-top:.6rem;">
@@ -1642,7 +1670,7 @@ function showSection(name) {
     if (btn) btn.className = 'sidebar-btn' + (s === name ? ' active' : '');
   });
   if (name === 'editor')   document.getElementById('btn-news').className = 'sidebar-btn active';
-  if (name === 'settings') { loadSettings(); loadRules(); }
+  if (name === 'settings') { loadSettings(); loadRules(); loadMaintenanceStatuses(); }
   if (name === 'users')    loadUsers();
   if (name === 'news')     loadAdminNews(adminNewsPage);
   if (name === 'dashboard')  loadDashboard();
@@ -1925,7 +1953,7 @@ async function submitEditor() {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
-const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time'];
+const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time','maintenance_start_time','maintenance_fallback_image'];
 let _settingsBaseline = {};
 
 async function loadSettings() {
@@ -1956,6 +1984,59 @@ async function loadSettings() {
     badge.textContent = 'HTTPS'; badge.className = 's-status-badge s-status-https';
   }
   updateEventPreview();
+}
+
+async function loadMaintenanceStatuses() {
+  try {
+    const res = await fetch(`${API}/admin/settings`, { credentials:'include', headers:authH() });
+    if (!res.ok) return;
+    const all = await res.json();
+    const s = all.find(x => x.key === 'maintenance_status_updates');
+    const updates = JSON.parse(s?.value || '[]');
+    renderMaintenanceStatuses(updates);
+  } catch {}
+}
+
+function renderMaintenanceStatuses(updates) {
+  const list = document.getElementById('maint-status-list');
+  if (!list) return;
+  if (!updates.length) { list.innerHTML = '<div style="font-size:.7rem;color:var(--muted);">Нет обновлений</div>'; return; }
+  list.innerHTML = updates.map((u, i) => {
+    const t = new Date(u.ts * 1000).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+    return `<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem;background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.2);border-radius:.4rem;font-size:.75rem;">
+      <span style="color:var(--muted);flex-shrink:0;font-size:.65rem;">${t}</span>
+      <span style="flex:1;color:var(--text);">${esc(u.text)}</span>
+      <button onclick="deleteMaintenanceStatus(${i})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:.8rem;flex-shrink:0;padding:.1rem .3rem;" title="Удалить">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function addMaintenanceStatus() {
+  const inp = document.getElementById('maint-status-input');
+  const text = inp?.value?.trim();
+  if (!text) return;
+  try {
+    const res = await fetch(`${API}/admin/maintenance/status`, {
+      method:'POST', credentials:'include', headers:{...authH(),'Content-Type':'application/json'},
+      body: JSON.stringify({text})
+    });
+    if (!res.ok) throw new Error();
+    const d = await res.json();
+    inp.value = '';
+    renderMaintenanceStatuses(d.updates);
+    showToast('Статус добавлен', 'success');
+  } catch { showToast('Ошибка', 'error'); }
+}
+
+async function deleteMaintenanceStatus(idx) {
+  try {
+    const res = await fetch(`${API}/admin/maintenance/status/${idx}`, {
+      method:'DELETE', credentials:'include', headers:authH()
+    });
+    if (!res.ok) throw new Error();
+    const d = await res.json();
+    renderMaintenanceStatuses(d.updates);
+  } catch { showToast('Ошибка удаления', 'error'); }
 }
 
 function getChangedSettings() {

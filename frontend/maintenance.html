@@ -96,7 +96,29 @@
     <div id="maint-title" class="maint-title">Технические работы</div>
     <p id="maint-msg" class="maint-msg">Сайт временно недоступен. Мы скоро вернёмся.</p>
     <div id="countdown" style="display:none;"></div>
+    <div id="progress-wrap" style="display:none;width:100%;max-width:400px;margin:.5rem auto 1.2rem;">
+      <div style="display:flex;justify-content:space-between;font-size:.6rem;color:#9488a8;margin-bottom:.4rem;">
+        <span id="prog-start">Начало</span>
+        <span id="prog-pct">0%</span>
+        <span id="prog-end">Конец</span>
+      </div>
+      <div style="height:4px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden;">
+        <div id="progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#7c3aed,#c8002a);border-radius:9999px;transition:width 1s linear;"></div>
+      </div>
+    </div>
+    <div id="status-feed" style="display:none;width:100%;max-width:420px;margin:0 auto 1.2rem;text-align:left;"></div>
     <div class="btn-row" id="btn-row"></div>
+    <div id="admin-login-wrap" style="margin-top:1.5rem;width:100%;max-width:300px;">
+      <button onclick="document.getElementById('admin-login-form').style.display=document.getElementById('admin-login-form').style.display==='none'?'flex':'none'" style="width:100%;background:none;border:1px solid rgba(110,0,150,0.3);border-radius:.45rem;color:#9488a8;font-size:.72rem;padding:.45rem;cursor:pointer;transition:all .2s;" onmouseover="this.style.color='#e2d8f0';this.style.borderColor='rgba(180,0,35,0.4)'" onmouseout="this.style.color='#9488a8';this.style.borderColor='rgba(110,0,150,0.3)'">
+        🔑 Войти как администратор
+      </button>
+      <form id="admin-login-form" onsubmit="adminLogin(event)" style="display:none;flex-direction:column;gap:.6rem;margin-top:.75rem;background:rgba(14,5,22,0.9);border:1px solid rgba(110,0,150,0.25);border-radius:.55rem;padding:1rem;">
+        <input id="al-user" type="text" placeholder="Логин" autocomplete="username" style="background:rgba(8,0,14,0.8);border:1px solid rgba(110,0,20,0.4);border-radius:.4rem;padding:.5rem .75rem;color:#e2d8f0;font-size:.85rem;outline:none;width:100%;">
+        <input id="al-pass" type="password" placeholder="Пароль" autocomplete="current-password" style="background:rgba(8,0,14,0.8);border:1px solid rgba(110,0,20,0.4);border-radius:.4rem;padding:.5rem .75rem;color:#e2d8f0;font-size:.85rem;outline:none;width:100%;">
+        <div id="al-err" style="font-size:.72rem;color:#f87171;display:none;"></div>
+        <button type="submit" id="al-btn" style="background:linear-gradient(135deg,rgba(200,0,42,.7),rgba(140,0,25,.5));border:1px solid rgba(220,0,50,.55);border-radius:.4rem;color:#f8d7da;font-size:.82rem;font-weight:600;padding:.5rem;cursor:pointer;transition:filter .15s;" onmouseover="this.style.filter='brightness(1.2)'" onmouseout="this.style.filter=''">Войти</button>
+      </form>
+    </div>
   </div>
 
   <script>
@@ -130,6 +152,44 @@
       setInterval(update, 1000);
     }
 
+    function startProgress(startTime, endTime) {
+      const s = new Date(startTime).getTime();
+      const e = new Date(endTime).getTime();
+      if (isNaN(s) || isNaN(e) || e <= s) return;
+      const wrap = document.getElementById('progress-wrap');
+      const bar = document.getElementById('progress-bar');
+      const pct = document.getElementById('prog-pct');
+      const startEl = document.getElementById('prog-start');
+      const endEl = document.getElementById('prog-end');
+      startEl.textContent = new Date(s).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+      endEl.textContent   = new Date(e).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+      wrap.style.display = '';
+      const update = () => {
+        const now = Date.now();
+        const p = Math.min(Math.max((now - s) / (e - s) * 100, 0), 100);
+        bar.style.width = p.toFixed(1) + '%';
+        pct.textContent = Math.round(p) + '%';
+      };
+      update();
+      setInterval(update, 2000);
+    }
+
+    function renderStatusFeed(updates) {
+      if (!updates || !updates.length) return;
+      const feed = document.getElementById('status-feed');
+      if (!feed) return;
+      feed.style.display = '';
+      feed.innerHTML = `
+        <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:#9488a8;margin-bottom:.5rem;text-align:center;">📋 Статус обновлений</div>
+        ${updates.map(u => {
+          const t = new Date(u.ts * 1000).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+          return `<div style="display:flex;gap:.6rem;align-items:flex-start;padding:.4rem .6rem;margin-bottom:.3rem;background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.2);border-radius:.4rem;font-size:.75rem;">
+            <span style="color:#9488a8;flex-shrink:0;font-size:.65rem;margin-top:.1rem;">${t}</span>
+            <span style="color:#e2d8f0;">${u.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</span>
+          </div>`;
+        }).join('')}`;
+    }
+
     async function init() {
       try {
         const s = await fetch('/api/settings/public').then(r => r.json());
@@ -148,12 +208,35 @@
         // Countdown
         if (s.maintenance_end_time) startCountdown(s.maintenance_end_time);
 
+        // Progress bar
+        if (s.maintenance_start_time && s.maintenance_end_time) {
+          startProgress(s.maintenance_start_time, s.maintenance_end_time);
+        }
+
+        // Status feed
+        try {
+          const updates = JSON.parse(s.maintenance_status_updates || '[]');
+          renderStatusFeed(updates);
+        } catch {}
+
         // YouTube background
         const vid = ytVideoId(s.maintenance_video_url || '');
         if (vid) {
           const iframe = document.getElementById('yt-iframe');
           iframe.src = `https://www.youtube-nocookie.com/embed/${vid}?autoplay=1&mute=1&loop=1&playlist=${vid}&controls=0&disablekb=1&fs=0&rel=0&showinfo=0&modestbranding=1&iv_load_policy=3`;
           iframe.onload = () => iframe.classList.add('loaded');
+          // Fallback: if iframe didn't appear after 4s, show static background
+          setTimeout(() => {
+            if (!iframe.classList.contains('loaded')) {
+              const bg = document.getElementById('yt-bg');
+              if (bg && s.maintenance_fallback_image) {
+                bg.style.backgroundImage = `url(${s.maintenance_fallback_image})`;
+                bg.style.backgroundSize = 'cover';
+                bg.style.backgroundPosition = 'center';
+                bg.style.opacity = '1';
+              }
+            }
+          }, 4000);
         }
 
         // Buttons
@@ -165,7 +248,50 @@
         if (u && u.role === 'admin') {
           row.innerHTML += `<a href="/admin.html" class="btn-admin">⚙️ Панель управления</a>`;
         }
+
+        // Auto-check: redirect back when maintenance ends
+        setInterval(async () => {
+          try {
+            const fresh = await fetch('/api/settings/public').then(r => r.json());
+            if (fresh.maintenance_mode !== 'true' && fresh.maintenance_mode !== true) {
+              window.location.replace('/');
+            }
+          } catch {}
+        }, 30000);
       } catch {}
+    }
+
+    async function adminLogin(e) {
+      e.preventDefault();
+      const btn = document.getElementById('al-btn');
+      const err = document.getElementById('al-err');
+      const user = document.getElementById('al-user').value.trim();
+      const pass = document.getElementById('al-pass').value;
+      if (!user || !pass) return;
+      btn.disabled = true; btn.textContent = '...';
+      err.style.display = 'none';
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({username: user, password: pass})
+        });
+        const d = await res.json();
+        if (!res.ok) { err.textContent = d.detail || 'Неверный логин или пароль'; err.style.display = ''; btn.disabled=false; btn.textContent='Войти'; return; }
+        // Save user to storage
+        localStorage.setItem('user', JSON.stringify(d.user || d));
+        if (d.token) localStorage.setItem('token', d.token);
+        // If admin — go to admin panel, else show error
+        const role = (d.user || d).role;
+        if (role === 'admin') {
+          window.location.href = '/admin.html';
+        } else {
+          err.textContent = 'Доступ только для администраторов';
+          err.style.display = '';
+          btn.disabled = false; btn.textContent = 'Войти';
+        }
+      } catch { err.textContent = 'Ошибка соединения'; err.style.display = ''; btn.disabled=false; btn.textContent='Войти'; }
     }
 
     init();

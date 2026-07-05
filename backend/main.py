@@ -235,6 +235,9 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="maintenance_message", value="Сайт временно недоступен. Скоро вернёмся."),
         Setting(key="maintenance_video_url", value=""),
         Setting(key="maintenance_end_time",  value=""),
+        Setting(key="maintenance_start_time",    value=""),
+        Setting(key="maintenance_fallback_image", value=""),
+        Setting(key="maintenance_status_updates", value="[]"),
     ]
     for s in default_settings:
         existing = await db.execute(select(Setting).where(Setting.key == s.key))
@@ -1807,12 +1810,108 @@ async def serve_upload(filename: str):
 
 # ─── Settings (public) ───────────────────────────────────────────────────────
 
+async def _set_setting_value(db: AsyncSession, key: str, value: str) -> None:
+    res = await db.execute(select(Setting).where(Setting.key == key))
+    s = res.scalar_one_or_none()
+    if s:
+        s.value = value
+    else:
+        db.add(Setting(key=key, value=value))
+    await db.commit()
+
+
+async def _send_maintenance_webhook(db: AsyncSession, enabled: bool) -> None:
+    try:
+        res = await db.execute(select(Setting).where(Setting.key.in_(["discord_webhook_url", "site_title"])))
+        smap = {s.key: s.value for s in res.scalars()}
+        url = smap.get("discord_webhook_url", "")
+        if not url:
+            return
+        title = smap.get("site_title", "V Rising")
+        color = 0xFF4444 if enabled else 0x44FF88
+        msg = "🔧 Режим обслуживания **включён**" if enabled else "✅ Сайт снова **доступен**"
+        payload = {
+            "embeds": [{
+                "title": msg,
+                "color": color,
+                "footer": {"text": title},
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }]
+        }
+        async with httpx.AsyncClient(timeout=8) as client:
+            await client.post(url, json=payload)
+    except Exception:
+        pass
+
+
 @app.get("/api/settings/public")
 async def get_public_settings(db: AsyncSession = Depends(get_db)):
-    keys = ["site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id", "max_url", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules", "timezone", "time_format", "date_format", "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time"]
+    keys = ["site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id", "max_url", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules", "timezone", "time_format", "date_format", "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time", "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates"]
     result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
     settings = result.scalars().all()
-    return {s.key: s.value for s in settings}
+    d = {s.key: s.value for s in settings}
+
+    # Auto-enable / auto-disable maintenance by schedule
+    now_iso = datetime.now(timezone.utc).isoformat()
+    start_t = d.get("maintenance_start_time", "")
+    end_t   = d.get("maintenance_end_time", "")
+    mode    = d.get("maintenance_mode", "false")
+
+    if start_t and mode == "false" and start_t <= now_iso:
+        # Auto-enable
+        await _set_setting_value(db, "maintenance_mode", "true")
+        d["maintenance_mode"] = "true"
+        asyncio.create_task(_send_maintenance_webhook(db, enabled=True))
+
+    if end_t and mode == "true" and end_t <= now_iso:
+        # Auto-disable
+        await _set_setting_value(db, "maintenance_mode", "false")
+        d["maintenance_mode"] = "false"
+        asyncio.create_task(_send_maintenance_webhook(db, enabled=False))
+
+    return d
+
+
+# ─── Maintenance status updates ──────────────────────────────────────────────
+
+class MaintenanceStatusBody(BaseModel):
+    text: str
+
+@app.post("/api/admin/maintenance/status", status_code=200)
+async def add_maintenance_status(
+    body: MaintenanceStatusBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(403)
+    body.text = body.text.strip()[:200]
+    if not body.text:
+        raise HTTPException(400, "Empty text")
+    res = await db.execute(select(Setting).where(Setting.key == "maintenance_status_updates"))
+    s = res.scalar_one_or_none()
+    updates = json.loads(s.value if s and s.value else "[]")
+    updates.insert(0, {"text": body.text, "ts": int(time.time())})
+    updates = updates[:20]  # keep last 20
+    await _set_setting_value(db, "maintenance_status_updates", json.dumps(updates, ensure_ascii=False))
+    return {"ok": True, "updates": updates}
+
+
+@app.delete("/api/admin/maintenance/status/{idx}", status_code=200)
+async def delete_maintenance_status(
+    idx: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != "admin":
+        raise HTTPException(403)
+    res = await db.execute(select(Setting).where(Setting.key == "maintenance_status_updates"))
+    s = res.scalar_one_or_none()
+    updates = json.loads(s.value if s and s.value else "[]")
+    if 0 <= idx < len(updates):
+        updates.pop(idx)
+    await _set_setting_value(db, "maintenance_status_updates", json.dumps(updates, ensure_ascii=False))
+    return {"ok": True, "updates": updates}
 
 
 # ─── Settings (admin) ────────────────────────────────────────────────────────
@@ -1827,6 +1926,7 @@ ALLOWED_SETTING_KEYS = {
     "timezone", "time_format", "date_format",
     "rcon_port", "rcon_password", "rcon2_port", "rcon2_password", "discord_webhook_url",
     "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time",
+    "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates",
 }
 
 @app.get("/api/admin/settings", response_model=list[SettingOut])
@@ -1857,6 +1957,8 @@ async def update_setting(
         setting.updated_at = datetime.now(timezone.utc)
     await db.commit()
     await db.refresh(setting)
+    if key == "maintenance_mode":
+        asyncio.create_task(_send_maintenance_webhook(db, body.value == "true"))
     return SettingOut.model_validate(setting)
 
 

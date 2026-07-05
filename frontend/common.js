@@ -63,6 +63,28 @@ window.__DATEFMT = window.__DATEFMT || 'dd.mm.yyyy';
           }
         }
       }
+
+      // Admin maintenance banner
+      if ((s.maintenance_mode === 'true' || s.maintenance_mode === true)) {
+        const path = location.pathname;
+        if (path !== '/maintenance.html') {
+          try {
+            const u2 = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || 'null');
+            if (u2 && u2.role === 'admin' && !document.getElementById('maint-admin-banner')) {
+              const banner = document.createElement('div');
+              banner.id = 'maint-admin-banner';
+              banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(180,0,30,0.95);backdrop-filter:blur(8px);border-top:1px solid rgba(255,80,80,0.4);padding:.55rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;font-size:.78rem;font-family:Inter,sans-serif;color:#fff;';
+              banner.innerHTML = `
+                <span>⚠️ <strong>Режим обслуживания включён</strong> — посетители видят страницу обслуживания</span>
+                <div style="display:flex;gap:.6rem;flex-shrink:0;">
+                  <a href="/maintenance.html" target="_blank" style="color:rgba(255,255,255,.7);text-decoration:none;font-size:.72rem;padding:.25rem .6rem;border:1px solid rgba(255,255,255,.25);border-radius:.3rem;">👁 Просмотр</a>
+                  <button onclick="(async()=>{await fetch('/api/admin/settings',{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:'maintenance_mode',value:'false'})});location.reload();})()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:.3rem;color:#fff;padding:.25rem .7rem;cursor:pointer;font-size:.72rem;">✕ Выключить</button>
+                </div>`;
+              document.body.appendChild(banner);
+            }
+          } catch {}
+        }
+      }
     }
   } catch {}
 })();
