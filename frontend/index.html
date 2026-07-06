@@ -348,6 +348,19 @@
     .btn-sm { background:linear-gradient(135deg,#6a001a,#a00022); border:none; border-radius:.55rem; padding:.4rem .9rem; color:#fff; font-size:.75rem; font-weight:700; cursor:pointer; box-shadow:0 0 14px rgba(180,0,30,0.45), inset 0 0 8px rgba(180,0,30,0.14); transition:all .2s; }
     .btn-sm:hover { box-shadow:0 0 26px rgba(210,0,40,0.7), 0 0 10px rgba(210,0,40,0.3), inset 0 0 12px rgba(180,0,30,0.2); transform:translateY(-1px); }
 
+    /* ── News sort pills ── */
+    .news-sort-btn {
+      font-size:.7rem; font-weight:700; padding:.28rem .75rem;
+      border-radius:9999px; border:1px solid rgba(110,0,150,0.22);
+      background:none; color:var(--muted); cursor:pointer; transition:all .18s;
+      font-family:'Inter',sans-serif; letter-spacing:.04em;
+    }
+    .news-sort-btn:hover { color:var(--text); border-color:rgba(150,0,28,0.35); }
+    .news-sort-btn.active {
+      background:rgba(200,0,42,0.18); border-color:rgba(200,0,42,0.45);
+      color:var(--text); box-shadow:0 0 10px rgba(180,0,30,0.12);
+    }
+
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
     ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
@@ -1505,6 +1518,11 @@
     <!-- Event banner (shown if event_active=1) -->
     <div id="event-banner" style="display:none;"></div>
 
+    <div id="news-sort-bar" style="display:flex;gap:.4rem;margin-bottom:.75rem;flex-wrap:wrap;">
+      <button class="news-sort-btn active" data-sort="date"     onclick="setNewsSort('date')">По дате</button>
+      <button class="news-sort-btn"        data-sort="views"    onclick="setNewsSort('views')">По просмотрам</button>
+      <button class="news-sort-btn"        data-sort="comments" onclick="setNewsSort('comments')">По комментариям</button>
+    </div>
     <div id="featured-wrap" style="display:none;margin-bottom:1.1rem;"></div>
     <div id="news-list" style="display:grid;gap:.75rem;grid-template-columns:1fr;"></div>
     <div id="news-sentinel" style="height:2px;margin-top:1rem;"></div>
@@ -1691,6 +1709,10 @@
 <!-- ══ MODAL ═════════════════════════════════════════════════════════════════ -->
 <div id="modal-bg" class="modal-bg" onclick="if(event.target===this)closeModal()">
   <div class="modal-box">
+    <!-- Reading progress bar -->
+    <div id="read-progress-bar" style="position:sticky;top:0;left:0;right:0;height:3px;background:rgba(110,0,150,0.15);z-index:10;">
+      <div id="read-progress-fill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--crimson),rgba(120,0,200,0.8));transition:width .1s linear;border-radius:0 2px 2px 0;"></div>
+    </div>
     <!-- Sticky top bar -->
     <div class="modal-top-bar">
       <button onclick="shareNews()" title="Поделиться" class="modal-btn modal-btn-share">
@@ -1720,6 +1742,7 @@
         <div id="modal-comments"></div>
         <div id="modal-comment-form"></div>
       </div>
+      <div id="modal-related"></div>
     </div>
   </div>
 </div>
@@ -2289,6 +2312,12 @@ async function loadLatestNews() {
 // esc, getUser, nameGradient, _dateOpts, fmtDate, fmtDateTime,
 // _renderAdminBadge, _statusInfo, showToast — defined in common.js
 
+function readingTime(content) {
+  const words = (content || '').trim().split(/\s+/).filter(Boolean).length;
+  const mins = Math.max(1, Math.round(words / 200));
+  return mins + ' мин.';
+}
+
 function fmtDuration(sec) {
   if (sec < 60) return `${sec}с`;
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
@@ -2851,6 +2880,13 @@ let _newsTotalPages = 1;
 let _newsLoading = false;
 let _newsItems = [];
 let _hotSlug = null;
+let _newsSort = 'date';
+
+function setNewsSort(sort) {
+  _newsSort = sort;
+  document.querySelectorAll('.news-sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === sort));
+  loadNews(1);
+}
 
 function onSearchInput(val) {
   clearTimeout(_searchTimer);
@@ -2884,6 +2920,7 @@ async function loadNews(page = 1, append = false) {
     const params = new URLSearchParams({ page, per_page: 9 });
     if (_activeTag) params.set('tag', _activeTag);
     if (_searchTerm) params.set('search', _searchTerm);
+    params.set('sort_by', _newsSort);
     const _lr = await fetch(`${API}/news?${params}`);
     if (!_lr.ok) throw new Error(`HTTP ${_lr.status}`);
     const data = await _lr.json();
@@ -2926,16 +2963,22 @@ async function loadNews(page = 1, append = false) {
     const hotBadge = (n.slug === _hotSlug && (n.views || 0) > 0)
       ? `<div style="position:absolute;top:.55rem;left:.55rem;z-index:2;background:linear-gradient(135deg,rgba(200,0,42,0.92),rgba(140,0,20,0.85));border:1px solid rgba(255,80,80,0.4);border-radius:9999px;padding:.18rem .55rem;font-size:.58rem;font-weight:700;color:#fff;letter-spacing:.06em;display:flex;align-items:center;gap:.25rem;box-shadow:0 0 12px rgba(200,0,42,0.4);backdrop-filter:blur(4px);">&#x1F525; Горячее</div>`
       : '';
+    const isNew = (Date.now() - new Date(n.created_at).getTime()) < 86400000;
+    const newBadge = isNew
+      ? `<div style="position:absolute;top:.55rem;left:${n.slug === _hotSlug ? '6.5rem' : '.55rem'};z-index:2;background:linear-gradient(135deg,rgba(0,160,60,0.92),rgba(0,100,40,0.85));border:1px solid rgba(0,220,80,0.4);border-radius:9999px;padding:.18rem .55rem;font-size:.58rem;font-weight:700;color:#fff;letter-spacing:.08em;box-shadow:0 0 10px rgba(0,180,60,0.35);">NEW</div>`
+      : '';
+    const readingTimeBadge = `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.6rem;color:var(--muted);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${readingTime(n.content)}</span>`;
     _newsItems.push(n);
     const card = document.createElement('div');
     card.className = 'news-card';
     card.style.animationDelay = `${idx * 45}ms`;
-    card.innerHTML = `${hotBadge}<div style="display:flex;gap:0;align-items:stretch;min-height:110px;">
+    card.innerHTML = `${hotBadge}${newBadge}<div style="display:flex;gap:0;align-items:stretch;min-height:110px;">
       ${thumbImg}
       <div style="padding:.85rem 1rem .75rem;flex:1;min-width:0;display:flex;flex-direction:column;gap:.28rem;">
         <div style="display:flex;align-items:center;gap:.5rem;">
           <span style="font-size:.6rem;color:var(--muted);letter-spacing:.03em;">${fmtDate(n.created_at)}</span>
           ${viewsBadge}
+          ${readingTimeBadge}
           ${commentBadge}
           ${pinnedBadge}
         </div>
@@ -2956,6 +2999,19 @@ async function loadNews(page = 1, append = false) {
         </div>
       </div>
     </div>`;
+    const reactionsHtml = `
+<div class="card-reactions" data-slug="${esc(n.slug)}" style="display:flex;gap:.3rem;padding:.45rem 1rem .55rem;border-top:1px solid rgba(110,0,20,0.1);">
+  ${['❤️','👍','🔥'].map(emoji => `
+    <button onclick="event.stopPropagation();quickReact('${esc(n.slug)}','${emoji}',this)"
+      style="background:none;border:1px solid rgba(110,0,150,0.18);border-radius:9999px;padding:.18rem .55rem;font-size:.72rem;cursor:pointer;transition:all .18s;color:var(--muted);display:flex;align-items:center;gap:.25rem;"
+      onmouseover="this.style.borderColor='rgba(180,0,35,0.4)';this.style.background='rgba(150,0,28,0.1)'"
+      onmouseout="this.style.borderColor='rgba(110,0,150,0.18)';this.style.background='none'">
+      ${emoji}
+    </button>`).join('')}
+</div>`;
+    const reactionsDiv = document.createElement('div');
+    reactionsDiv.innerHTML = reactionsHtml;
+    card.appendChild(reactionsDiv.firstElementChild);
     card.onclick = () => openNews(n.slug);
     if (_isAdmin) {
       const editBtn = document.createElement('a');
@@ -3064,12 +3120,17 @@ async function openNews(slug) {
         </div>
       </div>`;
     document.getElementById('modal-content').innerHTML = DOMPurify.sanitize(n.content || '');
+    const relatedEl = document.getElementById('modal-related');
+    if (relatedEl) relatedEl.innerHTML = _renderRelated(n.slug, n.tags);
+    const progressFill = document.getElementById('read-progress-fill');
+    if (progressFill) progressFill.style.width = '0%';
     document.getElementById('modal-bg').classList.add('open');
     document.body.style.overflow = 'hidden';
     loadPoll(slug);
     loadComments(slug);
     renderCommentForm(slug);
     loadReactions(slug);
+    setTimeout(_initReadProgress, 50);
   } catch(err) {
     document.getElementById('modal-author').innerHTML = '';
     document.getElementById('modal-title').textContent = '';
@@ -3176,6 +3237,61 @@ async function toggleNewsReaction(slug, emoji) {
   if (!data) return;
   const el = document.getElementById('modal-reactions');
   if (el) renderNewsReactions(el, slug, data);
+}
+
+async function quickReact(slug, emoji, btn) {
+  try {
+    const res = await fetch(`${API}/news/${encodeURIComponent(slug)}/reactions`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emoji }),
+    });
+    if (res.ok) {
+      btn.style.borderColor = 'rgba(200,0,42,0.5)';
+      btn.style.background = 'rgba(200,0,42,0.12)';
+      btn.style.color = 'var(--text)';
+    } else if (res.status === 401) {
+      showToast('Войдите, чтобы ставить реакции', 'info');
+    }
+  } catch {}
+}
+
+function _renderRelated(currentSlug, currentTags) {
+  const tags = (currentTags || '').split(',').map(t => t.trim()).filter(Boolean);
+  let related = _newsItems.filter(n => n.slug !== currentSlug && tags.some(t => (n.tags || '').includes(t)));
+  if (related.length < 3) {
+    const extra = _newsItems.filter(n => n.slug !== currentSlug && !related.includes(n));
+    related = [...related, ...extra].slice(0, 3);
+  } else {
+    related = related.slice(0, 3);
+  }
+  if (!related.length) return '';
+  return `<div style="margin-top:2rem;padding-top:1.25rem;border-top:1px solid rgba(110,0,150,0.18);">
+    <div class="gothic" style="font-size:.6rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:.85rem;">— Читайте также —</div>
+    <div style="display:flex;flex-direction:column;gap:.5rem;">
+      ${related.map(n => `
+        <div onclick="openNews('${esc(n.slug)}')" style="display:flex;gap:.75rem;align-items:center;cursor:pointer;padding:.55rem .7rem;border-radius:.55rem;border:1px solid rgba(110,0,150,0.15);background:rgba(10,2,18,0.4);transition:background .15s,border-color .15s;"
+          onmouseover="this.style.background='rgba(150,0,28,0.1)';this.style.borderColor='rgba(150,0,28,0.3)'"
+          onmouseout="this.style.background='rgba(10,2,18,0.4)';this.style.borderColor='rgba(110,0,150,0.15)'">
+          ${n.thumbnail_url ? `<img src="${esc(n.thumbnail_url)}" style="width:52px;height:36px;object-fit:cover;border-radius:.35rem;flex-shrink:0;">` : `<div style="width:52px;height:36px;border-radius:.35rem;background:linear-gradient(135deg,rgba(80,0,150,0.3),rgba(120,0,20,0.3));flex-shrink:0;"></div>`}
+          <div style="min-width:0;">
+            <div style="font-size:.78rem;font-weight:600;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.title)}</div>
+            <div style="font-size:.62rem;color:var(--muted);margin-top:.15rem;">${fmtDate(n.created_at)}</div>
+          </div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function _initReadProgress() {
+  const container = document.getElementById('modal-bg');
+  const fill = document.getElementById('read-progress-fill');
+  if (!container || !fill) return;
+  container.onscroll = () => {
+    const pct = container.scrollTop / (container.scrollHeight - container.clientHeight) * 100;
+    fill.style.width = Math.min(100, pct) + '%';
+  };
 }
 
 document.getElementById('modal-bg').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
