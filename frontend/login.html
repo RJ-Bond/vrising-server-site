@@ -270,6 +270,35 @@
     }
     .btn-primary:disabled { opacity: .5; cursor: not-allowed; transform: none; }
 
+    /* ── Shake on error ── */
+    @keyframes shake {
+      0%,100% { transform:translateX(0); }
+      18%     { transform:translateX(-8px); }
+      36%     { transform:translateX(8px); }
+      54%     { transform:translateX(-5px); }
+      72%     { transform:translateX(5px); }
+    }
+    .shake { animation:shake .4s ease; }
+
+    /* ── Stagger for login form fields ── */
+    @keyframes field-in {
+      from { opacity:0; transform:translateY(6px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    #form-login .form-group:nth-child(1) { animation:field-in .3s .04s ease both; }
+    #form-login .form-group:nth-child(2) { animation:field-in .3s .09s ease both; }
+    #form-login .login-meta              { animation:field-in .3s .14s ease both; }
+    #form-login .btn-primary             { animation:field-in .3s .19s ease both; }
+
+    /* ── Button ripple ── */
+    .btn-ripple {
+      position:absolute; border-radius:50%;
+      background:rgba(255,255,255,0.18);
+      transform:scale(0); animation:ripple-out .5s ease-out forwards;
+      pointer-events:none;
+    }
+    @keyframes ripple-out { to { transform:scale(3); opacity:0; } }
+
     /* scrollbar */
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: rgba(8,0,16,0.5); }
@@ -566,6 +595,15 @@ function showAlert(id, msg) {
   const textEl = document.getElementById(id + '-text');
   if (textEl) textEl.textContent = msg;
   el.classList.add('show');
+  if (id.includes('-error')) {
+    const card = document.querySelector('.auth-card');
+    if (card) {
+      card.classList.remove('shake');
+      void card.offsetHeight;
+      card.classList.add('shake');
+      card.addEventListener('animationend', () => card.classList.remove('shake'), { once: true });
+    }
+  }
 }
 
 // ── Password toggle ───────────────────────────────────────────────────────
@@ -706,6 +744,19 @@ async function submitRegister(e) {
   } catch (err) { showAlert('register-error', 'Нет связи с сервером: ' + err.message); }
   finally { btn.disabled = false; btn.textContent = 'Зарегистрироваться'; }
 }
+
+// ── Button ripple ─────────────────────────────────────────────────────────
+document.querySelectorAll('.btn-primary').forEach(btn => {
+  btn.addEventListener('click', function(e) {
+    const r = document.createElement('span');
+    r.className = 'btn-ripple';
+    const rect = this.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    r.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px;`;
+    this.appendChild(r);
+    r.addEventListener('animationend', () => r.remove());
+  });
+});
 </script>
 </body>
 </html>

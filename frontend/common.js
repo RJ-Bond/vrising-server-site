@@ -150,6 +150,37 @@ function _statusInfo(iso) {
   return { dot:'#374151', label:`Был ${d} ${w} назад`, color:'#4b3f5c', glow:'' };
 }
 
+/* Back-to-top button — self-contained, works on any page */
+(function() {
+  let _btn = null, _visible = false;
+  function _init() {
+    if (_btn) return;
+    _btn = document.createElement('button');
+    _btn.id = 'btt-btn';
+    _btn.setAttribute('aria-label', 'Наверх');
+    _btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>';
+    _btn.style.cssText = 'position:fixed;bottom:1.5rem;left:1.5rem;z-index:9990;width:2.4rem;height:2.4rem;border-radius:50%;background:rgba(10,2,18,0.92);border:1px solid rgba(150,0,28,0.45);color:rgba(180,160,210,0.75);display:none;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 16px rgba(0,0,0,0.5);transition:opacity .25s,transform .25s,border-color .2s,color .2s,box-shadow .2s;backdrop-filter:blur(6px);opacity:0;transform:translateY(8px);';
+    _btn.onmouseover = () => { _btn.style.borderColor='rgba(200,0,40,0.65)'; _btn.style.color='#f0e8ff'; _btn.style.boxShadow='0 4px 20px rgba(150,0,28,0.35)'; };
+    _btn.onmouseout  = () => { _btn.style.borderColor='rgba(150,0,28,0.45)'; _btn.style.color='rgba(180,160,210,0.75)'; _btn.style.boxShadow='0 4px 16px rgba(0,0,0,0.5)'; };
+    _btn.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.body.appendChild(_btn);
+    window.addEventListener('scroll', () => {
+      const show = window.scrollY > 320;
+      if (show === _visible) return;
+      _visible = show;
+      if (show) {
+        _btn.style.display = 'flex';
+        requestAnimationFrame(() => { _btn.style.opacity='1'; _btn.style.transform='translateY(0)'; });
+      } else {
+        _btn.style.opacity='0'; _btn.style.transform='translateY(8px)';
+        setTimeout(() => { if (!_visible) _btn.style.display='none'; }, 260);
+      }
+    }, { passive: true });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _init);
+  else _init();
+})();
+
 /* Toast notification — self-contained, works on any page */
 function showToast(msg, type = 'info', duration = 4500) {
   let wrap = document.getElementById('toast-wrap') || document.getElementById('toast-container');

@@ -65,15 +65,58 @@
     [data-tip]::after { content:attr(data-tip); position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%); background:rgba(6,0,15,0.96); border:1px solid rgba(180,0,35,0.4); color:#d4c4e0; font-size:.68rem; padding:.28rem .65rem; border-radius:.4rem; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .15s; z-index:999; font-family:'Inter',sans-serif; }
     [data-tip]:hover::after { opacity:1; }
 
+    /* ── Search ── */
+    .faq-search-wrap { position:relative; margin-bottom:1.5rem; }
+    .faq-search-input {
+      width:100%; background:rgba(16,7,23,0.85); border:1px solid rgba(110,0,150,0.22);
+      border-radius:.65rem; padding:.65rem 1rem .65rem 2.5rem;
+      color:var(--text); font-size:.88rem; outline:none;
+      transition:border-color .2s, box-shadow .2s; font-family:'Inter',sans-serif;
+    }
+    .faq-search-input:focus { border-color:rgba(200,0,42,0.45); box-shadow:0 0 14px rgba(180,0,30,0.1); }
+    .faq-search-input::placeholder { color:var(--muted); }
+    .faq-search-icon { position:absolute;left:.82rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none; }
+    .faq-search-clear {
+      position:absolute;right:.7rem;top:50%;transform:translateY(-50%);
+      background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;line-height:1;
+      padding:.2rem;display:none;transition:color .15s;
+    }
+    .faq-search-clear:hover { color:var(--text); }
+    /* ── Category label ── */
+    .faq-cat-label {
+      font-family:'Cinzel',serif;font-size:.56rem;letter-spacing:.16em;color:rgba(200,0,42,0.5);
+      text-transform:uppercase;margin:1.25rem 0 .5rem;
+      display:flex;align-items:center;gap:.55rem;
+    }
+    .faq-cat-label:first-child { margin-top:0; }
+    .faq-cat-label::before { content:'';flex-shrink:0;width:14px;height:1px;background:linear-gradient(90deg,transparent,rgba(200,0,42,0.32)); }
+    .faq-cat-label::after  { content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(200,0,42,0.18),transparent); }
+    /* ── FAQ items ── */
     .faq-item {
       background:var(--card); border:1px solid var(--border); border-radius:.75rem;
       margin-bottom:.7rem; overflow:hidden;
+      border-left:2px solid transparent;
+      transition:border-color .25s, box-shadow .25s;
+    }
+    .faq-item.open {
+      border-left-color:rgba(200,0,42,0.5);
+      box-shadow:0 0 18px rgba(130,0,22,0.08),-2px 0 10px rgba(130,0,22,0.06);
     }
     .faq-q {
-      display:flex; align-items:center; justify-content:space-between; gap:1rem;
+      display:flex; align-items:center; justify-content:space-between; gap:.75rem;
       padding:1rem 1.2rem; cursor:pointer; user-select:none;
     }
-    .faq-q span:first-child { font-size:.88rem; font-weight:600; color:#ece3f7; }
+    .faq-q-inner { display:flex; align-items:center; gap:.65rem; flex:1; min-width:0; }
+    .faq-num {
+      flex-shrink:0; width:1.4rem; height:1.4rem; border-radius:50%;
+      background:rgba(110,0,150,0.14); border:1px solid rgba(110,0,150,0.2);
+      display:flex; align-items:center; justify-content:center;
+      font-size:.56rem; font-weight:700; color:var(--muted);
+      font-family:'Oswald',sans-serif; letter-spacing:0;
+      transition:background .25s, border-color .25s, color .25s;
+    }
+    .faq-item.open .faq-num { background:rgba(200,0,42,0.14); border-color:rgba(200,0,42,0.32); color:var(--crimson); }
+    .faq-q-text { font-size:.88rem; font-weight:600; color:#ece3f7; }
     .faq-arrow { color:var(--gold); transition:transform .25s; flex-shrink:0; }
     .faq-item.open .faq-arrow { transform:rotate(180deg); }
     .faq-a {
@@ -82,6 +125,11 @@
     }
     .faq-item.open .faq-a { padding:0 1.2rem 1.1rem; }
     .faq-a a { color:var(--gold); }
+    /* ── Stagger animation ── */
+    @keyframes faq-in { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .faq-item { animation:faq-in .3s ease both; }
+    /* ── No results ── */
+    .faq-no-results { text-align:center;padding:2.5rem 1rem;color:var(--muted);font-size:.84rem;font-style:italic; }
 
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
@@ -140,6 +188,14 @@
     <p style="font-size:.8rem;color:var(--muted);">Если ответа нет здесь — спросите в Discord</p>
   </div>
 
+  <div class="faq-search-wrap">
+    <span class="faq-search-icon">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </span>
+    <input id="faq-search" class="faq-search-input" type="text" placeholder="Поиск по вопросам…" oninput="onFaqSearch(this.value)" />
+    <button class="faq-search-clear" id="faq-search-clear" onclick="clearFaqSearch()" aria-label="Очистить">✕</button>
+  </div>
+
   <div id="faq-list"></div>
 </div>
 
@@ -194,53 +250,102 @@ function applySiteBackground(bg) {
 
 const FAQ = [
   {
+    cat: 'Игра',
     q: 'Как подключиться к серверу?',
     a: 'Проще всего — кнопкой «Подключиться через Steam» на <a href="/servers.html">странице серверов</a> или в виджете мониторинга на главной: она сама откроет V Rising и подключит к нужному серверу. Если кнопки нет — спросите IP и порт у администрации в Discord и подключитесь вручную через меню «Прямое подключение» в игре.',
   },
   {
+    cat: 'Игра',
     q: 'Что такое вайп и когда он будет?',
     a: 'Вайп — это сброс прогресса сервера (полный или частичный, в зависимости от типа). Дата ближайшего вайпа и обратный отсчёт показаны на главной странице под статусом сервера.',
   },
   {
+    cat: 'Игра',
     q: 'Можно ли атаковать других игроков?',
     a: 'Зависит от настроек конкретного сервера — все правила перечислены в разделе «Правила» на главной странице. Если коротко: PvE-сервера запрещают атаки и гриферство построек других игроков.',
   },
   {
+    cat: 'Аккаунт',
     q: 'Зачем регистрироваться на сайте?',
     a: 'Аккаунт на сайте даёт профиль с вашей статистикой, участие в комментариях к новостям и кланах. Чтобы время в игре подтягивалось автоматически, регистрируйте сайт-аккаунт с тем же именем, что и ваш игровой персонаж.',
   },
   {
+    cat: 'Аккаунт',
     q: 'Почему в профиле не отображается моё время в игре?',
     a: 'Сайт сопоставляет статистику по точному совпадению имени персонажа и имени аккаунта на сайте. Проверьте, что ник в игре и логин на сайте написаны одинаково (включая регистр и пробелы).',
   },
   {
+    cat: 'Аккаунт',
     q: 'Забыл пароль — что делать?',
     a: 'На <a href="/login.html">странице входа</a> нажмите «Забыли пароль?», укажите email и дождитесь, пока администратор вышлет ссылку для сброса через Discord.',
   },
   {
+    cat: 'Сообщество',
     q: 'Как создать клан или вступить в существующий?',
     a: 'На странице <a href="/clans.html">«Кланы»</a> залогиненные игроки могут создать свой клан (название + короткий тег) или вступить в один из уже существующих одной кнопкой.',
   },
   {
+    cat: 'Сервера',
     q: 'Где посмотреть, сколько игроков сейчас онлайн?',
     a: 'На <a href="/servers.html">странице серверов</a> — список игроков, аптайм, пинг, история онлайна за выбранный период и пиковые значения для каждого сервера.',
   },
   {
+    cat: 'Прочее',
     q: 'Нашёл баг, читера или нарушение правил — куда сообщить?',
     a: 'Через Discord сервера (ссылка в шапке/подвале сайта) — это самый быстрый способ связаться с администрацией.',
   },
 ];
 
-function renderFaq() {
+let _faqQ = '';
+
+function renderFaq(filter) {
+  filter = (filter !== undefined ? filter : _faqQ).toLowerCase().trim();
   const list = document.getElementById('faq-list');
-  list.innerHTML = FAQ.map((item, i) => `
-    <div class="faq-item" id="faq-${i}">
-      <div class="faq-q" onclick="toggleFaq(${i})">
-        <span>${item.q}</span>
-        <svg class="faq-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-      </div>
-      <div class="faq-a">${item.a}</div>
-    </div>`).join('');
+
+  // Group by category preserving insertion order
+  const cats = {};
+  FAQ.forEach((item, i) => {
+    if (!cats[item.cat]) cats[item.cat] = [];
+    cats[item.cat].push({ ...item, idx: i });
+  });
+
+  let html = '';
+  let total = 0;
+
+  for (const [cat, items] of Object.entries(cats)) {
+    const visible = filter
+      ? items.filter(it => it.q.toLowerCase().includes(filter) || it.a.toLowerCase().includes(filter))
+      : items;
+    if (!visible.length) continue;
+    if (!filter) html += `<div class="faq-cat-label">${cat}</div>`;
+    visible.forEach((item, ci) => {
+      const delay = (total + ci) * 40;
+      html += `
+        <div class="faq-item" id="faq-${item.idx}" style="animation-delay:${delay}ms;">
+          <div class="faq-q" onclick="toggleFaq(${item.idx})">
+            <div class="faq-q-inner">
+              <span class="faq-num">${item.idx + 1}</span>
+              <span class="faq-q-text">${item.q}</span>
+            </div>
+            <svg class="faq-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-a">${item.a}</div>
+        </div>`;
+    });
+    total += visible.length;
+  }
+
+  list.innerHTML = total ? html : '<div class="faq-no-results">Ничего не найдено по запросу</div>';
+
+  // Open first item on initial render (no filter)
+  if (!filter) {
+    const first = list.querySelector('.faq-item');
+    if (first) {
+      first.classList.add('open');
+      const a = first.querySelector('.faq-a');
+      if (a) a.style.maxHeight = a.scrollHeight + 24 + 'px';
+    }
+  }
 }
 
 function toggleFaq(i) {
@@ -249,6 +354,19 @@ function toggleFaq(i) {
   el.classList.toggle('open', !isOpen);
   const a = el.querySelector('.faq-a');
   a.style.maxHeight = !isOpen ? a.scrollHeight + 24 + 'px' : '0';
+}
+
+function onFaqSearch(val) {
+  _faqQ = val;
+  document.getElementById('faq-search-clear').style.display = val ? 'block' : 'none';
+  renderFaq(val);
+}
+
+function clearFaqSearch() {
+  _faqQ = '';
+  document.getElementById('faq-search').value = '';
+  document.getElementById('faq-search-clear').style.display = 'none';
+  renderFaq('');
 }
 
 renderFaq();
