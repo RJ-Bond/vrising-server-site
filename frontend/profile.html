@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -171,6 +171,25 @@
     }
     .cover-change-overlay:hover span { opacity:1; }
 
+    /* TABS */
+    .profile-tab-bar {
+      display:flex; gap:.3rem; margin-bottom:1rem;
+      border-bottom:1px solid rgba(110,0,150,0.18); padding-bottom:.3rem;
+    }
+    .profile-tab-btn {
+      padding:.42rem .95rem; border-radius:.5rem .5rem 0 0;
+      font-size:.74rem; font-weight:700; font-family:'Inter',sans-serif;
+      letter-spacing:.06em; text-transform:uppercase; cursor:pointer;
+      transition:all .18s; border:1px solid transparent; color:var(--muted);
+      background:none;
+    }
+    .profile-tab-btn.active {
+      background:rgba(200,0,40,0.18); border:1px solid rgba(200,0,40,0.4);
+      color:var(--text);
+    }
+    .profile-tab-panel { display:none; }
+    .profile-tab-panel.active { display:block; }
+
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
     ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
@@ -284,6 +303,8 @@
           <div class="avatar-circle" id="profile-avatar" onclick="document.getElementById('avatar-input').click()" title="Сменить аватар">
             <div class="avatar-overlay"><span>Сменить</span></div>
             <div class="upload-spinner" id="avatar-spinner"></div>
+            <!-- #4 Online indicator -->
+            <span id="avatar-online-dot" title="Онлайн сейчас" style="position:absolute;bottom:4px;right:4px;width:14px;height:14px;border-radius:50%;background:#22c55e;border:2px solid rgba(14,5,22,1);box-shadow:0 0 6px rgba(34,197,94,0.7);z-index:3;"></span>
           </div>
         </div>
         <div style="padding-bottom:.35rem;display:flex;gap:.5rem;flex-wrap:wrap;">
@@ -314,174 +335,237 @@
             <span id="rank-next-label" style="font-size:.52rem;color:var(--muted);"></span>
           </div>
         </div>
+
+        <!-- #6 Clan widget -->
+        <div id="clan-widget" style="display:none;margin-top:.55rem;align-items:center;gap:.5rem;">
+          <a id="clan-link" href="/clans.html" style="display:inline-flex;align-items:center;gap:.4rem;text-decoration:none;background:rgba(80,0,15,0.25);border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;padding:.22rem .65rem;transition:all .18s;" onmouseover="this.style.borderColor='rgba(200,0,40,0.5)'" onmouseout="this.style.borderColor='rgba(150,0,28,0.3)'">
+            <span style="font-size:.65rem;font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.06em;color:var(--crimson);" id="clan-tag-display"></span>
+            <span style="font-size:.65rem;color:var(--muted);" id="clan-name-display"></span>
+          </a>
+        </div>
+
+        <!-- #1 Stat tiles -->
+        <div id="stat-tiles" style="display:none;flex-direction:row;gap:.55rem;margin-top:.75rem;flex-wrap:wrap;">
+          <div id="stat-tile-playtime" style="background:rgba(8,0,14,0.45);border:1px solid rgba(110,0,150,0.2);border-radius:.55rem;padding:.5rem .9rem;text-align:center;flex:1;min-width:80px;">
+            <div id="stat-tile-playtime-val" style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--text);">—</div>
+            <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:.15rem;">Наиграно</div>
+          </div>
+          <div id="stat-tile-last" style="background:rgba(8,0,14,0.45);border:1px solid rgba(110,0,150,0.2);border-radius:.55rem;padding:.5rem .9rem;text-align:center;flex:1;min-width:80px;">
+            <div id="stat-tile-last-val" style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--text);">—</div>
+            <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:.15rem;">Последний визит</div>
+          </div>
+          <div id="stat-tile-rank" style="background:rgba(8,0,14,0.45);border:1px solid rgba(110,0,150,0.2);border-radius:.55rem;padding:.5rem .9rem;text-align:center;flex:1;min-width:80px;">
+            <div id="stat-tile-rank-val" style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--text);">—</div>
+            <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:.15rem;">Ранг</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Account info -->
-  <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
-    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Данные аккаунта —</h2>
-    <div class="stat-row">
-      <span class="stat-key">Email</span>
-      <span id="profile-email" class="stat-val">—</span>
-      <button onclick="document.getElementById('email-change-form').style.display=document.getElementById('email-change-form').style.display==='none'?'':'none'" style="margin-left:.5rem;font-size:.62rem;background:none;border:1px solid rgba(110,0,20,0.3);color:var(--muted);padding:.15rem .45rem;border-radius:.3rem;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='rgba(180,0,35,0.5)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(110,0,20,0.3)';this.style.color='var(--muted)'">изменить</button>
-    </div>
-    <div id="email-change-form" style="display:none;margin-top:.5rem;padding:.75rem;background:rgba(8,0,14,0.5);border:1px solid rgba(110,0,20,0.2);border-radius:.5rem;">
-      <div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem;">Новый email</div>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
-        <input id="new-email-input" type="email" class="field" placeholder="новый@email.com" style="flex:1;min-width:160px;">
-        <input id="email-pw-input" type="password" class="field" placeholder="Текущий пароль" style="flex:1;min-width:140px;">
-      </div>
-      <div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem;flex-wrap:wrap;">
-        <button onclick="submitEmailChange()" class="btn" style="font-size:.72rem;">Сохранить</button>
-        <button onclick="document.getElementById('email-change-form').style.display='none'" class="btn btn-ghost" style="font-size:.72rem;">Отмена</button>
-        <span id="email-change-msg" style="font-size:.75rem;display:none;"></span>
-      </div>
-    </div>
-    <div class="stat-row">
-      <span class="stat-key">Роль</span>
-      <span id="profile-role" class="stat-val">—</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-key">На сервере с</span>
-      <span id="profile-since" class="stat-val" style="font-family:'Oswald',sans-serif;font-weight:400;">—</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-key">Статус</span>
-      <span id="profile-status" class="stat-val">—</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-key">Правила сервера</span>
-      <span id="profile-rules" class="stat-val">—</span>
-    </div>
+  <!-- #2 Tab bar -->
+  <div class="profile-tab-bar">
+    <button class="profile-tab-btn active" id="tab-btn-profile" onclick="switchProfileTab('profile')">Профиль</button>
+    <button class="profile-tab-btn" id="tab-btn-security" onclick="switchProfileTab('security')">Безопасность</button>
+    <button class="profile-tab-btn" id="tab-btn-admin" onclick="switchProfileTab('admin')" style="display:none;">Администратор</button>
   </div>
 
-  <!-- Game nickname -->
-  <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
-    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Игровой профиль —</h2>
-    <div style="margin-bottom:.75rem;">
-      <label style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:.35rem;">Игровой ник (в V Rising)</label>
+  <!-- TAB: Профиль -->
+  <div id="tab-panel-profile" class="profile-tab-panel active">
+
+    <!-- #3 Bio card -->
+    <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Обо мне —</h2>
+      <textarea id="bio-input" class="field" maxlength="160" rows="2" placeholder="Расскажите о себе (до 160 символов)" style="resize:vertical;min-height:3.5rem;"></textarea>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.4rem;flex-wrap:wrap;gap:.5rem;">
+        <span id="bio-counter" style="font-size:.65rem;color:var(--muted);">0/160</span>
+        <button onclick="saveBio()" class="btn" style="font-size:.72rem;">Сохранить</button>
+      </div>
+    </div>
+
+    <!-- Account info -->
+    <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Данные аккаунта —</h2>
+      <div class="stat-row">
+        <span class="stat-key">Email</span>
+        <span id="profile-email" class="stat-val">—</span>
+        <button onclick="document.getElementById('email-change-form').style.display=document.getElementById('email-change-form').style.display==='none'?'':'none'" style="margin-left:.5rem;font-size:.62rem;background:none;border:1px solid rgba(110,0,20,0.3);color:var(--muted);padding:.15rem .45rem;border-radius:.3rem;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='rgba(180,0,35,0.5)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(110,0,20,0.3)';this.style.color='var(--muted)'">изменить</button>
+      </div>
+      <div id="email-change-form" style="display:none;margin-top:.5rem;padding:.75rem;background:rgba(8,0,14,0.5);border:1px solid rgba(110,0,20,0.2);border-radius:.5rem;">
+        <div style="font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem;">Новый email</div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <input id="new-email-input" type="email" class="field" placeholder="новый@email.com" style="flex:1;min-width:160px;">
+          <input id="email-pw-input" type="password" class="field" placeholder="Текущий пароль" style="flex:1;min-width:140px;">
+        </div>
+        <div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem;flex-wrap:wrap;">
+          <button onclick="submitEmailChange()" class="btn" style="font-size:.72rem;">Сохранить</button>
+          <button onclick="document.getElementById('email-change-form').style.display='none'" class="btn btn-ghost" style="font-size:.72rem;">Отмена</button>
+          <span id="email-change-msg" style="font-size:.75rem;display:none;"></span>
+        </div>
+      </div>
+      <div class="stat-row">
+        <span class="stat-key">Роль</span>
+        <span id="profile-role" class="stat-val">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-key">На сервере с</span>
+        <span id="profile-since" class="stat-val" style="font-family:'Oswald',sans-serif;font-weight:400;">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-key">Статус</span>
+        <span id="profile-status" class="stat-val">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-key">Правила сервера</span>
+        <span id="profile-rules" class="stat-val">—</span>
+      </div>
+    </div>
+
+    <!-- Game nickname -->
+    <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Игровой профиль —</h2>
+      <div style="margin-bottom:.75rem;">
+        <label style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;display:block;margin-bottom:.35rem;">Игровой ник (в V Rising)</label>
+        <div style="display:flex;gap:.5rem;">
+          <input id="game-nickname-input" type="text" maxlength="64" placeholder="Ваш ник в игре"
+            style="flex:1;background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.25);border-radius:.55rem;padding:.55rem .9rem;color:#e2d8f0;font-size:.85rem;font-family:'Inter',sans-serif;outline:none;">
+          <button onclick="saveGameNickname()"
+            style="padding:.5rem 1rem;background:rgba(150,0,28,.2);border:1px solid rgba(150,0,28,.4);color:#e2d8f0;border-radius:.55rem;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;">Сохранить</button>
+        </div>
+        <div id="game-nickname-status" style="font-size:.7rem;margin-top:.3rem;"></div>
+      </div>
+      <div id="game-stats-wrap" style="display:none;border-top:1px solid rgba(110,0,150,0.18);padding-top:.85rem;margin-top:.5rem;">
+        <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.55rem;">Статистика на сервере</div>
+        <div style="display:flex;gap:1.25rem;flex-wrap:wrap;">
+          <div>
+            <div id="gs-playtime" style="font-size:1.1rem;font-weight:700;font-family:'Oswald',sans-serif;color:#ecd8e0;">—</div>
+            <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Наиграно</div>
+          </div>
+          <div>
+            <div id="gs-last" style="font-size:1.1rem;font-weight:700;font-family:'Oswald',sans-serif;color:#ecd8e0;">—</div>
+            <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Последняя игра</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Activity timeline -->
+    <div id="activity-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Последняя активность —</h2>
+      <div id="activity-list" style="display:flex;flex-direction:column;gap:.5rem;">
+        <div style="color:var(--muted);font-size:.78rem;text-align:center;padding:.5rem 0;">Загрузка…</div>
+      </div>
+    </div>
+
+  </div><!-- /tab-panel-profile -->
+
+  <!-- TAB: Безопасность -->
+  <div id="tab-panel-security" class="profile-tab-panel">
+
+    <!-- Change password -->
+    <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Сменить пароль —</h2>
+      <div style="display:flex;flex-direction:column;gap:.6rem;">
+        <input id="pw-old"     class="field" type="password" placeholder="Текущий пароль"              autocomplete="current-password">
+        <input id="pw-new"     class="field" type="password" placeholder="Новый пароль (мин. 6 символов)" autocomplete="new-password">
+        <input id="pw-confirm" class="field" type="password" placeholder="Повторите новый пароль"      autocomplete="new-password"
+          onkeydown="if(event.key==='Enter')changePassword()">
+        <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+          <button onclick="changePassword()" class="btn">Сменить пароль</button>
+          <span id="pw-msg" style="font-size:.78rem;display:none;"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2FA -->
+    <div id="twofa-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Двухфакторная аутентификация —</h2>
+      <div id="twofa-status" style="font-size:.82rem;color:var(--muted);margin-bottom:.85rem;">Загрузка…</div>
+      <div id="twofa-setup-area" style="display:none;">
+        <div style="font-size:.78rem;color:var(--text);margin-bottom:.6rem;">
+          Откройте приложение <strong>Google Authenticator</strong> или <strong>Authy</strong>, добавьте аккаунт вручную, введите секрет:
+        </div>
+        <div id="twofa-secret-display" style="font-family:monospace;background:rgba(8,0,14,0.7);border:1px solid rgba(110,0,150,0.3);border-radius:.5rem;padding:.65rem 1rem;font-size:.85rem;color:#c4b5fd;letter-spacing:.1em;margin-bottom:.75rem;word-break:break-all;"></div>
+        <div style="font-size:.68rem;color:var(--muted);margin-bottom:.75rem;">Введите 6-значный код из приложения для подтверждения:</div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+          <input id="twofa-code-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="field" placeholder="123456" style="width:130px;">
+          <button onclick="enableTwoFA()" class="btn" style="font-size:.75rem;">Подтвердить</button>
+          <button onclick="cancelTwofaSetup()" class="btn btn-ghost" style="font-size:.75rem;">Отмена</button>
+        </div>
+        <div id="twofa-enable-msg" style="font-size:.75rem;margin-top:.4rem;display:none;"></div>
+      </div>
+      <div id="twofa-disable-area" style="display:none;">
+        <div style="font-size:.78rem;color:var(--text);margin-bottom:.6rem;">Введите код из приложения чтобы отключить 2FA:</div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+          <input id="twofa-disable-code" type="text" inputmode="numeric" maxlength="6" class="field" placeholder="123456" style="width:130px;">
+          <button onclick="disableTwoFA()" class="btn btn-ghost" style="font-size:.75rem;border-color:rgba(200,0,42,.4);color:#fca5a5;">Отключить 2FA</button>
+        </div>
+        <div id="twofa-disable-msg" style="font-size:.75rem;margin-top:.4rem;display:none;"></div>
+      </div>
+      <div id="twofa-actions" style="display:none;margin-top:.25rem;">
+        <button onclick="startTwofaSetup()" class="btn" style="font-size:.75rem;">Включить 2FA</button>
+      </div>
+    </div>
+
+  </div><!-- /tab-panel-security -->
+
+  <!-- TAB: Администратор -->
+  <div id="tab-panel-admin" class="profile-tab-panel">
+
+    <!-- Admin title (admins only) -->
+    <div id="admin-title-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Должность —</h2>
       <div style="display:flex;gap:.5rem;">
-        <input id="game-nickname-input" type="text" maxlength="64" placeholder="Ваш ник в игре"
-          style="flex:1;background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.25);border-radius:.55rem;padding:.55rem .9rem;color:#e2d8f0;font-size:.85rem;font-family:'Inter',sans-serif;outline:none;">
-        <button onclick="saveGameNickname()"
+        <input id="admin-title-input" type="text" maxlength="128" placeholder="Например: Главный администратор"
+          style="flex:1;background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.25);border-radius:.55rem;padding:.55rem .9rem;color:#e2d8f0;font-size:.85rem;font-family:'Inter',sans-serif;outline:none;"
+          onkeydown="if(event.key==='Enter')saveAdminTitle()">
+        <button onclick="saveAdminTitle()"
           style="padding:.5rem 1rem;background:rgba(150,0,28,.2);border:1px solid rgba(150,0,28,.4);color:#e2d8f0;border-radius:.55rem;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;">Сохранить</button>
       </div>
-      <div id="game-nickname-status" style="font-size:.7rem;margin-top:.3rem;"></div>
+      <div id="admin-title-status" style="font-size:.7rem;margin-top:.3rem;"></div>
     </div>
-    <div id="game-stats-wrap" style="display:none;border-top:1px solid rgba(110,0,150,0.18);padding-top:.85rem;margin-top:.5rem;">
-      <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.55rem;">Статистика на сервере</div>
-      <div style="display:flex;gap:1.25rem;flex-wrap:wrap;">
-        <div>
-          <div id="gs-playtime" style="font-size:1.1rem;font-weight:700;font-family:'Oswald',sans-serif;color:#ecd8e0;">—</div>
-          <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Наиграно</div>
+
+    <!-- Badge section (admins only) -->
+    <div id="badge-section" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Значок —</h2>
+
+      <div style="margin-bottom:1rem;">
+        <div style="font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem;">Предпросмотр</div>
+        <div id="badge-preview" style="min-height:1.6rem;display:flex;align-items:center;"></div>
+      </div>
+
+      <div style="margin-bottom:1.1rem;">
+        <div style="font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem;">Стиль</div>
+        <div id="badge-style-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;"></div>
+      </div>
+
+      <div>
+        <div style="font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.45rem;">
+          Своя иконка <span style="font-weight:400;text-transform:none;letter-spacing:0;color:rgba(148,136,168,0.55);">(перекрывает стиль)</span>
         </div>
-        <div>
-          <div id="gs-last" style="font-size:1.1rem;font-weight:700;font-family:'Oswald',sans-serif;color:#ecd8e0;">—</div>
-          <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Последняя игра</div>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+          <input type="file" id="badge-icon-input" accept="image/*" style="display:none" onchange="uploadBadgeIcon(this)">
+          <button onclick="document.getElementById('badge-icon-input').click()"
+            style="padding:.42rem .85rem;background:rgba(80,0,15,.18);border:1px solid rgba(150,0,28,.38);color:#e2d8f0;border-radius:.55rem;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .18s;"
+            onmouseover="this.style.borderColor='rgba(200,0,40,.55)'" onmouseout="this.style.borderColor='rgba(150,0,28,.38)'">
+            Загрузить иконку
+          </button>
+          <button id="badge-icon-clear-btn" onclick="clearBadgeIcon()"
+            style="display:none;padding:.42rem .85rem;background:rgba(60,0,10,.12);border:1px solid rgba(100,0,15,.28);color:var(--muted);border-radius:.55rem;font-size:.78rem;cursor:pointer;">
+            Убрать иконку
+          </button>
+          <span id="badge-icon-current" style="display:none;align-items:center;gap:.35rem;font-size:.68rem;color:var(--muted);">
+            <img id="badge-icon-current-img" style="width:20px;height:20px;object-fit:contain;border-radius:3px;border:1px solid rgba(110,0,20,.3);">
+            текущая иконка
+          </span>
         </div>
+        <div id="badge-icon-status" style="font-size:.7rem;margin-top:.35rem;min-height:1em;"></div>
       </div>
     </div>
-  </div>
 
+  </div><!-- /tab-panel-admin -->
 
-  <!-- Admin title (admins only) -->
-  <div id="admin-title-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
-    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Должность —</h2>
-    <div style="display:flex;gap:.5rem;">
-      <input id="admin-title-input" type="text" maxlength="128" placeholder="Например: Главный администратор"
-        style="flex:1;background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.25);border-radius:.55rem;padding:.55rem .9rem;color:#e2d8f0;font-size:.85rem;font-family:'Inter',sans-serif;outline:none;"
-        onkeydown="if(event.key==='Enter')saveAdminTitle()">
-      <button onclick="saveAdminTitle()"
-        style="padding:.5rem 1rem;background:rgba(150,0,28,.2);border:1px solid rgba(150,0,28,.4);color:#e2d8f0;border-radius:.55rem;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;">Сохранить</button>
-    </div>
-    <div id="admin-title-status" style="font-size:.7rem;margin-top:.3rem;"></div>
-  </div>
-
-  <!-- Badge section (admins only) -->
-  <div id="badge-section" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
-    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Значок —</h2>
-
-    <div style="margin-bottom:1rem;">
-      <div style="font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem;">Предпросмотр</div>
-      <div id="badge-preview" style="min-height:1.6rem;display:flex;align-items:center;"></div>
-    </div>
-
-    <div style="margin-bottom:1.1rem;">
-      <div style="font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.5rem;">Стиль</div>
-      <div id="badge-style-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;"></div>
-    </div>
-
-    <div>
-      <div style="font-size:.68rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.45rem;">
-        Своя иконка <span style="font-weight:400;text-transform:none;letter-spacing:0;color:rgba(148,136,168,0.55);">(перекрывает стиль)</span>
-      </div>
-      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
-        <input type="file" id="badge-icon-input" accept="image/*" style="display:none" onchange="uploadBadgeIcon(this)">
-        <button onclick="document.getElementById('badge-icon-input').click()"
-          style="padding:.42rem .85rem;background:rgba(80,0,15,.18);border:1px solid rgba(150,0,28,.38);color:#e2d8f0;border-radius:.55rem;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .18s;"
-          onmouseover="this.style.borderColor='rgba(200,0,40,.55)'" onmouseout="this.style.borderColor='rgba(150,0,28,.38)'">
-          Загрузить иконку
-        </button>
-        <button id="badge-icon-clear-btn" onclick="clearBadgeIcon()"
-          style="display:none;padding:.42rem .85rem;background:rgba(60,0,10,.12);border:1px solid rgba(100,0,15,.28);color:var(--muted);border-radius:.55rem;font-size:.78rem;cursor:pointer;">
-          Убрать иконку
-        </button>
-        <span id="badge-icon-current" style="display:none;align-items:center;gap:.35rem;font-size:.68rem;color:var(--muted);">
-          <img id="badge-icon-current-img" style="width:20px;height:20px;object-fit:contain;border-radius:3px;border:1px solid rgba(110,0,20,.3);">
-          текущая иконка
-        </span>
-      </div>
-      <div id="badge-icon-status" style="font-size:.7rem;margin-top:.35rem;min-height:1em;"></div>
-    </div>
-  </div>
-
-  <!-- Change password -->
-  <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
-    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Сменить пароль —</h2>
-    <div style="display:flex;flex-direction:column;gap:.6rem;">
-      <input id="pw-old"     class="field" type="password" placeholder="Текущий пароль"              autocomplete="current-password">
-      <input id="pw-new"     class="field" type="password" placeholder="Новый пароль (мин. 6 символов)" autocomplete="new-password">
-      <input id="pw-confirm" class="field" type="password" placeholder="Повторите новый пароль"      autocomplete="new-password"
-        onkeydown="if(event.key==='Enter')changePassword()">
-      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
-        <button onclick="changePassword()" class="btn">Сменить пароль</button>
-        <span id="pw-msg" style="font-size:.78rem;display:none;"></span>
-      </div>
-    </div>
-  </div>
-
-  <!-- 2FA -->
-  <div id="twofa-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
-    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Двухфакторная аутентификация —</h2>
-    <div id="twofa-status" style="font-size:.82rem;color:var(--muted);margin-bottom:.85rem;">Загрузка…</div>
-    <div id="twofa-setup-area" style="display:none;">
-      <div style="font-size:.78rem;color:var(--text);margin-bottom:.6rem;">
-        Откройте приложение <strong>Google Authenticator</strong> или <strong>Authy</strong>, добавьте аккаунт вручную, введите секрет:
-      </div>
-      <div id="twofa-secret-display" style="font-family:monospace;background:rgba(8,0,14,0.7);border:1px solid rgba(110,0,150,0.3);border-radius:.5rem;padding:.65rem 1rem;font-size:.85rem;color:#c4b5fd;letter-spacing:.1em;margin-bottom:.75rem;word-break:break-all;"></div>
-      <div style="font-size:.68rem;color:var(--muted);margin-bottom:.75rem;">Введите 6-значный код из приложения для подтверждения:</div>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
-        <input id="twofa-code-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="field" placeholder="123456" style="width:130px;">
-        <button onclick="enableTwoFA()" class="btn" style="font-size:.75rem;">Подтвердить</button>
-        <button onclick="cancelTwofaSetup()" class="btn btn-ghost" style="font-size:.75rem;">Отмена</button>
-      </div>
-      <div id="twofa-enable-msg" style="font-size:.75rem;margin-top:.4rem;display:none;"></div>
-    </div>
-    <div id="twofa-disable-area" style="display:none;">
-      <div style="font-size:.78rem;color:var(--text);margin-bottom:.6rem;">Введите код из приложения чтобы отключить 2FA:</div>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
-        <input id="twofa-disable-code" type="text" inputmode="numeric" maxlength="6" class="field" placeholder="123456" style="width:130px;">
-        <button onclick="disableTwoFA()" class="btn btn-ghost" style="font-size:.75rem;border-color:rgba(200,0,42,.4);color:#fca5a5;">Отключить 2FA</button>
-      </div>
-      <div id="twofa-disable-msg" style="font-size:.75rem;margin-top:.4rem;display:none;"></div>
-    </div>
-    <div id="twofa-actions" style="display:none;margin-top:.25rem;">
-      <button onclick="startTwofaSetup()" class="btn" style="font-size:.75rem;">Включить 2FA</button>
-    </div>
-  </div>
-
-  <!-- Actions -->
+  <!-- Actions (always visible) -->
   <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
     <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Действия —</h2>
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
@@ -490,12 +574,10 @@
     </div>
   </div>
 
-  <!-- Activity timeline -->
-  <div id="activity-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
-    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Последняя активность —</h2>
-    <div id="activity-list" style="display:flex;flex-direction:column;gap:.5rem;">
-      <div style="color:var(--muted);font-size:.78rem;text-align:center;padding:.5rem 0;">Загрузка…</div>
-    </div>
+  <!-- #5 Achievements card (always visible) -->
+  <div id="achievements-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+    <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Достижения —</h2>
+    <div id="achievements-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.6rem;"></div>
   </div>
 
 </div>
@@ -554,6 +636,72 @@ function fmtSec(s) {
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
 }
 
+// #2 Tab switching
+function switchProfileTab(tab) {
+  ['profile','security','admin'].forEach(t => {
+    const btn = document.getElementById('tab-btn-' + t);
+    const panel = document.getElementById('tab-panel-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+    if (panel) panel.classList.toggle('active', t === tab);
+  });
+}
+
+// #3 Bio save
+async function saveBio() {
+  const input = document.getElementById('bio-input');
+  const val = (input?.value || '').trim();
+  try {
+    const r = await fetch(`${API}/profile/bio`, {
+      method: 'PUT', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bio: val }),
+    });
+    if (r.ok) {
+      showToast?.('Биография сохранена', 'success');
+      // Update cached user object if bio is stored there
+      const u = getUser?.();
+      if (u) {
+        u.bio = val;
+        try {
+          const store = localStorage.getItem('user') ? localStorage : sessionStorage;
+          store.setItem('user', JSON.stringify(u));
+        } catch {}
+      }
+    } else {
+      const d = await r.json().catch(() => ({}));
+      showToast?.('Ошибка: ' + (d.detail || 'Не удалось сохранить'), 'error');
+    }
+  } catch {
+    showToast?.('Ошибка соединения', 'error');
+  }
+}
+
+// #5 Achievements
+const ACHIEVEMENTS = [
+  { id:'first_login',  icon:'🗡', label:'Первый вход',       desc:'Добро пожаловать',        cond: () => true },
+  { id:'comment1',     icon:'💬', label:'Первый комментарий', desc:'Оставил комментарий',     cond: (p,a) => a?.items?.some(i=>i.type==='comment') },
+  { id:'hours10',      icon:'⏱', label:'10 часов',           desc:'Провёл 10ч на сервере',   cond: (p) => (p?.total_seconds||0) >= 36000 },
+  { id:'hours100',     icon:'⚔', label:'100 часов',          desc:'Провёл 100ч на сервере',  cond: (p) => (p?.total_seconds||0) >= 360000 },
+  { id:'hours1000',    icon:'🏆', label:'1000 часов',         desc:'Легенда сервера',          cond: (p) => (p?.total_seconds||0) >= 3600000 },
+  { id:'clan_member',  icon:'🛡', label:'В клане',            desc:'Состоит в клане',          cond: (p) => !!(p?.clan_tag||p?.clan_name) },
+];
+
+function renderAchievements(pub, activityData) {
+  const grid = document.getElementById('achievements-grid');
+  if (!grid) return;
+  grid.innerHTML = ACHIEVEMENTS.map(a => {
+    const earned = a.cond(pub, activityData);
+    const earnedStyle = earned
+      ? 'background:rgba(180,130,0,0.12);border:1px solid rgba(200,150,0,0.3);color:var(--text);'
+      : 'background:rgba(8,0,14,0.4);border:1px solid rgba(60,60,80,0.3);opacity:0.45;filter:grayscale(1);';
+    return `<div style="${earnedStyle}border-radius:.6rem;padding:.65rem .7rem;display:flex;flex-direction:column;gap:.3rem;">
+      <span style="font-size:1.1rem;">${a.icon}</span>
+      <span style="font-size:.72rem;font-weight:600;">${esc(a.label)}</span>
+      <span style="font-size:.6rem;color:var(--muted);">${esc(a.desc)}</span>
+    </div>`;
+  }).join('');
+}
+
 function buildCoverStars() {
   const ct = document.getElementById('cover-stars');
   if (!ct) return;
@@ -590,13 +738,18 @@ function renderRank(totalSeconds) {
     nextLbl.textContent = 'Максимальный ранг';
   }
   wrap.style.display = '';
+
+  // #1 Update stat tile rank (strip emoji prefix)
+  const rankTileVal = document.getElementById('stat-tile-rank-val');
+  if (rankTileVal) rankTileVal.textContent = rank.label.replace(/^[\p{Emoji}\s]+/u, '').trim() || rank.label.split(' ').slice(1).join(' ');
 }
 
 function setAvatarEl(url, initial) {
   const el = document.getElementById('profile-avatar');
   const overlay = el.querySelector('.avatar-overlay');
   const spinner = el.querySelector('.upload-spinner');
-  [...el.childNodes].forEach(n => { if (n !== overlay && n !== spinner) n.remove(); });
+  const dot = el.querySelector('#avatar-online-dot');
+  [...el.childNodes].forEach(n => { if (n !== overlay && n !== spinner && n !== dot) n.remove(); });
   if (url) {
     const img = document.createElement('img'); img.src = url; img.alt = initial;
     el.insertBefore(img, overlay);
@@ -662,8 +815,21 @@ function copyProfileLink(e) {
   }).catch(() => { prompt('Ссылка на профиль:', url); });
 }
 
+let _actData = null;
+
 async function loadProfile() {
   buildCoverStars();
+  // Init bio counter
+  const bioInput = document.getElementById('bio-input');
+  const bioCounter = document.getElementById('bio-counter');
+  if (bioInput && bioCounter) {
+    bioInput.addEventListener('input', () => {
+      bioCounter.textContent = bioInput.value.length + '/160';
+    });
+  }
+  // Default active tab
+  switchProfileTab('profile');
+
   try {
     const res = await fetch(`${API}/auth/me`, { credentials: 'include' });
     if (!res.ok) {
@@ -682,6 +848,13 @@ async function loadProfile() {
     _initTwoFACard(u.totp_enabled || false);
     document.getElementById('profile-name').textContent  = u.username;
     document.getElementById('profile-email').textContent = u.email;
+
+    // #3 Fill bio field
+    if (bioInput && u.bio) {
+      bioInput.value = u.bio;
+      if (bioCounter) bioCounter.textContent = u.bio.length + '/160';
+    }
+
     const roleEl = document.getElementById('profile-role');
     if (u.role === 'admin') {
       roleEl.innerHTML = _renderAdminBadge(u);
@@ -716,14 +889,15 @@ async function loadProfile() {
 
     if (u.role === 'admin') {
       document.getElementById('admin-link').style.display = '';
-      const titleCard = document.getElementById('admin-title-card');
-      if (titleCard) titleCard.style.display = '';
+      // Show admin tab
+      const adminTabBtn = document.getElementById('tab-btn-admin');
+      if (adminTabBtn) adminTabBtn.style.display = '';
+
       const titleInput = document.getElementById('admin-title-input');
       if (titleInput && u.admin_title) titleInput.value = u.admin_title;
 
       const badgeSec = document.getElementById('badge-section');
       if (badgeSec) {
-        badgeSec.style.display = '';
         _badgeState = { style: u.badge_style || 'default', icon: u.badge_icon_url || null, title: u.admin_title || 'Админ' };
         _buildBadgeStyleGrid();
         _highlightBadgeStyle(_badgeState.style);
@@ -737,24 +911,52 @@ async function loadProfile() {
     if (nickInput && u.game_nickname) nickInput.value = u.game_nickname;
 
     // Load public profile (playtime by game_nickname or username)
+    let pubData = null;
     try {
-      const pub = await fetch(`${API}/users/${encodeURIComponent(u.username)}`).then(r => r.json());
-      renderRank(pub.total_seconds || 0);
-      if (pub.total_seconds > 0 || pub.last_seen) {
+      pubData = await fetch(`${API}/users/${encodeURIComponent(u.username)}`).then(r => r.json());
+      renderRank(pubData.total_seconds || 0);
+
+      // #1 Stat tiles
+      const tiles = document.getElementById('stat-tiles');
+      if (tiles) {
+        const playtimeVal = document.getElementById('stat-tile-playtime-val');
+        const lastVal = document.getElementById('stat-tile-last-val');
+        if (playtimeVal) playtimeVal.textContent = pubData.total_seconds > 0 ? fmtSec(pubData.total_seconds) : '—';
+        if (lastVal && pubData.last_seen) {
+          const d = new Date(pubData.last_seen);
+          lastVal.textContent = d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
+        }
+        tiles.style.display = 'flex';
+      }
+
+      // #6 Clan widget
+      if (pubData.clan_tag || pubData.clan_name) {
+        const clanWidget = document.getElementById('clan-widget');
+        const clanTag = document.getElementById('clan-tag-display');
+        const clanName = document.getElementById('clan-name-display');
+        if (clanTag) clanTag.textContent = pubData.clan_tag ? `[${pubData.clan_tag}]` : '';
+        if (clanName) clanName.textContent = pubData.clan_name || '';
+        if (clanWidget) clanWidget.style.display = 'flex';
+      }
+
+      if (pubData.total_seconds > 0 || pubData.last_seen) {
         const wrap = document.getElementById('game-stats-wrap');
         if (wrap) {
           wrap.style.display = '';
-          const h = Math.floor((pub.total_seconds || 0) / 3600);
-          const m = Math.floor(((pub.total_seconds || 0) % 3600) / 60);
+          const h = Math.floor((pubData.total_seconds || 0) / 3600);
+          const m = Math.floor(((pubData.total_seconds || 0) % 3600) / 60);
           document.getElementById('gs-playtime').textContent = h > 0 ? `${h}ч ${m}м` : `${m}м`;
           const lastEl = document.getElementById('gs-last');
-          if (pub.last_seen) {
-            const d = new Date(pub.last_seen);
+          if (pubData.last_seen) {
+            const d = new Date(pubData.last_seen);
             lastEl.textContent = d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
           }
         }
       }
     } catch { renderRank(0); }
+
+    // #5 Render achievements (with whatever activity data we have so far)
+    renderAchievements(pubData, _actData);
 
     // Site settings
     try {
@@ -947,6 +1149,7 @@ async function loadActivity(username) {
   if (!card || !list) return;
   try {
     const d = await fetch(`${API}/users/${encodeURIComponent(username)}/activity`).then(r => r.json());
+    _actData = d;
     if (!d.items || !d.items.length) { list.innerHTML = '<div style="color:var(--muted);font-size:.78rem;text-align:center;padding:.5rem 0;">Нет активности</div>'; card.style.display=''; return; }
     list.innerHTML = d.items.map(item => {
       const icon = item.type === 'comment' ? '💬' : '⚡';
@@ -965,6 +1168,8 @@ async function loadActivity(username) {
       </div>`;
     }).join('');
     card.style.display = '';
+    // Re-render achievements now that activity data is available
+    renderAchievements(null, _actData);
   } catch { card.style.display = 'none'; }
 }
 
