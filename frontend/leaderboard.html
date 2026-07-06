@@ -161,7 +161,7 @@
       border-bottom:1px solid rgba(255,255,255,0.06); text-decoration:none; color:inherit;
       transition:background .15s, transform .15s; border-radius:.4rem;
     }
-    .lb-row:hover { background:rgba(255,255,255,0.035); transform:translateX(2px); }
+    .lb-row:hover { background:rgba(150,0,28,0.08); transform:translateX(2px); }
     .lb-row:last-child { border-bottom:none; }
     .lb-row.me { background:rgba(200,0,42,0.06); border-left:2px solid var(--crimson); padding-left:.35rem; padding-right:.4rem; }
     .lb-row.rank-1 { background:rgba(255,213,74,0.07); border:1px solid rgba(255,213,74,0.2); padding-left:.4rem; padding-right:.4rem; }
@@ -296,7 +296,8 @@
       width:100%; border-radius:.45rem .45rem 0 0; min-width:76px;
       display:flex; align-items:center; justify-content:center;
     }
-    @keyframes rank-in { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes rank-in { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes podium-in { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
     @keyframes podium-rise { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
     @media (max-width:480px) { .podium-avatar { width:2.6rem; height:2.6rem; font-size:1rem; } .podium-name { font-size:.68rem; max-width:80px; } .podium-pillar { min-width:60px; } }
   </style>
@@ -386,7 +387,7 @@
   </div>
 
   <!-- Podium top-3 -->
-  <div id="podium-section" class="podium-wrap" style="display:none;"></div>
+  <div id="lb-podium" class="podium-wrap" style="display:none;"></div>
 
   <div class="g-card">
     <div class="lb-controls">
@@ -431,6 +432,7 @@
 const API = '/api';
 const PER_PAGE = 25;
 let _server = 1, _period = 'all', _page = 1;
+let _allPlayers = [];
 let _onlineNames = new Set();
 let _searchTimer = null;
 let _fetchBarTimer = null;
@@ -594,27 +596,18 @@ function onSearchInput() {
 
 function filterLeaderboard(query) {
   const q = (query || '').toLowerCase().trim();
-  const rows = document.querySelectorAll('#lb-list [data-username]');
-  let visible = 0;
-  rows.forEach(row => {
-    const match = !q || (row.dataset.username || '').toLowerCase().includes(q);
-    row.style.display = match ? '' : 'none';
-    if (match) visible++;
-  });
-  const prev = document.getElementById('lb-no-results');
-  if (prev) prev.remove();
-  if (q && visible === 0) {
-    const el = document.createElement('div');
-    el.id = 'lb-no-results';
-    el.style.cssText = 'padding:1.5rem;text-align:center;color:var(--muted);font-size:.85rem;';
-    el.textContent = 'Не найдено';
-    const lbList = document.getElementById('lb-list');
-    if (lbList) lbList.appendChild(el);
+  if (!q) { renderRows(_allPlayers); return; }
+  const filtered = _allPlayers.filter(p => (p.player_name || '').toLowerCase().includes(q));
+  if (!filtered.length) {
+    const list = document.getElementById('lb-list');
+    if (list) list.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.85rem;">Не найдено</div>';
+  } else {
+    renderRows(filtered);
   }
 }
 
 function renderPodium(top3) {
-  const section = document.getElementById('podium-section');
+  const section = document.getElementById('lb-podium');
   if (!section) return;
   if (!top3 || top3.length < 3) { section.style.display = 'none'; return; }
   // order: 2nd left, 1st center, 3rd right
@@ -632,7 +625,7 @@ function renderPodium(top3) {
       : `<span class="podium-avatar" style="background:${grad};border:2px solid ${borders[i]};">${esc(name.charAt(0).toUpperCase())}</span>`;
     const hours = Math.floor((u.total_seconds || 0) / 3600);
     return `<a class="podium-card" href="/user.html?u=${encodeURIComponent(name)}"
-        style="animation:podium-rise .5s ease both;animation-delay:${i * 120}ms;">
+        style="animation:podium-in .5s ease both;animation-delay:${i * 120}ms;">
       ${avatarHtml}
       <div class="podium-medal">${medals[i]}</div>
       <span class="podium-name">${esc(name)}</span>
@@ -642,7 +635,7 @@ function renderPodium(top3) {
       </div>
     </a>`;
   }).join('');
-  section.style.display = 'flex';
+  section.style.display = '';
 }
 
 async function loadOnlineStatus() {
@@ -677,6 +670,47 @@ function emptyState(icon, title, sub) {
   </div>`;
 }
 
+/* Render rows from an array (used by both load and search filter) */
+function renderRows(players) {
+  const list = document.getElementById('lb-list');
+  if (!list) return;
+  if (!players.length) { list.innerHTML = ''; return; }
+  const maxSeconds = (_allPlayers[0]?.total_seconds) || players[0]?.total_seconds || 1;
+  list.innerHTML = players.map((p, i) => {
+    const rank     = p._rank !== undefined ? p._rank : ((_page - 1) * PER_PAGE + i + 1);
+    const rankCls  = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
+    const podiumCls = rank <= 3 ? ` rank-${rank}` : '';
+    const medal    = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
+    const name     = p.player_name || 'Аноним';
+    const isOnline = _onlineNames.has(name);
+    const isMe     = _meUsername && _meUsername === name;
+    const grad     = nameGradient(name);
+    const avatarHtml = p.avatar_url
+      ? `<img class="lb-avatar" src="${esc(p.avatar_url)}" alt="">`
+      : `<span class="lb-avatar" style="background:${grad}">${esc(name.charAt(0).toUpperCase())}</span>`;
+    const lastSession = p.last_duration > 0
+      ? `<span class="lb-last-session">посл. сессия: ${fmtPlaytime(p.last_duration)}</span>` : '';
+    const badge    = activityBadge(p.last_seen) + achievementBadge(p.total_seconds);
+    const meBadge  = isMe ? `<span style="font-size:.5rem;font-weight:700;padding:.1rem .35rem;background:rgba(200,0,42,0.2);border:1px solid rgba(200,0,42,0.4);color:#fca5a5;border-radius:9999px;vertical-align:middle;margin-left:.4rem;">Вы</span>` : '';
+    const barPct   = Math.round((p.total_seconds / maxSeconds) * 100);
+    const barColor = rank === 1 ? '#ffd54a' : rank === 2 ? 'rgba(214,214,232,0.7)' : rank === 3 ? '#e0a361' : 'rgba(160,0,40,0.55)';
+    return `<div class="lb-row${isMe ? ' me' : ''}${podiumCls}" data-username="${esc(name)}" onclick="location.href='/user.html?u='+encodeURIComponent(this.dataset.username)" style="cursor:pointer;animation:fade-up .35s ease both;animation-delay:${Math.min(i * 25, 300)}ms;">
+      <span class="lb-rank ${rankCls}" style="animation:rank-in .4s ease both;animation-delay:${i * 30}ms;">${medal ? `<span class="lb-medal">${medal}</span>` : rank}</span>
+      <span class="lb-avatar-wrap">${avatarHtml}<span class="lb-online-dot${isOnline ? ' show' : ''}"></span></span>
+      <span class="lb-name-col">
+        <div style="display:flex;align-items:center;gap:.3rem;">
+          <span class="lb-name">${esc(name)}</span>
+          ${meBadge}${badge}
+        </div>
+        ${lastSession}
+        <div class="lb-progress"><div class="lb-progress-fill" style="width:${barPct}%;background:${barColor};"></div></div>
+      </span>
+      <span class="lb-time">${fmtPlaytime(p.total_seconds)}</span>
+      <span class="lb-seen">${relativeDate(p.last_seen)}</span>
+    </div>`;
+  }).join('');
+}
+
 async function loadLeaderboard() {
   const list = document.getElementById('lb-list');
   const pag  = document.getElementById('lb-pagination');
@@ -698,42 +732,11 @@ async function loadLeaderboard() {
       renderPodium([]);
     } else {
       const offset = (_page - 1) * PER_PAGE;
-      const maxSeconds = items[0]?.total_seconds || 1;
-      list.innerHTML = items.map((p, i) => {
-        const rank     = offset + i + 1;
-        const rankCls  = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
-        const podiumCls = rank <= 3 ? ` rank-${rank}` : '';
-        const medal    = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
-        const name     = p.player_name || 'Аноним';
-        const isOnline = _onlineNames.has(name);
-        const isMe     = _meUsername && _meUsername === name;
-        const grad     = nameGradient(name);
-        const avatarHtml = p.avatar_url
-          ? `<img class="lb-avatar" src="${esc(p.avatar_url)}" alt="">`
-          : `<span class="lb-avatar" style="background:${grad}">${esc(name.charAt(0).toUpperCase())}</span>`;
-        const lastSession = p.last_duration > 0
-          ? `<span class="lb-last-session">посл. сессия: ${fmtPlaytime(p.last_duration)}</span>` : '';
-        const badge    = activityBadge(p.last_seen) + achievementBadge(p.total_seconds);
-        const barPct   = Math.round((p.total_seconds / maxSeconds) * 100);
-        const barColor = rank === 1 ? '#ffd54a' : rank === 2 ? 'rgba(214,214,232,0.7)' : rank === 3 ? '#e0a361' : 'rgba(160,0,40,0.55)';
-        return `<div class="lb-row${isMe ? ' me' : ''}${podiumCls}" data-username="${esc(name)}" onclick="location.href='/user.html?u='+encodeURIComponent(this.dataset.username)" style="cursor:pointer;animation:fade-up .35s ease both;animation-delay:${Math.min(i * 25, 300)}ms;">
-          <span class="lb-rank ${rankCls}" style="animation:rank-in .4s ease both;animation-delay:${i * 30}ms;">${medal ? `<span class="lb-medal">${medal}</span>` : rank}</span>
-          <span class="lb-avatar-wrap">${avatarHtml}<span class="lb-online-dot${isOnline ? ' show' : ''}"></span></span>
-          <span class="lb-name-col">
-            <div style="display:flex;align-items:center;gap:.3rem;">
-              <span class="lb-name">${esc(name)}</span>
-              ${badge}
-            </div>
-            ${lastSession}
-            <div class="lb-progress"><div class="lb-progress-fill" style="width:${barPct}%;background:${barColor};"></div></div>
-          </span>
-          <span class="lb-time">${fmtPlaytime(p.total_seconds)}</span>
-          <span class="lb-seen">${relativeDate(p.last_seen)}</span>
-        </div>`;
-      }).join('');
+      _allPlayers = items.map((p, i) => ({...p, _rank: offset + i + 1}));
+      renderRows(_allPlayers);
       // Render podium for top 3 (only on page 1)
-      if (_page === 1) renderPodium(items.slice(0, 3));
-      else { const s = document.getElementById('podium-section'); if (s) s.style.display = 'none'; }
+      if (_page === 1) renderPodium(_allPlayers.slice(0, 3));
+      else { const s = document.getElementById('lb-podium'); if (s) s.style.display = 'none'; }
       // Re-apply any active search filter
       const searchVal = document.getElementById('lb-search').value;
       if (searchVal) filterLeaderboard(searchVal);
