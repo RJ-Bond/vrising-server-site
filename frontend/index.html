@@ -3463,21 +3463,26 @@ async function toggleReaction(commentId, emoji, btn) {
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({emoji})
   });
-  if (!res.ok) return;
+  if (!res.ok) {
+    if (res.status === 401) showToast('Войдите, чтобы ставить реакции', 'info');
+    return;
+  }
+  const updated = await fetch(`${API}/comments/${commentId}/reactions`, { credentials:'include' });
+  if (!updated.ok) return;
+  const data = await updated.json();
   const container = btn.closest('[data-reactions]');
   if (container) {
-    const data = await res.json();
     const newHtml = renderReactions(commentId, data.counts || {}, data.user_reaction || null);
     const tmp = document.createElement('div');
     tmp.innerHTML = newHtml;
-    const newDiv = tmp.firstElementChild;
-    container.replaceWith(newDiv);
+    container.replaceWith(tmp.firstElementChild);
   }
 }
 
 // ── Single comment renderer ────────────────────────────────────────────────
 function renderSingleComment(c, topLevel, slug) {
   const name = c.author ? esc(c.author.username) : 'Удалённый пользователь';
+  const profileHref = c.author ? `/user.html?u=${encodeURIComponent(c.author.username)}` : null;
   const user = getUser();
   const isOwn = user && c.author && user.id === c.author.id;
   const canDel = user && (user.role === 'admin' || isOwn);
@@ -3489,12 +3494,18 @@ function renderSingleComment(c, topLevel, slug) {
     style="font-size:.7rem;color:var(--muted);background:none;border:none;cursor:pointer;padding:0;margin-top:.3rem;">
     ↩ Ответить
   </button>` : '';
+  const avatarEl = profileHref
+    ? `<a href="${profileHref}" style="text-decoration:none;flex-shrink:0;" title="${name}">${commentAvatar(c.author)}</a>`
+    : commentAvatar(c.author);
+  const authorEl = profileHref
+    ? `<a href="${profileHref}" class="comment-author" style="text-decoration:none;color:#d4c4e0;" onmouseover="this.style.color='#c8002a'" onmouseout="this.style.color='#d4c4e0'">${name}</a>`
+    : `<span class="comment-author">${name}</span>`;
   const reactionsHtml = renderReactions(c.id, c.reactions || {}, c.user_reaction || null);
   let html = `<div class="comment-item" data-id="${c.id}">
-    ${commentAvatar(c.author)}
+    ${avatarEl}
     <div class="comment-body">
       <div class="comment-meta">
-        <span class="comment-author">${name}</span>
+        ${authorEl}
         <span class="comment-time">${fmtDate(c.created_at)}</span>
         ${actions}
       </div>
