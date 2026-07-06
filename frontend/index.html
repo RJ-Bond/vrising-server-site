@@ -2993,25 +2993,15 @@ async function loadNews(page = 1, append = false) {
             ${adminBadge}
           </div>
           <div style="display:flex;align-items:center;gap:.35rem;flex-shrink:0;margin-left:.5rem;">
+            <div class="card-reactions" data-slug="${esc(n.slug)}" style="display:flex;align-items:center;gap:.02rem;margin-right:.2rem;">
+              ${[['❤️','heart'],['👍','thumbs_up'],['🔥','fire']].map(([emoji,key]) => `<button onclick="event.stopPropagation();quickReact('${esc(n.slug)}','${key}',this)" data-key="${key}" style="background:none;border:none;padding:.1rem .22rem;font-size:.8rem;cursor:pointer;line-height:1;opacity:.45;transition:opacity .15s,transform .15s;" onmouseover="this.style.opacity='1';this.style.transform='scale(1.22)'" onmouseout="this.style.opacity=this.dataset.active?'1':'.45';this.style.transform='scale(1)'">${emoji}</button>`).join('')}
+            </div>
             ${tagsHtml ? `<div style="display:flex;gap:.2rem;">${tagsHtml}</div>` : ''}
             <span style="font-size:.65rem;color:rgba(200,0,40,0.65);letter-spacing:.04em;white-space:nowrap;">Читать →</span>
           </div>
         </div>
       </div>
     </div>`;
-    const reactionsHtml = `
-<div class="card-reactions" data-slug="${esc(n.slug)}" style="display:flex;gap:.3rem;padding:.45rem 1rem .55rem;border-top:1px solid rgba(110,0,20,0.1);">
-  ${['❤️','👍','🔥'].map(emoji => `
-    <button onclick="event.stopPropagation();quickReact('${esc(n.slug)}','${emoji}',this)"
-      style="background:none;border:1px solid rgba(110,0,150,0.18);border-radius:9999px;padding:.18rem .55rem;font-size:.72rem;cursor:pointer;transition:all .18s;color:var(--muted);display:flex;align-items:center;gap:.25rem;"
-      onmouseover="this.style.borderColor='rgba(180,0,35,0.4)';this.style.background='rgba(150,0,28,0.1)'"
-      onmouseout="this.style.borderColor='rgba(110,0,150,0.18)';this.style.background='none'">
-      ${emoji}
-    </button>`).join('')}
-</div>`;
-    const reactionsDiv = document.createElement('div');
-    reactionsDiv.innerHTML = reactionsHtml;
-    card.appendChild(reactionsDiv.firstElementChild);
     card.onclick = () => openNews(n.slug);
     if (_isAdmin) {
       const editBtn = document.createElement('a');
@@ -3239,18 +3229,20 @@ async function toggleNewsReaction(slug, emoji) {
   if (el) renderNewsReactions(el, slug, data);
 }
 
-async function quickReact(slug, emoji, btn) {
+async function quickReact(slug, emojiKey, btn) {
   try {
-    const res = await fetch(`${API}/news/${encodeURIComponent(slug)}/reactions`, {
+    const res = await fetch(`${API}/news/${encodeURIComponent(slug)}/react`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ emoji }),
+      body: JSON.stringify({ emoji: emojiKey }),
     });
     if (res.ok) {
-      btn.style.borderColor = 'rgba(200,0,42,0.5)';
-      btn.style.background = 'rgba(200,0,42,0.12)';
-      btn.style.color = 'var(--text)';
+      const data = await res.json();
+      const active = (data.user_reactions || []).includes(emojiKey);
+      btn.dataset.active = active ? '1' : '';
+      btn.style.opacity = active ? '1' : '.45';
+      btn.style.filter = active ? 'drop-shadow(0 0 4px rgba(200,0,42,0.6))' : '';
     } else if (res.status === 401) {
       showToast('Войдите, чтобы ставить реакции', 'info');
     }
