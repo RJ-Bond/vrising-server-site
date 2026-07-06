@@ -163,7 +163,7 @@
     }
     .lb-row:hover { background:rgba(255,255,255,0.035); transform:translateX(2px); }
     .lb-row:last-child { border-bottom:none; }
-    .lb-row.me { background:rgba(201,169,74,0.08); border:1px solid rgba(201,169,74,0.3); padding-left:.4rem; padding-right:.4rem; }
+    .lb-row.me { background:rgba(200,0,42,0.06); border-left:2px solid var(--crimson); padding-left:.35rem; padding-right:.4rem; }
     .lb-row.rank-1 { background:rgba(255,213,74,0.07); border:1px solid rgba(255,213,74,0.2); padding-left:.4rem; padding-right:.4rem; }
     .lb-row.rank-2 { background:rgba(214,214,232,0.05); border:1px solid rgba(214,214,232,0.15); padding-left:.4rem; padding-right:.4rem; }
     .lb-row.rank-3 { background:rgba(224,163,97,0.06); border:1px solid rgba(224,163,97,0.16); padding-left:.4rem; padding-right:.4rem; }
@@ -270,6 +270,35 @@
     .lb-stat-leader-name { font-size:.78rem; }
     .lb-stat-label { font-size:.58rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
     @media (max-width:480px) { .lb-stat-tile { padding:.6rem .4rem; } .lb-stat-val { font-size:.8rem; } }
+
+    /* ── Podium top-3 ── */
+    .podium-wrap { display:flex; align-items:flex-end; justify-content:center; gap:1rem; margin-bottom:2rem; }
+    .podium-card {
+      display:flex; flex-direction:column; align-items:center; text-align:center;
+      text-decoration:none; color:inherit; cursor:pointer; flex:1; max-width:130px;
+      transition:transform .22s;
+    }
+    .podium-card:hover { transform:translateY(-5px); }
+    .podium-avatar {
+      width:3.5rem; height:3.5rem; border-radius:50%; object-fit:cover;
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Cinzel',serif; font-size:1.2rem; color:#fff;
+      margin-bottom:.35rem; flex-shrink:0;
+    }
+    .podium-medal { font-size:1.5rem; margin-bottom:.22rem; line-height:1; }
+    .podium-name {
+      font-size:.75rem; font-family:'Cinzel',serif; color:var(--text);
+      max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      margin-bottom:.18rem; text-decoration:none; display:block;
+    }
+    .podium-time { font-size:.68rem; color:var(--muted); margin-bottom:.5rem; }
+    .podium-pillar {
+      width:100%; border-radius:.45rem .45rem 0 0; min-width:76px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    @keyframes rank-in { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes podium-rise { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @media (max-width:480px) { .podium-avatar { width:2.6rem; height:2.6rem; font-size:1rem; } .podium-name { font-size:.68rem; max-width:80px; } .podium-pillar { min-width:60px; } }
   </style>
 </head>
 <body>
@@ -355,6 +384,10 @@
       <div class="lb-stat-label">Период</div>
     </div>
   </div>
+
+  <!-- Podium top-3 -->
+  <div id="podium-section" class="podium-wrap" style="display:none;"></div>
+
   <div class="g-card">
     <div class="lb-controls">
       <div class="lb-toggle" id="lb-server-toggle">
@@ -367,8 +400,13 @@
         <button class="lb-toggle-btn"        data-period="week"  onclick="setPeriod('week',this)">Неделя</button>
       </div>
     </div>
-    <div class="lb-search-row">
-      <input id="lb-search" type="text" class="lb-search-input" placeholder="Поиск по нику…" oninput="onSearchInput()">
+    <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;">
+      <div style="position:relative;flex:1;">
+        <svg style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);opacity:.6;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="lb-search" type="text" placeholder="Поиск игрока…" oninput="filterLeaderboard(this.value)"
+          style="width:100%;background:rgba(14,5,22,0.85);border:1px solid rgba(110,0,150,0.22);border-radius:.65rem;padding:.62rem 1rem .62rem 2.5rem;color:var(--text);font-size:.88rem;outline:none;transition:border-color .2s;font-family:'Inter',sans-serif;"
+          onfocus="this.style.borderColor='rgba(200,0,42,0.45)'" onblur="this.style.borderColor='rgba(110,0,150,0.22)'">
+      </div>
       <button class="lb-find-me-btn" id="lb-find-me" onclick="findMe()"
               style="display:none;" data-tip="Перейти к своей строке">📍 Найти себя</button>
     </div>
@@ -396,6 +434,7 @@ let _server = 1, _period = 'all', _page = 1;
 let _onlineNames = new Set();
 let _searchTimer = null;
 let _fetchBarTimer = null;
+let _meUsername = (function() { const u = (typeof getUser === 'function' ? getUser() : null); return u ? (u.username || '') : ''; })();
 
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
 // getUser, esc, nameGradient — defined in common.js
@@ -488,11 +527,13 @@ function applySiteBackground(bg) {
     if (mp) mp.style.display = '';
     if (ml) ml.style.display = 'none';
   }
-  fetch('/api/auth/me', { credentials: 'include' }).then(r => {
+  fetch('/api/auth/me', { credentials: 'include' }).then(async r => {
     const profileLink = document.getElementById('nav-profile-link');
     const loginLink = document.getElementById('nav-login-link');
     const findMe = document.getElementById('lb-find-me');
     if (r.ok) {
+      const meData = await r.json().catch(() => ({}));
+      _meUsername = meData.username || '';
       if (profileLink) profileLink.style.display = '';
       if (loginLink) loginLink.style.display = 'none';
       if (findMe) findMe.style.display = '';
@@ -551,6 +592,59 @@ function onSearchInput() {
   _searchTimer = setTimeout(() => { _page = 1; loadLeaderboard(); }, 350);
 }
 
+function filterLeaderboard(query) {
+  const q = (query || '').toLowerCase().trim();
+  const rows = document.querySelectorAll('#lb-list [data-username]');
+  let visible = 0;
+  rows.forEach(row => {
+    const match = !q || (row.dataset.username || '').toLowerCase().includes(q);
+    row.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+  const prev = document.getElementById('lb-no-results');
+  if (prev) prev.remove();
+  if (q && visible === 0) {
+    const el = document.createElement('div');
+    el.id = 'lb-no-results';
+    el.style.cssText = 'padding:1.5rem;text-align:center;color:var(--muted);font-size:.85rem;';
+    el.textContent = 'Не найдено';
+    const lbList = document.getElementById('lb-list');
+    if (lbList) lbList.appendChild(el);
+  }
+}
+
+function renderPodium(top3) {
+  const section = document.getElementById('podium-section');
+  if (!section) return;
+  if (!top3 || top3.length < 3) { section.style.display = 'none'; return; }
+  // order: 2nd left, 1st center, 3rd right
+  const order   = [top3[1], top3[0], top3[2]];
+  const medals  = ['🥈', '🥇', '🥉'];
+  const pillH   = ['70px', '100px', '55px'];
+  const borders = ['rgba(180,180,200,.5)', 'rgba(201,169,74,.6)', 'rgba(160,100,40,.5)'];
+  const pillBg  = ['rgba(180,180,200,.07)', 'rgba(201,169,74,.12)', 'rgba(160,100,40,.08)'];
+  const ranks   = [2, 1, 3];
+  section.innerHTML = order.map((u, i) => {
+    const name = u.player_name || 'Аноним';
+    const grad = (typeof nameGradient === 'function') ? nameGradient(name) : '#3a0060';
+    const avatarHtml = u.avatar_url
+      ? `<img class="podium-avatar" src="${esc(u.avatar_url)}" alt="" style="border:2px solid ${borders[i]};">`
+      : `<span class="podium-avatar" style="background:${grad};border:2px solid ${borders[i]};">${esc(name.charAt(0).toUpperCase())}</span>`;
+    const hours = Math.floor((u.total_seconds || 0) / 3600);
+    return `<a class="podium-card" href="/user.html?u=${encodeURIComponent(name)}"
+        style="animation:podium-rise .5s ease both;animation-delay:${i * 120}ms;">
+      ${avatarHtml}
+      <div class="podium-medal">${medals[i]}</div>
+      <span class="podium-name">${esc(name)}</span>
+      <div class="podium-time">${hours}ч</div>
+      <div class="podium-pillar" style="height:${pillH[i]};background:${pillBg[i]};border-top:2px solid ${borders[i]};">
+        <span style="font-family:'Oswald',sans-serif;font-size:.68rem;color:rgba(255,255,255,.4);">#${ranks[i]}</span>
+      </div>
+    </a>`;
+  }).join('');
+  section.style.display = 'flex';
+}
+
 async function loadOnlineStatus() {
   _onlineNames = new Set();
   try {
@@ -588,23 +682,20 @@ async function loadLeaderboard() {
   const pag  = document.getElementById('lb-pagination');
   list.innerHTML = renderSkeleton();
   showFetchBar();
-  const searchQ = document.getElementById('lb-search').value.trim();
   try {
     const [items] = await Promise.all([
-      fetch(`${API}/leaderboard?server=${_server}&period=${_period}&q=${encodeURIComponent(searchQ)}&page=${_page}&per_page=${PER_PAGE}`).then(r => r.json()),
+      fetch(`${API}/leaderboard?server=${_server}&period=${_period}&page=${_page}&per_page=${PER_PAGE}`).then(r => r.json()),
       loadOnlineStatus(),
     ]);
-    const me = getUser();
     if (!items.length) {
-      if (searchQ) {
-        list.innerHTML = emptyState('🔍','Никого не найдено',`По запросу «${esc(searchQ)}» совпадений нет`);
-      } else if (_page > 1) {
+      if (_page > 1) {
         list.innerHTML = emptyState('📜','Конец списка','Больше игроков нет на этой странице');
       } else if (_period !== 'all') {
         list.innerHTML = emptyState('📅','Нет данных за период','Попробуйте выбрать «Всё время»');
       } else {
         list.innerHTML = emptyState('🏹','Таблица пуста','На этом сервере статистика ещё не накоплена');
       }
+      renderPodium([]);
     } else {
       const offset = (_page - 1) * PER_PAGE;
       const maxSeconds = items[0]?.total_seconds || 1;
@@ -615,7 +706,7 @@ async function loadLeaderboard() {
         const medal    = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
         const name     = p.player_name || 'Аноним';
         const isOnline = _onlineNames.has(name);
-        const isMe     = me && me.username === name;
+        const isMe     = _meUsername && _meUsername === name;
         const grad     = nameGradient(name);
         const avatarHtml = p.avatar_url
           ? `<img class="lb-avatar" src="${esc(p.avatar_url)}" alt="">`
@@ -625,8 +716,8 @@ async function loadLeaderboard() {
         const badge    = activityBadge(p.last_seen) + achievementBadge(p.total_seconds);
         const barPct   = Math.round((p.total_seconds / maxSeconds) * 100);
         const barColor = rank === 1 ? '#ffd54a' : rank === 2 ? 'rgba(214,214,232,0.7)' : rank === 3 ? '#e0a361' : 'rgba(160,0,40,0.55)';
-        return `<div class="lb-row${isMe ? ' me' : ''}${podiumCls}" onclick="openPlayerModal('${esc(name)}',${_server},${rank})" style="cursor:pointer;animation:fade-up .35s ease both;animation-delay:${Math.min(i * 25, 300)}ms;">
-          <span class="lb-rank ${rankCls}">${medal ? `<span class="lb-medal">${medal}</span>` : rank}</span>
+        return `<div class="lb-row${isMe ? ' me' : ''}${podiumCls}" data-username="${esc(name)}" onclick="location.href='/user.html?u='+encodeURIComponent(this.dataset.username)" style="cursor:pointer;animation:fade-up .35s ease both;animation-delay:${Math.min(i * 25, 300)}ms;">
+          <span class="lb-rank ${rankCls}" style="animation:rank-in .4s ease both;animation-delay:${i * 30}ms;">${medal ? `<span class="lb-medal">${medal}</span>` : rank}</span>
           <span class="lb-avatar-wrap">${avatarHtml}<span class="lb-online-dot${isOnline ? ' show' : ''}"></span></span>
           <span class="lb-name-col">
             <div style="display:flex;align-items:center;gap:.3rem;">
@@ -640,6 +731,12 @@ async function loadLeaderboard() {
           <span class="lb-seen">${relativeDate(p.last_seen)}</span>
         </div>`;
       }).join('');
+      // Render podium for top 3 (only on page 1)
+      if (_page === 1) renderPodium(items.slice(0, 3));
+      else { const s = document.getElementById('podium-section'); if (s) s.style.display = 'none'; }
+      // Re-apply any active search filter
+      const searchVal = document.getElementById('lb-search').value;
+      if (searchVal) filterLeaderboard(searchVal);
     }
     // update stats tiles
     const onlineEl = document.getElementById('lb-stat-online-val');

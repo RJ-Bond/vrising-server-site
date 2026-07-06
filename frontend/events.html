@@ -23,11 +23,11 @@
   <style>
     :root {
       --bg:      #06000f;
-      --card:    rgba(16,7,23,0.92);
+      --card:    rgba(14,5,22,0.88);
       --panel:   rgba(255,255,255,0.035);
       --border:  rgba(110,0,150,0.22);
-      --text:    #f5f0fb;
-      --muted:   #b6a8d2;
+      --text:    #e2d8f0;
+      --muted:   #9488a8;
       --label:   #d6c9ee;
       --gold:    #c9a94a;
       --crimson: #c8002a;
@@ -67,19 +67,35 @@
     .mobile-drawer a:hover, .mobile-drawer a.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
     @media (max-width:640px) { .nav-links { display:none; } .nav-burger { display:flex; } .mobile-overlay { display:block; } }
 
+    /* Event cards */
     .event-card {
-      background:var(--card); border:1px solid rgba(110,0,150,0.22);
-      border-radius:.875rem; backdrop-filter:blur(16px); overflow:hidden;
-      transition:box-shadow .3s; animation:fade-up .4s ease both;
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:.875rem;
+      backdrop-filter:blur(16px);
+      transition:box-shadow .25s, transform .2s;
+      animation:fade-up .35s ease both;
     }
-    .event-card:hover { box-shadow:0 6px 40px rgba(0,0,0,0.7), 0 0 24px rgba(110,0,150,.15); }
-    .event-cover { height:140px; object-fit:cover; width:100%; display:block; }
-    .event-cover-placeholder { height:140px; display:flex; align-items:center; justify-content:center; font-size:2.5rem; }
+    .event-card:hover {
+      box-shadow:0 8px 40px rgba(0,0,0,0.7), 0 0 28px rgba(110,0,150,.18);
+      transform:translateY(-3px);
+    }
     @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
 
+    /* Countdown */
+    .event-countdown { display:flex; align-items:baseline; gap:.2rem; flex-wrap:wrap; }
+    .event-countdown span { font-family:'Oswald',sans-serif; font-size:1.1rem; font-weight:600; color:var(--text); }
+    .event-countdown small { font-size:.58rem; color:var(--muted); margin-right:.2rem; }
+
+    /* Status filter buttons */
     .srv-period-btn { background:none; border:1px solid rgba(110,0,150,.22); color:var(--muted); font-size:.72rem; font-weight:600; padding:.3rem .7rem; border-radius:.4rem; cursor:pointer; transition:all .15s; font-family:'Inter',sans-serif; }
     .srv-period-btn.active { background:rgba(180,0,42,.3); border-color:rgba(200,0,42,.5); color:#fff; }
     .srv-period-btn:hover:not(.active) { color:var(--text); border-color:rgba(160,0,200,.4); }
+
+    /* Category filter pills */
+    .cat-pill { background:none; border:1px solid rgba(110,0,150,.22); color:var(--muted); font-size:.72rem; font-weight:600; padding:.3rem .8rem; border-radius:9999px; cursor:pointer; transition:all .15s; font-family:'Inter',sans-serif; }
+    .cat-pill.active { background:rgba(200,0,42,.2); border-color:rgba(200,0,42,.5); color:var(--text); }
+    .cat-pill:hover:not(.active) { color:var(--text); border-color:rgba(160,0,200,.4); }
 
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
@@ -126,14 +142,24 @@
     <p style="font-size:.8rem;color:var(--muted);margin-top:.4rem;">Участвуйте в событиях сервера</p>
   </div>
 
-  <div style="display:flex;gap:.4rem;margin-bottom:1.5rem;flex-wrap:wrap;">
-    <button class="srv-period-btn active" onclick="filterEvents('all',this)">Все</button>
-    <button class="srv-period-btn" onclick="filterEvents('upcoming',this)">Предстоящие</button>
-    <button class="srv-period-btn" onclick="filterEvents('active',this)">Активные</button>
-    <button class="srv-period-btn" onclick="filterEvents('ended',this)">Прошедшие</button>
+  <!-- Status filter -->
+  <div style="display:flex;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap;">
+    <button class="srv-period-btn active" onclick="filterStatus('all',this)">Все</button>
+    <button class="srv-period-btn" onclick="filterStatus('upcoming',this)">Предстоящие</button>
+    <button class="srv-period-btn" onclick="filterStatus('active',this)">Активные</button>
+    <button class="srv-period-btn" onclick="filterStatus('ended',this)">Прошедшие</button>
   </div>
 
-  <div id="events-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.25rem;">
+  <!-- Category filter -->
+  <div style="display:flex;gap:.4rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+    <button class="cat-pill active" onclick="filterCategory('all',this)">Все</button>
+    <button class="cat-pill" onclick="filterCategory('wipe',this)">🔥 Вайп</button>
+    <button class="cat-pill" onclick="filterCategory('tournament',this)">⚔ Турнир</button>
+    <button class="cat-pill" onclick="filterCategory('update',this)">⚡ Обновление</button>
+    <button class="cat-pill" onclick="filterCategory('event',this)">🌟 Событие</button>
+  </div>
+
+  <div id="events-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.25rem;">
     <p style="color:var(--muted);text-align:center;grid-column:1/-1;">Загрузка…</p>
   </div>
 </div>
@@ -142,13 +168,21 @@
 <script>
 const API = '/api';
 
-const EVENT_TYPE_ICONS = {pvp:'⚔️', pve:'🐺', social:'🎉', other:'🗓'};
-const EVENT_TYPE_LABELS = {pvp:'PvP', pve:'PvE', social:'Социальное', other:'Событие'};
+const EVENT_TYPES = {
+  wipe:       { label:'Вайп',       color:'#c8002a', bg:'rgba(200,0,42,0.15)',   border:'rgba(200,0,42,0.4)',   icon:'🔥' },
+  tournament: { label:'Турнир',     color:'#c9a94a', bg:'rgba(200,160,0,0.15)', border:'rgba(200,160,0,0.4)', icon:'⚔' },
+  update:     { label:'Обновление', color:'#3b82f6', bg:'rgba(59,130,246,0.12)', border:'rgba(59,130,246,0.35)',icon:'⚡' },
+  event:      { label:'Событие',    color:'#a855f7', bg:'rgba(168,85,247,0.12)', border:'rgba(168,85,247,0.35)',icon:'🌟' },
+};
+// Map legacy API event_type values to new categories
+const LEGACY_TYPE_MAP = { pvp:'tournament', pve:'event', social:'event', other:'event' };
+
 const STATUS_LABELS = {upcoming:'Предстоящее', active:'Активное', ended:'Завершено', cancelled:'Отменено'};
 const STATUS_COLORS = {upcoming:'#c9a04a', active:'#2ee69b', ended:'#9488a8', cancelled:'#f87171'};
 
 let _allEvents = [];
-let _currentFilter = 'all';
+let _currentStatus = 'all';
+let _currentCategory = 'all';
 let _currentUser = null;
 
 fetch('/api/auth/me', {credentials:'include'}).then(r=>r.ok?r.json():null).then(u=>{ _currentUser=u; }).catch(()=>{});
@@ -158,62 +192,128 @@ function toggleMobileNav() {
   document.getElementById('mob-drawer').classList.toggle('open');
 }
 
+function getEventType(ev) {
+  const t = ev.event_type || ev.type || '';
+  if (EVENT_TYPES[t]) return t;
+  return LEGACY_TYPE_MAP[t] || 'event';
+}
+
+function makeTypeBadge(typeName) {
+  const t = EVENT_TYPES[typeName] || EVENT_TYPES.event;
+  return `<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;padding:.2rem .6rem;border-radius:9999px;background:${t.bg};border:1px solid ${t.border};color:${t.color};">${t.icon} ${t.label}</span>`;
+}
+
+function startCountdowns() {
+  document.querySelectorAll('.event-countdown[data-end]').forEach(el => {
+    function tick() {
+      const diff = new Date(el.dataset.end) - Date.now();
+      if (diff <= 0) { el.textContent = 'Завершено'; return; }
+      const d = Math.floor(diff/86400000);
+      const h = Math.floor((diff%86400000)/3600000);
+      const m = Math.floor((diff%3600000)/60000);
+      const s = Math.floor((diff%60000)/1000);
+      const pad = n => String(n).padStart(2,'0');
+      el.innerHTML = d > 0
+        ? `<span>${d}</span><small>д</small> <span>${pad(h)}</span><small>ч</small> <span>${pad(m)}</span><small>м</small>`
+        : `<span>${pad(h)}</span><small>ч</small> <span>${pad(m)}</span><small>м</small> <span>${pad(s)}</span><small>с</small>`;
+    }
+    tick();
+    setInterval(tick, 1000);
+  });
+}
+
 async function loadEvents() {
   const grid = document.getElementById('events-grid');
   try {
     const d = await fetch(`${API}/events?per_page=50`).then(r=>r.json());
-    _allEvents = d.items||[];
+    _allEvents = d.items || [];
     renderEvents();
   } catch {
-    if(grid) grid.innerHTML='<p style="color:#f87171;text-align:center;grid-column:1/-1;">Ошибка загрузки событий</p>';
+    if (grid) grid.innerHTML = '<p style="color:#f87171;text-align:center;grid-column:1/-1;">Ошибка загрузки событий</p>';
   }
 }
 
-function filterEvents(status, btn) {
-  _currentFilter = status;
-  document.querySelectorAll('.srv-period-btn').forEach(b=>b.classList.remove('active'));
-  if(btn) btn.classList.add('active');
+function filterStatus(status, btn) {
+  _currentStatus = status;
+  document.querySelectorAll('.srv-period-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderEvents();
+}
+
+function filterCategory(cat, btn) {
+  _currentCategory = cat;
+  document.querySelectorAll('.cat-pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
   renderEvents();
 }
 
 function renderEvents() {
   const grid = document.getElementById('events-grid');
   if (!grid) return;
-  const items = _currentFilter==='all' ? _allEvents : _allEvents.filter(e=>e.status===_currentFilter);
-  if (!items.length) { grid.innerHTML='<p style="color:var(--muted);text-align:center;grid-column:1/-1;padding:2rem 0;">Нет событий</p>'; return; }
 
-  grid.innerHTML = items.map(ev => {
-    const icon = EVENT_TYPE_ICONS[ev.event_type]||'🗓';
-    const typeLabel = EVENT_TYPE_LABELS[ev.event_type]||ev.event_type;
-    const statusColor = STATUS_COLORS[ev.status]||'var(--muted)';
-    const statusLabel = STATUS_LABELS[ev.status]||ev.status;
-    const pCount = ev.participant_count||0;
+  let items = _allEvents;
+  if (_currentStatus !== 'all') items = items.filter(e => e.status === _currentStatus);
+  if (_currentCategory !== 'all') items = items.filter(e => getEventType(e) === _currentCategory);
+
+  if (!items.length) {
+    grid.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:3.5rem 1rem;">
+        <div style="font-size:3rem;margin-bottom:1rem;">🌑</div>
+        <div class="gothic" style="font-size:1rem;color:var(--text);margin-bottom:.5rem;">Событий нет</div>
+        <div style="font-size:.8rem;color:var(--muted);">Следите за объявлениями в Discord</div>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = items.map((ev, idx) => {
+    const typeName = getEventType(ev);
+    const typeInfo = EVENT_TYPES[typeName] || EVENT_TYPES.event;
+    const badge = makeTypeBadge(typeName);
+    const pCount = ev.participant_count || 0;
     const pMax = ev.max_participants;
-    const coverEl = ev.cover_url
-      ? `<img class="event-cover" src="${esc(ev.cover_url)}" loading="lazy" onerror="this.style.display='none'">`
-      : `<div class="event-cover-placeholder" style="background:linear-gradient(135deg,rgba(80,0,130,.4),rgba(180,0,30,.3));">${icon}</div>`;
-    const startDt = ev.start_date ? new Date(ev.start_date).toLocaleDateString('ru-RU',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
-    const joinBtn = (ev.status==='ended'||ev.status==='cancelled') ? ''
+
+    const startDt = ev.start_date
+      ? new Date(ev.start_date).toLocaleDateString('ru-RU', {day:'2-digit', month:'short', year:'numeric'})
+      : '—';
+
+    // Countdown: upcoming → count to start, active + end_date → count to end
+    let countdownHtml = '';
+    const countdownTarget = ev.status === 'upcoming'
+      ? (ev.start_date || null)
+      : ev.status === 'active' ? (ev.end_date || null) : null;
+    if (countdownTarget) {
+      const label = ev.status === 'upcoming' ? 'До начала' : 'До конца';
+      countdownHtml = `
+        <div style="margin-bottom:.75rem;padding:.6rem .75rem;background:rgba(255,255,255,0.03);border-radius:.5rem;border:1px solid rgba(255,255,255,0.06);">
+          <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem;">${label}</div>
+          <div class="event-countdown" data-end="${countdownTarget}"></div>
+        </div>`;
+    }
+
+    const joinBtn = (ev.status === 'ended' || ev.status === 'cancelled') ? ''
       : `<button onclick="joinEvent(${ev.id},this)" class="ev-join-btn" id="ev-join-${ev.id}"
-          style="width:100%;margin-top:.75rem;padding:.5rem;background:linear-gradient(135deg,#6a001a,#a00022);border:none;border-radius:.5rem;color:#fff;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;"
+          style="width:100%;padding:.5rem;background:linear-gradient(135deg,#6a001a,#a00022);border:none;border-radius:.5rem;color:#fff;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;"
           onmouseover="this.style.filter='brightness(1.2)'" onmouseout="this.style.filter=''">
           Записаться
         </button>`;
-    return `<div class="event-card" data-status="${ev.status}">
-      ${coverEl}
-      <div style="padding:1rem;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
-          <span style="font-size:.62rem;font-weight:700;color:${statusColor};letter-spacing:.05em;">${statusLabel}</span>
-          <span style="font-size:.6rem;padding:.15rem .45rem;border-radius:9999px;background:rgba(110,0,150,.2);border:1px solid rgba(110,0,150,.35);color:#c4b5fd;">${icon} ${typeLabel}</span>
-        </div>
-        <h3 class="gothic" style="font-size:.95rem;font-weight:700;color:#e2d8f0;margin-bottom:.4rem;line-height:1.3;">${esc(ev.title)}</h3>
-        ${ev.description ? `<p style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${esc(ev.description)}</p>` : ''}
-        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.3rem;">📅 ${startDt}</div>
-        <div style="font-size:.72rem;color:var(--muted);">👥 ${pCount}${pMax?'/'+pMax:''} участников</div>
-        ${joinBtn}
+
+    return `<div class="event-card" data-event-id="${ev.id}" data-status="${ev.status}" data-type="${typeName}"
+        style="padding:1.25rem 1.4rem;border-left:3px solid ${typeInfo.color};animation-delay:${idx * 50}ms;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.65rem;">
+        ${badge}
+        <span style="font-size:.68rem;color:var(--muted);font-family:'Oswald',sans-serif;white-space:nowrap;">${startDt}</span>
       </div>
+      <div class="gothic" style="font-size:.95rem;font-weight:700;color:var(--text);margin-bottom:.4rem;line-height:1.3;">${esc(ev.title)}</div>
+      ${ev.description
+        ? `<div style="font-size:.8rem;color:var(--muted);line-height:1.55;margin-bottom:.85rem;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">${esc(ev.description)}</div>`
+        : '<div style="margin-bottom:.85rem;"></div>'}
+      ${countdownHtml}
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:${joinBtn ? '.75rem' : '0'};">👥 ${pCount}${pMax ? '/' + pMax : ''} участников</div>
+      ${joinBtn}
     </div>`;
   }).join('');
+
+  startCountdowns();
 }
 
 async function joinEvent(id, btn) {
@@ -229,12 +329,12 @@ async function joinEvent(id, btn) {
       btn.style.color = '#2ee69b';
       btn.onclick = () => leaveEvent(id, btn);
     } else {
-      const d = await r.json().catch(()=>({}));
-      btn.textContent = d.detail||'Ошибка';
+      const d = await r.json().catch(() => ({}));
+      btn.textContent = d.detail || 'Ошибка';
       btn.style.background = 'rgba(248,113,113,.2)';
       btn.disabled = false;
     }
-  } catch { btn.textContent='Ошибка'; btn.disabled=false; }
+  } catch { btn.textContent = 'Ошибка'; btn.disabled = false; }
 }
 
 async function leaveEvent(id, btn) {
@@ -247,7 +347,7 @@ async function leaveEvent(id, btn) {
     btn.style.color = '#fff';
     btn.disabled = false;
     btn.onclick = () => joinEvent(id, btn);
-  } catch { btn.disabled=false; }
+  } catch { btn.disabled = false; }
 }
 
 // Check auth state for nav links
