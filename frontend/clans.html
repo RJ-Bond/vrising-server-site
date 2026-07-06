@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -6,18 +6,15 @@
   <title>Кланы V Rising — Just-Skill.Ru</title>
   <link rel="canonical" href="https://just-skill.ru/clans.html" />
   <meta name="description" content="Кланы и гильдии серверов V Rising на Just-Skill.Ru. Вступай в клан или создай свой." />
-    <!-- Open Graph -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="V RISING" />
   <meta property="og:title" content="V Rising — Кланы" />
   <meta property="og:description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
   <meta property="og:image" content="/uploads/og-default.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="canonical" href="https://just-skill.ru/clans.html" />
-  <meta name="description" content="Кланы и гильдии серверов V Rising на Just-Skill.Ru. Вступай в клан или создай свой." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
   <style>
     :root {
@@ -29,6 +26,7 @@
       --gold:    #c9a94a;
       --crimson: #c8002a;
       --purple:  #7c3aed;
+      --panel:   rgba(10,4,18,0.7);
     }
     * { box-sizing:border-box; margin:0; padding:0; }
     html { scroll-behavior:smooth; }
@@ -74,36 +72,105 @@
       content:''; position:absolute; top:0; left:20%; right:20%; height:1px;
       background:linear-gradient(90deg,transparent,rgba(200,0,45,0.35),transparent);
     }
-    @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-    .g-card { animation:fade-up .4s ease both; }
 
-    .dev-icon-wrap {
-      width:88px; height:88px; border-radius:50%; margin:0 auto 1.25rem;
-      background:radial-gradient(circle at 38% 32%, rgba(150,0,28,0.35), rgba(80,0,130,0.25));
-      border:2px solid rgba(180,0,35,0.4);
-      box-shadow:0 0 32px rgba(180,0,30,0.25);
-      display:flex; align-items:center; justify-content:center;
-      animation:pulse-icon 2.6s ease-in-out infinite;
-    }
-    @keyframes pulse-icon { 0%,100%{box-shadow:0 0 24px rgba(180,0,30,0.2);} 50%{box-shadow:0 0 44px rgba(200,0,40,0.4);} }
+    /* ── Clan-in stagger animation ── */
+    @keyframes clan-in { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
 
-    .feature-item {
-      display:flex; align-items:center; gap:.6rem; padding:.55rem 0;
-      border-bottom:1px solid rgba(110,0,20,0.1); font-size:.82rem; color:var(--muted);
+    /* ── Search row ── */
+    .clan-search-wrap { position:relative; }
+    .clan-search-wrap svg { position:absolute; left:.75rem; top:50%; transform:translateY(-50%); color:var(--muted); pointer-events:none; }
+    .clan-search-input {
+      width:100%; background:var(--panel); border:1px solid rgba(110,0,150,0.22);
+      border-radius:.55rem; padding:.55rem .8rem .55rem 2.4rem; color:var(--text);
+      font-size:.84rem; outline:none; font-family:'Inter',sans-serif; transition:border-color .2s;
     }
-    .feature-item:last-child { border-bottom:none; }
-    .feature-item svg { flex-shrink:0; color:rgba(200,0,45,0.6); }
+    .clan-search-input::placeholder { color:var(--muted); }
+    .clan-search-input:focus { border-color:rgba(200,0,40,0.45); }
+
+    /* ── Clan card ── */
+    .clan-card {
+      padding:1.25rem; cursor:pointer;
+      transition:transform .18s, box-shadow .2s, border-left-color .2s;
+    }
+    .clan-card:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(130,0,22,0.2); }
+    .clan-card.is-mine { border-left:2px solid var(--gold); }
+
+    /* ── Action button ── */
+    .clan-btn {
+      width:100%; padding:.5rem; border-radius:.5rem; border:1px solid;
+      font-size:.75rem; font-weight:600; cursor:pointer; transition:all .2s;
+      font-family:'Inter',sans-serif; letter-spacing:.03em;
+    }
+    .clan-btn.join   { background:rgba(200,0,42,0.12); border-color:rgba(200,0,42,0.4); color:#f87171; }
+    .clan-btn.join:hover { background:rgba(200,0,42,0.22); border-color:rgba(200,0,42,0.65); }
+    .clan-btn.mine   { background:rgba(201,169,74,0.1); border-color:rgba(201,169,74,0.35); color:var(--gold); cursor:default; }
+    .clan-btn.leave  { background:rgba(80,0,130,0.12); border-color:rgba(110,0,150,0.35); color:#c4b5fd; }
+    .clan-btn.leave:hover { background:rgba(80,0,130,0.22); border-color:rgba(110,0,150,0.6); }
+    .clan-btn.guest  { background:rgba(50,50,70,0.12); border-color:rgba(100,100,130,0.25); color:var(--muted); cursor:default; }
+    @keyframes btn-flash { 0%,100%{opacity:1} 50%{opacity:.35} }
+    .clan-btn.flashing { animation:btn-flash .35s ease 2; }
+
+    /* ── My-clan badge ── */
+    .mine-badge {
+      display:inline-flex; align-items:center; gap:.3rem;
+      font-size:.58rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
+      background:rgba(201,169,74,0.14); border:1px solid rgba(201,169,74,0.35);
+      color:var(--gold); border-radius:.35rem; padding:.18rem .45rem;
+    }
+
+    /* ── Summary stat tiles ── */
+    .stat-tile {
+      background:var(--panel); border:1px solid var(--border); border-radius:.65rem;
+      padding:.65rem .9rem; text-align:center; flex:1;
+    }
+
+    /* ── Create-clan modal ── */
+    .modal-backdrop {
+      position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.72);
+      backdrop-filter:blur(5px); display:flex; align-items:center; justify-content:center;
+      padding:1rem; opacity:0; pointer-events:none; transition:opacity .22s;
+    }
+    .modal-backdrop.open { opacity:1; pointer-events:auto; }
+    .modal-box {
+      background:rgba(10,4,20,0.98); border:1px solid rgba(110,0,150,0.35); border-radius:1rem;
+      padding:2rem; width:100%; max-width:420px; box-shadow:0 16px 48px rgba(0,0,0,.7);
+      transform:translateY(16px); transition:transform .25s; position:relative;
+    }
+    .modal-backdrop.open .modal-box { transform:translateY(0); }
+    .modal-input {
+      width:100%; background:rgba(6,0,14,0.7); border:1px solid rgba(110,0,150,0.25);
+      border-radius:.5rem; padding:.55rem .8rem; color:var(--text); font-size:.84rem;
+      outline:none; font-family:'Inter',sans-serif; transition:border-color .2s;
+    }
+    .modal-input:focus { border-color:rgba(200,0,40,0.5); }
+    .modal-input::placeholder { color:var(--muted); }
+    .modal-label { font-size:.72rem; color:var(--muted); margin-bottom:.35rem; font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+    .modal-submit {
+      width:100%; padding:.65rem; border-radius:.55rem; border:1px solid rgba(200,0,42,0.45);
+      background:rgba(200,0,42,0.16); color:#f87171; font-size:.84rem; font-weight:700;
+      cursor:pointer; transition:all .2s; font-family:'Cinzel',serif; letter-spacing:.06em;
+    }
+    .modal-submit:hover { background:rgba(200,0,42,0.28); border-color:rgba(200,0,42,0.7); }
+    .modal-submit:disabled { opacity:.45; cursor:not-allowed; }
+
+    /* ── Shimmer skeleton ── */
+    @keyframes shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
+    .skel {
+      border-radius:.45rem; height:.75rem;
+      background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.04) 75%);
+      background-size:200% 100%; animation:shimmer 1.5s infinite;
+    }
+
+    /* ── Empty state ── */
+    .clans-empty { text-align:center; padding:4rem 1rem; }
 
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
     ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
-    /* ── Mobile ── */
+
     @media (max-width:640px) {
       body { overflow-x:hidden; }
       .glass-nav > div { padding:.6rem 1rem !important; }
-    }
-    @media (max-width:480px) {
-      .g-card { padding:1.5rem 1.25rem; }
     }
   </style>
 </head>
@@ -122,7 +189,7 @@
   <a href="/profile.html">Профиль</a>
 </div>
 <nav class="glass-nav">
-  <div style="max-width:900px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
+  <div style="max-width:1080px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">⚔ V RISING</a>
     <div class="nav-links">
       <a href="/" class="topnav-link">Главная</a>
@@ -139,49 +206,100 @@
   </div>
 </nav>
 
-<div style="max-width:640px;margin:3rem auto;padding:0 1rem;">
-  <div class="g-card text-center" style="padding:2.75rem 2rem;">
-    <div class="dev-icon-wrap">
-      <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#e05575" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+<!-- MAIN -->
+<div style="max-width:1080px;margin:0 auto;padding:2rem 1rem 4rem;position:relative;z-index:1;">
+
+  <!-- Page header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+    <div>
+      <h1 class="gothic" style="font-size:1.25rem;font-weight:700;letter-spacing:.1em;color:var(--text);text-transform:uppercase;">Кланы</h1>
+      <p style="font-size:.76rem;color:var(--muted);margin-top:.25rem;">Вступай в клан или создай свой</p>
     </div>
-    <h1 class="gothic" style="font-size:1.15rem; letter-spacing:.08em; color:var(--gold); margin-bottom:.6rem; text-transform:uppercase;">Раздел в разработке</h1>
-    <p style="font-size:.88rem; color:var(--muted); line-height:1.6; max-width:440px; margin:0 auto 1.75rem;">
-      Список кланов появится здесь в ближайшем будущем. Данные будут автоматически подгружаться напрямую из игрового плагина сервера — без ручного ведения списка администрацией.
-    </p>
+    <button id="create-clan-btn" onclick="openCreateModal()" style="display:none;align-items:center;gap:.5rem;padding:.55rem 1.1rem;border-radius:.55rem;border:1px solid rgba(201,169,74,0.4);background:rgba(201,169,74,0.1);color:var(--gold);font-size:.8rem;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Cinzel',serif;letter-spacing:.06em;" onmouseover="this.style.background='rgba(201,169,74,0.2)'" onmouseout="this.style.background='rgba(201,169,74,0.1)'">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Создать клан
+    </button>
+  </div>
 
-    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:1.25rem;"></div>
+  <!-- Summary tiles -->
+  <div id="clan-stats-row" style="display:flex;gap:.6rem;margin-bottom:1.25rem;"></div>
 
-    <p class="gothic" style="font-size:.68rem; letter-spacing:.16em; color:var(--gold); text-transform:uppercase; margin-bottom:.5rem; text-align:left;">Что будет отображаться</p>
-    <div style="text-align:left;">
-      <div class="feature-item">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
-        Название и тег клана
-      </div>
-      <div class="feature-item">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-        Состав и лидер клана
-      </div>
-      <div class="feature-item">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
-        Суммарная статистика клана
-      </div>
-      <div class="feature-item">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        Дата основания
-      </div>
+  <!-- Search -->
+  <div class="clan-search-wrap" style="margin-bottom:1.25rem;">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="clan-search" class="clan-search-input" type="text" placeholder="Поиск по названию или тегу…" oninput="filterCards()">
+  </div>
+
+  <!-- Loading skeletons -->
+  <div id="clans-loading" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;">
+    <!-- 6 skeleton cards -->
+    <div class="g-card" style="padding:1.25rem;" id="_skel0">
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;"><div class="skel" style="width:2.8rem;height:2.8rem;border-radius:.55rem;flex-shrink:0;"></div><div style="flex:1;"><div class="skel" style="height:.75rem;margin-bottom:.5rem;width:70%;"></div><div class="skel" style="height:.6rem;width:40%;"></div></div></div>
+      <div style="display:flex;gap:1rem;margin-bottom:1rem;"><div class="skel" style="height:.75rem;flex:1;"></div><div class="skel" style="height:.75rem;flex:1;"></div></div>
+      <div class="skel" style="height:.65rem;margin-bottom:.85rem;width:55%;"></div>
+      <div class="skel" style="height:2rem;border-radius:.5rem;"></div>
     </div>
+    <div class="g-card" style="padding:1.25rem;" id="_skel1"><div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;"><div class="skel" style="width:2.8rem;height:2.8rem;border-radius:.55rem;flex-shrink:0;"></div><div style="flex:1;"><div class="skel" style="height:.75rem;margin-bottom:.5rem;width:60%;"></div><div class="skel" style="height:.6rem;width:35%;"></div></div></div><div style="display:flex;gap:1rem;margin-bottom:1rem;"><div class="skel" style="height:.75rem;flex:1;"></div><div class="skel" style="height:.75rem;flex:1;"></div></div><div class="skel" style="height:.65rem;margin-bottom:.85rem;width:50%;"></div><div class="skel" style="height:2rem;border-radius:.5rem;"></div></div>
+    <div class="g-card" style="padding:1.25rem;" id="_skel2"><div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;"><div class="skel" style="width:2.8rem;height:2.8rem;border-radius:.55rem;flex-shrink:0;"></div><div style="flex:1;"><div class="skel" style="height:.75rem;margin-bottom:.5rem;width:65%;"></div><div class="skel" style="height:.6rem;width:30%;"></div></div></div><div style="display:flex;gap:1rem;margin-bottom:1rem;"><div class="skel" style="height:.75rem;flex:1;"></div><div class="skel" style="height:.75rem;flex:1;"></div></div><div class="skel" style="height:.65rem;margin-bottom:.85rem;width:60%;"></div><div class="skel" style="height:2rem;border-radius:.5rem;"></div></div>
+    <div class="g-card" style="padding:1.25rem;" id="_skel3"><div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;"><div class="skel" style="width:2.8rem;height:2.8rem;border-radius:.55rem;flex-shrink:0;"></div><div style="flex:1;"><div class="skel" style="height:.75rem;margin-bottom:.5rem;width:75%;"></div><div class="skel" style="height:.6rem;width:45%;"></div></div></div><div style="display:flex;gap:1rem;margin-bottom:1rem;"><div class="skel" style="height:.75rem;flex:1;"></div><div class="skel" style="height:.75rem;flex:1;"></div></div><div class="skel" style="height:.65rem;margin-bottom:.85rem;width:52%;"></div><div class="skel" style="height:2rem;border-radius:.5rem;"></div></div>
+    <div class="g-card" style="padding:1.25rem;" id="_skel4"><div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;"><div class="skel" style="width:2.8rem;height:2.8rem;border-radius:.55rem;flex-shrink:0;"></div><div style="flex:1;"><div class="skel" style="height:.75rem;margin-bottom:.5rem;width:68%;"></div><div class="skel" style="height:.6rem;width:38%;"></div></div></div><div style="display:flex;gap:1rem;margin-bottom:1rem;"><div class="skel" style="height:.75rem;flex:1;"></div><div class="skel" style="height:.75rem;flex:1;"></div></div><div class="skel" style="height:.65rem;margin-bottom:.85rem;width:58%;"></div><div class="skel" style="height:2rem;border-radius:.5rem;"></div></div>
+    <div class="g-card" style="padding:1.25rem;" id="_skel5"><div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;"><div class="skel" style="width:2.8rem;height:2.8rem;border-radius:.55rem;flex-shrink:0;"></div><div style="flex:1;"><div class="skel" style="height:.75rem;margin-bottom:.5rem;width:72%;"></div><div class="skel" style="height:.6rem;width:42%;"></div></div></div><div style="display:flex;gap:1rem;margin-bottom:1rem;"><div class="skel" style="height:.75rem;flex:1;"></div><div class="skel" style="height:.75rem;flex:1;"></div></div><div class="skel" style="height:.65rem;margin-bottom:.85rem;width:48%;"></div><div class="skel" style="height:2rem;border-radius:.5rem;"></div></div>
+  </div>
 
-    <a href="/" style="display:inline-flex;align-items:center;gap:.4rem;margin-top:1.75rem;font-size:.78rem;color:var(--muted);text-decoration:none;transition:color .2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-      Вернуться на главную
-    </a>
+  <!-- Clans grid -->
+  <div id="clans-grid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;"></div>
+
+  <!-- Empty state -->
+  <div id="clans-empty" class="clans-empty" style="display:none;">
+    <div style="font-size:3.5rem;margin-bottom:1rem;filter:drop-shadow(0 0 18px rgba(180,0,30,0.5));">⚔</div>
+    <p class="gothic" style="font-size:1rem;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:.5rem;">Кланов пока нет</p>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:1.5rem;">Создайте первый клан и объединяйте игроков!</p>
+    <button id="empty-create-btn" onclick="openCreateModal()" style="display:none;padding:.65rem 1.5rem;border-radius:.55rem;border:1px solid rgba(201,169,74,0.45);background:rgba(201,169,74,0.12);color:var(--gold);font-size:.84rem;font-weight:700;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:.06em;transition:all .2s;" onmouseover="this.style.background='rgba(201,169,74,0.22)'" onmouseout="this.style.background='rgba(201,169,74,0.12)'">
+      + Создать клан
+    </button>
+  </div>
+
+  <!-- Search-empty state -->
+  <div id="clans-noresult" style="display:none;text-align:center;padding:3rem 1rem;">
+    <div style="font-size:2.5rem;margin-bottom:.75rem;opacity:.55;filter:drop-shadow(0 0 12px rgba(180,0,30,0.4));">🔍</div>
+    <p class="gothic" style="font-size:.9rem;font-weight:600;color:var(--text);margin-bottom:.4rem;">Ничего не найдено</p>
+    <p style="font-size:.78rem;color:var(--muted);">Попробуйте другой запрос</p>
   </div>
 </div>
 
+<!-- Create-clan modal -->
+<div class="modal-backdrop" id="create-modal" onclick="onBackdropClick(event)">
+  <div class="modal-box">
+    <button onclick="closeCreateModal()" style="position:absolute;top:.9rem;right:.9rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;" title="Закрыть">✕</button>
+    <h2 class="gothic" style="font-size:.95rem;font-weight:700;letter-spacing:.1em;color:var(--text);text-transform:uppercase;margin-bottom:1.5rem;">Создать клан</h2>
+    <div style="display:flex;flex-direction:column;gap:1rem;">
+      <div>
+        <div class="modal-label">Название клана</div>
+        <input id="clan-name-input" class="modal-input" type="text" placeholder="Ночные вампиры" maxlength="40">
+      </div>
+      <div>
+        <div class="modal-label">Тег клана (2–6 символов)</div>
+        <input id="clan-tag-input" class="modal-input" type="text" placeholder="NV" maxlength="6" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div>
+        <div class="modal-label">Описание <span style="color:rgba(148,136,168,0.5);font-size:.65rem;">(необязательно)</span></div>
+        <textarea id="clan-desc-input" class="modal-input" rows="3" placeholder="Коротко о вашем клане…" maxlength="200" style="resize:vertical;min-height:70px;"></textarea>
+      </div>
+      <p id="create-error" style="font-size:.76rem;color:#f87171;display:none;"></p>
+      <button id="create-submit-btn" class="modal-submit" onclick="submitCreateClan()">Основать клан</button>
+    </div>
+  </div>
+</div>
+
+<script src="/common.js"></script>
 <script>
 const API = '/api';
-function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
 
+/* ── State ── */
+let _allClans = [];    // full list from API
+let _me = null;        // current user object (or null)
+
+/* ── Helpers ── */
 function applySiteBackground(bg) {
   bg = (bg || '').trim();
   if (!bg) return;
@@ -195,6 +313,26 @@ function applySiteBackground(bg) {
   document.body.style.backgroundPosition = 'center,center,center,center';
   document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
 }
+
+function toggleMobileNav() {
+  const overlay = document.getElementById('mob-overlay');
+  const drawer = document.getElementById('mob-drawer');
+  const isOpen = drawer.classList.contains('open');
+  drawer.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('open', !isOpen);
+  document.body.style.overflow = isOpen ? '' : 'hidden';
+}
+
+/* ── Site settings & nav auth ── */
+(async function() {
+  try {
+    const d = await fetch(`${API}/settings/public`).then(r => r.json());
+    const title = (d.site_title || 'V Rising').trim();
+    document.title = `${title} — Кланы`;
+    document.getElementById('nav-logo').textContent = '⚔ ' + title;
+    applySiteBackground(d.bg_image_url);
+  } catch {}
+})();
 
 (function() {
   const cached = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
@@ -217,24 +355,301 @@ function applySiteBackground(bg) {
   }).catch(() => {});
 })();
 
-(async function() {
-  try {
-    const d = await fetch(`${API}/settings/public`).then(r => r.json());
-    const title = (d.site_title || 'V Rising').trim();
-    document.title = `${title} — Кланы`;
-    document.getElementById('nav-logo').textContent = '⚔ ' + title;
-    applySiteBackground(d.bg_image_url);
-  } catch {}
-})();
-
-function toggleMobileNav() {
-  const overlay = document.getElementById('mob-overlay');
-  const drawer = document.getElementById('mob-drawer');
-  const isOpen = drawer.classList.contains('open');
-  drawer.classList.toggle('open', !isOpen);
-  overlay.classList.toggle('open', !isOpen);
-  document.body.style.overflow = isOpen ? '' : 'hidden';
+/* ── Summary stat tiles ── */
+function renderStats(clans) {
+  const row = document.getElementById('clan-stats-row');
+  if (!clans.length) { row.innerHTML = ''; return; }
+  const totalMembers = clans.reduce((s, c) => s + (c.member_count || 0), 0);
+  row.innerHTML = `
+    <div class="stat-tile">
+      <div style="font-family:'Oswald',sans-serif;font-size:1.3rem;font-weight:600;color:var(--text);">${clans.length}</div>
+      <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.2rem;">Кланов</div>
+    </div>
+    <div class="stat-tile">
+      <div style="font-family:'Oswald',sans-serif;font-size:1.3rem;font-weight:600;color:var(--text);">${totalMembers}</div>
+      <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.2rem;">Участников</div>
+    </div>
+    ${_me ? `<div class="stat-tile">
+      <div style="font-family:'Oswald',sans-serif;font-size:1.3rem;font-weight:600;color:var(--gold);">${_me.clan_id ? '✓' : '—'}</div>
+      <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.2rem;">Вы в клане</div>
+    </div>` : ''}
+  `;
 }
+
+/* ── Card button HTML ── */
+function cardButtonHtml(clan) {
+  if (!_me) {
+    return `<button class="clan-btn guest" disabled>Войдите, чтобы вступить</button>`;
+  }
+  if (_me.clan_id === clan.id) {
+    if (_me.id === clan.leader_id) {
+      return `<button class="clan-btn mine" disabled>Вы — лидер</button>`;
+    }
+    return `<button class="clan-btn leave" onclick="leaveClan(event,${clan.id},'${esc(clan.name)}')">Покинуть клан</button>`;
+  }
+  if (_me.clan_id != null) {
+    return `<button class="clan-btn guest" disabled>Уже в клане</button>`;
+  }
+  return `<button class="clan-btn join" onclick="joinClan(event,${clan.id},'${esc(clan.name)}')">Вступить</button>`;
+}
+
+/* ── Render single card HTML ── */
+function buildCard(clan, idx) {
+  const isMine = _me && _me.clan_id === clan.id;
+  const tag = esc(clan.tag || '?');
+  const name = esc(clan.name);
+  const leader = esc(clan.leader_username || '?');
+  const members = clan.member_count || 0;
+  const delay = idx * 60;
+
+  return `
+    <div class="clan-card g-card${isMine ? ' is-mine' : ''}"
+      data-clan-id="${clan.id}"
+      data-search="${(clan.name + ' ' + clan.tag).toLowerCase()}"
+      style="animation:clan-in .35s ease both;animation-delay:${delay}ms;">
+      <!-- Header: tag badge + name -->
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;">
+        <div style="width:2.8rem;height:2.8rem;border-radius:.55rem;background:linear-gradient(135deg,rgba(80,0,150,0.4),rgba(120,0,20,0.3));border:1px solid rgba(110,0,150,0.3);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:var(--gold);flex-shrink:0;">${tag}</div>
+        <div style="min-width:0;">
+          <div style="display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;">
+            <div style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
+            ${isMine ? '<span class="mine-badge">Вы здесь</span>' : ''}
+          </div>
+          <div style="font-size:.62rem;color:var(--muted);margin-top:.1rem;">${members} участник${pluralMembers(members)}</div>
+        </div>
+      </div>
+      <!-- Stats row -->
+      <div style="display:flex;gap:1rem;margin-bottom:.9rem;">
+        <div style="text-align:center;">
+          <div style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--text);">${members}</div>
+          <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Участников</div>
+        </div>
+        <div style="width:1px;background:rgba(110,0,150,0.18);flex-shrink:0;"></div>
+        <div style="text-align:center;">
+          <div style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--muted);">${tag}</div>
+          <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Тег</div>
+        </div>
+      </div>
+      <!-- Leader -->
+      <div style="font-size:.72rem;color:var(--muted);margin-bottom:.85rem;">Лидер: <span style="color:var(--text);">${leader}</span></div>
+      <!-- Action button -->
+      <div class="card-btn-wrap">${cardButtonHtml(clan)}</div>
+    </div>
+  `;
+}
+
+function pluralMembers(n) {
+  const mod10 = n % 10, mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return '';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'а';
+  return 'ов';
+}
+
+/* ── Render grid ── */
+function renderGrid(clans) {
+  const grid = document.getElementById('clans-grid');
+  const empty = document.getElementById('clans-empty');
+  const noresult = document.getElementById('clans-noresult');
+
+  if (!clans.length && !_allClans.length) {
+    grid.style.display = 'none';
+    empty.style.display = '';
+    noresult.style.display = 'none';
+    if (_me) {
+      document.getElementById('empty-create-btn').style.display = 'inline-block';
+    }
+    return;
+  }
+
+  if (!clans.length) {
+    grid.style.display = 'none';
+    empty.style.display = 'none';
+    noresult.style.display = '';
+    return;
+  }
+
+  empty.style.display = 'none';
+  noresult.style.display = 'none';
+  grid.style.display = 'grid';
+  grid.innerHTML = clans.map((c, i) => buildCard(c, i)).join('');
+}
+
+/* ── Filter cards by search query ── */
+function filterCards() {
+  const q = (document.getElementById('clan-search').value || '').trim().toLowerCase();
+  if (!q) { renderGrid(_allClans); return; }
+  renderGrid(_allClans.filter(c => (c.name + ' ' + c.tag).toLowerCase().includes(q)));
+}
+
+/* ── Load clans + current user ── */
+async function init() {
+  try {
+    const [clans, meRes] = await Promise.all([
+      fetch(`${API}/clans`).then(r => r.json()),
+      fetch(`${API}/auth/me`, { credentials: 'include' }),
+    ]);
+
+    if (meRes.ok) {
+      _me = await meRes.json();
+      // Show create button for logged-in users without a clan
+      if (!_me.clan_id) {
+        document.getElementById('create-clan-btn').style.display = 'inline-flex';
+      }
+    }
+
+    _allClans = Array.isArray(clans) ? clans : [];
+
+    // Hide skeleton, show grid
+    document.getElementById('clans-loading').style.display = 'none';
+
+    renderStats(_allClans);
+    renderGrid(_allClans);
+  } catch (err) {
+    document.getElementById('clans-loading').style.display = 'none';
+    showToast('Ошибка загрузки кланов', 'error');
+  }
+}
+
+/* ── Join clan ── */
+async function joinClan(e, clanId, clanName) {
+  e.stopPropagation();
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  btn.textContent = 'Вступаем…';
+  try {
+    const res = await fetch(`${API}/clans/${clanId}/join`, {
+      method: 'POST', credentials: 'include',
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.detail || 'Ошибка');
+    }
+    const updated = await res.json();
+    // Flash animation
+    btn.classList.add('flashing');
+    setTimeout(() => btn.classList.remove('flashing'), 700);
+    showToast(`Вы вступили в клан ${clanName}`, 'success');
+    // Update state
+    if (_me) _me.clan_id = clanId;
+    // Refresh the card's button state in-place
+    const card = document.querySelector(`[data-clan-id="${clanId}"]`);
+    if (card) {
+      card.classList.add('is-mine');
+      const nameEl = card.querySelector('[style*="Cinzel"]');
+      // Update member count from response
+      const clan = _allClans.find(c => c.id === clanId);
+      if (clan) { clan.member_count = updated.member_count; }
+      // Re-render all cards to update button states on other cards
+      renderGrid(_allClans);
+      // Update stats
+      renderStats(_allClans);
+      // Show leave / you are leader
+      if (!_me.clan_id) _me.clan_id = clanId;
+      if (_me && !_me.clan_id) document.getElementById('create-clan-btn').style.display = 'none';
+    }
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Вступить';
+    showToast(err.message, 'error');
+  }
+}
+
+/* ── Leave clan ── */
+async function leaveClan(e, clanId, clanName) {
+  e.stopPropagation();
+  const btn = e.currentTarget;
+  btn.disabled = true;
+  btn.textContent = 'Выходим…';
+  try {
+    const res = await fetch(`${API}/clans/leave`, {
+      method: 'POST', credentials: 'include',
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.detail || 'Ошибка');
+    }
+    btn.classList.add('flashing');
+    setTimeout(() => btn.classList.remove('flashing'), 700);
+    showToast(`Вы покинули клан ${clanName}`, 'info');
+    // Update state
+    if (_me) _me.clan_id = null;
+    // Update clan list (reload to get fresh member counts)
+    const fresh = await fetch(`${API}/clans`).then(r => r.json()).catch(() => _allClans);
+    _allClans = Array.isArray(fresh) ? fresh : _allClans;
+    renderStats(_allClans);
+    renderGrid(_allClans);
+    // Show create button again
+    document.getElementById('create-clan-btn').style.display = 'inline-flex';
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Покинуть клан';
+    showToast(err.message, 'error');
+  }
+}
+
+/* ── Create clan modal ── */
+function openCreateModal() {
+  if (!_me) { showToast('Войдите, чтобы создать клан', 'warning'); return; }
+  document.getElementById('create-modal').classList.add('open');
+  document.getElementById('clan-name-input').focus();
+}
+function closeCreateModal() {
+  document.getElementById('create-modal').classList.remove('open');
+  document.getElementById('create-error').style.display = 'none';
+}
+function onBackdropClick(e) {
+  if (e.target === document.getElementById('create-modal')) closeCreateModal();
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCreateModal(); });
+
+async function submitCreateClan() {
+  const name = document.getElementById('clan-name-input').value.trim();
+  const tag  = document.getElementById('clan-tag-input').value.trim().toUpperCase();
+  const desc = document.getElementById('clan-desc-input').value.trim();
+  const errEl = document.getElementById('create-error');
+  const btn   = document.getElementById('create-submit-btn');
+
+  errEl.style.display = 'none';
+  if (!name) { errEl.textContent = 'Введите название клана'; errEl.style.display = ''; return; }
+  if (!tag || tag.length < 2) { errEl.textContent = 'Тег должен содержать минимум 2 символа'; errEl.style.display = ''; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Создаём…';
+  try {
+    const res = await fetch(`${API}/clans`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, tag, description: desc }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.detail || 'Ошибка создания клана');
+    }
+    const newClan = await res.json();
+    showToast(`Клан «${name}» основан!`, 'success');
+    closeCreateModal();
+    // Reset form
+    document.getElementById('clan-name-input').value = '';
+    document.getElementById('clan-tag-input').value = '';
+    document.getElementById('clan-desc-input').value = '';
+    // Update state
+    if (_me) _me.clan_id = newClan.id;
+    // Hide create button
+    document.getElementById('create-clan-btn').style.display = 'none';
+    // Add to list and re-render
+    _allClans.unshift({ id: newClan.id, name: newClan.name, tag: newClan.tag, description: newClan.description || '', leader_id: newClan.leader_id, leader_username: newClan.leader_username || _me.username, member_count: newClan.member_count || 1 });
+    renderStats(_allClans);
+    renderGrid(_allClans);
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.style.display = '';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Основать клан';
+  }
+}
+
+init();
 </script>
 </body>
 </html>
