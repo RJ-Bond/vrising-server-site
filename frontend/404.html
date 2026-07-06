@@ -1,62 +1,423 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>404 — Страница не найдена</title>
-  <meta property="og:title" content="V Rising — 404" />
   <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="V RISING" />
+  <meta property="og:title" content="V Rising — 404" />
   <meta name="robots" content="noindex,nofollow" />
+  <title>404 — Страница не найдена</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/tailwind.min.css" />
   <style>
-    :root { --bg:#06000f; --text:#e2d8f0; --muted:#9488a8; --gold:#c9a94a; --crimson:#c8002a; }
-    *{box-sizing:border-box;margin:0;padding:0;}
-    body{background:var(--bg);background-image:radial-gradient(ellipse at 15% 50%,rgba(80,0,130,0.12) 0%,transparent 55%),radial-gradient(ellipse at 85% 20%,rgba(150,0,28,0.08) 0%,transparent 50%);background-attachment:fixed;font-family:'Inter',system-ui,sans-serif;color:var(--text);min-height:100vh;}
-    body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(rgba(255,255,255,0.055) 1px,transparent 1px);background-size:28px 28px;}
-    .gothic{font-family:'Cinzel',serif;}
-    .glass-nav{background:rgba(8,0,14,0.9);border-bottom:1px solid rgba(110,0,20,0.35);backdrop-filter:blur(14px);position:sticky;top:0;z-index:40;}
-    .btn-primary{background:linear-gradient(135deg,#6a001a,#a00022);border:none;border-radius:.55rem;padding:.6rem 1.3rem;color:#fff;font-size:.82rem;font-weight:700;cursor:pointer;box-shadow:0 0 14px rgba(180,0,30,0.45);transition:all .2s;text-decoration:none;display:inline-block;}
-    .btn-primary:hover{box-shadow:0 0 26px rgba(210,0,40,0.7);transform:translateY(-1px);}
-    .btn-ghost{background:rgba(80,0,15,0.3);border:1px solid rgba(150,0,20,0.35);box-shadow:none;color:var(--muted);border-radius:.55rem;padding:.6rem 1.1rem;font-size:.82rem;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-block;}
-    .btn-ghost:hover{background:rgba(100,0,20,0.4);color:var(--text);}
-    .star{position:fixed;border-radius:50%;background:#fff;pointer-events:none;z-index:0;}
-    @keyframes twinkle{0%{opacity:.1}100%{opacity:.6}}
-    @keyframes float-up{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-    .anim{animation:float-up .7s ease both;}
+    :root {
+      --bg:      #06000f;
+      --card:    rgba(14,5,22,0.88);
+      --border:  rgba(110,0,150,0.22);
+      --text:    #e2d8f0;
+      --muted:   #9488a8;
+      --gold:    #c9a94a;
+      --crimson: #c8002a;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* ── Dot grid ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background-image: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* ── Background image ── */
+    #bg-layer {
+      position: fixed; inset: 0; z-index: 0;
+      background-size: cover; background-position: center;
+      opacity: 0; transition: opacity 1s ease;
+    }
+    #bg-layer::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom,
+        rgba(6,0,15,0.60) 0%,
+        rgba(6,0,15,0.80) 60%,
+        rgba(6,0,15,0.97) 100%);
+    }
+
+    /* ── Fog ── */
+    .fog { position: fixed; inset: 0; pointer-events: none; z-index: 1; overflow: hidden; }
+    .fog::before {
+      content: ''; position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
+      background: radial-gradient(ellipse at 38% 55%, rgba(90,0,150,0.12) 0%, transparent 55%);
+      animation: fog1 28s ease-in-out infinite alternate;
+    }
+    .fog::after {
+      content: ''; position: absolute; width: 160%; height: 160%; top: -30%; left: -30%;
+      background: radial-gradient(ellipse at 65% 28%, rgba(170,0,32,0.09) 0%, transparent 50%);
+      animation: fog2 38s ease-in-out infinite alternate-reverse;
+    }
+    @keyframes fog1 { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(5%,7%) scale(1.1); } }
+    @keyframes fog2 { 0% { transform: translate(0,0) scale(1.06); } 100% { transform: translate(-6%,4%) scale(1); } }
+
+    /* ── Stars canvas ── */
+    #stars-canvas { position: fixed; inset: 0; z-index: 1; pointer-events: none; }
+
+    /* ── Nav ── */
+    nav {
+      position: relative; z-index: 10;
+      background: rgba(6,0,15,0.88);
+      border-bottom: 1px solid rgba(150,0,28,0.28);
+      backdrop-filter: blur(14px);
+      padding: .65rem 1.5rem;
+      display: flex; align-items: center;
+    }
+    .nav-logo {
+      font-family: 'Cinzel', serif;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: .18em;
+      color: var(--gold);
+      text-decoration: none;
+      text-transform: uppercase;
+      text-shadow: 0 0 20px rgba(201,169,74,0.3);
+      transition: text-shadow .2s;
+    }
+    .nav-logo:hover { text-shadow: 0 0 30px rgba(201,169,74,0.55); }
+
+    /* ── Page center ── */
+    .page-center {
+      position: relative; z-index: 5;
+      flex: 1; display: flex;
+      align-items: center; justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    /* ── Card ── */
+    .error-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1.2rem;
+      padding: 3rem 2.5rem 2.5rem;
+      width: 100%; max-width: 460px;
+      text-align: center;
+      box-shadow:
+        0 0 90px rgba(0,0,0,0.8),
+        0 0 40px rgba(110,0,150,0.08),
+        inset 0 0 40px rgba(80,0,120,0.05),
+        inset 0 1px 0 rgba(255,255,255,0.04);
+      backdrop-filter: blur(10px);
+      animation: card-in .55s cubic-bezier(.22,.68,0,1.2) both;
+      position: relative;
+    }
+    @keyframes card-in {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* corner runes */
+    .corner { position: absolute; font-size: .6rem; color: rgba(201,169,74,0.25); line-height: 1; }
+    .corner-tl { top:.6rem; left:.7rem; }
+    .corner-tr { top:.6rem; right:.7rem; }
+    .corner-bl { bottom:.6rem; left:.7rem; }
+    .corner-br { bottom:.6rem; right:.7rem; }
+
+    /* ── Icon ── */
+    .error-icon {
+      font-size: 2.5rem;
+      color: var(--crimson);
+      filter: drop-shadow(0 0 20px rgba(200,0,42,0.6));
+      animation: pulse 3s ease-in-out infinite;
+      line-height: 1;
+      margin-bottom: .6rem;
+      display: block;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50%       { transform: scale(1.08); }
+    }
+
+    /* ── 404 number ── */
+    .error-number {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(5rem, 15vw, 8rem);
+      font-weight: 900;
+      line-height: .95;
+      color: transparent;
+      background: linear-gradient(135deg, var(--crimson), rgba(200,0,42,0.5), #800020);
+      -webkit-background-clip: text;
+      background-clip: text;
+      text-shadow: 0 0 60px rgba(200,0,42,0.4);
+      display: block;
+      margin-bottom: .4rem;
+    }
+
+    /* ── Subtitle ── */
+    .error-subtitle {
+      font-family: 'Cinzel', serif;
+      font-size: 1.1rem;
+      letter-spacing: .2em;
+      color: var(--gold);
+      text-transform: uppercase;
+      text-shadow: 0 0 16px rgba(201,169,74,0.25);
+      margin-bottom: 1.1rem;
+    }
+
+    /* ── Divider ── */
+    .blood-divider {
+      width: 60px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--crimson), transparent);
+      margin: 0 auto 1.25rem;
+      position: relative;
+      overflow: visible;
+    }
+    .blood-divider::after {
+      content: '';
+      position: absolute;
+      top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 2px;
+      height: 0;
+      background: linear-gradient(to bottom, var(--crimson), rgba(200,0,42,0));
+      animation: drip 3.2s ease-in-out infinite;
+      border-radius: 0 0 2px 2px;
+    }
+    @keyframes drip {
+      0%, 30% { height: 0; opacity: 0; }
+      45%      { height: 12px; opacity: 1; }
+      75%      { height: 22px; opacity: .5; }
+      100%     { height: 28px; opacity: 0; }
+    }
+
+    /* ── Description ── */
+    .error-desc {
+      color: var(--muted);
+      max-width: 340px;
+      line-height: 1.65;
+      font-size: .88rem;
+      margin: 0 auto 1.6rem;
+    }
+
+    /* ── ?from= hint ── */
+    .from-hint {
+      font-size: .73rem;
+      color: rgba(148,136,168,0.55);
+      margin-top: -.75rem;
+      margin-bottom: 1.2rem;
+      word-break: break-all;
+      display: none;
+    }
+    .from-hint.visible { display: block; }
+
+    /* ── Buttons ── */
+    .btn-row {
+      display: flex; gap: .75rem; flex-wrap: wrap;
+      justify-content: center; margin-bottom: 1.4rem;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #6a0018, var(--crimson));
+      border: 1px solid rgba(200,0,40,0.4);
+      box-shadow: 0 0 24px rgba(181,0,42,0.3);
+      color: #fff; border-radius: .6rem;
+      padding: .72rem 1.4rem;
+      font-size: .84rem; font-weight: 700;
+      font-family: 'Cinzel', serif;
+      letter-spacing: .08em; text-transform: uppercase;
+      cursor: pointer; text-decoration: none; display: inline-block;
+      transition: box-shadow .2s, transform .15s, background .2s;
+      position: relative; overflow: hidden;
+    }
+    .btn-primary:hover {
+      box-shadow: 0 0 38px rgba(181,0,42,0.55);
+      transform: translateY(-1px);
+      background: linear-gradient(135deg, #800020, #d4002e);
+    }
+    .btn-ghost {
+      background: rgba(80,0,15,0.3);
+      border: 1px solid rgba(150,0,20,0.35);
+      color: var(--muted); border-radius: .6rem;
+      padding: .72rem 1.4rem;
+      font-size: .84rem; font-weight: 700;
+      font-family: 'Cinzel', serif;
+      letter-spacing: .08em; text-transform: uppercase;
+      cursor: pointer; text-decoration: none; display: inline-block;
+      transition: all .2s;
+      position: relative; overflow: hidden;
+    }
+    .btn-ghost:hover {
+      background: rgba(100,0,20,0.45);
+      color: var(--text);
+      border-color: rgba(200,0,40,0.4);
+    }
+
+    /* ── Small links row ── */
+    .small-links {
+      display: flex; gap: .6rem; align-items: center;
+      justify-content: center; flex-wrap: wrap;
+    }
+    .small-links a {
+      font-size: .72rem;
+      color: rgba(148,136,168,0.6);
+      text-decoration: none;
+      letter-spacing: .05em;
+      transition: color .18s;
+    }
+    .small-links a:hover { color: var(--muted); }
+    .small-links .sep { color: rgba(148,136,168,0.25); font-size: .65rem; }
+
+    /* ── Button ripple ── */
+    .btn-ripple {
+      position: absolute; border-radius: 50%;
+      background: rgba(255,255,255,0.18);
+      transform: scale(0); animation: ripple-out .5s ease-out forwards;
+      pointer-events: none;
+    }
+    @keyframes ripple-out { to { transform: scale(3); opacity: 0; } }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: rgba(8,0,16,0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(150,0,28,0.5); border-radius: 3px; }
+
+    /* ── Mobile ── */
+    @media (max-width: 480px) {
+      nav { padding: .6rem 1rem; }
+      .error-card { padding: 2.25rem 1.25rem 2rem; }
+      .btn-primary, .btn-ghost { padding: .65rem 1.1rem; font-size: .78rem; }
+    }
   </style>
 </head>
 <body>
-<div id="stars"></div>
-<nav class="glass-nav" style="position:relative;z-index:40;">
-  <div style="max-width:900px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
-    <a href="/" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">⚔ V RISING</a>
-    <a href="/" class="btn-ghost" style="font-size:.75rem;">← На главную</a>
-  </div>
+
+<div id="bg-layer"></div>
+<div class="fog"></div>
+<canvas id="stars-canvas"></canvas>
+
+<nav>
+  <a href="/" class="nav-logo" id="nav-logo">⚔ V Rising</a>
 </nav>
 
-<div style="position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 56px);text-align:center;padding:2rem 1rem;gap:1.2rem;">
-  <div class="anim" style="animation-delay:.05s;font-size:4.5rem;line-height:1;filter:drop-shadow(0 0 24px rgba(200,0,40,0.6));">☠</div>
-  <h1 class="gothic anim" style="animation-delay:.15s;font-size:5rem;font-weight:900;color:var(--gold);letter-spacing:.05em;text-shadow:0 0 40px rgba(201,169,74,0.4);">404</h1>
-  <p class="gothic anim" style="animation-delay:.25s;font-size:.85rem;letter-spacing:.18em;color:var(--muted);text-transform:uppercase;">— Страница не найдена —</p>
-  <p class="anim" style="animation-delay:.35s;font-size:.9rem;color:var(--muted);max-width:380px;line-height:1.65;">Эта страница исчезла во тьме. Возможно, она никогда не существовала — или растворилась в ночи.</p>
-  <div class="anim" style="animation-delay:.45s;display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center;margin-top:.5rem;">
-    <a href="/" class="btn-primary">← На главную</a>
-    <button onclick="history.back()" class="btn-ghost">↩ Назад</button>
+<div class="page-center">
+  <div class="error-card">
+    <span class="corner corner-tl">✦</span>
+    <span class="corner corner-tr">✦</span>
+    <span class="corner corner-bl">✦</span>
+    <span class="corner corner-br">✦</span>
+
+    <span class="error-icon">⚔</span>
+    <span class="error-number">404</span>
+    <div class="error-subtitle">Страница не найдена</div>
+
+    <div class="blood-divider"></div>
+
+    <p class="error-desc">
+      Этот путь ведёт во тьму.<br>
+      Возможно, страница была удалена или никогда не существовала.
+    </p>
+
+    <p class="from-hint" id="from-hint"></p>
+
+    <div class="btn-row">
+      <a href="/" class="btn-primary">← На главную</a>
+      <a href="/servers.html" class="btn-ghost">⚔ Серверы</a>
+    </div>
+
+    <div class="small-links">
+      <a href="/players.html">Игроки</a>
+      <span class="sep">·</span>
+      <a href="/clans.html">Кланы</a>
+      <span class="sep">·</span>
+      <a href="/faq.html">FAQ</a>
+    </div>
   </div>
 </div>
 
 <script>
-const ct = document.getElementById('stars');
-for (let i = 0; i < 35; i++) {
-  const s = document.createElement('div');
-  s.className = 'star';
-  const sz = Math.random() * 1.8 + .5;
-  s.style.cssText = `width:${sz}px;height:${sz}px;top:${Math.random()*100}vh;left:${Math.random()*100}vw;animation:twinkle ${2+Math.random()*4}s ease-in-out infinite alternate;animation-delay:${Math.random()*5}s;`;
-  ct.appendChild(s);
-}
+// ── Stars ─────────────────────────────────────────────────────────────────
+(function () {
+  const canvas = document.getElementById('stars-canvas');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  function init() {
+    resize();
+    stars = Array.from({ length: 90 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.1 + .2,
+      o: Math.random() * .5 + .2,
+      s: Math.random() * .008 + .003,
+      d: Math.random() > .5 ? 1 : -1,
+    }));
+  }
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    stars.forEach(s => {
+      s.o += s.s * s.d;
+      if (s.o > .75 || s.o < .1) s.d *= -1;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(212,196,224,${s.o})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  window.addEventListener('resize', resize);
+  init(); draw();
+})();
+
+// ── Load settings ─────────────────────────────────────────────────────────
+(async function () {
+  try {
+    const d = await fetch('/api/settings/public').then(r => r.json());
+    const title = (d.site_title || 'V Rising').trim();
+    document.title = `404 — ${title}`;
+    document.getElementById('nav-logo').textContent = `⚔ ${title}`;
+    if (d.bg_image_url) {
+      const bg = document.getElementById('bg-layer');
+      bg.style.backgroundImage = `url('${d.bg_image_url}')`;
+      bg.style.opacity = '1';
+    }
+  } catch {}
+})();
+
+// ── ?from= hint ───────────────────────────────────────────────────────────
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const from = params.get('from');
+  if (from) {
+    const el = document.getElementById('from-hint');
+    el.textContent = `Вы пытались открыть: ${from}`;
+    el.classList.add('visible');
+  }
+})();
+
+// ── Button ripple ─────────────────────────────────────────────────────────
+document.querySelectorAll('.btn-primary, .btn-ghost').forEach(btn => {
+  btn.addEventListener('click', function (e) {
+    const r = document.createElement('span');
+    r.className = 'btn-ripple';
+    const rect = this.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    r.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - rect.left - size / 2}px;top:${e.clientY - rect.top - size / 2}px;`;
+    this.appendChild(r);
+    r.addEventListener('animationend', () => r.remove());
+  });
+});
 </script>
 </body>
 </html>
