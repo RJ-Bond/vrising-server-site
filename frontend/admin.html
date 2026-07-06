@@ -122,6 +122,11 @@
     td { padding: .65rem 1rem; border-bottom: 1px solid rgba(150,0,28,0.1); color: var(--text); }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: rgba(150,0,28,0.05); }
+    td { transition: background .15s; }
+    tbody tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
+    tbody tr { transition: background .15s; position:relative; }
+    tbody tr:hover td { background: rgba(150,0,28,0.08) !important; }
+    tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 rgba(181,0,42,0.7); }
     .pagination-btn { background: rgba(14,3,24,0.8); border: 1px solid rgba(150,0,28,0.3); color: var(--muted); padding: .35rem .75rem; border-radius: .4rem; cursor: pointer; font-size: .8rem; transition: all .2s; }
     .pagination-btn:hover, .pagination-btn.active { border-color: var(--accent); color: var(--text); box-shadow: 0 0 8px var(--accent-glow); }
     ::-webkit-scrollbar { width: 5px; }
@@ -351,6 +356,45 @@
       .sidebar-btn { flex:1; min-width:4.5rem; text-align:center; border-left:none !important; border-bottom:2px solid transparent; }
       .sidebar-btn.active { border-bottom-color:var(--accent) !important; }
     }
+
+    /* ── Section fade-in animation ── */
+    @keyframes section-in {
+      from { opacity:0; transform:translateY(10px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    [id^="section-"] { animation: section-in .28s ease both; }
+
+    /* ── Table shimmer skeleton ── */
+    @keyframes admin-shimmer {
+      0%   { background-position:-200% center; }
+      100% { background-position:200% center; }
+    }
+    .table-skel-row td {
+      background: linear-gradient(90deg,
+        rgba(255,255,255,0.03) 25%,
+        rgba(255,255,255,0.07) 50%,
+        rgba(255,255,255,0.03) 75%
+      ) !important;
+      background-size:200% 100% !important;
+      animation:admin-shimmer 1.5s ease-in-out infinite;
+      color:transparent !important;
+      border-radius:3px;
+      user-select:none;
+    }
+    .table-skel-row:nth-child(2) td { animation-delay:.1s; }
+    .table-skel-row:nth-child(3) td { animation-delay:.2s; }
+    .table-skel-row:nth-child(4) td { animation-delay:.3s; }
+    .table-skel-row:nth-child(5) td { animation-delay:.4s; }
+
+    /* ── Row entrance animation ── */
+    @keyframes row-in { from{opacity:0;transform:translateX(-4px)} to{opacity:1;transform:translateX(0)} }
+    tbody tr { animation: row-in .2s ease both; }
+    tbody tr:nth-child(1) { animation-delay:0ms; }
+    tbody tr:nth-child(2) { animation-delay:30ms; }
+    tbody tr:nth-child(3) { animation-delay:60ms; }
+    tbody tr:nth-child(4) { animation-delay:90ms; }
+    tbody tr:nth-child(5) { animation-delay:120ms; }
+    tbody tr:nth-child(n+6) { animation-delay:150ms; }
   </style>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#06000f">
@@ -397,35 +441,35 @@
       <div style="padding:.45rem 1rem;border-bottom:1px solid rgba(150,0,28,.12);">
         <span id="sb-online" class="offline"><span class="sb-online-dot"></span><span id="sb-online-text">Загрузка…</span></span>
       </div>
-      <button id="btn-dashboard" onclick="showSection('dashboard')" class="sidebar-btn active">📊 Дашборд</button>
+      <button id="btn-dashboard" onclick="showSection('dashboard')" class="sidebar-btn active"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Дашборд</span></button>
 
       <div class="sidebar-group-label">Контент</div>
-      <button id="btn-news"      onclick="showSection('news')"      class="sidebar-btn">📰 Новости</button>
-      <button id="btn-comments"  onclick="showSection('comments')"  class="sidebar-btn">💬 Комментарии<span id="badge-comments" class="sidebar-badge" style="display:none;"></span></button>
-      <button id="btn-events"    onclick="showSection('events')"    class="sidebar-btn">🗓 События</button>
+      <button id="btn-news"      onclick="showSection('news')"      class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l4 4v10a2 2 0 01-2 2z"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="13" y2="16"/></svg> Новости</span></button>
+      <button id="btn-comments"  onclick="showSection('comments')"  class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Комментарии</span><span id="badge-comments" class="sidebar-badge" style="display:none;"></span></button>
+      <button id="btn-events"    onclick="showSection('events')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> События</span></button>
 
       <div class="sidebar-group-label">Сайт</div>
-      <button id="btn-settings"  onclick="showSection('settings')"  class="sidebar-btn">⚙ Настройки</button>
-      <button id="btn-files"     onclick="showSection('files')"     class="sidebar-btn">📁 Файлы</button>
-      <button id="btn-media"     onclick="showSection('media')"     class="sidebar-btn">🖼 Медиатека</button>
+      <button id="btn-settings"  onclick="showSection('settings')"  class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Настройки</span></button>
+      <button id="btn-files"     onclick="showSection('files')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg> Файлы</span></button>
+      <button id="btn-media"     onclick="showSection('media')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> Медиатека</span></button>
 
       <div class="sidebar-group-label">Люди</div>
-      <button id="btn-users"     onclick="showSection('users')"     class="sidebar-btn">👥 Пользователи<span id="badge-users" class="sidebar-badge" style="display:none;"></span></button>
-      <button id="btn-clans"     onclick="showSection('clans')"     class="sidebar-btn">🛡 Кланы</button>
-      <button id="btn-players"   onclick="showSection('players')"   class="sidebar-btn">🎮 Игроки</button>
-      <button id="btn-resets"    onclick="showSection('resets')"    class="sidebar-btn">🔑 Сброс паролей<span id="badge-resets" class="sidebar-badge" style="display:none;"></span></button>
+      <button id="btn-users"     onclick="showSection('users')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> Пользователи</span><span id="badge-users" class="sidebar-badge" style="display:none;"></span></button>
+      <button id="btn-clans"     onclick="showSection('clans')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Кланы</span></button>
+      <button id="btn-players"   onclick="showSection('players')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Игроки</span></button>
+      <button id="btn-resets"    onclick="showSection('resets')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6"/><path d="M15.5 7.5l3 3L22 7l-3-3"/></svg> Сброс паролей</span><span id="badge-resets" class="sidebar-badge" style="display:none;"></span></button>
 
       <div class="sidebar-group-label">Модерация</div>
-      <button id="btn-reports"   onclick="showSection('reports')"   class="sidebar-btn">🚩 Жалобы<span id="badge-reports" class="sidebar-badge" style="display:none;"></span></button>
+      <button id="btn-reports"   onclick="showSection('reports')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Жалобы</span><span id="badge-reports" class="sidebar-badge" style="display:none;"></span></button>
 
       <div class="sidebar-group-label">Аналитика</div>
-      <button id="btn-analytics" onclick="showSection('analytics')" class="sidebar-btn">📈 Аналитика</button>
-      <button id="btn-backups"   onclick="showSection('backups')"   class="sidebar-btn">💾 Бэкапы</button>
+      <button id="btn-analytics" onclick="showSection('analytics')" class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Аналитика</span></button>
+      <button id="btn-backups"   onclick="showSection('backups')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg> Бэкапы</span></button>
 
       <div class="sidebar-group-label">Система</div>
-      <button id="btn-log"       onclick="showSection('log')"       class="sidebar-btn">📋 Лог</button>
-      <button id="btn-auditlog"  onclick="showSection('auditlog')"  class="sidebar-btn">📋 Журнал действий</button>
-      <button id="btn-errors"    onclick="showSection('errors')"    class="sidebar-btn">❌ Ошибки</button>
+      <button id="btn-log"       onclick="showSection('log')"       class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Лог</span></button>
+      <button id="btn-auditlog"  onclick="showSection('auditlog')"  class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Журнал действий</span></button>
+      <button id="btn-errors"    onclick="showSection('errors')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Ошибки</span></button>
     </div>
   </aside>
 
@@ -1824,6 +1868,13 @@ function showSection(name) {
     const btn = document.getElementById(`btn-${s}`);
     if (btn) btn.className = 'sidebar-btn' + (s === name ? ' active' : '');
   });
+  // Restart fade-in animation on the target section
+  const _target = document.getElementById('section-' + name);
+  if (_target) {
+    _target.style.animation = 'none';
+    void _target.offsetHeight;
+    _target.style.animation = '';
+  }
   if (name === 'editor')   document.getElementById('btn-news').className = 'sidebar-btn active';
   if (name === 'settings') { loadSettings(); loadRules(); loadMaintenanceStatuses(); loadMaintenanceHistory(); }
   if (name === 'users')    loadUsers();
@@ -2144,6 +2195,7 @@ async function submitEditor() {
       errEl.classList.remove('hidden'); return;
     }
     _clearDraft();
+    adminToast('Новость сохранена', 'success');
     closeEditor();
   } finally { btn.disabled = false; btn.textContent = 'Сохранить'; }
 }
@@ -2380,8 +2432,7 @@ async function _doSaveSetting(key, value, opts = {}) {
     if (res.ok) {
       _settingsBaseline[key] = value;
       if (!opts.silent) {
-        const badge = document.getElementById('settings-saved');
-        if (badge) { badge.style.display = 'inline-flex'; setTimeout(() => { badge.style.display = 'none'; }, 2500); }
+        adminToast('Сохранено', 'success');
       }
       if (key === 'https_domain') {
         const hb = document.getElementById('https-badge');
@@ -2951,8 +3002,7 @@ async function saveRules() {
     body: JSON.stringify({ value }),
   });
   if (res.ok) {
-    const badge = document.getElementById('settings-saved');
-    if (badge) { badge.style.display = 'inline-flex'; setTimeout(() => { badge.style.display = 'none'; }, 2500); }
+    adminToast('Правила сохранены', 'success');
   } else { showToast('Ошибка сохранения', 'error'); }
 }
 
@@ -2962,10 +3012,10 @@ async function loadDashboard() {
     const res = await fetch(`${API}/admin/stats`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const d = await res.json();
-    document.getElementById('dash-users').textContent    = d.user_count;
-    document.getElementById('dash-news').textContent     = d.news_count;
-    document.getElementById('dash-comments').textContent = d.comment_count;
-    document.getElementById('dash-files').textContent    = d.file_count;
+    animateKpi(document.getElementById('dash-users'),    d.user_count);
+    animateKpi(document.getElementById('dash-news'),     d.news_count);
+    animateKpi(document.getElementById('dash-comments'), d.comment_count);
+    animateKpi(document.getElementById('dash-files'),    d.file_count);
     const rc = document.getElementById('dash-recent-comments');
     if (!d.recent_comments.length) {
       rc.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Комментариев пока нет.</p>`;
@@ -2992,13 +3042,13 @@ async function loadDashExtraStats() {
     const cutoff = Date.now() - 7 * 24 * 3600 * 1000;
     const new7 = users.filter(u => new Date(u.created_at).getTime() >= cutoff).length;
     const el7 = document.getElementById('dash-new7');
-    if (el7) el7.textContent = new7;
+    if (el7) animateKpi(el7, new7);
   } catch {}
   // "Сброс паролей"
   try {
     const resets = await fetch(`${API}/admin/password-resets`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : []);
     const elR = document.getElementById('dash-resets');
-    if (elR) elR.textContent = resets.length;
+    if (elR) animateKpi(elR, resets.length);
     // also sync sidebar badge
     const sbR = document.getElementById('badge-resets');
     if (sbR) { if (resets.length) { sbR.textContent = resets.length; sbR.style.display = ''; } else sbR.style.display = 'none'; }
@@ -3243,6 +3293,7 @@ const _commentsSearchDebounced = debounce(() => loadAdminComments(1), 350);
 
 async function loadAdminComments(page = 1) {
   _commentsPage = page;
+  tableShowSkeleton('comments-table-body', 5);
   const q = encodeURIComponent((document.getElementById('comments-search')?.value || '').trim());
   const newsSlug = encodeURIComponent((document.getElementById('comments-filter-news')?.value || '').trim());
   try {
@@ -3308,6 +3359,7 @@ async function deleteComment(id) {
 async function loadAdminPlayers() {
   const server = document.getElementById('players-server')?.value || '1';
   const period = document.getElementById('players-period')?.value || 'all';
+  tableShowSkeleton('players-table-body', 4);
   try {
     const res = await fetch(`${API}/leaderboard?server=${server}&period=${period}`);
     if (!res.ok) return;
@@ -3471,6 +3523,7 @@ async function loadLogActions() {
 
 async function loadAuditLog(page = 1) {
   _logPage = page;
+  tableShowSkeleton('log-table-body', 4);
   loadLogActions();
   const q = encodeURIComponent((document.getElementById('log-search')?.value || '').trim());
   const action = encodeURIComponent(document.getElementById('log-action-filter')?.value || '');
@@ -3884,7 +3937,7 @@ async function loadAuditLogSection(page) {
   _auditSectionPage = page || 1;
   const tbody = document.getElementById('auditlog-body');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>';
+  tableShowSkeleton('auditlog-body', 5);
   try {
     const d = await fetch(`${API}/admin/audit-log?page=${_auditSectionPage}&per_page=50`, { credentials: 'include', headers: authH() }).then(r => r.json());
     const items = d.items || [];
@@ -3932,6 +3985,7 @@ async function loadAuditLogSection(page) {
 let _reportsPage = 1;
 async function loadReports(page = 1) {
   _reportsPage = page;
+  tableShowSkeleton('reports-table-body', 7);
   const status = document.getElementById('reports-status-filter').value;
   const params = new URLSearchParams({ page, per_page: 20, ...(status ? { status } : {}) });
   const data = await fetch(`${API}/admin/reports?${params}`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => ({ total: 0, items: [] }));
@@ -3971,6 +4025,7 @@ const EVENT_STATUS_COLORS = {upcoming:'#c9a04a',active:'#4ade80',ended:'var(--mu
 async function loadEvents() {
   const tbody = document.getElementById('events-tbody');
   if (!tbody) return;
+  tableShowSkeleton('events-tbody', 6);
   try {
     const d = await fetch(`${API}/events?per_page=50`, {credentials:'include'}).then(r=>r.json());
     const items = d.items||[];
@@ -4065,7 +4120,7 @@ async function loadAnalytics() {
     const d = await fetch(`${API}/admin/analytics`, {credentials:'include'}).then(r=>r.json());
 
     // KPIs
-    const setKpi = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val??'—'; };
+    const setKpi = (id, val) => { const el=document.getElementById(id); if(el) { if(val!=null && !isNaN(+val)) animateKpi(el,+val); else el.textContent=val??'—'; } };
     setKpi('kpi-users', d.totals?.users);
     setKpi('kpi-news', d.totals?.news);
     setKpi('kpi-comments', d.totals?.comments);
@@ -4103,6 +4158,7 @@ async function loadAnalytics() {
 
 // ─── Backups ──────────────────────────────────────────────────────────────
 async function loadBackups() {
+  tableShowSkeleton('backups-table-body', 4);
   const data = await fetch(`${API}/admin/backups`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => []);
   const tbody = document.getElementById('backups-table-body');
   if (!data.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Бэкапов нет</td></tr>'; return; }
@@ -4115,24 +4171,64 @@ async function loadBackups() {
     </tr>`).join('');
 }
 async function createBackup() {
-  const msg = document.getElementById('backup-msg');
-  msg.textContent = '⏳ Создаём бэкап...';
   const r = await fetch(`${API}/admin/backups/create`, { method: 'POST', credentials: 'include', headers: authH() });
   if (r.ok) {
     const d = await r.json();
-    msg.style.color = '#6ee7b7';
-    msg.textContent = `✅ Бэкап создан: ${d.filename} (${(d.size/1024).toFixed(1)} KB)`;
+    adminToast(`Бэкап создан: ${d.filename} (${(d.size/1024).toFixed(1)} KB)`, 'success');
     loadBackups();
   } else {
-    msg.style.color = '#fca5a5';
-    msg.textContent = '❌ Ошибка создания бэкапа';
+    adminToast('Ошибка создания бэкапа', 'error');
   }
+}
+
+// ─── Admin toast notifications ────────────────────────────────────────────
+function adminToast(message, type = 'success') {
+  const container = document.getElementById('admin-toast-container');
+  if (!container) return;
+  const isSuccess = type === 'success';
+  const borderColor = isSuccess ? 'rgba(0,160,35,0.5)' : 'rgba(200,0,30,0.5)';
+  const stripColor  = isSuccess ? '#4ade80' : '#f87171';
+  const icon        = isSuccess ? '✓' : '✕';
+  const el = document.createElement('div');
+  el.style.cssText = `display:flex;align-items:center;gap:.6rem;background:rgba(8,0,16,0.97);border:1px solid ${borderColor};border-left:3px solid ${stripColor};color:#e2d8f0;padding:.6rem .9rem .6rem .7rem;border-radius:.55rem;font-size:.8rem;font-weight:500;box-shadow:0 4px 24px rgba(0,0,0,0.6);max-width:280px;opacity:0;transform:translateX(1.5rem);transition:opacity .22s,transform .22s cubic-bezier(.32,.72,0,1);pointer-events:none;`;
+  el.innerHTML = `<span style="width:20px;height:20px;border-radius:50%;background:${isSuccess?'rgba(0,100,20,0.4)':'rgba(120,0,15,0.4)'};border:1px solid ${stripColor};display:flex;align-items:center;justify-content:center;font-size:.68rem;color:${stripColor};font-weight:700;flex-shrink:0;">${icon}</span><span>${message}</span>`;
+  container.appendChild(el);
+  requestAnimationFrame(() => { el.style.opacity='1'; el.style.transform='translateX(0)'; });
+  setTimeout(() => {
+    el.style.opacity='0'; el.style.transform='translateX(1.5rem)';
+    setTimeout(() => el.remove(), 220);
+  }, 3000);
+}
+
+// ─── Table shimmer skeleton ───────────────────────────────────────────────
+function tableShowSkeleton(tbodyId, cols = 4, rows = 5) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  tbody.innerHTML = Array(rows).fill(0).map(() =>
+    `<tr class="table-skel-row">${Array(cols).fill('<td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td>').join('')}</tr>`
+  ).join('');
+}
+
+// ─── KPI counter animation ────────────────────────────────────────────────
+function animateKpi(el, target, duration = 900) {
+  if (!el) return;
+  const numTarget = parseInt(target);
+  if (isNaN(numTarget) || target == null) { el.textContent = target ?? '—'; return; }
+  const start = performance.now();
+  const update = (now) => {
+    const progress = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(numTarget * ease).toLocaleString('ru-RU');
+    if (progress < 1) requestAnimationFrame(update);
+  };
+  requestAnimationFrame(update);
 }
 
 // ─── Error log ────────────────────────────────────────────────────────────
 let _errorsPage = 1;
 async function loadErrors(page = 1) {
   _errorsPage = page;
+  tableShowSkeleton('errors-table-body', 5);
   const data = await fetch(`${API}/admin/errors?page=${page}&per_page=50`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => ({ total: 0, items: [] }));
   document.getElementById('errors-total').textContent = `Всего: ${data.total}`;
   const tbody = document.getElementById('errors-table-body');
@@ -4151,6 +4247,9 @@ async function loadErrors(page = 1) {
   ).join('');
 }
 </script>
+
+<!-- Toast container -->
+<div id="admin-toast-container" style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;align-items:flex-end;"></div>
 
 <!-- Preview modal -->
 <div id="preview-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:flex-start;justify-content:center;overflow-y:auto;padding:2rem 1rem;">
