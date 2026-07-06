@@ -201,7 +201,7 @@
     /* ── News card ── */
     .news-card {
       background: rgba(20,10,25,0.6); border: 1px solid rgba(110,0,150,0.16);
-      border-radius: 1rem; overflow: hidden; cursor: pointer;
+      border-radius: 1rem; overflow: hidden; cursor: pointer; position: relative;
       box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 10px rgba(80,0,100,0.08);
       transition: transform .2s, border-color .25s, box-shadow .25s;
     }
@@ -575,8 +575,15 @@
       from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }
     }
+    @keyframes news-card-appear {
+      from { opacity:0; transform:translateY(12px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
     .g-panel { animation: fade-up .45s ease both; }
-    .news-card { animation: fade-up .35s ease both; }
+    .news-card { animation: news-card-appear .38s ease both; }
+    @media (max-width:600px) {
+      #modal-prev, #modal-next { display:none !important; }
+    }
 
     /* ── Tag pills ── */
     .tag-pill {
@@ -1472,7 +1479,19 @@
   <!-- ── CENTER: News ── -->
   <main id="news-section" style="flex:1;min-width:0;min-height:55vh;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:.75rem;">
-      <h2 style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;">— Новости —</h2>
+      <div style="display:flex;align-items:center;gap:.65rem;">
+        <h2 style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;">— Новости —</h2>
+        <button id="news-create-btn" onclick="openNewsEditor()" style="display:none;
+          background:linear-gradient(135deg,rgba(120,0,20,0.5),rgba(80,0,10,0.35));
+          border:1px solid rgba(190,0,35,0.4); border-radius:.5rem;
+          padding:.35rem .85rem; color:#d4c4e0; font-size:.75rem; font-weight:600;
+          cursor:pointer; transition:all .2s; align-items:center; gap:.4rem;"
+          onmouseover="this.style.boxShadow='0 0 14px rgba(180,0,30,0.35)'"
+          onmouseout="this.style.boxShadow=''">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          Написать новость
+        </button>
+      </div>
       <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
         <div style="position:relative;display:inline-flex;align-items:center;">
           <svg style="position:absolute;left:.5rem;pointer-events:none;opacity:.45;" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#e2d8f0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -1647,6 +1666,27 @@
 
 <!-- ══ TOAST ══════════════════════════════════════════════════════════════════ -->
 <div id="toast-container"></div>
+
+<!-- ══ MODAL NAV ARROWS ═══════════════════════════════════════════════════════ -->
+<button id="modal-prev" onclick="navigateModal(-1)"
+  style="position:fixed;left:1rem;top:50%;transform:translateY(-50%);
+  background:rgba(10,2,18,0.85);border:1px solid rgba(150,0,28,0.35);
+  color:var(--muted);border-radius:50%;width:2.4rem;height:2.4rem;
+  display:none;align-items:center;justify-content:center;
+  font-size:1.1rem;cursor:pointer;transition:all .2s;z-index:1001;
+  backdrop-filter:blur(8px);"
+  onmouseover="this.style.borderColor='rgba(200,0,40,0.6)';this.style.color='var(--text)'"
+  onmouseout="this.style.borderColor='rgba(150,0,28,0.35)';this.style.color='var(--muted)'">&#8249;</button>
+
+<button id="modal-next" onclick="navigateModal(1)"
+  style="position:fixed;right:1rem;top:50%;transform:translateY(-50%);
+  background:rgba(10,2,18,0.85);border:1px solid rgba(150,0,28,0.35);
+  color:var(--muted);border-radius:50%;width:2.4rem;height:2.4rem;
+  display:none;align-items:center;justify-content:center;
+  font-size:1.1rem;cursor:pointer;transition:all .2s;z-index:1001;
+  backdrop-filter:blur(8px);"
+  onmouseover="this.style.borderColor='rgba(200,0,40,0.6)';this.style.color='var(--text)'"
+  onmouseout="this.style.borderColor='rgba(150,0,28,0.35)';this.style.color='var(--muted)'">&#8250;</button>
 
 <!-- ══ MODAL ═════════════════════════════════════════════════════════════════ -->
 <div id="modal-bg" class="modal-bg" onclick="if(event.target===this)closeModal()">
@@ -1904,6 +1944,8 @@ function toggleDrawer() {
     if (u.role === 'admin') {
       document.getElementById('nav-admin').classList.remove('hidden');
       _isAdmin = true;
+      const createBtn = document.getElementById('news-create-btn');
+      if (createBtn) createBtn.style.display = 'flex';
     }
     document.getElementById('nav-profile-link').classList.remove('hidden');
     // sidebar nav: replace "Войти" with "Выйти"
@@ -2755,8 +2797,12 @@ async function loadFeatured() {
       ? `background-image:url('${esc(n.thumbnail_url)}')`
       : `background:linear-gradient(135deg,rgba(60,0,100,0.8),rgba(90,0,15,0.8))`;
     wrap.style.display = '';
+    const featuredHotBadge = (n.slug === _hotSlug && (n.views || 0) > 0)
+      ? `<div style="position:absolute;top:.55rem;left:.55rem;z-index:2;background:linear-gradient(135deg,rgba(200,0,42,0.92),rgba(140,0,20,0.85));border:1px solid rgba(255,80,80,0.4);border-radius:9999px;padding:.18rem .55rem;font-size:.58rem;font-weight:700;color:#fff;letter-spacing:.06em;display:flex;align-items:center;gap:.25rem;box-shadow:0 0 12px rgba(200,0,42,0.4);backdrop-filter:blur(4px);">&#x1F525; Горячее</div>`
+      : '';
     wrap.innerHTML = `
       <div class="featured-card" onclick="openNews('${esc(n.slug)}')">
+        ${featuredHotBadge}
         <div class="featured-bg" style="${bgStyle}"></div>
         <div class="featured-overlay"></div>
         <div class="featured-body">
@@ -2803,6 +2849,8 @@ let _searchTimer = null;
 let _newsPage = 1;
 let _newsTotalPages = 1;
 let _newsLoading = false;
+let _newsItems = [];
+let _hotSlug = null;
 
 function onSearchInput(val) {
   clearTimeout(_searchTimer);
@@ -2841,7 +2889,12 @@ async function loadNews(page = 1, append = false) {
     const data = await _lr.json();
     _newsPage = data.page;
     _newsTotalPages = data.pages;
-    if (!append) list.innerHTML = '';
+    if (!append) {
+      list.innerHTML = '';
+      _newsItems = [];
+      const maxViews = Math.max(...(data.items || []).map(n => n.views || 0));
+      _hotSlug = maxViews > 0 ? (data.items.find(n => (n.views || 0) === maxViews) || {}).slug || null : null;
+    }
     if (loadingMore) loadingMore.style.display = 'none';
     if (!data.items.length && !append) {
       list.innerHTML = `<div class="news-empty">
@@ -2870,10 +2923,14 @@ async function loadNews(page = 1, append = false) {
     const pinnedBadge = n.pinned
       ? `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.58rem;font-weight:700;letter-spacing:.06em;color:rgba(240,192,64,0.9);background:rgba(180,130,0,0.15);border:1px solid rgba(210,165,0,0.35);border-radius:9999px;padding:.05rem .4rem;white-space:nowrap;">📌 Закреплено</span>`
       : '';
+    const hotBadge = (n.slug === _hotSlug && (n.views || 0) > 0)
+      ? `<div style="position:absolute;top:.55rem;left:.55rem;z-index:2;background:linear-gradient(135deg,rgba(200,0,42,0.92),rgba(140,0,20,0.85));border:1px solid rgba(255,80,80,0.4);border-radius:9999px;padding:.18rem .55rem;font-size:.58rem;font-weight:700;color:#fff;letter-spacing:.06em;display:flex;align-items:center;gap:.25rem;box-shadow:0 0 12px rgba(200,0,42,0.4);backdrop-filter:blur(4px);">&#x1F525; Горячее</div>`
+      : '';
+    _newsItems.push(n);
     const card = document.createElement('div');
     card.className = 'news-card';
-    card.style.animationDelay = `${idx * 0.06}s`;
-    card.innerHTML = `<div style="display:flex;gap:0;align-items:stretch;min-height:110px;">
+    card.style.animationDelay = `${idx * 45}ms`;
+    card.innerHTML = `${hotBadge}<div style="display:flex;gap:0;align-items:stretch;min-height:110px;">
       ${thumbImg}
       <div style="padding:.85rem 1rem .75rem;flex:1;min-width:0;display:flex;flex-direction:column;gap:.28rem;">
         <div style="display:flex;align-items:center;gap:.5rem;">
@@ -3038,6 +3095,7 @@ async function openNews(slug) {
     if (pw) pw.style.display = 'none';
     document.getElementById('modal-bg').classList.add('open');
     document.body.style.overflow = 'hidden';
+    _updateModalNav();
   }
 }
 
@@ -3046,6 +3104,27 @@ function closeModal() {
   document.body.style.overflow = '';
   _modalSlug = '';
   history.pushState({}, '', location.pathname);
+  const prev = document.getElementById('modal-prev');
+  const next = document.getElementById('modal-next');
+  if (prev) prev.style.display = 'none';
+  if (next) next.style.display = 'none';
+}
+
+function navigateModal(dir) {
+  if (!_newsItems.length) return;
+  const idx = _newsItems.findIndex(n => n.slug === _modalSlug);
+  if (idx === -1) return;
+  const next = _newsItems[idx + dir];
+  if (next) openNews(next.slug);
+}
+
+function _updateModalNav() {
+  const prev = document.getElementById('modal-prev');
+  const next = document.getElementById('modal-next');
+  if (!prev || !next || !_newsItems.length) return;
+  const idx = _newsItems.findIndex(n => n.slug === _modalSlug);
+  prev.style.display = idx > 0 ? 'flex' : 'none';
+  next.style.display = idx < _newsItems.length - 1 ? 'flex' : 'none';
 }
 
 function shareNews() {
@@ -3100,7 +3179,13 @@ async function toggleNewsReaction(slug, emoji) {
 }
 
 document.getElementById('modal-bg').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  const bg = document.getElementById('modal-bg');
+  if (!bg || !bg.classList.contains('open')) return;
+  if (e.key === 'ArrowLeft') navigateModal(-1);
+  if (e.key === 'ArrowRight') navigateModal(1);
+});
 
 // ── Comments ────────────────────────────────────────────────────────────────
 function commentAvatar(author) {
@@ -4266,6 +4351,161 @@ async function votePoll(slug, optionId) {
 
 </script>
 <div id="ow-hover-card"></div>
+
+<!-- ══ NEWS EDITOR MODAL ══════════════════════════════════════════════════════ -->
+<div id="news-editor-bg" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;padding:2rem 1rem;">
+  <div style="max-width:680px;margin:auto;background:rgba(10,2,18,0.98);border:1px solid rgba(150,0,28,0.35);border-radius:1rem;padding:1.75rem;box-shadow:0 16px 60px rgba(0,0,0,0.8);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+      <h2 style="font-family:'Cinzel',serif;font-size:1rem;letter-spacing:.12em;color:var(--gold);" id="news-editor-title">НОВАЯ НОВОСТЬ</h2>
+      <button onclick="closeNewsEditor()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.2rem;line-height:1;">✕</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.85rem;">
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem;">Заголовок *</label>
+        <input id="ne-title" type="text" maxlength="200" placeholder="Заголовок новости…"
+          style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(110,0,150,0.25);border-radius:.5rem;padding:.55rem .8rem;color:var(--text);font-size:.88rem;outline:none;transition:border-color .2s;"
+          onfocus="this.style.borderColor='rgba(190,0,35,0.5)'" onblur="this.style.borderColor='rgba(110,0,150,0.25)'">
+      </div>
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem;">Slug (URL) *</label>
+        <input id="ne-slug" type="text" maxlength="120" placeholder="url-novosti"
+          style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(110,0,150,0.25);border-radius:.5rem;padding:.55rem .8rem;color:var(--text);font-size:.88rem;outline:none;transition:border-color .2s;font-family:'Oswald',sans-serif;"
+          onfocus="this.style.borderColor='rgba(190,0,35,0.5)'" onblur="this.style.borderColor='rgba(110,0,150,0.25)'">
+        <div style="font-size:.6rem;color:var(--muted);margin-top:.25rem;">Генерируется автоматически из заголовка</div>
+      </div>
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem;">Содержание *</label>
+        <textarea id="ne-content" rows="8" placeholder="Текст новости (поддерживается Markdown)…"
+          style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(110,0,150,0.25);border-radius:.5rem;padding:.55rem .8rem;color:var(--text);font-size:.85rem;outline:none;resize:vertical;min-height:160px;font-family:'Inter',sans-serif;line-height:1.6;transition:border-color .2s;"
+          onfocus="this.style.borderColor='rgba(190,0,35,0.5)'" onblur="this.style.borderColor='rgba(110,0,150,0.25)'"></textarea>
+      </div>
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem;">URL обложки</label>
+        <input id="ne-cover" type="url" placeholder="https://…/image.jpg"
+          style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(110,0,150,0.25);border-radius:.5rem;padding:.55rem .8rem;color:var(--text);font-size:.85rem;outline:none;transition:border-color .2s;"
+          onfocus="this.style.borderColor='rgba(190,0,35,0.5)'" onblur="this.style.borderColor='rgba(110,0,150,0.25)'">
+      </div>
+      <div>
+        <label style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:.3rem;">Теги</label>
+        <input id="ne-tags" type="text" placeholder="обновление, ивент, правила"
+          style="width:100%;background:rgba(255,255,255,0.04);border:1px solid rgba(110,0,150,0.25);border-radius:.5rem;padding:.55rem .8rem;color:var(--text);font-size:.85rem;outline:none;transition:border-color .2s;"
+          onfocus="this.style.borderColor='rgba(190,0,35,0.5)'" onblur="this.style.borderColor='rgba(110,0,150,0.25)'">
+        <div style="font-size:.6rem;color:var(--muted);margin-top:.25rem;">Через запятую</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:.6rem;">
+        <input type="checkbox" id="ne-published" checked style="accent-color:var(--crimson);width:14px;height:14px;">
+        <label for="ne-published" style="font-size:.8rem;color:var(--text);cursor:pointer;">Опубликовать сразу</label>
+      </div>
+      <div id="ne-error" style="display:none;background:rgba(140,0,20,0.2);border:1px solid rgba(180,0,30,0.4);border-radius:.45rem;padding:.5rem .75rem;font-size:.78rem;color:#fca5a5;"></div>
+      <div style="display:flex;gap:.75rem;margin-top:.25rem;">
+        <button onclick="submitNewsEditor()" id="ne-submit"
+          style="flex:1;background:linear-gradient(135deg,rgba(150,0,25,0.6),rgba(100,0,15,0.5));border:1px solid rgba(200,0,35,0.5);border-radius:.55rem;padding:.65rem 1rem;color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;"
+          onmouseover="this.style.boxShadow='0 0 20px rgba(180,0,30,0.4)'" onmouseout="this.style.boxShadow=''">
+          Опубликовать
+        </button>
+        <button onclick="closeNewsEditor()"
+          style="background:rgba(14,5,22,0.5);border:1px solid rgba(110,0,20,0.3);border-radius:.55rem;padding:.65rem 1.1rem;color:var(--muted);font-size:.85rem;cursor:pointer;transition:all .2s;"
+          onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
+          Отмена
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── News quick editor ──────────────────────────────────────────────────────
+let _neEditSlug = null;
+
+function openNewsEditor(editSlug) {
+  _neEditSlug = editSlug || null;
+  document.getElementById('ne-title').value = '';
+  document.getElementById('ne-slug').value = '';
+  document.getElementById('ne-content').value = '';
+  document.getElementById('ne-cover').value = '';
+  document.getElementById('ne-tags').value = '';
+  document.getElementById('ne-published').checked = true;
+  document.getElementById('ne-error').style.display = 'none';
+  document.getElementById('news-editor-title').textContent = 'НОВАЯ НОВОСТЬ';
+  document.getElementById('ne-submit').textContent = 'Опубликовать';
+  document.getElementById('news-editor-bg').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+  setTimeout(() => document.getElementById('ne-title').focus(), 50);
+}
+
+function closeNewsEditor() {
+  document.getElementById('news-editor-bg').style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+(function() {
+  const titleEl = document.getElementById('ne-title');
+  const slugEl = document.getElementById('ne-slug');
+  if (titleEl && slugEl) {
+    titleEl.addEventListener('input', () => {
+      if (!slugEl.dataset.manual) {
+        slugEl.value = titleEl.value
+          .toLowerCase()
+          .replace(/[^a-z0-9а-яё\s-]/gi, '')
+          .trim()
+          .replace(/\s+/g, '-')
+          .slice(0, 80);
+      }
+    });
+    slugEl.addEventListener('input', () => { slugEl.dataset.manual = '1'; });
+  }
+})();
+
+async function submitNewsEditor() {
+  const title = document.getElementById('ne-title').value.trim();
+  const slug = document.getElementById('ne-slug').value.trim();
+  const content = document.getElementById('ne-content').value.trim();
+  const cover_url = document.getElementById('ne-cover').value.trim();
+  const tagsRaw = document.getElementById('ne-tags').value.trim();
+  const is_published = document.getElementById('ne-published').checked;
+  const errEl = document.getElementById('ne-error');
+  const submitBtn = document.getElementById('ne-submit');
+
+  errEl.style.display = 'none';
+  if (!title) { errEl.textContent = 'Укажите заголовок'; errEl.style.display = 'block'; return; }
+  if (!slug) { errEl.textContent = 'Укажите slug'; errEl.style.display = 'block'; return; }
+  if (!content) { errEl.textContent = 'Добавьте содержание'; errEl.style.display = 'block'; return; }
+
+  const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
+  const body = { title, slug, content, cover_url: cover_url || null, tags, is_published };
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Отправка…';
+
+  try {
+    const r = await fetch('/api/admin/news', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      errEl.textContent = d.detail || `Ошибка ${r.status}`;
+      errEl.style.display = 'block';
+      return;
+    }
+    closeNewsEditor();
+    loadNews(1);
+  } catch {
+    errEl.textContent = 'Ошибка соединения';
+    errEl.style.display = 'block';
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Опубликовать';
+  }
+}
+
+document.getElementById('news-editor-bg').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeNewsEditor();
+});
+</script>
+
 <script>
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});
