@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -6,18 +6,16 @@
   <title>Баны — Just-Skill.Ru</title>
   <link rel="canonical" href="https://just-skill.ru/bans.html" />
   <meta name="description" content="Список заблокированных игроков серверов V Rising на Just-Skill.Ru." />
-    <!-- Open Graph -->
+  <!-- Open Graph -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="V RISING" />
   <meta property="og:title" content="V Rising — Баны" />
   <meta property="og:description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
   <meta property="og:image" content="/uploads/og-default.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="canonical" href="https://just-skill.ru/bans.html" />
-  <meta name="description" content="Список заблокированных игроков серверов V Rising на Just-Skill.Ru." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
   <style>
     :root {
@@ -60,50 +58,69 @@
     .mobile-drawer a { font-size:.85rem; font-weight:600; color:var(--muted); text-decoration:none; padding:.65rem .9rem; border-radius:.6rem; border:1px solid rgba(110,0,20,0.2); transition:all .18s; text-align:center; }
     .mobile-drawer a:hover, .mobile-drawer a.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
     @media (max-width:640px) { .nav-links { display:none; } .nav-burger { display:flex; } .mobile-overlay { display:block; } }
+
     [data-tip] { position:relative; }
     [data-tip]::after { content:attr(data-tip); position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%); background:rgba(6,0,15,0.96); border:1px solid rgba(180,0,35,0.4); color:#d4c4e0; font-size:.68rem; padding:.28rem .65rem; border-radius:.4rem; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .15s; z-index:999; font-family:'Inter',sans-serif; }
     [data-tip]:hover::after { opacity:1; }
 
-    .g-card {
-      background:var(--card); border:1px solid var(--border);
-      border-radius:.875rem; backdrop-filter:blur(16px) saturate(1.2);
-      box-shadow:0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
-      position:relative;
-    }
-    .g-card::before {
-      content:''; position:absolute; top:0; left:20%; right:20%; height:1px;
-      background:linear-gradient(90deg,transparent,rgba(200,0,45,0.35),transparent);
-    }
-    @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
-    .g-card { animation:fade-up .4s ease both; }
-
-    .dev-icon-wrap {
-      width:88px; height:88px; border-radius:50%; margin:0 auto 1.25rem;
-      background:radial-gradient(circle at 38% 32%, rgba(150,0,28,0.35), rgba(80,0,130,0.25));
-      border:2px solid rgba(180,0,35,0.4);
-      box-shadow:0 0 32px rgba(180,0,30,0.25);
-      display:flex; align-items:center; justify-content:center;
-      animation:pulse-icon 2.6s ease-in-out infinite;
-    }
-    @keyframes pulse-icon { 0%,100%{box-shadow:0 0 24px rgba(180,0,30,0.2);} 50%{box-shadow:0 0 44px rgba(200,0,40,0.4);} }
-
-    .feature-item {
-      display:flex; align-items:center; gap:.6rem; padding:.55rem 0;
-      border-bottom:1px solid rgba(110,0,20,0.1); font-size:.82rem; color:var(--muted);
-    }
-    .feature-item:last-child { border-bottom:none; }
-    .feature-item svg { flex-shrink:0; color:rgba(200,0,45,0.6); }
-
     ::-webkit-scrollbar { width:5px; }
     ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
     ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
+
+    /* ── Ban-in stagger animation ── */
+    @keyframes ban-in {
+      from { opacity:0; transform:translateX(-6px); }
+      to   { opacity:1; transform:translateX(0); }
+    }
+    @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── Search input ── */
+    .search-input {
+      width:100%; background:rgba(14,5,22,0.7); border:1px solid rgba(110,0,150,0.28);
+      border-radius:.6rem; color:var(--text); font-family:'Inter',sans-serif;
+      font-size:.875rem; padding:.6rem 1rem; outline:none; transition:border-color .2s, box-shadow .2s;
+    }
+    .search-input::placeholder { color:var(--muted); }
+    .search-input:focus { border-color:rgba(140,0,180,0.55); box-shadow:0 0 0 3px rgba(110,0,150,0.12); }
+
+    /* ── Filter pills ── */
+    .pill {
+      font-size:.72rem; font-weight:600; padding:.3rem .75rem; border-radius:9999px;
+      border:1px solid rgba(110,0,150,0.25); background:rgba(14,5,22,0.6);
+      color:var(--muted); cursor:pointer; transition:all .18s; font-family:'Inter',sans-serif;
+    }
+    .pill:hover { border-color:rgba(140,0,180,0.45); color:var(--text); }
+    .pill.active { background:rgba(110,0,150,0.22); border-color:rgba(140,0,180,0.55); color:var(--text); }
+
+    /* ── Ban card ── */
+    .ban-card {
+      background:var(--card); border:1px solid var(--border); border-radius:.75rem;
+      padding:1rem 1.1rem; margin-bottom:.7rem; position:relative;
+      backdrop-filter:blur(14px) saturate(1.2);
+      box-shadow:0 2px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.03);
+      transition:border-color .2s, box-shadow .2s;
+    }
+    .ban-card:hover { border-color:rgba(140,0,180,0.38); box-shadow:0 4px 22px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); }
+
+    /* ── Skeleton shimmer ── */
+    @keyframes shimmer {
+      0%   { background-position: -400px 0; }
+      100% { background-position:  400px 0; }
+    }
+    .skeleton {
+      border-radius:.5rem; animation:shimmer 1.4s ease infinite;
+      background: linear-gradient(90deg, rgba(80,20,110,0.12) 25%, rgba(110,40,150,0.22) 50%, rgba(80,20,110,0.12) 75%);
+      background-size:800px 100%;
+    }
+
     /* ── Mobile ── */
     @media (max-width:640px) {
       body { overflow-x:hidden; }
       .glass-nav > div { padding:.6rem 1rem !important; }
+      .ban-meta-row { flex-wrap:wrap; gap:.3rem; }
     }
     @media (max-width:480px) {
-      .g-card { padding:1.5rem 1.25rem; }
+      .ban-card { padding:.8rem .9rem; }
     }
   </style>
 </head>
@@ -139,49 +156,86 @@
   </div>
 </nav>
 
-<div style="max-width:640px;margin:3rem auto;padding:0 1rem;">
-  <div class="g-card text-center" style="padding:2.75rem 2rem;">
-    <div class="dev-icon-wrap">
-      <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="#e05575" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+<!-- MAIN -->
+<div style="max-width:760px;margin:2.5rem auto;padding:0 1rem;position:relative;z-index:1;">
+
+  <!-- Page header -->
+  <div style="margin-bottom:1.75rem;animation:fade-up .38s ease both;">
+    <div style="display:flex;align-items:center;gap:.65rem;margin-bottom:.4rem;">
+      <span style="font-size:1.55rem;line-height:1;">🚫</span>
+      <h1 class="gothic" style="font-size:1.25rem;font-weight:700;letter-spacing:.09em;color:var(--gold);text-transform:uppercase;">Список банов</h1>
     </div>
-    <h1 class="gothic" style="font-size:1.15rem; letter-spacing:.08em; color:var(--gold); margin-bottom:.6rem; text-transform:uppercase;">Раздел в разработке</h1>
-    <p style="font-size:.88rem; color:var(--muted); line-height:1.6; max-width:440px; margin:0 auto 1.75rem;">
-      Список банов появится здесь в ближайшем будущем. Данные будут автоматически подгружаться напрямую из игрового плагина сервера — без ручного ведения списка администрацией.
+    <p style="font-size:.82rem;color:var(--muted);line-height:1.5;padding-left:2.2rem;">
+      Заблокированные игроки сервера. Данные обновляются в реальном времени.
     </p>
-
-    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:1.25rem;"></div>
-
-    <p class="gothic" style="font-size:.68rem; letter-spacing:.16em; color:var(--gold); text-transform:uppercase; margin-bottom:.5rem; text-align:left;">Что будет отображаться</p>
-    <div style="text-align:left;">
-      <div class="feature-item">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Никнейм забаненного игрока
-      </div>
-      <div class="feature-item">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
-        Причина и срок бана
-      </div>
-      <div class="feature-item">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        Дата выдачи и дата окончания
-      </div>
-      <div class="feature-item">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        Администратор, выдавший бан
-      </div>
-    </div>
-
-    <a href="/" style="display:inline-flex;align-items:center;gap:.4rem;margin-top:1.75rem;font-size:.78rem;color:var(--muted);text-decoration:none;transition:color .2s;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
-      Вернуться на главную
-    </a>
   </div>
+
+  <!-- Search + filter -->
+  <div style="margin-bottom:1.1rem;display:flex;flex-direction:column;gap:.6rem;animation:fade-up .4s ease .05s both;">
+    <div style="position:relative;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="search-input" class="search-input" type="text" placeholder="Поиск по нику..." style="padding-left:2.4rem;" oninput="applyFilters()" />
+    </div>
+    <div id="filter-pills" style="display:flex;gap:.4rem;flex-wrap:wrap;">
+      <button class="pill active" data-type="all"    onclick="setFilter(this,'all')">Все</button>
+      <button class="pill"        data-type="warn"   onclick="setFilter(this,'warn')">⚠ Предупреждение</button>
+      <button class="pill"        data-type="kick"   onclick="setFilter(this,'kick')">👢 Кик</button>
+      <button class="pill"        data-type="ban"    onclick="setFilter(this,'ban')">🚫 Бан</button>
+      <button class="pill"        data-type="permban" onclick="setFilter(this,'permban')">☠ Перма</button>
+    </div>
+  </div>
+
+  <!-- Info bar -->
+  <div id="ban-info" style="font-size:.75rem;color:var(--muted);margin-bottom:.75rem;min-height:1.1rem;"></div>
+
+  <!-- Ban list -->
+  <div id="ban-list"></div>
+
 </div>
 
+<script src="/common.js"></script>
 <script>
 const API = '/api';
-function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
 
+/* ── Severity config ── */
+const BAN_SEVERITY = {
+  warn:    { label:'Предупреждение', color:'#f59e0b', bg:'rgba(245,158,11,0.12)', border:'rgba(245,158,11,0.38)', icon:'⚠' },
+  kick:    { label:'Кик',            color:'#f97316', bg:'rgba(249,115,22,0.12)', border:'rgba(249,115,22,0.38)', icon:'👢' },
+  ban:     { label:'Бан',            color:'#ef4444', bg:'rgba(239,68,68,0.12)',  border:'rgba(239,68,68,0.4)',   icon:'🚫' },
+  permban: { label:'Перма-бан',      color:'#7f1d1d', bg:'rgba(127,29,29,0.18)', border:'rgba(220,38,38,0.5)',   icon:'☠' },
+};
+function getSeverity(type) {
+  return BAN_SEVERITY[String(type || '').toLowerCase()] || BAN_SEVERITY.ban;
+}
+
+/* ── State ── */
+let allBans = [];
+let currentFilter = 'all';
+let currentMe = null;
+
+/* ── Nav auth ── */
+(function() {
+  const cached = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
+  if (cached) {
+    document.getElementById('nav-profile-link') && (document.getElementById('nav-profile-link').style.display = '');
+    document.getElementById('nav-login-link') && (document.getElementById('nav-login-link').style.display = 'none');
+  }
+  fetch('/api/auth/me', { credentials:'include' }).then(r => {
+    const profileLink = document.getElementById('nav-profile-link');
+    const loginLink   = document.getElementById('nav-login-link');
+    if (r.ok) {
+      if (profileLink) profileLink.style.display = '';
+      if (loginLink)   loginLink.style.display = 'none';
+    } else {
+      localStorage.removeItem('user'); sessionStorage.removeItem('user');
+      localStorage.removeItem('token'); sessionStorage.removeItem('token');
+      if (profileLink) profileLink.style.display = 'none';
+      if (loginLink)   loginLink.style.display = '';
+    }
+  }).catch(() => {});
+})();
+
+/* ── Site settings ── */
 function applySiteBackground(bg) {
   bg = (bg || '').trim();
   if (!bg) return;
@@ -195,28 +249,6 @@ function applySiteBackground(bg) {
   document.body.style.backgroundPosition = 'center,center,center,center';
   document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
 }
-
-(function() {
-  const cached = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
-  if (cached) {
-    document.getElementById('nav-profile-link') && (document.getElementById('nav-profile-link').style.display = '');
-    document.getElementById('nav-login-link') && (document.getElementById('nav-login-link').style.display = 'none');
-  }
-  fetch('/api/auth/me', { credentials: 'include' }).then(r => {
-    const profileLink = document.getElementById('nav-profile-link');
-    const loginLink = document.getElementById('nav-login-link');
-    if (r.ok) {
-      if (profileLink) profileLink.style.display = '';
-      if (loginLink) loginLink.style.display = 'none';
-    } else {
-      localStorage.removeItem('user'); sessionStorage.removeItem('user');
-      localStorage.removeItem('token'); sessionStorage.removeItem('token');
-      if (profileLink) profileLink.style.display = 'none';
-      if (loginLink) loginLink.style.display = '';
-    }
-  }).catch(() => {});
-})();
-
 (async function() {
   try {
     const d = await fetch(`${API}/settings/public`).then(r => r.json());
@@ -227,14 +259,209 @@ function applySiteBackground(bg) {
   } catch {}
 })();
 
+/* ── Mobile nav ── */
 function toggleMobileNav() {
   const overlay = document.getElementById('mob-overlay');
-  const drawer = document.getElementById('mob-drawer');
-  const isOpen = drawer.classList.contains('open');
+  const drawer  = document.getElementById('mob-drawer');
+  const isOpen  = drawer.classList.contains('open');
   drawer.classList.toggle('open', !isOpen);
   overlay.classList.toggle('open', !isOpen);
   document.body.style.overflow = isOpen ? '' : 'hidden';
 }
+
+/* ── Date helpers ── */
+function fmtDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(iso) ? iso : iso + 'Z');
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric', timeZone:'Europe/Moscow' });
+}
+
+function calcDuration(createdIso, expiresIso) {
+  if (!expiresIso) return 'Навсегда';
+  const created = new Date(createdIso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(createdIso) ? createdIso : createdIso + 'Z');
+  const expires = new Date(expiresIso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(expiresIso) ? expiresIso : expiresIso + 'Z');
+  const diffMs = expires - created;
+  if (diffMs <= 0) return '—';
+  const days = Math.round(diffMs / 86400000);
+  if (days === 1) return '1 день';
+  if (days < 5)  return `${days} дня`;
+  if (days < 30) return `${days} дней`;
+  const months = Math.round(days / 30);
+  if (months < 12) return `${months} мес.`;
+  return `${Math.round(months / 12)} г.`;
+}
+
+function isExpired(expiresIso) {
+  if (!expiresIso) return false; // permanent = still active
+  const exp = new Date(expiresIso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(expiresIso) ? expiresIso : expiresIso + 'Z');
+  return exp < new Date();
+}
+
+/* ── Render ── */
+function renderBadge(sev) {
+  return `<span style="display:inline-flex;align-items:center;gap:.28rem;font-size:.62rem;font-weight:700;padding:.18rem .58rem;border-radius:9999px;background:${sev.bg};border:1px solid ${sev.border};color:${sev.color};">${sev.icon} ${sev.label}</span>`;
+}
+
+function renderCard(ban, idx, isMe) {
+  const sev      = getSeverity(ban.ban_type);
+  const expired  = isExpired(ban.expires_at);
+  const duration = calcDuration(ban.created_at, ban.expires_at);
+
+  const leftBorder = isMe
+    ? '2px solid var(--crimson)'
+    : `2px solid ${sev.color}`;
+  const cardBg = isMe
+    ? 'background:rgba(200,0,42,0.08);'
+    : '';
+
+  const statusLabel = expired
+    ? `<span style="font-size:.65rem;font-weight:700;color:#6aad7a;background:rgba(106,173,122,0.12);border:1px solid rgba(106,173,122,0.28);padding:.12rem .45rem;border-radius:9999px;">Истёк</span>`
+    : `<span style="font-size:.65rem;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.28);padding:.12rem .45rem;border-radius:9999px;">Активен</span>`;
+
+  const durationBadge = `<span style="font-family:'Oswald',sans-serif;font-size:.8rem;color:var(--muted);margin-left:.2rem;">${esc(duration)}</span>`;
+
+  const meTag = isMe
+    ? `<span style="font-size:.62rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;background:rgba(200,0,42,0.18);border:1px solid rgba(200,0,42,0.45);color:var(--crimson);">Вы</span>`
+    : '';
+
+  const reason = ban.reason
+    ? `<div style="font-size:.8rem;color:var(--muted);margin-top:.45rem;">Причина: <span style="color:var(--text);">${esc(ban.reason)}</span></div>`
+    : '';
+
+  return `
+<div class="ban-card" data-username="${esc(ban.username)}" data-type="${esc(ban.ban_type || 'ban')}"
+     style="border-left:${leftBorder};${cardBg}animation:ban-in .35s ease both;animation-delay:${idx * 30}ms;">
+  <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.35rem;">
+    ${renderBadge(sev)}
+    <a href="/user.html?u=${encodeURIComponent(ban.username)}"
+       style="font-size:.92rem;font-weight:600;color:var(--text);text-decoration:none;transition:color .2s;"
+       onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'">
+      ${esc(ban.username)}
+    </a>
+    ${meTag}
+    ${durationBadge}
+    <span style="margin-left:auto;">${statusLabel}</span>
+  </div>
+  ${reason}
+  <div class="ban-meta-row" style="display:flex;gap:1rem;margin-top:.42rem;font-size:.74rem;color:var(--muted);">
+    <span>Администратор: <b style="color:var(--text);font-weight:500;">${esc(ban.admin || '—')}</b></span>
+    <span>Дата: <b style="color:var(--text);font-weight:500;">${fmtDate(ban.created_at)}</b></span>
+    <span>Истекает: <b style="color:var(--text);font-weight:500;">${ban.expires_at ? fmtDate(ban.expires_at) : 'Никогда'}</b></span>
+  </div>
+</div>`;
+}
+
+function renderSkeleton() {
+  return Array.from({length:4}, (_, i) => `
+<div class="ban-card" style="border-left:2px solid rgba(110,0,150,0.25);animation:fade-up .3s ease ${i * 60}ms both;">
+  <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;">
+    <div class="skeleton" style="width:90px;height:20px;"></div>
+    <div class="skeleton" style="width:120px;height:18px;"></div>
+    <div class="skeleton" style="width:60px;height:18px;margin-left:auto;"></div>
+  </div>
+  <div class="skeleton" style="width:70%;height:14px;margin-bottom:.4rem;"></div>
+  <div style="display:flex;gap:1rem;">
+    <div class="skeleton" style="width:100px;height:12px;"></div>
+    <div class="skeleton" style="width:80px;height:12px;"></div>
+    <div class="skeleton" style="width:90px;height:12px;"></div>
+  </div>
+</div>`).join('');
+}
+
+function renderEmpty() {
+  return `
+<div style="text-align:center;padding:3.5rem 1rem;animation:fade-up .35s ease both;">
+  <div style="font-size:3rem;margin-bottom:.8rem;">✅</div>
+  <p class="gothic" style="font-size:1rem;color:var(--gold);letter-spacing:.07em;margin-bottom:.4rem;">Банов нет</p>
+  <p style="font-size:.84rem;color:var(--muted);">Сервер чист!</p>
+</div>`;
+}
+
+function renderNoResults() {
+  return `
+<div style="text-align:center;padding:2.5rem 1rem;animation:fade-up .28s ease both;">
+  <div style="font-size:2.2rem;margin-bottom:.6rem;">🔍</div>
+  <p style="font-size:.84rem;color:var(--muted);">Ничего не найдено по вашему запросу.</p>
+</div>`;
+}
+
+/* ── Filter logic ── */
+function setFilter(btn, type) {
+  currentFilter = type;
+  document.querySelectorAll('#filter-pills .pill').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function applyFilters() {
+  const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
+  const list = document.getElementById('ban-list');
+
+  let visible = allBans.filter(ban => {
+    const nameMatch = !q || ban.username.toLowerCase().includes(q);
+    const typeMatch = currentFilter === 'all' || (ban.ban_type || 'ban').toLowerCase() === currentFilter;
+    return nameMatch && typeMatch;
+  });
+
+  const info = document.getElementById('ban-info');
+  if (q || currentFilter !== 'all') {
+    info.textContent = `Показано: ${visible.length} из ${allBans.length}`;
+  } else {
+    info.textContent = allBans.length > 0
+      ? `Всего банов: ${allBans.length}`
+      : '';
+  }
+
+  if (!visible.length) {
+    list.innerHTML = allBans.length === 0 ? renderEmpty() : renderNoResults();
+    return;
+  }
+
+  list.innerHTML = visible.map((ban, i) => {
+    const isMe = currentMe && ban.username === currentMe.username;
+    return renderCard(ban, i, isMe);
+  }).join('');
+}
+
+/* ── Load data ── */
+(async function init() {
+  const list = document.getElementById('ban-list');
+  list.innerHTML = renderSkeleton();
+
+  // Fetch current user (for "Your ban" highlight) — non-blocking
+  fetch(`${API}/auth/me`, { credentials:'include' })
+    .then(r => r.ok ? r.json() : null)
+    .then(me => { currentMe = me; })
+    .catch(() => {});
+
+  try {
+    const data = await fetch(`${API}/bans?per_page=100`).then(r => {
+      if (!r.ok) throw new Error('API error ' + r.status);
+      return r.json();
+    });
+
+    allBans = data.items || [];
+
+    // Small delay so skeleton is visible briefly if load was instant
+    await new Promise(r => setTimeout(r, 180));
+
+    applyFilters();
+
+    // Re-render after me is known (if it loaded in that window)
+    if (!currentMe) {
+      setTimeout(() => applyFilters(), 600);
+    }
+
+  } catch (err) {
+    list.innerHTML = `
+<div style="text-align:center;padding:3rem 1rem;animation:fade-up .3s ease both;">
+  <div style="font-size:2rem;margin-bottom:.6rem;">⚠</div>
+  <p style="font-size:.85rem;color:var(--muted);">Не удалось загрузить список банов.</p>
+</div>`;
+    if (typeof showToast === 'function') showToast('Ошибка загрузки банов', 'error');
+  }
+})();
 </script>
 </body>
 </html>

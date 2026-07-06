@@ -2444,6 +2444,50 @@ async def revoke_user_sessions(
     await db.commit()
 
 
+# ─── Public bans list ────────────────────────────────────────────────────────
+
+@app.get("/api/bans")
+async def get_bans(
+    db: AsyncSession = Depends(get_db),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=100),
+):
+    total = (await db.execute(
+        select(func.count(User.id)).where(User.is_active == False)
+    )).scalar_one()
+
+    users = (await db.execute(
+        select(User)
+        .where(User.is_active == False)
+        .order_by(User.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )).scalars().all()
+
+    results = []
+    for u in users:
+        ban_log = (await db.execute(
+            select(AuditLog)
+            .where(AuditLog.action == "user.ban", AuditLog.target_id == u.id)
+            .order_by(AuditLog.created_at.desc())
+            .limit(1)
+        )).scalar_one_or_none()
+
+        results.append({
+            "id": u.id,
+            "username": u.username,
+            "ban_type": "ban",
+            "reason": None,
+            "admin": ban_log.admin_username if ban_log else None,
+            "created_at": (
+                ban_log.created_at.isoformat() if ban_log else u.created_at.isoformat()
+            ),
+            "expires_at": None,
+        })
+
+    return {"total": total, "items": results}
+
+
 # ─── Public profile ──────────────────────────────────────────────────────────
 
 @app.get("/api/users/{username}")
