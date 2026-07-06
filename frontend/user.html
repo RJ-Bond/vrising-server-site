@@ -88,6 +88,12 @@
     ::-webkit-scrollbar{width:5px;}
     ::-webkit-scrollbar-track{background:rgba(8,0,14,0.4);}
     ::-webkit-scrollbar-thumb{background:rgba(130,0,24,0.5);border-radius:3px;}
+    /* ── Public achievements ── */
+    .pub-ach-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.55rem;}
+    .pub-ach-tile{border-radius:.6rem;padding:.65rem .7rem;display:flex;flex-direction:column;gap:.28rem;transition:transform .18s,box-shadow .18s;cursor:default;}
+    .pub-ach-tile:hover{transform:translateY(-2px);}
+    @keyframes pub-ach-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+    .pub-ach-tile{animation:pub-ach-in .3s ease both;}
     /* ── Mobile ── */
     @media (max-width:640px) {
       body{overflow-x:hidden;}
@@ -192,6 +198,15 @@
       </div>
     </div>
 
+    <!-- Achievements (shown only if any earned) -->
+    <div id="pub-achievements-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+        <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;">— Достижения —</h2>
+        <span id="pub-ach-counter" style="font-size:.72rem;font-family:'Oswald',sans-serif;color:var(--muted);font-weight:500;"></span>
+      </div>
+      <div class="pub-ach-grid" id="pub-achievements-grid"></div>
+    </div>
+
     <!-- Info -->
     <div class="g-card" style="padding:1.4rem 1.5rem;">
       <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Информация —</h2>
@@ -281,6 +296,51 @@ function renderRank(totalSeconds){
   wrap.style.display='';
 }
 
+// ── Public achievements ───────────────────────────────────────────────────
+const RARITY = {
+  common:    { color:'#6b7280', label:'Обычное',     border:'rgba(107,114,128,0.32)', glow:'rgba(107,114,128,0.12)' },
+  rare:      { color:'#3b82f6', label:'Редкое',      border:'rgba(59,130,246,0.38)',  glow:'rgba(59,130,246,0.12)' },
+  epic:      { color:'#a855f7', label:'Эпическое',   border:'rgba(168,85,247,0.4)',   glow:'rgba(168,85,247,0.15)' },
+  legendary: { color:'#c9a94a', label:'Легендарное', border:'rgba(201,169,74,0.48)',  glow:'rgba(201,169,74,0.18)' },
+};
+const PUB_ACHIEVEMENTS = [
+  { id:'first_login',  rarity:'common',    icon:'🗡', label:'Первый вход',        desc:'Добро пожаловать на сервере',  cond:(u)=>true },
+  { id:'hours10',      rarity:'rare',      icon:'⏱', label:'10 часов',            desc:'Провёл 10 часов на сервере',   cond:(u)=>(u.total_seconds||0)>=36000 },
+  { id:'hours100',     rarity:'epic',      icon:'⚔', label:'100 часов',           desc:'Провёл 100 часов на сервере',  cond:(u)=>(u.total_seconds||0)>=360000 },
+  { id:'hours1000',    rarity:'legendary', icon:'🏆', label:'1000 часов',          desc:'Легенда сервера',               cond:(u)=>(u.total_seconds||0)>=3600000 },
+  { id:'clan_member',  rarity:'rare',      icon:'🛡', label:'В клане',             desc:'Состоит в клане',               cond:(u)=>!!(u.clan_tag||u.clan_name) },
+  { id:'comment1',     rarity:'rare',      icon:'💬', label:'Первый комментарий',  desc:'Оставил комментарий к новости', cond:(u,a)=>a?.items?.some(i=>i.type==='comment') },
+  { id:'reaction1',    rarity:'common',    icon:'⚡', label:'Первая реакция',      desc:'Поставил реакцию к новости',    cond:(u,a)=>a?.items?.some(i=>i.type==='reaction') },
+  { id:'comments10',   rarity:'epic',      icon:'📜', label:'10 комментариев',     desc:'Оставил 10 комментариев',       cond:(u,a)=>(u.comment_count||0)>=10||(a?.items?.filter(i=>i.type==='comment').length||0)>=10 },
+  { id:'profile_full', rarity:'rare',      icon:'✨', label:'Профиль заполнен',   desc:'Аватар + биография + игровой ник', cond:(u)=>!!(u.avatar_url&&u.bio&&u.game_nickname) },
+  { id:'early_bird',   rarity:'legendary', icon:'🌅', label:'Ранняя птица',        desc:'Один из первых на сервере',     cond:(u)=>u.created_at&&new Date(u.created_at)<new Date('2025-01-01') },
+];
+
+function renderPublicAchievements(u, actData) {
+  const card  = document.getElementById('pub-achievements-card');
+  const grid  = document.getElementById('pub-achievements-grid');
+  const cntEl = document.getElementById('pub-ach-counter');
+  if (!card || !grid) return;
+
+  const earned = PUB_ACHIEVEMENTS.filter(a => a.cond(u, actData));
+  if (!earned.length) { card.style.display = 'none'; return; }
+
+  card.style.display = '';
+  const n = earned.length;
+  if (cntEl) cntEl.textContent = n + ' достижени' + (n===1?'е':n<5?'я':'й');
+
+  grid.innerHTML = earned.map((a, i) => {
+    const r = RARITY[a.rarity] || RARITY.common;
+    const delay = i * 40;
+    return `<div class="pub-ach-tile" style="background:rgba(8,0,14,0.55);border:1px solid ${r.border};box-shadow:0 0 12px ${r.glow};animation-delay:${delay}ms;" data-tip="${esc(r.label)}">
+      <span style="font-size:1.1rem;line-height:1;">${a.icon}</span>
+      <span style="font-size:.72rem;font-weight:600;color:var(--text);">${esc(a.label)}</span>
+      <span style="font-size:.6rem;color:var(--muted);line-height:1.4;">${esc(a.desc)}</span>
+      <span style="font-size:.5rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${r.color};margin-top:auto;padding-top:.2rem;">${esc(r.label)}</span>
+    </div>`;
+  }).join('');
+}
+
 function dmUser(e) {
   e.preventDefault();
   const username = new URLSearchParams(location.search).get('u');
@@ -329,6 +389,14 @@ async function loadUser(){
     document.getElementById('user-last-seen').textContent=u.last_seen?fmtAgo(u.last_seen):'Не играл';
     document.getElementById('user-comment-count').textContent=u.comment_count??'0';
     renderRank(u.total_seconds||0);
+
+    // Load activity then render achievements
+    (async () => {
+      let actData = null;
+      try { actData = await fetch(`${API}/users/${encodeURIComponent(username)}/activity`).then(r => r.json()); } catch {}
+      renderPublicAchievements(u, actData);
+    })();
+
     const statusEl = document.getElementById('user-status');
     if (statusEl) {
       const effectiveIso = _isMe ? new Date().toISOString() : u.last_active_at;
