@@ -181,6 +181,205 @@ function _statusInfo(iso) {
   else _init();
 })();
 
+/* Global Ctrl+K search modal — self-contained, works on any page */
+(function() {
+  /* Inject CSS */
+  const _css = document.createElement('style');
+  _css.textContent = [
+    '#gs-overlay{box-sizing:border-box;}',
+    '.gs-item:focus{background:rgba(150,0,28,0.12)!important;outline:none;}',
+    '#gs-results::-webkit-scrollbar{width:4px;}',
+    '#gs-results::-webkit-scrollbar-thumb{background:rgba(130,0,24,0.5);border-radius:2px;}',
+  ].join('');
+  document.head.appendChild(_css);
+
+  let _overlay = null, _input = null, _results = null, _debTimer = null, _open = false;
+
+  /* Build DOM */
+  function _build() {
+    if (_overlay) return;
+
+    _overlay = document.createElement('div');
+    _overlay.id = 'gs-overlay';
+    _overlay.style.cssText = 'display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);opacity:0;transition:opacity .2s;';
+
+    _overlay.innerHTML = `
+      <div id="gs-modal" style="position:absolute;top:15%;left:50%;transform:translateX(-50%);width:100%;max-width:540px;padding:0 1rem;box-sizing:border-box;">
+        <div style="background:rgba(10,2,18,0.98);border:1px solid rgba(150,0,28,0.4);border-radius:1rem;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.8);">
+          <div style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1.1rem;border-bottom:1px solid rgba(110,0,150,0.18);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted,#9488a8)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="gs-input" type="text" placeholder="Поиск игроков, новостей, кланов…"
+              style="flex:1;background:none;border:none;outline:none;color:#e2d8f0;font-size:.92rem;font-family:'Inter',sans-serif;" autocomplete="off"/>
+            <kbd style="font-size:.62rem;color:#9488a8;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:.3rem;padding:.1rem .4rem;flex-shrink:0;">Esc</kbd>
+          </div>
+          <div id="gs-results" style="max-height:360px;overflow-y:auto;padding:.5rem 0;"></div>
+          <div style="padding:.5rem 1.1rem;border-top:1px solid rgba(110,0,150,0.12);font-size:.62rem;color:#9488a8;display:flex;gap:1rem;">
+            <span>↑↓ навигация</span><span>↵ открыть</span><span>Esc закрыть</span>
+          </div>
+        </div>
+      </div>`;
+
+    document.body.appendChild(_overlay);
+
+    _input   = document.getElementById('gs-input');
+    _results = document.getElementById('gs-results');
+
+    /* Close on overlay click (not modal) */
+    _overlay.addEventListener('click', function(e) {
+      if (!document.getElementById('gs-modal').contains(e.target)) closeGlobalSearch();
+    });
+
+    /* Input events */
+    _input.addEventListener('input', function() {
+      clearTimeout(_debTimer);
+      _debTimer = setTimeout(() => _doSearch(_input.value.trim()), 280);
+    });
+
+    /* Keyboard nav inside modal */
+    _overlay.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') { closeGlobalSearch(); return; }
+      const items = Array.from(_results.querySelectorAll('.gs-item'));
+      if (!items.length) return;
+      const focused = document.activeElement;
+      const idx = items.indexOf(focused);
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        items[idx < items.length - 1 ? idx + 1 : 0].focus();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        items[idx > 0 ? idx - 1 : items.length - 1].focus();
+      } else if (e.key === 'Enter' && idx >= 0) {
+        e.preventDefault();
+        items[idx].click();
+      }
+    });
+
+    _showPlaceholder();
+  }
+
+  /* Placeholder state */
+  function _showPlaceholder() {
+    _results.innerHTML = `<div style="padding:.9rem 1.1rem;font-size:.75rem;color:#9488a8;text-align:center;">Начните вводить для поиска…</div>`;
+  }
+
+  /* Spinner */
+  function _showSpinner() {
+    _results.innerHTML = `<div style="padding:.9rem 1.1rem;font-size:.75rem;color:#9488a8;text-align:center;display:flex;align-items:center;justify-content:center;gap:.5rem;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9488a8" stroke-width="2" stroke-linecap="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur=".75s" repeatCount="indefinite"/></path></svg>
+      Поиск…</div>`;
+  }
+
+  /* Category header */
+  function _catHeader(label) {
+    const d = document.createElement('div');
+    d.style.cssText = 'font-size:.58rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(200,0,42,0.6);padding:.35rem 1.1rem .15rem;';
+    d.textContent = label;
+    return d;
+  }
+
+  /* Single result item */
+  function _item(href, icon, title, subtitle) {
+    const d = document.createElement('div');
+    d.className = 'gs-item';
+    d.dataset.href = href;
+    d.tabIndex = 0;
+    d.style.cssText = 'display:flex;align-items:center;gap:.75rem;padding:.55rem 1.1rem;cursor:pointer;transition:background .12s;';
+    d.innerHTML = `<span style="font-size:.88rem;flex-shrink:0;">${icon}</span>
+      <div style="min-width:0;">
+        <div style="font-size:.82rem;font-weight:600;color:#e2d8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(title)}</div>
+        <div style="font-size:.65rem;color:#9488a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(subtitle)}</div>
+      </div>`;
+    d.addEventListener('mouseover', () => { d.style.background = 'rgba(150,0,28,0.12)'; });
+    d.addEventListener('mouseout',  () => { d.style.background = ''; });
+    d.addEventListener('click', () => { location.href = href; closeGlobalSearch(); });
+    d.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); d.click(); } });
+    return d;
+  }
+
+  /* Main search */
+  async function _doSearch(q) {
+    if (q.length < 2) { _showPlaceholder(); return; }
+    _showSpinner();
+
+    const fetches = [
+      fetch(`/api/users?search=${encodeURIComponent(q)}&limit=5`).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`/api/news?search=${encodeURIComponent(q)}&limit=5`).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`/api/clans?search=${encodeURIComponent(q)}&limit=5`).then(r => r.ok ? r.json() : null).catch(() => null),
+    ];
+
+    const [usersRes, newsRes, clansRes] = await Promise.all(fetches);
+
+    /* Normalise to arrays */
+    const users  = Array.isArray(usersRes)       ? usersRes       : (usersRes  && Array.isArray(usersRes.users))  ? usersRes.users  : [];
+    const news   = Array.isArray(newsRes)        ? newsRes        : (newsRes   && Array.isArray(newsRes.news))    ? newsRes.news    : [];
+    const clans  = Array.isArray(clansRes)       ? clansRes       : (clansRes  && Array.isArray(clansRes.clans))  ? clansRes.clans  : [];
+
+    _results.innerHTML = '';
+    let total = 0;
+
+    if (users.length) {
+      _results.appendChild(_catHeader('Игроки'));
+      users.forEach(u => {
+        const sub = u.role && u.role !== 'user' ? u.role : (u.playtime ? `${u.playtime} ч` : '');
+        _results.appendChild(_item(`/user.html?u=${encodeURIComponent(u.username || u.name || '')}`, '👤', u.username || u.name || '', sub));
+        total++;
+      });
+    }
+
+    if (news.length) {
+      _results.appendChild(_catHeader('Новости'));
+      news.forEach(n => {
+        const sub = n.published_at || n.created_at ? fmtDate(n.published_at || n.created_at) : '';
+        const slug = n.slug || n.id || '';
+        _results.appendChild(_item(`/?news=${encodeURIComponent(slug)}`, '📰', n.title || '', sub));
+        total++;
+      });
+    }
+
+    if (clans.length) {
+      _results.appendChild(_catHeader('Кланы'));
+      clans.forEach(c => {
+        const label = (c.tag ? `[${c.tag}] ` : '') + (c.name || '');
+        const sub   = c.member_count != null ? `${c.member_count} участников` : '';
+        _results.appendChild(_item('/clans.html', '🛡', label, sub));
+        total++;
+      });
+    }
+
+    if (total === 0) {
+      _results.innerHTML = `<div style="padding:.9rem 1.1rem;font-size:.75rem;color:#9488a8;text-align:center;">Ничего не найдено</div>`;
+    }
+  }
+
+  /* Public open/close */
+  window.openGlobalSearch = function() {
+    _build();
+    _input.value = '';
+    _showPlaceholder();
+    _overlay.style.display = 'block';
+    requestAnimationFrame(() => { _overlay.style.opacity = '1'; });
+    setTimeout(() => _input.focus(), 50);
+    _open = true;
+  };
+
+  window.closeGlobalSearch = function() {
+    if (!_overlay) return;
+    _overlay.style.opacity = '0';
+    setTimeout(() => { _overlay.style.display = 'none'; }, 210);
+    _open = false;
+  };
+
+  /* Global keyboard: Ctrl+K / Cmd+K to open, Escape to close */
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      if (_open) closeGlobalSearch(); else openGlobalSearch();
+    } else if (e.key === 'Escape' && _open) {
+      closeGlobalSearch();
+    }
+  });
+})();
+
 /* Toast notification — self-contained, works on any page */
 function showToast(msg, type = 'info', duration = 4500) {
   let wrap = document.getElementById('toast-wrap') || document.getElementById('toast-container');
