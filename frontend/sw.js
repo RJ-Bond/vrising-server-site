@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vrising-v3';
+const CACHE_NAME = 'vrising-v4';
 const STATIC_ASSETS = [
   '/', '/index.html', '/servers.html', '/profile.html', '/events.html',
   '/offline.html', '/manifest.json', '/common.js',
@@ -23,6 +23,13 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
+
+  // Uploaded media (images): let the browser handle natively.
+  // Do NOT call respondWith — re-wrapping no-cors/Range image requests via
+  // fetch() breaks the response and images fail to load on normal reload (F5).
+  if (url.pathname.startsWith('/api/uploads/')) {
+    return;
+  }
 
   // Never cache API calls — always network
   if (url.pathname.startsWith('/api/')) {
