@@ -555,7 +555,9 @@
       .connect-btn { font-size: .72rem; padding: .45rem .9rem; }
       .copy-ip-btn { font-size: .72rem; padding: .45rem .7rem; }
       .news-card { flex-direction: column !important; }
-      .news-card > div:first-child { width: 100% !important; height: 110px; }
+      .news-card > div:first-child { width: 100% !important; min-height: 130px; }
+      .news-card .news-thumb-wrap { width: 100% !important; height: 150px; min-height: 150px; }
+      .news-card .news-card-accent { width: 100% !important; height: 4px; min-height: 4px; }
       .hunter-podium { gap: .25rem; }
       .h-name { max-width: 52px; font-size: .65rem; }
       .wipe-block-val { font-size: 1.5rem; }
@@ -2944,8 +2946,8 @@ async function loadNews(page = 1, append = false) {
     }
   data.items.forEach((n, idx) => {
     const thumbImg = n.thumbnail_url
-      ? `<div style="width:140px;flex-shrink:0;overflow:hidden;align-self:stretch;"><img src="${esc(n.thumbnail_url)}" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;"></div>`
-      : `<div style="width:4px;flex-shrink:0;align-self:stretch;background:linear-gradient(180deg,rgba(180,0,35,0.7),rgba(100,0,180,0.5));border-radius:0;" class="news-card-accent"></div>`;
+      ? `<div class="news-thumb-wrap" style="width:140px;min-height:110px;flex-shrink:0;overflow:hidden;align-self:stretch;background:linear-gradient(180deg,rgba(80,0,100,0.5),rgba(50,0,20,0.5));"><img src="${esc(n.thumbnail_url)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;" onerror="this.style.opacity=0;"></div>`
+      : `<div class="news-card-accent" style="width:4px;flex-shrink:0;align-self:stretch;background:linear-gradient(180deg,rgba(180,0,35,0.7),rgba(100,0,180,0.5));border-radius:0;"></div>`;
     const tagsHtml = (n.tags || '').split(',').map(t => t.trim()).filter(Boolean)
       .map(t => `<span class="news-tag" onclick="event.stopPropagation();setTag('${esc(t)}')">${esc(t)}</span>`).join('');
     const authorName = esc(n.author.username);
