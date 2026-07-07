@@ -48,6 +48,7 @@ class UserOut(BaseModel):
     badge_icon_url: Optional[str] = None
     badge_style: Optional[str] = 'default'
     totp_enabled: bool = False
+    bio: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

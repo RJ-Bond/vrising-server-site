@@ -319,6 +319,7 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN NOT NULL DEFAULT 0",
             "ALTER TABLE audit_log ADD COLUMN target_type VARCHAR(50) DEFAULT NULL",
             "ALTER TABLE audit_log ADD COLUMN target_id INTEGER DEFAULT NULL",
+            "ALTER TABLE users ADD COLUMN bio VARCHAR(160) DEFAULT NULL",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -1133,6 +1134,27 @@ async def upload_cover(
     user.cover_url = f"/api/uploads/covers/{fname}"
     await db.commit()
     return {"cover_url": user.cover_url}
+
+
+# ─── Profile bio ─────────────────────────────────────────────────────────────
+
+class BioBody(BaseModel):
+    bio: Optional[str] = None
+
+@app.put("/api/profile/bio")
+@limiter.limit("20/minute")
+async def update_bio(
+    request: Request,
+    body: BioBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    bio = (body.bio or "").strip()[:160] or None
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one()
+    user.bio = bio
+    await db.commit()
+    return {"bio": user.bio}
 
 
 # ─── Monitor ────────────────────────────────────────────────────────────────

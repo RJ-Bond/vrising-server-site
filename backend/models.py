@@ -28,6 +28,7 @@ class User(Base):
     cover_url = Column(String(512), nullable=True)
     totp_secret = Column(String(64), nullable=True)
     totp_enabled = Column(Boolean, default=False, nullable=False, server_default="0")
+    bio = Column(String(160), nullable=True)
 
 
 class Clan(Base):
