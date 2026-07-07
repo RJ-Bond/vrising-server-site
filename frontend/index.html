@@ -318,9 +318,18 @@
       text-transform:uppercase;
       padding:.18rem .55rem; border-radius:9999px;
       background:rgba(140,0,28,0.18); border:1px solid rgba(181,0,42,0.3); color:#e07090;
+      cursor:pointer; transition:background .15s,border-color .15s;
     }
+    .modal-tag:hover { background:rgba(181,0,42,0.35); border-color:rgba(220,0,50,0.55); }
     /* Rich content styles */
     .rich-content { font-size:.92rem; line-height:1.8; color:#ccc0dc; }
+    .rich-content p:first-of-type::first-letter {
+      font-family:'Cinzel',serif; font-size:2.9em; font-weight:700;
+      color:var(--gold); float:left; line-height:.78em;
+      margin:.04em .14em 0 0; text-shadow:0 0 14px rgba(201,169,74,0.4);
+    }
+    .rich-content img { cursor:zoom-in; transition:opacity .15s,box-shadow .2s; }
+    .rich-content img:hover { opacity:.9; box-shadow:0 4px 24px rgba(200,0,42,0.35); }
     .rich-content h1,.rich-content h2,.rich-content h3 { font-family:'Cinzel',serif; color:#c9a04a; margin:1.5rem 0 .6rem; line-height:1.25; }
     .rich-content h1 { font-size:1.35rem; }
     .rich-content h2 { font-size:1.12rem; border-bottom:1px solid rgba(180,0,30,0.18); padding-bottom:.35rem; }
@@ -1730,9 +1739,15 @@
     <h3 id="modal-title" style="display:none;"></h3>
     <div id="modal-thumb" style="display:none;"><img id="modal-thumb-img" src="" alt=""></div>
 
+    <!-- Image lightbox -->
+    <div id="img-lightbox" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(2,0,6,0.94);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:2rem;cursor:zoom-out;">
+      <img id="img-lightbox-img" src="" alt="" style="max-width:92vw;max-height:92vh;border-radius:.5rem;box-shadow:0 20px 80px rgba(0,0,0,0.85);object-fit:contain;">
+    </div>
+
     <!-- Article body -->
     <div class="modal-body">
       <div id="modal-author" class="modal-article-meta"></div>
+      <div id="modal-toc"></div>
       <div id="modal-content" class="rich-content"></div>
       <div id="poll-wrap" style="display:none;margin-top:1.25rem;"></div>
       <div id="modal-reactions" style="display:flex;align-items:center;gap:.45rem;padding:.9rem 0;border-top:1px solid rgba(110,0,20,0.15);border-bottom:1px solid rgba(110,0,20,0.15);margin:1.25rem 0;flex-wrap:wrap;"></div>
@@ -3057,7 +3072,7 @@ async function openNews(slug) {
     const authorName = esc(n.author.username);
     const modalAdminBadge = _renderAdminBadge(n.author);
     const tags = (n.tags || '').split(',').map(t => t.trim()).filter(Boolean);
-    const tagHtml = tags.map(t => `<span class="modal-tag">${esc(t)}</span>`).join('');
+    const tagHtml = tags.map(t => `<span class="modal-tag" onclick="event.stopPropagation();openTagFromModal('${esc(t)}')">${esc(t)}</span>`).join('');
 
     // Update OG meta for social sharing
     const setMeta = (prop, val) => {
@@ -3112,6 +3127,7 @@ async function openNews(slug) {
         </div>
       </div>`;
     document.getElementById('modal-content').innerHTML = DOMPurify.sanitize(n.content || '');
+    _buildTOC();
     const relatedEl = document.getElementById('modal-related');
     if (relatedEl) relatedEl.innerHTML = _renderRelated(n.slug, n.tags);
     const progressFill = document.getElementById('read-progress-fill');
@@ -3142,6 +3158,7 @@ async function openNews(slug) {
         </div>
       </div>`;
     document.getElementById('modal-reactions').innerHTML = '';
+    document.getElementById('modal-toc').innerHTML = '';
     document.getElementById('modal-comments').innerHTML = '';
     document.getElementById('modal-comment-form').innerHTML = '';
     const pw = document.getElementById('poll-wrap');
@@ -3178,6 +3195,54 @@ function _updateModalNav() {
   const idx = _newsItems.findIndex(n => n.slug === _modalSlug);
   prev.style.display = idx > 0 ? 'flex' : 'none';
   next.style.display = idx < _newsItems.length - 1 ? 'flex' : 'none';
+}
+
+function openTagFromModal(tag) {
+  closeModal();
+  setTag(tag);
+  document.getElementById('news-section')?.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function openLightbox(src) {
+  const img = document.getElementById('img-lightbox-img');
+  img.src = src;
+  document.getElementById('img-lightbox').style.display = 'flex';
+}
+function closeLightbox() {
+  document.getElementById('img-lightbox').style.display = 'none';
+  document.getElementById('img-lightbox-img').src = '';
+}
+document.getElementById('modal-content')?.addEventListener('click', e => {
+  if (e.target.tagName === 'IMG') openLightbox(e.target.src);
+});
+
+function _buildTOC() {
+  const content = document.getElementById('modal-content');
+  const tocEl = document.getElementById('modal-toc');
+  if (!content || !tocEl) return;
+  const heads = content.querySelectorAll('h2, h3');
+  if (heads.length < 2) { tocEl.innerHTML = ''; return; }
+  const items = [];
+  heads.forEach((h, i) => {
+    const id = 'toc-' + i + '-' + h.textContent.trim().toLowerCase().replace(/[^a-zа-яё0-9]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+    h.id = id;
+    items.push({ id, text: h.textContent.trim(), sub: h.tagName === 'H3' });
+  });
+  tocEl.innerHTML = `
+    <div style="background:rgba(20,5,35,0.4);border:1px solid rgba(110,0,150,0.2);border-radius:.6rem;padding:.85rem 1rem;margin-bottom:1.25rem;">
+      <div class="gothic" style="font-size:.62rem;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:.55rem;">— Содержание —</div>
+      <div style="display:flex;flex-direction:column;gap:.32rem;">
+        ${items.map(it => `<a href="#${it.id}" onclick="event.preventDefault();_scrollToHeading('${it.id}')" style="font-size:.8rem;color:${it.sub ? 'var(--muted)' : '#d4c4e0'};text-decoration:none;padding-left:${it.sub ? '1rem' : '0'};transition:color .15s;" onmouseover="this.style.color='#e05070'" onmouseout="this.style.color='${it.sub ? 'var(--muted)' : '#d4c4e0'}'">${esc(it.text)}</a>`).join('')}
+      </div>
+    </div>`;
+}
+
+function _scrollToHeading(id) {
+  const el = document.getElementById(id);
+  const container = document.getElementById('modal-bg');
+  if (!el || !container) return;
+  const top = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 70;
+  container.scrollTo({ top, behavior: 'smooth' });
 }
 
 function shareNews() {
@@ -3302,7 +3367,10 @@ function _initReadProgress() {
 
 document.getElementById('modal-bg').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Escape') {
+    if (document.getElementById('img-lightbox').style.display === 'flex') { closeLightbox(); return; }
+    closeModal();
+  }
   const bg = document.getElementById('modal-bg');
   if (!bg || !bg.classList.contains('open')) return;
   if (e.key === 'ArrowLeft') navigateModal(-1);
