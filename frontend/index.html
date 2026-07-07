@@ -2996,7 +2996,7 @@ async function loadNews(page = 1, append = false) {
           </div>
           <div style="display:flex;align-items:center;gap:.35rem;flex-shrink:0;margin-left:.5rem;">
             <div class="card-reactions" data-slug="${esc(n.slug)}" style="display:flex;align-items:center;gap:.02rem;margin-right:.2rem;">
-              ${[['❤️','heart'],['👍','thumbs_up'],['🔥','fire']].map(([emoji,key]) => `<button onclick="event.stopPropagation();quickReact('${esc(n.slug)}','${key}',this)" data-key="${key}" style="background:none;border:none;padding:.1rem .22rem;font-size:.8rem;cursor:pointer;line-height:1;opacity:.45;transition:opacity .15s,transform .15s;" onmouseover="this.style.opacity='1';this.style.transform='scale(1.22)'" onmouseout="this.style.opacity=this.dataset.active?'1':'.45';this.style.transform='scale(1)'">${emoji}</button>`).join('')}
+              ${['heart','thumbs_up','fire'].map(key => `<button onclick="event.stopPropagation();quickReact('${esc(n.slug)}','${key}',this)" data-key="${key}" style="background:none;border:none;padding:.1rem .22rem;cursor:pointer;line-height:1;display:inline-flex;color:var(--muted);opacity:.45;transition:opacity .15s,transform .15s,color .15s;" onmouseover="this.style.opacity='1';this.style.transform='scale(1.22)'" onmouseout="this.style.opacity=this.dataset.active?'1':'.45';this.style.transform='scale(1)'">${RX_ICONS[key]}</button>`).join('')}
             </div>
             ${tagsHtml ? `<div style="display:flex;gap:.2rem;">${tagsHtml}</div>` : ''}
             <span style="font-size:.65rem;color:rgba(200,0,40,0.65);letter-spacing:.04em;white-space:nowrap;">Читать →</span>
@@ -3191,6 +3191,17 @@ function shareNews() {
   });
 }
 
+const RX_ICONS = {
+  fire: `<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2C7 5 5 8 5 11a5 5 0 0010 0c0-1.8-.8-3.4-2-4.5.4 2-.7 3.5-2 3.5a1.8 1.8 0 01-1.8-1.8c0-2 1.3-3.2.8-6.2z"/></svg>`,
+  heart: `<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5c2.6 3.4 5 6.7 5 9.3a5 5 0 11-10 0c0-2.6 2.4-5.9 5-9.3z"/><circle cx="8.3" cy="12.5" r=".9" fill="currentColor" stroke="none" opacity=".5"/></svg>`,
+  thumbs_up: `<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4.5l2.5 11M10 3.5l2.2 12M15 4.5l2 11"/></svg>`,
+  wow: `<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 7.5C9 5 7 3.5 4.5 4c.8.9.8 2 0 2.8C2.3 6.4 1 8 1.3 10c1-.9 2-.9 2.6 0-.9.8-1 2.2-.3 3.2 1-.8 2-.6 2.6.4.7 1.6 2 2.9 3.8 2.9s3.1-1.3 3.8-2.9c.6-1 1.6-1.2 2.6-.4.7-1 .6-2.4-.3-3.2.6-.9 1.6-.9 2.6 0 .3-2-1-3.6-3.2-3.2-.8-.8-.8-1.9 0-2.8-2.5-.5-4.5 1-5.4 3.5z"/></svg>`,
+  laugh: `<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5a5.5 5.5 0 00-5.5 5.5c0 2 .9 3.4 1.8 4.3v2.2h1.4v-1.6h.9v1.6h2.8v-1.6h.9v1.6h1.4v-2.2c.9-.9 1.8-2.3 1.8-4.3A5.5 5.5 0 0010 2.5z"/><circle cx="7.7" cy="8" r="1" fill="currentColor" stroke="none"/><circle cx="12.3" cy="8" r="1" fill="currentColor" stroke="none"/></svg>`,
+  sad: `<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.2c1.4 3.6 3.2 6.6 3.2 9a3.2 3.2 0 11-6.4 0c0-2.4 1.8-5.4 3.2-9z"/></svg>`,
+  dislike: `<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7.3 3h5.4l-1.1 6.5-1.6 7.5-1.6-7.5-1.1-6.5z"/><path d="M8.7 8.2l1.3 1.3-1.3 1.3 1.3 1.3"/></svg>`,
+};
+const RX_EMOJI_TO_ICON = { '👍':'thumbs_up', '❤️':'heart', '😂':'laugh', '😮':'wow', '😢':'sad', '👎':'dislike' };
+
 async function loadReactions(slug) {
   const el = document.getElementById('modal-reactions');
   if (!el) return;
@@ -3200,10 +3211,10 @@ async function loadReactions(slug) {
 
 function renderNewsReactions(el, slug, data) {
   const emojis = [
-    {key:'fire',     icon:'🔥', label:'Огонь'},
-    {key:'heart',    icon:'❤️',  label:'Нравится'},
-    {key:'thumbs_up',icon:'👍', label:'Одобряю'},
-    {key:'wow',      icon:'😮', label:'Вау'},
+    {key:'fire',     label:'Огонь'},
+    {key:'heart',    label:'Нравится'},
+    {key:'thumbs_up',label:'Одобряю'},
+    {key:'wow',      label:'Вау'},
   ];
   const user = getUser();
   el.innerHTML = emojis.map(e => {
@@ -3213,7 +3224,7 @@ function renderNewsReactions(el, slug, data) {
       ? 'background:rgba(140,0,22,0.45);border-color:rgba(200,0,40,0.65);color:#fca5a5;'
       : 'background:rgba(20,5,35,0.55);border-color:rgba(110,0,20,0.25);color:var(--muted);';
     return `<button onclick="toggleNewsReaction('${slug}','${e.key}')" title="${e.label}" data-rkey="${e.key}" style="${activeStyle}display:inline-flex;align-items:center;gap:.3rem;padding:.28rem .6rem;border:1px solid;border-radius:9999px;font-size:.75rem;cursor:${user ? 'pointer' : 'default'};transition:all .18s;font-family:'Inter',sans-serif;" ${!user ? 'disabled' : ''}>
-      <span style="font-size:.85rem;line-height:1;">${e.icon}</span>
+      <span style="display:inline-flex;line-height:1;">${RX_ICONS[e.key]}</span>
       <span style="font-size:.72rem;font-weight:600;min-width:.6rem;text-align:center;">${count}</span>
     </button>`;
   }).join('') + (!user ? `<span style="font-size:.65rem;color:var(--muted);margin-left:.25rem;">Войдите чтобы реагировать</span>` : '');
@@ -3244,6 +3255,7 @@ async function quickReact(slug, emojiKey, btn) {
       const active = (data.user_reactions || []).includes(emojiKey);
       btn.dataset.active = active ? '1' : '';
       btn.style.opacity = active ? '1' : '.45';
+      btn.style.color = active ? '#e8506a' : 'var(--muted)';
       btn.style.filter = active ? 'drop-shadow(0 0 4px rgba(200,0,42,0.6))' : '';
     } else if (res.status === 401) {
       showToast('Войдите, чтобы ставить реакции', 'info');
@@ -3452,8 +3464,8 @@ function renderReactions(commentId, reactions, userReaction) {
     const active = userReaction === e;
     return `<button onclick="toggleReaction(${commentId},'${e}',this)"
       data-emoji="${e}"
-      style="background:${active?'rgba(200,0,40,0.2)':'rgba(255,255,255,0.04)'};border:1px solid ${active?'rgba(200,0,40,0.5)':'rgba(255,255,255,0.08)'};border-radius:9999px;padding:.2rem .5rem;cursor:pointer;font-size:.75rem;display:inline-flex;align-items:center;gap:.25rem;transition:all .15s;color:#c8c5d4;">
-      ${e}${cnt > 0 ? `<span style="font-size:.65rem;font-family:'Inter',sans-serif;">${cnt}</span>` : ''}
+      style="background:${active?'rgba(200,0,40,0.2)':'rgba(255,255,255,0.04)'};border:1px solid ${active?'rgba(200,0,40,0.5)':'rgba(255,255,255,0.08)'};border-radius:9999px;padding:.2rem .5rem;cursor:pointer;font-size:.75rem;display:inline-flex;align-items:center;gap:.25rem;transition:all .15s;color:${active?'#e8506a':'#c8c5d4'};">
+      <span style="display:inline-flex;line-height:1;">${RX_ICONS[RX_EMOJI_TO_ICON[e]]}</span>${cnt > 0 ? `<span style="font-size:.65rem;font-family:'Inter',sans-serif;">${cnt}</span>` : ''}
     </button>`;
   }).join('');
   return `<div data-reactions style="display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.5rem;">${btns}</div>`;
