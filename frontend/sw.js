@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vrising-v2';
+const CACHE_NAME = 'vrising-v3';
 const STATIC_ASSETS = [
   '/', '/index.html', '/servers.html', '/profile.html', '/events.html',
   '/offline.html', '/manifest.json', '/common.js',
@@ -23,17 +23,6 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-
-  // Uploads are immutable static files — cache-first like other static assets
-  if (url.pathname.startsWith('/api/uploads/')) {
-    e.respondWith(
-      caches.match(e.request).then(r => r || fetch(e.request).then(resp => {
-        if (resp.ok) caches.open(CACHE_NAME).then(c => c.put(e.request, resp.clone()));
-        return resp;
-      }))
-    );
-    return;
-  }
 
   // Never cache API calls — always network
   if (url.pathname.startsWith('/api/')) {
