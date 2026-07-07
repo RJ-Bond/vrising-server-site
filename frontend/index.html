@@ -339,7 +339,7 @@
     .rich-content li { margin-bottom:.3rem; }
     .rich-content blockquote { border-left:3px solid rgba(181,0,42,0.55); background:rgba(100,0,20,0.1); color:#a891be; padding:.7rem 1rem; margin:1rem 0; font-style:italic; border-radius:0 .4rem .4rem 0; }
     .rich-content code { background:rgba(50,0,80,0.55); border-radius:.3rem; padding:.1rem .4rem; color:#c9a04a; font-size:.82rem; border:1px solid rgba(100,0,120,0.3); }
-    .rich-content pre { background:rgba(6,0,14,0.8); border:1px solid rgba(110,0,150,0.2); border-radius:.6rem; padding:.9rem 1.1rem; overflow-x:auto; margin-bottom:.8rem; }
+    .rich-content pre { background:rgba(6,0,14,0.8); border:1px solid rgba(110,0,150,0.2); border-radius:.6rem; padding:2rem 1.1rem .9rem; overflow-x:auto; margin-bottom:.8rem; position:relative; }
     .rich-content pre code { background:none; padding:0; border:none; }
     .rich-content a { color:#e05070; text-decoration:underline; text-underline-offset:2px; }
     .rich-content a:hover { color:#ff7090; }
@@ -3108,26 +3108,32 @@ async function openNews(slug) {
     }
 
     // ── Author meta row ───────────────────────────────────────────────────────
+    const authorHref = `/user.html?u=${encodeURIComponent(n.author.username)}`;
     const avatarEl = n.author.avatar_url
       ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(181,0,42,0.35);flex-shrink:0;box-shadow:0 0 12px rgba(181,0,42,0.2);">`
       : `<span style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(80,0,150,0.7),rgba(120,0,20,0.5));border:2px solid rgba(181,0,42,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:.9rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
     document.getElementById('modal-author').innerHTML = `
-      ${avatarEl}
+      <a href="${authorHref}" style="text-decoration:none;flex-shrink:0;">${avatarEl}</a>
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;">
-          <span style="font-size:.88rem;color:#d4c4e0;font-weight:600;">${authorName}</span>
+          <a href="${authorHref}" style="font-size:.88rem;color:#d4c4e0;font-weight:600;text-decoration:none;transition:color .15s;" onmouseover="this.style.color='#e05070'" onmouseout="this.style.color='#d4c4e0'">${authorName}</a>
           ${modalAdminBadge}
         </div>
         <div style="display:flex;align-items:center;gap:.7rem;margin-top:.15rem;">
-          <span style="font-size:.7rem;color:var(--muted);">${fmtDate(n.created_at)}</span>
+          <span style="font-size:.7rem;color:var(--muted);">${fmtDateTime(n.created_at)}</span>
           <span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.7rem;color:var(--muted);">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             ${n.views || 0}
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.7rem;color:var(--muted);">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            ${readingTime(n.content)}
           </span>
         </div>
       </div>`;
     document.getElementById('modal-content').innerHTML = DOMPurify.sanitize(n.content || '');
     _buildTOC();
+    _addCodeCopyButtons();
     const relatedEl = document.getElementById('modal-related');
     if (relatedEl) relatedEl.innerHTML = _renderRelated(n.slug, n.tags);
     const progressFill = document.getElementById('read-progress-fill');
@@ -3237,6 +3243,29 @@ function _buildTOC() {
     </div>`;
 }
 
+function _addCodeCopyButtons() {
+  document.querySelectorAll('#modal-content pre').forEach(pre => {
+    if (pre.querySelector('.code-copy-btn')) return;
+    pre.style.position = 'relative';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'code-copy-btn';
+    btn.textContent = 'Копировать';
+    btn.style.cssText = "position:absolute;top:.5rem;right:.5rem;font-size:.65rem;padding:.25rem .55rem;background:rgba(50,0,80,0.65);border:1px solid rgba(110,0,150,0.4);border-radius:.35rem;color:var(--muted);cursor:pointer;opacity:.55;transition:opacity .15s,color .15s,border-color .15s;font-family:'Inter',sans-serif;";
+    pre.addEventListener('mouseenter', () => btn.style.opacity = '1');
+    pre.addEventListener('mouseleave', () => btn.style.opacity = '.55');
+    btn.addEventListener('click', () => {
+      const text = pre.querySelector('code')?.textContent ?? pre.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = 'Скопировано';
+        btn.style.color = '#e05070'; btn.style.borderColor = 'rgba(220,0,50,0.5)';
+        setTimeout(() => { btn.textContent = 'Копировать'; btn.style.color = ''; btn.style.borderColor = ''; }, 1500);
+      });
+    });
+    pre.appendChild(btn);
+  });
+}
+
 function _scrollToHeading(id) {
   const el = document.getElementById(id);
   const container = document.getElementById('modal-bg');
@@ -3247,6 +3276,11 @@ function _scrollToHeading(id) {
 
 function shareNews() {
   const url = window.location.href;
+  const title = document.getElementById('modal-title')?.textContent || document.title;
+  if (navigator.share) {
+    navigator.share({ title, url }).catch(() => {});
+    return;
+  }
   navigator.clipboard.writeText(url).then(() => showToast('Ссылка скопирована', 'success')).catch(() => {
     const ta = document.createElement('textarea');
     ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
