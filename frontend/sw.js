@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vrising-v4';
+const CACHE_NAME = 'vrising-v5';
 const STATIC_ASSETS = [
   '/', '/index.html', '/servers.html', '/profile.html', '/events.html',
   '/offline.html', '/manifest.json', '/common.js',
@@ -24,10 +24,11 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
 
-  // Uploaded media (images): let the browser handle natively.
-  // Do NOT call respondWith — re-wrapping no-cors/Range image requests via
-  // fetch() breaks the response and images fail to load on normal reload (F5).
-  if (url.pathname.startsWith('/api/uploads/')) {
+  // Images (incl. CSS background-image): NEVER intercept. Let the browser
+  // fetch them natively with proper no-cors/Range/cache handling. Proxying an
+  // image request through fetch() inside the SW breaks the response body, so
+  // thumbnails failed to render on normal reload (F5) while hard reload worked.
+  if (e.request.destination === 'image') {
     return;
   }
 
