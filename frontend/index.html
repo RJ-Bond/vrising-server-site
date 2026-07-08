@@ -1556,10 +1556,11 @@
     <!-- Event banner (shown if event_active=1) -->
     <div id="event-banner" style="display:none;"></div>
 
-    <div id="news-sort-bar" style="display:flex;gap:.4rem;margin-bottom:.75rem;flex-wrap:wrap;">
+    <div id="news-sort-bar" style="display:flex;align-items:center;gap:.4rem;margin-bottom:.75rem;flex-wrap:wrap;">
       <button class="news-sort-btn active" data-sort="date"     onclick="setNewsSort('date')">По дате</button>
       <button class="news-sort-btn"        data-sort="views"    onclick="setNewsSort('views')">По просмотрам</button>
       <button class="news-sort-btn"        data-sort="comments" onclick="setNewsSort('comments')">По комментариям</button>
+      <span id="news-count-label" style="font-size:.68rem;color:var(--muted);margin-left:.35rem;"></span>
     </div>
     <div id="featured-wrap" style="display:none;margin-bottom:1.1rem;"></div>
     <div id="news-list" style="display:grid;gap:.75rem;grid-template-columns:1fr;"></div>
@@ -2917,7 +2918,7 @@ async function loadTags() {
     const tags = await fetch(`${API}/news/tags`).then(r => r.json());
     const ct = document.getElementById('tag-filters');
     if (!ct || !tags.length) return;
-    ct.innerHTML = tags.map(t => `<button class="tag-pill" data-tag="${esc(t)}" onclick="setTag('${esc(t)}')">${esc(t)}</button>`).join('');
+    ct.innerHTML = tags.map(t => `<button class="tag-pill${t === _activeTag ? ' active' : ''}" data-tag="${esc(t)}" onclick="setTag('${esc(t)}')">${esc(t)}</button>`).join('');
   } catch {}
 }
 
@@ -2926,7 +2927,38 @@ function setTag(tag) {
   document.querySelectorAll('.tag-pill').forEach(p => {
     p.classList.toggle('active', p.dataset.tag === _activeTag);
   });
+  _syncNewsUrl(true);
   loadNews(1);
+}
+
+// ── News filter state <-> URL sync ─────────────────────────────────────────
+function _syncNewsUrl(push, keepModalParams = true) {
+  const p = new URLSearchParams();
+  if (_activeTag) p.set('tag', _activeTag);
+  if (_newsSort && _newsSort !== 'date') p.set('sort', _newsSort);
+  if (_searchTerm) p.set('q', _searchTerm);
+  if (keepModalParams) {
+    const current = new URLSearchParams(location.search);
+    const news = current.get('news');
+    const comment = current.get('comment');
+    if (news) p.set('news', news);
+    if (comment) p.set('comment', comment);
+  }
+  const qs = p.toString();
+  const newUrl = location.pathname + (qs ? '?' + qs : '');
+  if (push) history.pushState({}, '', newUrl);
+  else history.replaceState({}, '', newUrl);
+}
+
+function _applyNewsUrlParams() {
+  const p = new URLSearchParams(location.search);
+  _activeTag = p.get('tag') || null;
+  _newsSort = p.get('sort') || 'date';
+  _searchTerm = p.get('q') || '';
+  document.querySelectorAll('.news-sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === _newsSort));
+  document.querySelectorAll('.tag-pill').forEach(el => el.classList.toggle('active', el.dataset.tag === _activeTag));
+  const searchInput = document.getElementById('news-search');
+  if (searchInput) searchInput.value = _searchTerm;
 }
 
 // ── News ───────────────────────────────────────────────────────────────────
@@ -2942,13 +2974,24 @@ let _newsSort = 'date';
 function setNewsSort(sort) {
   _newsSort = sort;
   document.querySelectorAll('.news-sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === sort));
+  _syncNewsUrl(true);
   loadNews(1);
 }
 
 function onSearchInput(val) {
   clearTimeout(_searchTimer);
   _searchTerm = val.trim();
-  _searchTimer = setTimeout(() => loadNews(1), 350);
+  _searchTimer = setTimeout(() => { _syncNewsUrl(false); loadNews(1); }, 350);
+}
+
+function resetNewsFilters() {
+  _activeTag = null;
+  _searchTerm = '';
+  document.querySelectorAll('.tag-pill').forEach(p => p.classList.remove('active'));
+  const searchInput = document.getElementById('news-search');
+  if (searchInput) searchInput.value = '';
+  _syncNewsUrl(true);
+  loadNews(1);
 }
 
 async function loadNews(page = 1, append = false) {
@@ -2990,15 +3033,20 @@ async function loadNews(page = 1, append = false) {
       _hotSlug = maxViews > 0 ? (data.items.find(n => (n.views || 0) === maxViews) || {}).slug || null : null;
     }
     if (loadingMore) loadingMore.style.display = 'none';
+    const countLabel = document.getElementById('news-count-label');
     if (!data.items.length && !append) {
+      const hasFilters = !!(_searchTerm || _activeTag);
       list.innerHTML = `<div class="news-empty">
         <div class="news-empty-icon">⚔</div>
         <div class="news-empty-title">Архивы пусты</div>
         <p class="news-empty-sub">${_searchTerm ? 'По запросу «' + esc(_searchTerm) + '» ничего не найдено' : 'Новостей пока нет — следите за обновлениями'}</p>
+        ${hasFilters ? `<button onclick="resetNewsFilters()" style="margin-top:.75rem;background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;font-size:.75rem;cursor:pointer;font-family:'Inter',sans-serif;">Сбросить фильтры</button>` : ''}
       </div>`;
+      if (countLabel) countLabel.textContent = '';
       _newsLoading = false;
       return;
     }
+    if (countLabel) countLabel.textContent = data.total ? `Показано ${_newsItems.length + data.items.length} из ${data.total}` : '';
   data.items.forEach((n, idx) => {
     const thumbImg = n.thumbnail_url
       ? `<div class="news-thumb-wrap" style="width:140px;min-height:110px;flex-shrink:0;align-self:stretch;background:url('${esc(n.thumbnail_url)}') center/cover no-repeat,linear-gradient(180deg,rgba(60,0,80,0.7),rgba(40,0,15,0.7));"></div>`
@@ -3103,7 +3151,10 @@ let _modalSlug = '';
 
 async function openNews(slug, highlightCommentId) {
   _modalSlug = slug;
-  history.pushState({newsSlug: slug}, '', '?news=' + encodeURIComponent(slug));
+  const _pns = new URLSearchParams(location.search);
+  _pns.set('news', slug);
+  _pns.delete('comment');
+  history.pushState({newsSlug: slug}, '', location.pathname + '?' + _pns.toString());
   try {
     const _nr = await fetch(`${API}/news/${slug}`);
     if (!_nr.ok) throw new Error(`HTTP ${_nr.status}`);
@@ -3226,7 +3277,7 @@ function closeModal() {
   document.getElementById('modal-bg').classList.remove('open');
   document.body.style.overflow = '';
   _modalSlug = '';
-  history.pushState({}, '', location.pathname);
+  _syncNewsUrl(true, false);
   const prev = document.getElementById('modal-prev');
   const next = document.getElementById('modal-next');
   if (prev) prev.style.display = 'none';
@@ -4219,6 +4270,7 @@ setInterval(loadSparklines, 60000);
 window.addEventListener('resize', loadSparklines);
 loadFeatured();
 loadLatestNews();
+_applyNewsUrlParams();
 loadNews(1);
 loadTags();
 loadWipeHistory();
@@ -4647,6 +4699,8 @@ document.addEventListener('click', e => {
   const commentId = qs.get('comment');
   if (slug) openNews(slug, commentId ? Number(commentId) : null);
   window.addEventListener('popstate', e => {
+    _applyNewsUrlParams();
+    loadNews(1);
     if (e.state && e.state.newsSlug) openNews(e.state.newsSlug);
     else closeModal();
   });
