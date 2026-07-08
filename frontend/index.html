@@ -1331,10 +1331,6 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.497 1.009 2.452-.397.957-1.494 1.411-2.455 1.015zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.252 0-2.265-1.014-2.265-2.265z"/></svg>
         Купить: V Rising
       </a>
-      <button id="hero-copy-ip" class="copy-ip-btn" style="display:none;" onclick="copyServerIp()">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        <span id="hero-ip-text">—</span>
-      </button>
     </div>
   </div>
 
@@ -2756,27 +2752,6 @@ function _updateStatusBarOnline() {
   }
 }
 
-let _heroServerAddr = '';
-function copyServerIp() {
-  if (!_heroServerAddr) return;
-  const ipBtn = document.getElementById('hero-copy-ip');
-  const ipText = document.getElementById('hero-ip-text');
-  const flash = () => {
-    if (!ipBtn || !ipText) return;
-    const prev = ipText.textContent;
-    ipBtn.classList.add('copied');
-    ipText.textContent = 'Скопировано ✓';
-    setTimeout(() => { ipBtn.classList.remove('copied'); ipText.textContent = prev; }, 1600);
-  };
-  navigator.clipboard.writeText(_heroServerAddr).then(flash).catch(() => {
-    const ta = document.createElement('textarea');
-    ta.value = _heroServerAddr; ta.style.position = 'fixed'; ta.style.opacity = '0';
-    document.body.appendChild(ta); ta.select(); document.execCommand('copy');
-    document.body.removeChild(ta);
-    flash();
-  });
-}
-
 async function loadStatus() {
   try {
     const d = await fetch(`${API}/monitor/status`).then(r => r.json());
@@ -2786,15 +2761,6 @@ async function loadStatus() {
       <span style="color:var(--text);margin:0 .6rem;font-size:.78rem;font-weight:500;">${esc(d.name)}</span>
       <span style="color:var(--muted);font-size:.75rem;">${d.players} / ${d.max_players} игроков</span>`;
     updateHunters(d.players_list || []);
-    if (d.ip && d.game_port) {
-      _heroServerAddr = `${d.ip}:${d.game_port}`;
-      const ipBtn = document.getElementById('hero-copy-ip');
-      const ipText = document.getElementById('hero-ip-text');
-      if (ipBtn && ipText && !ipBtn.classList.contains('copied')) {
-        ipBtn.style.display = 'inline-flex';
-        ipText.textContent = _heroServerAddr;
-      }
-    }
     // Update status bar online count
     window._sb_online1 = d.online ? d.players : 0;
     window._sb_max1    = d.max_players || 0;
