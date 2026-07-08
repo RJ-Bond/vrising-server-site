@@ -516,12 +516,6 @@
       color:#c8c5d4;font-size:.68rem;padding:.22rem .55rem;border-radius:.35rem;
       white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,.55);line-height:1.5;
     }
-    .spark-now-label {
-      display:none;position:absolute;z-index:15;pointer-events:none;
-      transform:translate(calc(-100% - 6px),-50%);
-      font-size:.56rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;
-      color:#0a0212;padding:.05rem .35rem;border-radius:9999px;white-space:nowrap;
-    }
 
     /* ── Online widget ── */
     .online-stat { flex:1;text-align:center;padding:.4rem .3rem;border-radius:.5rem; }
@@ -1671,7 +1665,6 @@
       <canvas id="left-spark" height="36" style="width:100%;display:none;border-radius:.3rem;margin-top:.5rem;margin-bottom:.1rem;opacity:.75;cursor:crosshair;"></canvas>
       <div id="spark1-xhair" class="spark-xhair" style="background:rgba(224,85,117,.55);"></div>
       <div id="spark1-tip" class="spark-tip"></div>
-      <div id="spark1-now" class="spark-now-label" style="background:rgba(224,85,117,.95);">сейчас</div>
     </div>
     <div id="left-connect" style="margin-top:.75rem;"></div>
     <div id="left-players" style="margin-top:.6rem;"></div>
@@ -1692,7 +1685,6 @@
         <canvas id="left-spark2" height="36" style="width:100%;display:none;border-radius:.3rem;margin-top:.5rem;margin-bottom:.1rem;opacity:.75;cursor:crosshair;"></canvas>
         <div id="spark2-xhair" class="spark-xhair" style="background:rgba(153,85,238,.55);"></div>
         <div id="spark2-tip" class="spark-tip"></div>
-        <div id="spark2-now" class="spark-now-label" style="background:rgba(153,85,238,.95);">сейчас</div>
       </div>
       <div id="left-connect2" style="margin-top:.75rem;"></div>
       <div id="left-players2" style="margin-top:.6rem;"></div>
@@ -2565,15 +2557,7 @@ function drawMiniSparkline(canvasId, snaps, accentRgb) {
   ctx.lineWidth = 1.5;
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   ctx.stroke();
-  // "current" point marker — glowing dot at the latest snapshot
-  ctx.beginPath();
-  ctx.shadowColor = `rgba(${accentRgb},0.9)`;
-  ctx.shadowBlur = 6;
-  ctx.fillStyle = `rgba(${accentRgb},1)`;
-  ctx.arc(last.x, last.y, 2.6, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  return { pts, w, tMin, tSpan, last };
+  return { pts, w, tMin, tSpan };
 }
 
 function setupSparkHover(canvasId, geom, tipId, xhairId) {
@@ -2621,16 +2605,6 @@ function setupSparkHover(canvasId, geom, tipId, xhairId) {
   canvas.addEventListener('mouseleave', onLeave);
 }
 
-function _positionNowLabel(labelId, canvasId, geom) {
-  const label = document.getElementById(labelId);
-  const canvas = document.getElementById(canvasId);
-  if (!label) return;
-  if (!geom || !geom.last || !canvas) { label.style.display = 'none'; return; }
-  label.style.left = geom.last.x + 'px';
-  label.style.top = (canvas.offsetTop + geom.last.y) + 'px';
-  label.style.display = 'block';
-}
-
 async function loadSparklines() {
   try {
     const [s1, s2] = await Promise.all([
@@ -2641,8 +2615,6 @@ async function loadSparklines() {
     const g2 = drawMiniSparkline('left-spark2', s2, '153,85,238');
     setupSparkHover('left-spark',  g1, 'spark1-tip', 'spark1-xhair');
     setupSparkHover('left-spark2', g2, 'spark2-tip', 'spark2-xhair');
-    _positionNowLabel('spark1-now', 'left-spark',  g1);
-    _positionNowLabel('spark2-now', 'left-spark2', g2);
   } catch {}
 }
 
