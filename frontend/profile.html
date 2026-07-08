@@ -1377,7 +1377,7 @@ async function loadNotifications() {
             ${n.type==='reply'?`<strong>@${esc(n.data?.from_username||'')}</strong> ответил на ваш комментарий`:'Новое уведомление'}
           </div>
           ${n.data?.preview ? `<div style="font-size:.68rem;color:#9488a8;margin-top:.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(n.data.preview)}</div>` : ''}
-          ${n.data?.news_slug ? `<a href="/?news=${esc(n.data.news_slug)}" style="font-size:.65rem;color:#c8002a;text-decoration:none;">Перейти →</a>` : ''}
+          ${n.data?.news_slug ? `<a href="/?news=${esc(n.data.news_slug)}${n.data?.comment_id ? '&comment='+n.data.comment_id : ''}" style="font-size:.65rem;color:#c8002a;text-decoration:none;">Перейти →</a>` : ''}
         </div>`).join('');
     }
   }

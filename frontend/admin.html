@@ -3024,7 +3024,7 @@ async function loadDashboard() {
         <div style="padding:.55rem 0;border-bottom:1px solid rgba(150,0,28,.1);display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap;">
           <span style="font-size:.7rem;font-weight:600;color:#c9a04a;white-space:nowrap;">${esc(c.author)}</span>
           <span style="font-size:.7rem;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.content)}</span>
-          <a href="/news/${esc(c.news_slug)}" target="_blank" style="font-size:.65rem;color:var(--muted);white-space:nowrap;text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">${esc(c.news_title)}</a>
+          <a href="/?news=${esc(c.news_slug)}&comment=${c.id}" target="_blank" style="font-size:.65rem;color:var(--muted);white-space:nowrap;text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">${esc(c.news_title)}</a>
           <button onclick="deleteAdminComment(${c.id})" style="background:none;border:none;color:rgba(200,0,30,.45);cursor:pointer;font-size:.8rem;padding:0 .2rem;flex-shrink:0;" onmouseover="this.style.color='rgba(240,0,40,.9)'" onmouseout="this.style.color='rgba(200,0,30,.45)'">✕</button>
         </div>`).join('');
     }

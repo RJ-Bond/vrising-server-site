@@ -3073,7 +3073,7 @@ _newsObserver.observe(document.getElementById('news-sentinel'));
 
 let _modalSlug = '';
 
-async function openNews(slug) {
+async function openNews(slug, highlightCommentId) {
   _modalSlug = slug;
   history.pushState({newsSlug: slug}, '', '?news=' + encodeURIComponent(slug));
   try {
@@ -3155,7 +3155,7 @@ async function openNews(slug) {
     document.getElementById('modal-bg').classList.add('open');
     document.body.style.overflow = 'hidden';
     loadPoll(slug);
-    loadComments(slug);
+    loadComments(slug, 1, highlightCommentId);
     renderCommentForm(slug);
     loadReactions(slug);
     setTimeout(_initReadProgress, 50);
@@ -3444,7 +3444,7 @@ function commentAvatar(author) {
 
 let _commentsPage = 1;
 
-async function loadComments(slug, page) {
+async function loadComments(slug, page, highlightCommentId) {
   const el = document.getElementById('modal-comments');
   if (!el) return;
   page = page || 1;
@@ -3475,9 +3475,23 @@ async function loadComments(slug, page) {
         <button onclick="loadComments('${slug}', ${page + 1})" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;font-size:.75rem;cursor:pointer;font-family:'Inter',sans-serif;">Загрузить ещё</button>
       </div>`);
     }
+    if (page === 1 && highlightCommentId) setTimeout(() => _highlightComment(highlightCommentId), 150);
   } catch {
     el.innerHTML = `<div style="color:var(--muted);font-size:.75rem;">Ошибка загрузки комментариев.</div>`;
   }
+}
+
+function _highlightComment(id) {
+  const el = document.querySelector(`.comment-item[data-id="${id}"]`);
+  const container = document.getElementById('modal-bg');
+  if (!el || !container) return;
+  const top = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - 90;
+  container.scrollTo({ top, behavior: 'smooth' });
+  el.style.transition = 'background-color .3s ease, box-shadow .3s ease';
+  el.style.borderRadius = '.5rem';
+  el.style.background = 'rgba(200,0,42,0.14)';
+  el.style.boxShadow = '0 0 0 1px rgba(200,0,42,0.4)';
+  setTimeout(() => { el.style.background = ''; el.style.boxShadow = ''; }, 2400);
 }
 
 function startDeleteConfirm(id, slug) {
@@ -4524,7 +4538,7 @@ async function loadNotifications() {
             ${n.type==='reply'?`<strong>@${esc(n.data?.from_username||'')}</strong> ответил на ваш комментарий`:'Новое уведомление'}
           </div>
           ${n.data?.preview ? `<div style="font-size:.68rem;color:#9488a8;margin-top:.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(n.data.preview)}</div>` : ''}
-          ${n.data?.news_slug ? `<a href="/news/${esc(n.data.news_slug)}" style="font-size:.65rem;color:#c8002a;text-decoration:none;">Перейти →</a>` : ''}
+          ${n.data?.news_slug ? `<a href="/?news=${esc(n.data.news_slug)}${n.data?.comment_id ? '&comment='+n.data.comment_id : ''}" style="font-size:.65rem;color:#c8002a;text-decoration:none;">Перейти →</a>` : ''}
         </div>`).join('');
     }
   }
@@ -4549,11 +4563,12 @@ document.addEventListener('click', e => {
   }
 });
 
-// auto-open news from URL ?news=slug
+// auto-open news from URL ?news=slug (optionally &comment=id to jump to a reply)
 (function() {
   const qs = new URLSearchParams(location.search);
   const slug = qs.get('news');
-  if (slug) openNews(slug);
+  const commentId = qs.get('comment');
+  if (slug) openNews(slug, commentId ? Number(commentId) : null);
   window.addEventListener('popstate', e => {
     if (e.state && e.state.newsSlug) openNews(e.state.newsSlug);
     else closeModal();
