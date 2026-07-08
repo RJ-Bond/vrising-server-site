@@ -829,9 +829,11 @@
         grid-column:1 / -1; justify-content:center; border-right:none;
         border-bottom:1px solid rgba(110,0,20,0.15); padding:.35rem .5rem;
       }
-      /* Stack each stat as a tidy vertical tile (icon → label → value) so all
-         three columns line up evenly instead of wrapping inconsistently. */
-      .sb-item { flex-direction:column; gap:.12rem; padding:.5rem .2rem; font-size:.6rem; line-height:1.25; text-align:center; }
+      /* Stack each stat as a tidy vertical tile (icon → label → value). Top-align
+         so icon/label/value share a baseline across all three columns — the
+         uptime tile has an extra gauge bar below its value, and centering made
+         its «100%» float higher than the neighbouring values. */
+      .sb-item { flex-direction:column; justify-content:flex-start; gap:.12rem; padding:.5rem .2rem; font-size:.6rem; line-height:1.25; text-align:center; }
       .sb-val { font-size:.82rem; }
       /* iOS Safari zooms the page when focusing an input smaller than 16px.
          Bump text-entry controls to 16px on mobile (comments, search, DM). */
@@ -3261,7 +3263,10 @@ async function openNews(slug, highlightCommentId) {
     if (relatedEl) relatedEl.innerHTML = _renderRelated(n.slug, n.tags);
     const progressFill = document.getElementById('read-progress-fill');
     if (progressFill) progressFill.style.width = '0%';
-    document.getElementById('modal-bg').classList.add('open');
+    const modalBg = document.getElementById('modal-bg');
+    modalBg.classList.add('open');
+    modalBg.scrollTop = 0;  // reset scroll so a new article opens at the top,
+                            // not wherever the previous one was left scrolled
     document.body.style.overflow = 'hidden';
     loadPoll(slug);
     loadComments(slug, 1, highlightCommentId);
