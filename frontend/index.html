@@ -806,9 +806,23 @@
         background:rgba(10,2,18,0.98) !important;
       }
       .left-panel.drawer-open { left:0 !important; }
-      .right-panel { display:none !important; }
+      /* Keep the monitoring panel on mobile instead of hiding it — the connect
+         button, player list and sparkline live here and were lost on phones.
+         Quick status (online/uptime/wipe) is already in the top status bar, so
+         showing it in natural order (below news) is fine. */
       .main-grid { padding:0 .75rem !important; }
+      .right-panel { display:block !important; width:100% !important; }
       #drawer-close { display:block !important; }
+
+      /* Status bar: 4-col grid overflows narrow screens. Give each server its
+         own name row spanning full width, with the 3 stats in an even 3-col row. */
+      .status-bar-inner { grid-template-columns:1fr 1fr 1fr; padding:.4rem .5rem; }
+      .sb-srv-tag {
+        grid-column:1 / -1; justify-content:center; border-right:none;
+        border-bottom:1px solid rgba(110,0,20,0.15); padding:.35rem .5rem;
+      }
+      .sb-item { padding:.3rem .3rem; font-size:.64rem; gap:.25rem; flex-wrap:wrap; }
+      .sb-val { font-size:.75rem; }
     }
 
     /* ── Hero particles ── */
