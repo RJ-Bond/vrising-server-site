@@ -3803,40 +3803,51 @@ async def _cleanup_task():
             logger.error("_cleanup_task error: %s", e)
 
 
+async def _monitor_poll_cycle():
+    all_keys = ["server_ip", "server_port", "server_name",
+                "server2_ip", "server2_port", "server2_name"]
+    async with AsyncSession(engine, expire_on_commit=False) as db:
+        res = await db.execute(select(Setting).where(Setting.key.in_(all_keys)))
+        cfg = {s.key: s.value for s in res.scalars().all()}
+    for server_num, ip_key, port_key, name_key in [
+        (1, "server_ip",  "server_port",  "server_name"),
+        (2, "server2_ip", "server2_port", "server2_name"),
+    ]:
+        ip       = cfg.get(ip_key, "").strip()
+        port_str = cfg.get(port_key, "0").strip()
+        if not ip or not port_str.isdigit():
+            continue
+        try:
+            data = await get_server_status(ip, int(port_str))
+        except Exception:
+            continue
+        admin_name = cfg.get(name_key, "").strip()
+        if admin_name:
+            data = {**data, "name": admin_name}
+        async with AsyncSession(engine, expire_on_commit=False) as db:
+            await _track_players(db, data.get("players_list", []), server_num)
+            _last_snapshot[server_num] = 0  # bypass TTL — task owns timing
+            await _save_snapshot(db, data, server_num)
+        _status_cache[server_num] = data
+        _status_cache_ts[server_num] = time.time()
+        _broadcast_status({"server": server_num, **data})
+
+
 async def _monitor_poll_task():
-    """Poll game servers every 5 min so snapshots stay current even with no browsers open."""
+    """Poll game servers every 5 min so snapshots stay current even with no browsers open.
+
+    A hard 60s timeout bounds each cycle so a stuck DB connection or socket call
+    can't silently freeze this loop forever — a past incident left snapshots
+    stalled for hours with no error visible until the next process restart.
+    """
     await asyncio.sleep(30)  # let startup finish
     while True:
         try:
-            all_keys = ["server_ip", "server_port", "server_name",
-                        "server2_ip", "server2_port", "server2_name"]
-            async with AsyncSession(engine, expire_on_commit=False) as db:
-                res = await db.execute(select(Setting).where(Setting.key.in_(all_keys)))
-                cfg = {s.key: s.value for s in res.scalars().all()}
-            for server_num, ip_key, port_key, name_key in [
-                (1, "server_ip",  "server_port",  "server_name"),
-                (2, "server2_ip", "server2_port", "server2_name"),
-            ]:
-                ip       = cfg.get(ip_key, "").strip()
-                port_str = cfg.get(port_key, "0").strip()
-                if not ip or not port_str.isdigit():
-                    continue
-                try:
-                    data = await get_server_status(ip, int(port_str))
-                except Exception:
-                    continue
-                admin_name = cfg.get(name_key, "").strip()
-                if admin_name:
-                    data = {**data, "name": admin_name}
-                async with AsyncSession(engine, expire_on_commit=False) as db:
-                    await _track_players(db, data.get("players_list", []), server_num)
-                    _last_snapshot[server_num] = 0  # bypass TTL — task owns timing
-                    await _save_snapshot(db, data, server_num)
-                _status_cache[server_num] = data
-                _status_cache_ts[server_num] = time.time()
-                _broadcast_status({"server": server_num, **data})
+            await asyncio.wait_for(_monitor_poll_cycle(), timeout=60)
         except asyncio.CancelledError:
             break
+        except asyncio.TimeoutError:
+            logger.error("_monitor_poll_task cycle timed out after 60s — skipping this round")
         except Exception as e:
             logger.error("_monitor_poll_task error: %s", e)
         await asyncio.sleep(SNAPSHOT_INTERVAL)
