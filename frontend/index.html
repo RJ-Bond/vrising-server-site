@@ -829,8 +829,10 @@
         grid-column:1 / -1; justify-content:center; border-right:none;
         border-bottom:1px solid rgba(110,0,20,0.15); padding:.35rem .5rem;
       }
-      .sb-item { padding:.3rem .3rem; font-size:.64rem; gap:.25rem; flex-wrap:wrap; }
-      .sb-val { font-size:.75rem; }
+      /* Stack each stat as a tidy vertical tile (icon → label → value) so all
+         three columns line up evenly instead of wrapping inconsistently. */
+      .sb-item { flex-direction:column; gap:.12rem; padding:.5rem .2rem; font-size:.6rem; line-height:1.25; text-align:center; }
+      .sb-val { font-size:.82rem; }
       /* iOS Safari zooms the page when focusing an input smaller than 16px.
          Bump text-entry controls to 16px on mobile (comments, search, DM). */
       input, textarea, select { font-size:16px !important; }
