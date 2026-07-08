@@ -339,6 +339,7 @@
     }
     .rich-content img { cursor:zoom-in; transition:opacity .15s,box-shadow .2s; }
     .rich-content img:hover { opacity:.9; box-shadow:0 4px 24px rgba(200,0,42,0.35); }
+    .rich-content iframe { width:100%; aspect-ratio:16/9; height:auto; border-radius:.6rem; border:1px solid rgba(110,0,150,0.25); margin:.9rem 0; box-shadow:0 4px 24px rgba(0,0,0,0.4); }
     .rich-content h1,.rich-content h2,.rich-content h3 { font-family:'Cinzel',serif; color:#c9a04a; margin:1.5rem 0 .6rem; line-height:1.25; }
     .rich-content h1 { font-size:1.35rem; }
     .rich-content h2 { font-size:1.12rem; border-bottom:1px solid rgba(180,0,30,0.18); padding-bottom:.35rem; }
@@ -3145,7 +3146,7 @@ async function openNews(slug, highlightCommentId) {
           </span>
         </div>
       </div>`;
-    document.getElementById('modal-content').innerHTML = DOMPurify.sanitize(n.content || '');
+    document.getElementById('modal-content').innerHTML = DOMPurify.sanitize(n.content || '', RICH_CONTENT_SANITIZE_CFG);
     _buildTOC();
     _addCodeCopyButtons();
     const relatedEl = document.getElementById('modal-related');
@@ -3307,6 +3308,16 @@ function shareNews() {
     showToast('Ссылка скопирована', 'success');
   });
 }
+
+DOMPurify.addHook('uponSanitizeElement', (node, data) => {
+  if (data.tagName === 'iframe') {
+    const src = node.getAttribute && node.getAttribute('src') || '';
+    if (!/^https:\/\/(www\.)?(youtube(-nocookie)?\.com\/embed\/|player\.vimeo\.com\/video\/)/.test(src)) {
+      node.remove();
+    }
+  }
+});
+const RICH_CONTENT_SANITIZE_CFG = { ADD_TAGS: ['iframe'], ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder'] };
 
 const RX_ICONS = {
   fire: `<svg viewBox="0 0 20 20" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2C7 5 5 8 5 11a5 5 0 0010 0c0-1.8-.8-3.4-2-4.5.4 2-.7 3.5-2 3.5a1.8 1.8 0 01-1.8-1.8c0-2 1.3-3.2.8-6.2z"/></svg>`,

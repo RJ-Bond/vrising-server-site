@@ -203,6 +203,7 @@
     .ql-editor pre { padding: .75rem 1rem; }
     .ql-editor a { color: #b5002a; }
     .ql-editor img { max-width: 100%; border-radius: .5rem; margin: .5rem 0; }
+    .ql-editor iframe.ql-video { width: 100%; aspect-ratio: 16/9; height: auto; border-radius: .5rem; margin: .5rem 0; border: none; }
     .ql-editor ul, .ql-editor ol { padding-left: 1.5rem; }
     .ql-tooltip {
       background: rgba(12,2,22,0.98) !important; border: 1px solid rgba(150,0,28,0.4) !important;
@@ -1985,10 +1986,10 @@ function initQuill() {
           [{ color: [] }, { background: [] }],
           ['blockquote', 'code-block'],
           [{ list: 'ordered' }, { list: 'bullet' }],
-          ['link', 'image'],
+          ['link', 'image', 'video'],
           ['clean'],
         ],
-        handlers: { image: editorImageHandler },
+        handlers: { image: editorImageHandler, video: videoEmbedHandler },
       },
     },
   });
@@ -2021,6 +2022,25 @@ async function editorImageHandler() {
       quill.setSelection(range.index + 1);
     } catch (err) { showToast('Ошибка загрузки: ' + err.message, 'error'); }
   };
+}
+
+function videoEmbedHandler() {
+  const url = (prompt('Ссылка на видео (YouTube или Vimeo):') || '').trim();
+  if (!url) return;
+  let embedUrl = null;
+  let m = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([\w-]{11})/);
+  if (m) embedUrl = `https://www.youtube-nocookie.com/embed/${m[1]}`;
+  if (!embedUrl) {
+    m = url.match(/vimeo\.com\/(\d+)/);
+    if (m) embedUrl = `https://player.vimeo.com/video/${m[1]}`;
+  }
+  if (!embedUrl && /^https:\/\/(www\.)?(youtube(-nocookie)?\.com\/embed\/|player\.vimeo\.com\/video\/)/.test(url)) {
+    embedUrl = url;
+  }
+  if (!embedUrl) { showToast('Поддерживаются только ссылки YouTube и Vimeo', 'error'); return; }
+  const range = quill.getSelection(true);
+  quill.insertEmbed(range.index, 'video', embedUrl, 'user');
+  quill.setSelection(range.index + 1);
 }
 
 async function uploadThumb(input) {
@@ -3557,6 +3577,16 @@ async function loadAuditLog(page = 1) {
 }
 
 // ─── News preview ─────────────────────────────────────────────────────────
+DOMPurify.addHook('uponSanitizeElement', (node, data) => {
+  if (data.tagName === 'iframe') {
+    const src = node.getAttribute && node.getAttribute('src') || '';
+    if (!/^https:\/\/(www\.)?(youtube(-nocookie)?\.com\/embed\/|player\.vimeo\.com\/video\/)/.test(src)) {
+      node.remove();
+    }
+  }
+});
+const RICH_CONTENT_SANITIZE_CFG = { ADD_TAGS: ['iframe'], ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder'] };
+
 function previewNews() {
   const title   = document.getElementById('editor-news-title').value.trim() || 'Без заголовка';
   const summary = document.getElementById('editor-news-summary').value.trim();
@@ -3567,7 +3597,7 @@ function previewNews() {
   document.getElementById('preview-summary').textContent  = summary;
   const img = document.getElementById('preview-thumb');
   if (thumb) { img.src = thumb; img.style.display = ''; } else { img.style.display = 'none'; }
-  document.getElementById('preview-content').innerHTML = DOMPurify.sanitize(content);
+  document.getElementById('preview-content').innerHTML = DOMPurify.sanitize(content, RICH_CONTENT_SANITIZE_CFG);
   modal.style.display = 'flex';
 }
 
