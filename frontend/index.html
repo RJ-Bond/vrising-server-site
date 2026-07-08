@@ -120,7 +120,7 @@
       font-weight: 700;
     }
     .hero-sub { font-size: .75rem; letter-spacing: .3em; color: var(--muted); text-transform: uppercase; }
-    .hero-divider { width: 120px; height: 1px; background: linear-gradient(90deg, transparent, var(--crimson), var(--purple), transparent); margin: .45rem auto; }
+    .hero-divider { width: 120px; height: 1px; background: linear-gradient(90deg, transparent, var(--crimson), var(--purple), transparent); margin: .3rem auto; }
 
     /* ── Gothic Panel ── */
     .g-panel {
@@ -683,7 +683,7 @@
     .hunter-row:last-child { border-bottom: none; }
 
     /* ── Hero connect area ── */
-    .hero-connect { margin-top:.85rem; display:flex; flex-direction:column; align-items:center; gap:.55rem; }
+    .hero-connect { margin-top:.35rem; display:flex; flex-direction:column; align-items:center; gap:.55rem; }
     .connect-btn {
       display:inline-flex; align-items:center; gap:.6rem;
       padding:.68rem 1.75rem; border-radius:.7rem;
@@ -1353,7 +1353,7 @@
   <!-- Content -->
   <div class="hero-content">
     <h1 id="hero-title" class="hero-title" style="position:relative;z-index:1;"></h1>
-    <div id="hero-subtitle" style="display:none;position:relative;z-index:1;font-family:'Philosopher',serif;font-size:.9rem;letter-spacing:.08em;color:var(--muted);margin-top:.4rem;"></div>
+    <div id="hero-subtitle" style="display:none;position:relative;z-index:1;font-family:'Philosopher',serif;font-size:.95rem;letter-spacing:.08em;color:var(--muted);margin-top:-.6rem;"></div>
     <div class="hero-divider" style="position:relative;z-index:1;"></div>
     <div id="hero-status" style="display:none;margin-bottom:.2rem;"></div>
     <div id="hero-status2" style="display:none;"></div>
@@ -3972,7 +3972,7 @@ async function loadSiteSettings() {
 
     const heroTitleEl = document.getElementById('hero-title');
     if (heroLogo) {
-      heroTitleEl.innerHTML = `<img src="${heroLogo}" alt="${esc(title)}" style="max-width:100%;max-height:9rem;object-fit:contain;display:block;margin:0 auto;filter:drop-shadow(0 4px 24px rgba(0,0,0,0.6));" onerror="this.parentElement.textContent='${esc(title)}'">`;
+      heroTitleEl.innerHTML = `<img src="${heroLogo}" alt="${esc(title)}" style="max-width:100%;max-height:6.5rem;object-fit:contain;display:block;margin:0 auto;filter:drop-shadow(0 4px 24px rgba(0,0,0,0.6));" onerror="this.parentElement.textContent='${esc(title)}'">`;
     } else {
       heroTitleEl.textContent = title;
     }
