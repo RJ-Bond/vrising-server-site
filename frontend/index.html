@@ -288,18 +288,27 @@
     .chat-welcome .rune-big { font-size:2.5rem; opacity:.4; }
 
     /* ── Modal ── */
-    .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:50; align-items:flex-start; justify-content:center; padding:1.5rem 1rem; backdrop-filter:blur(8px); overflow-y:auto; }
-    .modal-bg.open { display:flex; }
+    .modal-bg {
+      display:flex; position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:50;
+      align-items:flex-start; justify-content:center; padding:1.5rem 1rem;
+      backdrop-filter:blur(8px); overflow-y:auto;
+      opacity:0; visibility:hidden; pointer-events:none;
+      transition:opacity .22s ease, visibility 0s linear .22s;
+    }
+    .modal-bg.open { opacity:1; visibility:visible; pointer-events:auto; transition:opacity .22s ease; }
     .modal-box {
       background:rgba(8,0,16,0.99);
       border:1px solid rgba(130,0,25,0.4);
       box-shadow:0 0 0 1px rgba(255,255,255,0.03) inset, 0 4px 80px rgba(0,0,0,0.95), 0 0 40px rgba(100,0,20,0.2);
       border-radius:1.1rem; max-width:780px; width:100%;
       overflow:hidden; position:relative; margin:auto;
+      transform:translateY(16px) scale(.98);
+      transition:transform .25s cubic-bezier(.22,.8,.32,1);
     }
+    .modal-bg.open .modal-box { transform:translateY(0) scale(1); }
     .modal-top-bar {
       position:sticky; top:0; z-index:20;
-      display:flex; justify-content:flex-end; gap:.4rem;
+      display:flex; align-items:center; justify-content:space-between; gap:.4rem;
       padding:.6rem .8rem;
       background:linear-gradient(180deg,rgba(6,0,14,0.97) 60%,transparent);
       pointer-events:none;
@@ -607,6 +616,8 @@
     .news-card { animation: news-card-appear .38s ease both; }
     @media (max-width:600px) {
       #modal-prev, #modal-next { display:none !important; }
+      .modal-bg { padding:0; align-items:stretch; }
+      .modal-box { border-radius:0; max-width:none; min-height:100vh; margin:0; }
     }
 
     /* ── Tag pills ── */
@@ -1726,6 +1737,7 @@
     </div>
     <!-- Sticky top bar -->
     <div class="modal-top-bar">
+      <span id="modal-mini-title" style="flex:1;min-width:0;font-family:'Cinzel',serif;font-size:.85rem;font-weight:700;color:#f0ebfa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transform:translateY(-4px);transition:opacity .2s,transform .2s;padding-right:.5rem;"></span>
       <button onclick="shareNews()" title="Поделиться" class="modal-btn modal-btn-share">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
       </button>
@@ -1754,7 +1766,7 @@
       <div class="comments-section">
         <div style="font-size:.7rem;font-weight:700;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-          Комментарии
+          <span>Комментарии<span id="modal-comments-count"></span></span>
         </div>
         <div id="modal-comments"></div>
         <div id="modal-comment-form"></div>
@@ -3069,6 +3081,8 @@ async function openNews(slug) {
     if (!_nr.ok) throw new Error(`HTTP ${_nr.status}`);
     const n = await _nr.json();
     document.getElementById('modal-title').textContent = n.title;
+    const miniTitleEl = document.getElementById('modal-mini-title');
+    if (miniTitleEl) { miniTitleEl.textContent = n.title; miniTitleEl.style.opacity = '0'; miniTitleEl.style.transform = 'translateY(-4px)'; }
     const authorName = esc(n.author.username);
     const modalAdminBadge = _renderAdminBadge(n.author);
     const tags = (n.tags || '').split(',').map(t => t.trim()).filter(Boolean);
@@ -3148,6 +3162,8 @@ async function openNews(slug) {
   } catch(err) {
     document.getElementById('modal-author').innerHTML = '';
     document.getElementById('modal-title').textContent = '';
+    const miniTitleErr = document.getElementById('modal-mini-title');
+    if (miniTitleErr) miniTitleErr.textContent = '';
     document.getElementById('modal-hero').innerHTML = '';
     document.getElementById('modal-content').innerHTML = `
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2.5rem 1rem;text-align:center;gap:1.2rem;">
@@ -3166,6 +3182,8 @@ async function openNews(slug) {
     document.getElementById('modal-reactions').innerHTML = '';
     document.getElementById('modal-toc').innerHTML = '';
     document.getElementById('modal-comments').innerHTML = '';
+    const countElErr = document.getElementById('modal-comments-count');
+    if (countElErr) countElErr.textContent = '';
     document.getElementById('modal-comment-form').innerHTML = '';
     const pw = document.getElementById('poll-wrap');
     if (pw) pw.style.display = 'none';
@@ -3392,10 +3410,16 @@ function _renderRelated(currentSlug, currentTags) {
 function _initReadProgress() {
   const container = document.getElementById('modal-bg');
   const fill = document.getElementById('read-progress-fill');
+  const miniTitle = document.getElementById('modal-mini-title');
   if (!container || !fill) return;
   container.onscroll = () => {
     const pct = container.scrollTop / (container.scrollHeight - container.clientHeight) * 100;
     fill.style.width = Math.min(100, pct) + '%';
+    if (miniTitle) {
+      const show = container.scrollTop > 160;
+      miniTitle.style.opacity = show ? '1' : '0';
+      miniTitle.style.transform = show ? 'translateY(0)' : 'translateY(-4px)';
+    }
   };
 }
 
@@ -3430,6 +3454,8 @@ async function loadComments(slug, page) {
     const resp = await fetch(`${API}/news/${slug}/comments?page=${page}&per_page=20`).then(r => r.json());
     const comments = resp.items || [];
     const totalPages = resp.pages || 1;
+    const countEl = document.getElementById('modal-comments-count');
+    if (countEl) countEl.textContent = resp.total ? ` (${resp.total})` : '';
     if (page === 1 && !comments.length) {
       el.innerHTML = `<div style="color:var(--muted);font-size:.75rem;font-style:italic;padding:.3rem 0;">Комментариев пока нет. Будьте первым!</div>`;
       return;
