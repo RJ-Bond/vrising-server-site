@@ -573,10 +573,13 @@
       .hero-sub { font-size: .65rem; }
       .connect-btn { font-size: .72rem; padding: .45rem .9rem; }
       .copy-ip-btn { font-size: .72rem; padding: .45rem .7rem; }
-      .news-card { flex-direction: column !important; }
-      .news-card > div:first-child { width: 100% !important; min-height: 130px; }
+      /* Stack thumb over text on mobile. Target the content row by class —
+         the old `.news-card > div:first-child` selector hit the absolutely
+         positioned «Горячее»/NEW badge (the real first div child), blowing it
+         up to a full-width 130px red blob. */
+      .news-card-row { flex-direction: column !important; }
       .news-card .news-thumb-wrap { width: 100% !important; height: 150px; min-height: 150px; }
-      .news-card .news-card-accent { width: 100% !important; height: 4px; min-height: 4px; }
+      .news-card .news-card-accent { width: 100% !important; height: 4px !important; min-height: 4px !important; }
       .hunter-podium { gap: .25rem; }
       .h-name { max-width: 52px; font-size: .65rem; }
       .wipe-block-val { font-size: 1.5rem; }
@@ -3102,7 +3105,7 @@ async function loadNews(page = 1, append = false) {
     const card = document.createElement('div');
     card.className = 'news-card';
     card.style.animationDelay = `${idx * 45}ms`;
-    card.innerHTML = `${hotBadge}${newBadge}<div style="display:flex;gap:0;align-items:stretch;min-height:110px;">
+    card.innerHTML = `${hotBadge}${newBadge}<div class="news-card-row" style="display:flex;gap:0;align-items:stretch;min-height:110px;">
       ${thumbImg}
       <div style="padding:.85rem 1rem .75rem;flex:1;min-width:0;display:flex;flex-direction:column;gap:.28rem;">
         <div style="display:flex;align-items:center;gap:.5rem;">
