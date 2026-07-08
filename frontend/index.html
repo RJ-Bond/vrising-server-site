@@ -1729,6 +1729,18 @@
   onmouseover="this.style.borderColor='rgba(200,0,40,0.6)';this.style.color='var(--text)'"
   onmouseout="this.style.borderColor='rgba(150,0,28,0.35)';this.style.color='var(--muted)'">&#8250;</button>
 
+<button id="modal-scrolltop" onclick="_scrollModalToTop()" title="Наверх"
+  style="position:fixed;right:1rem;bottom:1.5rem;
+  background:rgba(10,2,18,0.85);border:1px solid rgba(150,0,28,0.35);
+  color:var(--muted);border-radius:50%;width:2.4rem;height:2.4rem;
+  display:none;align-items:center;justify-content:center;
+  cursor:pointer;transition:all .2s;z-index:1001;
+  backdrop-filter:blur(8px);"
+  onmouseover="this.style.borderColor='rgba(200,0,40,0.6)';this.style.color='var(--text)'"
+  onmouseout="this.style.borderColor='rgba(150,0,28,0.35)';this.style.color='var(--muted)'">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+
 <!-- ══ MODAL ═════════════════════════════════════════════════════════════════ -->
 <div id="modal-bg" class="modal-bg" onclick="if(event.target===this)closeModal()">
   <div class="modal-box">
@@ -3203,6 +3215,8 @@ function closeModal() {
   const next = document.getElementById('modal-next');
   if (prev) prev.style.display = 'none';
   if (next) next.style.display = 'none';
+  const scrollTopBtn = document.getElementById('modal-scrolltop');
+  if (scrollTopBtn) scrollTopBtn.style.display = 'none';
 }
 
 function navigateModal(dir) {
@@ -3422,6 +3436,7 @@ function _initReadProgress() {
   const container = document.getElementById('modal-bg');
   const fill = document.getElementById('read-progress-fill');
   const miniTitle = document.getElementById('modal-mini-title');
+  const scrollTopBtn = document.getElementById('modal-scrolltop');
   if (!container || !fill) return;
   container.onscroll = () => {
     const pct = container.scrollTop / (container.scrollHeight - container.clientHeight) * 100;
@@ -3431,7 +3446,12 @@ function _initReadProgress() {
       miniTitle.style.opacity = show ? '1' : '0';
       miniTitle.style.transform = show ? 'translateY(0)' : 'translateY(-4px)';
     }
+    if (scrollTopBtn) scrollTopBtn.style.display = container.scrollTop > 700 ? 'flex' : 'none';
   };
+}
+
+function _scrollModalToTop() {
+  document.getElementById('modal-bg')?.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 document.getElementById('modal-bg').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
@@ -3578,8 +3598,11 @@ function renderCommentForm(slug) {
     return;
   }
   el.innerHTML = `<div class="comment-form">
-    <textarea id="comment-input" placeholder="Ваш комментарий…" maxlength="2000"></textarea>
-    <button onclick="submitComment('${slug}')">Отправить</button>
+    <textarea id="comment-input" placeholder="Ваш комментарий…" maxlength="2000" oninput="document.getElementById('comment-char-count').textContent = this.value.length + ' / 2000'"></textarea>
+    <div style="display:flex;align-items:center;justify-content:flex-end;gap:.6rem;">
+      <span id="comment-char-count" style="font-size:.65rem;color:var(--muted);">0 / 2000</span>
+      <button onclick="submitComment('${slug}')">Отправить</button>
+    </div>
   </div>`;
 }
 
@@ -3702,9 +3725,12 @@ async function submitComment(slug) {
       body: JSON.stringify({ content, parent_id: _replyTo || null }),
     });
     if (!r.ok) { const e = await r.json(); alert(e.detail || 'Ошибка'); return; }
+    const created = await r.json();
     input.value = '';
+    const counter = document.getElementById('comment-char-count');
+    if (counter) counter.textContent = '0 / 2000';
     cancelReply();
-    loadComments(slug);
+    loadComments(slug, 1, created?.id);
   } catch { alert('Ошибка отправки комментария.'); }
 }
 
