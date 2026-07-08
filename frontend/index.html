@@ -823,6 +823,9 @@
       }
       .sb-item { padding:.3rem .3rem; font-size:.64rem; gap:.25rem; flex-wrap:wrap; }
       .sb-val { font-size:.75rem; }
+      /* iOS Safari zooms the page when focusing an input smaller than 16px.
+         Bump text-entry controls to 16px on mobile (comments, search, DM). */
+      input, textarea, select { font-size:16px !important; }
     }
 
     /* ── Hero particles ── */

@@ -138,6 +138,8 @@
     @media (max-width:640px) {
       body { overflow-x:hidden; }
       .glass-nav > div { padding:.6rem 1rem !important; }
+      /* Prevent iOS Safari zoom-on-focus for the FAQ search input. */
+      input, textarea, select { font-size:16px !important; }
     }
     @media (max-width:480px) {
       .faq-q { padding:.85rem 1rem; gap:.6rem; }

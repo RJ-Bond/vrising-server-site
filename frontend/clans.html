@@ -171,6 +171,8 @@
     @media (max-width:640px) {
       body { overflow-x:hidden; }
       .glass-nav > div { padding:.6rem 1rem !important; }
+      /* Prevent iOS Safari zoom-on-focus for the clan create/search inputs. */
+      input, textarea, select { font-size:16px !important; }
     }
   </style>
 </head>

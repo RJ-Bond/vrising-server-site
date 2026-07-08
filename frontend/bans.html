@@ -118,6 +118,8 @@
       body { overflow-x:hidden; }
       .glass-nav > div { padding:.6rem 1rem !important; }
       .ban-meta-row { flex-wrap:wrap; gap:.3rem; }
+      /* Prevent iOS Safari zoom-on-focus for the search input. */
+      input, textarea, select { font-size:16px !important; }
     }
     @media (max-width:480px) {
       .ban-card { padding:.8rem .9rem; }
