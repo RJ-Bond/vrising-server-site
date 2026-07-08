@@ -719,14 +719,23 @@ const RARITY = {
 function renderAchievements(pub, activityData, user) {
   const grid = document.getElementById('achievements-grid');
   if (!grid) return;
+  const achDates = _achUsername ? _recordAchDates(pub, activityData, user, _achUsername) : {};
   grid.innerHTML = ACHIEVEMENTS.map(a => {
     const earned = a.cond(pub, activityData, user);
     const r = RARITY[a.rarity] || RARITY.common;
     if (earned) {
-      return `<div data-ach-id="${a.id}" data-tip="Получено · ${r.label}" style="background:rgba(180,130,0,0.12);border:1px solid ${r.glow};box-shadow:0 0 8px ${r.glow};border-radius:.6rem;padding:.65rem .7rem;display:flex;flex-direction:column;gap:.3rem;cursor:default;">
+      const earnedDate = achDates[a.id];
+      const dateHtml = earnedDate
+        ? `<span style="font-size:.55rem;color:var(--gold);opacity:.85;display:inline-flex;align-items:center;gap:.2rem;">
+             <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+             ${fmtDate(earnedDate)}
+           </span>`
+        : '';
+      return `<div data-ach-id="${a.id}" data-tip="Получено${earnedDate ? ' · ' + fmtDate(earnedDate) : ''} · ${r.label}" style="background:rgba(180,130,0,0.12);border:1px solid ${r.glow};box-shadow:0 0 8px ${r.glow};border-radius:.6rem;padding:.65rem .7rem;display:flex;flex-direction:column;gap:.3rem;cursor:default;">
         <span style="font-size:1.1rem;">${a.icon}</span>
         <span style="font-size:.72rem;font-weight:600;">${esc(a.label)}</span>
         <span style="font-size:.6rem;color:var(--muted);">${esc(a.desc)}</span>
+        ${dateHtml}
         <span style="font-size:.5rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${r.color};margin-top:auto;">${r.label}</span>
       </div>`;
     } else {
@@ -761,6 +770,49 @@ function renderAchievements(pub, activityData, user) {
   }
 
   if (_achUsername) _checkNewAchievements(pub, activityData, user, _achUsername);
+}
+
+// Best-effort earn date for an achievement. Some can be dated from real data
+// (registration date, first activity item); the rest fall back to the moment we
+// first detect them earned (we have no server-side unlock history).
+function _achEarnedDate(id, pub, actData, user) {
+  const items = (actData?.items || []);
+  const dates = t => items.filter(i => i.type === t).map(i => i.created_at)
+    .filter(Boolean).sort();  // ascending → [0] is oldest
+  switch (id) {
+    case 'first_login':
+    case 'early_bird':   return user?.created_at || null;
+    case 'comment1':     return dates('comment')[0] || null;
+    case 'comments10':   return dates('comment')[9] || null;
+    case 'reaction1':    return dates('reaction')[0] || null;
+    default:             return null;  // no historical signal for this one
+  }
+}
+
+function _getAchDates(username) {
+  try { return JSON.parse(localStorage.getItem(`ach_dates_${username}`) || '{}'); }
+  catch { return {}; }
+}
+
+// Record an earn date for every earned achievement that doesn't have one yet
+// (covers both freshly-unlocked and already-earned-but-undated on migration),
+// then return the full date map. Called before the grid renders so dates show
+// on the same pass.
+function _recordAchDates(pub, actData, user, username) {
+  const dateMap = _getAchDates(username);
+  const earnedSet = new Set(JSON.parse(localStorage.getItem(`ach_earned_${username}`) || '[]'));
+  let changed = false;
+  ACHIEVEMENTS.forEach(a => {
+    if (!a.cond(pub, actData, user) || dateMap[a.id]) return;
+    // Real date where derivable; otherwise stamp "now" ONLY for a genuinely
+    // fresh unlock — a pre-existing achievement we can't date stays undated
+    // rather than showing a misleading today's date.
+    let d = _achEarnedDate(a.id, pub, actData, user);
+    if (!d && !earnedSet.has(a.id)) d = new Date().toISOString();
+    if (d) { dateMap[a.id] = d; changed = true; }
+  });
+  if (changed) localStorage.setItem(`ach_dates_${username}`, JSON.stringify(dateMap));
+  return dateMap;
 }
 
 function _checkNewAchievements(pub, actData, user, username) {
