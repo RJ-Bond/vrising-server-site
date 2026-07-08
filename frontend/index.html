@@ -620,6 +620,20 @@
       .modal-bg { padding:0; align-items:stretch; }
       .modal-box { border-radius:0; max-width:none; min-height:100vh; margin:0; }
     }
+    .modal-nav-preview {
+      position:absolute; top:50%; transform:translateY(-50%);
+      width:170px; margin:0 .7rem; background:rgba(10,2,18,0.97);
+      border:1px solid rgba(150,0,28,0.35); border-radius:.6rem; padding:.5rem;
+      opacity:0; visibility:hidden; pointer-events:none; transition:opacity .15s;
+      box-shadow:0 8px 30px rgba(0,0,0,0.6); text-align:left; white-space:normal;
+      font-size:1rem;
+    }
+    #modal-prev:hover .modal-nav-preview, #modal-next:hover .modal-nav-preview { opacity:1; visibility:visible; }
+    .modal-nav-preview img { width:100%; height:68px; object-fit:cover; border-radius:.4rem; margin-bottom:.35rem; display:block; }
+    .modal-nav-preview .mnp-title {
+      font-size:.72rem; color:#e2d8f0; font-family:'Cinzel',serif; line-height:1.3;
+      display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+    }
 
     /* ── Tag pills ── */
     .tag-pill {
@@ -1717,7 +1731,7 @@
   font-size:1.1rem;cursor:pointer;transition:all .2s;z-index:1001;
   backdrop-filter:blur(8px);"
   onmouseover="this.style.borderColor='rgba(200,0,40,0.6)';this.style.color='var(--text)'"
-  onmouseout="this.style.borderColor='rgba(150,0,28,0.35)';this.style.color='var(--muted)'">&#8249;</button>
+  onmouseout="this.style.borderColor='rgba(150,0,28,0.35)';this.style.color='var(--muted)'">&#8249;<div id="modal-prev-preview" class="modal-nav-preview" style="left:100%;"></div></button>
 
 <button id="modal-next" onclick="navigateModal(1)"
   style="position:fixed;right:1rem;top:50%;transform:translateY(-50%);
@@ -1727,7 +1741,7 @@
   font-size:1.1rem;cursor:pointer;transition:all .2s;z-index:1001;
   backdrop-filter:blur(8px);"
   onmouseover="this.style.borderColor='rgba(200,0,40,0.6)';this.style.color='var(--text)'"
-  onmouseout="this.style.borderColor='rgba(150,0,28,0.35)';this.style.color='var(--muted)'">&#8250;</button>
+  onmouseout="this.style.borderColor='rgba(150,0,28,0.35)';this.style.color='var(--muted)'">&#8250;<div id="modal-next-preview" class="modal-nav-preview" style="right:100%;"></div></button>
 
 <button id="modal-scrolltop" onclick="_scrollModalToTop()" title="Наверх"
   style="position:fixed;right:1rem;bottom:1.5rem;
@@ -3171,6 +3185,7 @@ async function openNews(slug, highlightCommentId) {
     loadComments(slug, 1, highlightCommentId);
     renderCommentForm(slug);
     loadReactions(slug);
+    _updateModalNav();
     setTimeout(_initReadProgress, 50);
   } catch(err) {
     document.getElementById('modal-author').innerHTML = '';
@@ -3227,13 +3242,23 @@ function navigateModal(dir) {
   if (next) openNews(next.slug);
 }
 
+function _navPreviewHtml(n) {
+  return `${n.thumbnail_url ? `<img src="${esc(n.thumbnail_url)}" alt="">` : ''}<div class="mnp-title">${esc(n.title)}</div>`;
+}
+
 function _updateModalNav() {
   const prev = document.getElementById('modal-prev');
   const next = document.getElementById('modal-next');
   if (!prev || !next || !_newsItems.length) return;
   const idx = _newsItems.findIndex(n => n.slug === _modalSlug);
-  prev.style.display = idx > 0 ? 'flex' : 'none';
-  next.style.display = idx < _newsItems.length - 1 ? 'flex' : 'none';
+  const prevItem = idx > 0 ? _newsItems[idx - 1] : null;
+  const nextItem = idx < _newsItems.length - 1 ? _newsItems[idx + 1] : null;
+  prev.style.display = prevItem ? 'flex' : 'none';
+  next.style.display = nextItem ? 'flex' : 'none';
+  const prevPreview = document.getElementById('modal-prev-preview');
+  const nextPreview = document.getElementById('modal-next-preview');
+  if (prevPreview) prevPreview.innerHTML = prevItem ? _navPreviewHtml(prevItem) : '';
+  if (nextPreview) nextPreview.innerHTML = nextItem ? _navPreviewHtml(nextItem) : '';
 }
 
 function openTagFromModal(tag) {
@@ -3598,7 +3623,7 @@ function renderCommentForm(slug) {
     return;
   }
   el.innerHTML = `<div class="comment-form">
-    <textarea id="comment-input" placeholder="Ваш комментарий…" maxlength="2000" oninput="document.getElementById('comment-char-count').textContent = this.value.length + ' / 2000'"></textarea>
+    <textarea id="comment-input" placeholder="Ваш комментарий…" maxlength="2000" oninput="document.getElementById('comment-char-count').textContent = this.value.length + ' / 2000'" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();submitComment('${slug}');}"></textarea>
     <div style="display:flex;align-items:center;justify-content:flex-end;gap:.6rem;">
       <span id="comment-char-count" style="font-size:.65rem;color:var(--muted);">0 / 2000</span>
       <button onclick="submitComment('${slug}')">Отправить</button>
@@ -3724,14 +3749,14 @@ async function submitComment(slug) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content, parent_id: _replyTo || null }),
     });
-    if (!r.ok) { const e = await r.json(); alert(e.detail || 'Ошибка'); return; }
+    if (!r.ok) { const e = await r.json(); showToast(e.detail || 'Ошибка отправки комментария', 'error'); return; }
     const created = await r.json();
     input.value = '';
     const counter = document.getElementById('comment-char-count');
     if (counter) counter.textContent = '0 / 2000';
     cancelReply();
     loadComments(slug, 1, created?.id);
-  } catch { alert('Ошибка отправки комментария.'); }
+  } catch { showToast('Ошибка отправки комментария', 'error'); }
 }
 
 
