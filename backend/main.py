@@ -41,6 +41,15 @@ def _fmt_dt(dt: datetime | None) -> str | None:
     if dt.tzinfo is None:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.isoformat()
+
+
+def _utc_ts(dt: datetime) -> float:
+    """Unix epoch for a DB datetime. SQLite drops tzinfo, so a naive value must be
+    treated as UTC — otherwise .timestamp() assumes the server's local zone and
+    shifts the epoch (e.g. -3h on a Europe/Moscow host)."""
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.timestamp()
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete, text, or_, update
 from sqlalchemy.orm import selectinload
@@ -354,7 +363,7 @@ async def lifespan(app: FastAPI):
             )
             snaps = snaps_res.scalars().all()
             if snaps:
-                init_history(ip, port, [(s.recorded_at.timestamp(), s.players) for s in snaps])
+                init_history(ip, port, [(_utc_ts(s.recorded_at), s.players) for s in snaps])
 
     # Start background tasks
     task_publish = asyncio.create_task(_scheduled_publish_task())
@@ -1333,7 +1342,7 @@ async def get_snapshots(server: int = Query(1), days: int = Query(default=7, ge=
         .order_by(ServerSnapshot.recorded_at.asc())
     )
     snaps = result.scalars().all()
-    return [{"ts": int(s.recorded_at.timestamp()), "players": s.players, "online": s.online, "latency_ms": s.latency_ms} for s in snaps]
+    return [{"ts": int(_utc_ts(s.recorded_at)), "players": s.players, "online": s.online, "latency_ms": s.latency_ms} for s in snaps]
 
 
 @app.get("/api/monitor/stats")
