@@ -103,10 +103,10 @@
 
     /* ── Card ── */
     .auth-card {
-      /* Near-opaque fill: at var(--card)'s 0.92 alpha the bright crimson region
-         of the background art bloomed through the backdrop blur as a red smudge
-         behind the title. Keep a hint of glass but hide the bg detail. */
-      background: rgba(9,2,18,0.985);
+      /* Solid fill: at var(--card)'s 0.92 alpha the bright crimson region of the
+         background art bloomed through backdrop-filter:blur as a red smudge
+         behind the title. Fully opaque so no bg detail can bleed through. */
+      background: #09020f;
       border: 1px solid var(--border);
       border-radius: 1.1rem;
       padding: 2.25rem 2rem;
