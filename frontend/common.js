@@ -48,6 +48,14 @@ window.__DATEFMT = window.__DATEFMT || 'dd.mm.yyyy';
       window.__DATEFMT = s.date_format  || 'dd.mm.yyyy';
       window.__settingsLoaded = true;
 
+      // Favicon — applied on every page from the admin-configured URL
+      const favUrl = (s.favicon_url || '').trim();
+      if (favUrl) {
+        let link = document.querySelector('link[rel="icon"]');
+        if (!link) { link = document.createElement('link'); link.rel = 'icon'; document.head.appendChild(link); }
+        link.href = favUrl;
+      }
+
       // Maintenance mode redirect
       if (s.maintenance_mode === 'true' || s.maintenance_mode === true) {
         const path = location.pathname.replace(/\/+$/, '') || '/';

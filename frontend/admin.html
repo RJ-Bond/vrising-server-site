@@ -234,6 +234,8 @@
     .s-desc { font-size:.7rem; color:var(--muted); margin-top:.35rem; line-height:1.45; }
     .s-save-btn { background:rgba(100,0,20,.3); border:1px solid rgba(150,0,28,.4); color:var(--text); border-radius:.45rem; padding:.55rem .9rem; font-size:.78rem; font-weight:600; cursor:pointer; white-space:nowrap; transition:all .2s; flex-shrink:0; font-family:'Inter',sans-serif; }
     .s-save-btn:hover { background:rgba(140,0,28,.4); border-color:var(--accent); box-shadow:0 0 10px rgba(181,0,42,.2); }
+    .s-clear-btn { background:rgba(30,30,40,.5); border:1px solid rgba(120,120,140,.3); color:var(--muted); border-radius:.4rem; padding:.4rem .8rem; font-size:.76rem; cursor:pointer; white-space:nowrap; transition:all .2s; flex-shrink:0; font-family:'Inter',sans-serif; }
+    .s-clear-btn:hover { border-color:rgba(200,0,40,.5); color:#fca5a5; }
     .s-status-badge { padding:.2rem .55rem; border-radius:9999px; font-size:.62rem; font-weight:700; letter-spacing:.06em; }
     .s-status-http { background:rgba(60,60,60,.3); border:1px solid rgba(100,100,100,.35); color:var(--muted); }
     .s-status-https { background:rgba(0,70,15,.3); border:1px solid rgba(0,160,35,.4); color:#86efac; }
@@ -923,12 +925,31 @@
             <div style="display:flex;align-items:center;gap:.6rem;">
               <label for="logo-file-input" style="display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;padding:.4rem .8rem;border-radius:.4rem;border:1px solid rgba(120,0,24,.4);background:rgba(8,0,16,.8);color:var(--muted);font-size:.76rem;transition:border-color .2s,color .2s;margin:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,.4)';this.style.color='var(--muted)'">📁 Загрузить</label>
               <input id="logo-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/svg+xml,image/webp,image/x-icon" style="display:none;" onchange="uploadLogoFile(this)">
+              <button type="button" class="s-clear-btn" onclick="clearImageSetting('site_logo_url', previewLogo)">✖ Убрать</button>
               <span id="logo-upload-status" style="font-size:.76rem;color:var(--muted);"></span>
             </div>
             <div id="logo-preview" style="margin-top:.6rem;display:none;">
               <img id="logo-preview-img" src="" alt="Logo" style="max-height:2.5rem;max-width:12rem;object-fit:contain;border-radius:.4rem;border:1px solid rgba(150,0,28,.3);padding:.3rem .6rem;background:rgba(8,0,16,.6);">
             </div>
-            <p class="s-desc">Показывается в шапке (навигации) вместо текста «⚔ Название». Оставьте пустым — будет текст.</p>
+            <p class="s-desc">Показывается в шапке (навигации) вместо текста «⚔ Название». Загружается сразу. Оставьте пустым — будет текст.</p>
+          </div>
+
+          <div class="s-field">
+            <label>Иконка сайта (favicon)</label>
+            <div class="s-field-row" style="margin-bottom:.5rem;">
+              <input id="setting-favicon_url" type="text" class="dark-input" placeholder="https://example.com/favicon.png" oninput="previewFavicon(this.value)">
+              <button class="s-save-btn" onclick="saveSetting('favicon_url')">Сохранить</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:.6rem;">
+              <label for="favicon-file-input" style="display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;padding:.4rem .8rem;border-radius:.4rem;border:1px solid rgba(120,0,24,.4);background:rgba(8,0,16,.8);color:var(--muted);font-size:.76rem;transition:border-color .2s,color .2s;margin:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,.4)';this.style.color='var(--muted)'">📁 Загрузить</label>
+              <input id="favicon-file-input" type="file" accept="image/png,image/x-icon,image/svg+xml,image/gif,image/webp" style="display:none;" onchange="uploadFaviconFile(this)">
+              <button type="button" class="s-clear-btn" onclick="clearImageSetting('favicon_url', previewFavicon)">✖ Убрать</button>
+              <span id="favicon-upload-status" style="font-size:.76rem;color:var(--muted);"></span>
+            </div>
+            <div id="favicon-preview" style="margin-top:.6rem;display:none;">
+              <img id="favicon-preview-img" src="" alt="Favicon" style="width:2rem;height:2rem;object-fit:contain;border-radius:.3rem;border:1px solid rgba(150,0,28,.3);padding:.2rem;background:rgba(8,0,16,.6);">
+            </div>
+            <p class="s-desc">Иконка во вкладке браузера. PNG/ICO/SVG, квадратная (например 64×64). Применяется на всех страницах.</p>
           </div>
 
           <div class="s-field">
@@ -940,12 +961,22 @@
             <div style="display:flex;align-items:center;gap:.6rem;">
               <label for="hero-logo-file-input" style="display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;padding:.4rem .8rem;border-radius:.4rem;border:1px solid rgba(120,0,24,.4);background:rgba(8,0,16,.8);color:var(--muted);font-size:.76rem;transition:border-color .2s,color .2s;margin:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,.4)';this.style.color='var(--muted)'">📁 Загрузить</label>
               <input id="hero-logo-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/svg+xml,image/webp,image/x-icon" style="display:none;" onchange="uploadHeroLogoFile(this)">
+              <button type="button" class="s-clear-btn" onclick="clearImageSetting('hero_logo_url', previewHeroLogo)">✖ Убрать</button>
               <span id="hero-logo-upload-status" style="font-size:.76rem;color:var(--muted);"></span>
             </div>
             <div id="hero-logo-preview" style="margin-top:.6rem;display:none;background:rgba(8,0,16,.6);border:1px solid rgba(150,0,28,.3);border-radius:.4rem;padding:.6rem;text-align:center;">
               <img id="hero-logo-preview-img" src="" alt="Hero logo" style="max-height:5rem;max-width:100%;object-fit:contain;">
             </div>
-            <p class="s-desc">Крупный логотип на главной вместо текста «Название — Игровое сообщество». Оставьте пустым — будет текст.</p>
+            <p class="s-desc">Крупный логотип на главной вместо текста «Название — Игровое сообщество». Загружается сразу. Оставьте пустым — будет текст.</p>
+          </div>
+
+          <div class="s-field">
+            <label>Текст под hero-логотипом</label>
+            <div class="s-field-row">
+              <input id="setting-hero_subtitle" type="text" class="dark-input" placeholder="Just-Skill.Ru — Сообщество" maxlength="120">
+              <button class="s-save-btn" onclick="saveSetting('hero_subtitle')">Сохранить</button>
+            </div>
+            <p class="s-desc">Небольшая строка под логотипом/названием в hero на главной. Оставьте пустым — ничего не показывается.</p>
           </div>
 
           <div class="s-field">
@@ -2239,7 +2270,7 @@ async function submitEditor() {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
-const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','hero_logo_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time','maintenance_start_time','maintenance_fallback_image'];
+const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','hero_logo_url','hero_subtitle','favicon_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time','maintenance_start_time','maintenance_fallback_image'];
 let _settingsBaseline = {};
 
 async function loadSettings() {
@@ -2266,6 +2297,7 @@ async function loadSettings() {
   }
   if (map['site_logo_url']) previewLogo(map['site_logo_url']);
   if (map['hero_logo_url']) previewHeroLogo(map['hero_logo_url']);
+  if (map['favicon_url']) previewFavicon(map['favicon_url']);
   const badge = document.getElementById('https-badge');
   if (badge && map['https_domain']?.trim()) {
     badge.textContent = 'HTTPS'; badge.className = 's-status-badge s-status-https';
@@ -2423,7 +2455,43 @@ async function uploadLogoFile(input) {
     if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки');
     document.getElementById('setting-site_logo_url').value = data.url;
     previewLogo(data.url);
-    statusEl.textContent = '✔ Загружено'; statusEl.style.color = '#86efac';
+    await saveSetting('site_logo_url');
+    statusEl.textContent = '✔ Загружено и сохранено'; statusEl.style.color = '#86efac';
+    setTimeout(() => { statusEl.textContent = ''; }, 3000);
+  } catch (err) { statusEl.textContent = '✘ ' + err.message; statusEl.style.color = '#fca5a5'; }
+  input.value = '';
+}
+
+// Clear a logo/image setting: empty the field, save, refresh its preview.
+async function clearImageSetting(key, previewFn) {
+  const el = document.getElementById(`setting-${key}`);
+  if (el) el.value = '';
+  if (typeof previewFn === 'function') previewFn('');
+  await saveSetting(key);
+  adminToast('Убрано', 'success');
+}
+
+function previewFavicon(url) {
+  const wrap = document.getElementById('favicon-preview');
+  const img  = document.getElementById('favicon-preview-img');
+  if (!wrap || !img) return;
+  if (url) { img.src = url; wrap.style.display = 'block'; }
+  else { wrap.style.display = 'none'; img.src = ''; }
+}
+
+async function uploadFaviconFile(input) {
+  const file = input.files[0]; if (!file) return;
+  const statusEl = document.getElementById('favicon-upload-status');
+  statusEl.textContent = 'Загрузка...'; statusEl.style.color = 'var(--muted)';
+  const fd = new FormData(); fd.append('file', file);
+  try {
+    const res = await fetch(`${API}/admin/upload`, { method: 'POST', credentials: 'include', body: fd });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки');
+    document.getElementById('setting-favicon_url').value = data.url;
+    previewFavicon(data.url);
+    await saveSetting('favicon_url');
+    statusEl.textContent = '✔ Загружено и сохранено'; statusEl.style.color = '#86efac';
     setTimeout(() => { statusEl.textContent = ''; }, 3000);
   } catch (err) { statusEl.textContent = '✘ ' + err.message; statusEl.style.color = '#fca5a5'; }
   input.value = '';

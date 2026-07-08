@@ -1352,7 +1352,8 @@
 
   <!-- Content -->
   <div class="hero-content">
-    <h1 id="hero-title" class="hero-title" style="position:relative;z-index:1;">V RISING</h1>
+    <h1 id="hero-title" class="hero-title" style="position:relative;z-index:1;"></h1>
+    <div id="hero-subtitle" style="display:none;position:relative;z-index:1;font-family:'Philosopher',serif;font-size:.9rem;letter-spacing:.08em;color:var(--muted);margin-top:.4rem;"></div>
     <div class="hero-divider" style="position:relative;z-index:1;"></div>
     <div id="hero-status" style="display:none;margin-bottom:.2rem;"></div>
     <div id="hero-status2" style="display:none;"></div>
@@ -3946,8 +3947,9 @@ async function loadSiteSettings() {
     const title       = (d.site_title || '').trim() || 'V RISING';
     const tagline     = (d.site_tagline || '').trim() || 'Замок';
     const description = (d.site_description || '').trim() || 'Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила.';
-    const logo     = (d.site_logo_url || '').trim();
-    const heroLogo = (d.hero_logo_url || '').trim();
+    const logo        = (d.site_logo_url || '').trim();
+    const heroLogo    = (d.hero_logo_url || '').trim();
+    const heroSubtitle = (d.hero_subtitle || '').trim();
     const discord  = (d.discord_url || '').trim();
     const bg       = (d.bg_image_url || '').trim();
 
@@ -3973,6 +3975,12 @@ async function loadSiteSettings() {
       heroTitleEl.innerHTML = `<img src="${heroLogo}" alt="${esc(title)}" style="max-width:100%;max-height:9rem;object-fit:contain;display:block;margin:0 auto;filter:drop-shadow(0 4px 24px rgba(0,0,0,0.6));" onerror="this.parentElement.textContent='${esc(title)}'">`;
     } else {
       heroTitleEl.textContent = title;
+    }
+    // Optional subtitle line under the hero title/logo
+    const heroSubEl = document.getElementById('hero-subtitle');
+    if (heroSubEl) {
+      if (heroSubtitle) { heroSubEl.textContent = heroSubtitle; heroSubEl.style.display = ''; }
+      else { heroSubEl.style.display = 'none'; heroSubEl.textContent = ''; }
     }
     const fullTitle = title + ' — ' + tagline;
     document.title = fullTitle;
