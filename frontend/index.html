@@ -3516,7 +3516,7 @@ async function loadComments(slug, page, highlightCommentId) {
       el.innerHTML = `<div style="color:var(--muted);font-size:.75rem;font-style:italic;padding:.3rem 0;">Комментариев пока нет. Будьте первым!</div>`;
       return;
     }
-    const rendered = comments.map(c => renderSingleComment(c, true, slug)).join('');
+    const rendered = comments.map(c => renderSingleComment(c, slug)).join('');
     if (page === 1) {
       el.innerHTML = rendered;
     } else {
@@ -3695,7 +3695,7 @@ async function toggleReaction(commentId, emoji, btn) {
 }
 
 // ── Single comment renderer ────────────────────────────────────────────────
-function renderSingleComment(c, topLevel, slug) {
+function renderSingleComment(c, slug, depth = 0) {
   const name = c.author ? esc(c.author.username) : 'Удалённый пользователь';
   const profileHref = c.author ? `/user.html?u=${encodeURIComponent(c.author.username)}` : null;
   const user = getUser();
@@ -3729,9 +3729,10 @@ function renderSingleComment(c, topLevel, slug) {
       ${reactionsHtml}
     </div>
   </div>`;
-  if (topLevel && c.replies && c.replies.length) {
-    html += `<div style="margin-left:1.5rem;padding-left:.75rem;border-left:1px solid rgba(150,0,28,0.25);margin-top:.4rem;display:flex;flex-direction:column;gap:.5rem;">`;
-    c.replies.forEach(r => { html += renderSingleComment(r, false, slug); });
+  if (c.replies && c.replies.length) {
+    const indent = depth < 4 ? '1.5rem' : '0';
+    html += `<div style="margin-left:${indent};padding-left:.75rem;border-left:1px solid rgba(150,0,28,0.25);margin-top:.4rem;display:flex;flex-direction:column;gap:.5rem;">`;
+    c.replies.forEach(r => { html += renderSingleComment(r, slug, depth + 1); });
     html += `</div>`;
   }
   return html;

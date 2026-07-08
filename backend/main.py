@@ -1646,44 +1646,43 @@ async def get_comments(
     news_id = news_res.scalar_one_or_none()
     if news_id is None:
         raise HTTPException(status_code=404, detail="News not found")
-    total_res = await db.execute(
-        select(func.count()).select_from(Comment).where(
-            Comment.news_id == news_id, Comment.parent_id == None
-        )
-    )
-    total = total_res.scalar_one()
-    pages = max(1, math.ceil(total / per_page))
-    result = await db.execute(
-        select(Comment)
-        .where(Comment.news_id == news_id, Comment.parent_id == None)
-        .order_by(Comment.created_at.asc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-    )
-    items = result.scalars().all()
-    for c in items:
-        rr = await db.execute(
-            select(Comment)
-            .where(Comment.parent_id == c.id)
-            .order_by(Comment.created_at)
-            .options(selectinload(Comment.author))
-            .limit(50)
-        )
-        c._replies_list = rr.scalars().all()
 
-    def serialize_comment(c, replies=None):
+    # Fetch every comment for this article in one go and build the reply
+    # tree in memory — replies can nest to any depth (reply-to-a-reply),
+    # so a single-level query would silently drop grandchild replies.
+    all_res = await db.execute(
+        select(Comment)
+        .where(Comment.news_id == news_id)
+        .order_by(Comment.created_at.asc())
+        .options(selectinload(Comment.author))
+    )
+    all_comments = all_res.scalars().all()
+
+    children_by_parent: dict = {}
+    top_level = []
+    for c in all_comments:
+        if c.parent_id is None:
+            top_level.append(c)
+        else:
+            children_by_parent.setdefault(c.parent_id, []).append(c)
+
+    total = len(top_level)
+    pages = max(1, math.ceil(total / per_page))
+    page_items = top_level[(page - 1) * per_page: (page - 1) * per_page + per_page]
+
+    def serialize_comment(c):
         return {
             "id": c.id,
             "content": c.content,
             "parent_id": c.parent_id,
             "created_at": c.created_at.isoformat(),
             "author": {"id": c.author.id, "username": c.author.username, "avatar_url": c.author.avatar_url, "role": c.author.role, "is_active": c.author.is_active, "created_at": c.author.created_at.isoformat(), "email": ""} if c.author else None,
-            "replies": [serialize_comment(r) for r in (replies or [])],
+            "replies": [serialize_comment(r) for r in children_by_parent.get(c.id, [])],
             "reactions": {},
             "user_reaction": None,
         }
 
-    return {"items": [serialize_comment(c, getattr(c, '_replies_list', [])) for c in items], "total": total, "page": page, "pages": pages}
+    return {"items": [serialize_comment(c) for c in page_items], "total": total, "page": page, "pages": pages}
 
 
 @app.post("/api/news/{slug}/comments", response_model=CommentOut, status_code=201)
