@@ -2925,7 +2925,7 @@ async function loadFeatured() {
         <div class="featured-bg" style="${bgStyle}"></div>
         <div class="featured-overlay"></div>
         <div class="featured-body">
-          <div class="featured-badge">★ Главное</div>
+          <div class="featured-badge">&#x2B50; Главное</div>
           <h2 class="gothic" style="font-size:1.3rem;font-weight:700;color:#d4c4e0;line-height:1.3;margin-bottom:.5rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.title)}</h2>
           <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.85rem;">
             ${avatarEl}
@@ -3102,7 +3102,7 @@ async function loadNews(page = 1, append = false) {
       : '';
     const isNew = (Date.now() - new Date(n.created_at).getTime()) < 86400000;
     const newBadge = isNew
-      ? `<div style="position:absolute;top:.55rem;left:${n.slug === _hotSlug ? '6.5rem' : '.55rem'};z-index:2;background:linear-gradient(135deg,rgba(0,160,60,0.92),rgba(0,100,40,0.85));border:1px solid rgba(0,220,80,0.4);border-radius:9999px;padding:.18rem .55rem;font-size:.58rem;font-weight:700;color:#fff;letter-spacing:.08em;box-shadow:0 0 10px rgba(0,180,60,0.35);">Новая</div>`
+      ? `<div style="position:absolute;top:.55rem;left:${n.slug === _hotSlug ? '6.5rem' : '.55rem'};z-index:2;background:linear-gradient(135deg,rgba(0,160,60,0.92),rgba(0,100,40,0.85));border:1px solid rgba(0,220,80,0.4);border-radius:9999px;padding:.18rem .55rem;font-size:.58rem;font-weight:700;color:#fff;letter-spacing:.08em;box-shadow:0 0 10px rgba(0,180,60,0.35);display:inline-flex;align-items:center;gap:.25rem;">&#x2728; Новая</div>`
       : '';
     const readingTimeBadge = `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.6rem;color:var(--muted);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${readingTime(n.content)}</span>`;
     _newsItems.push(n);
