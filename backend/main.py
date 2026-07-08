@@ -3837,9 +3837,14 @@ async def _monitor_poll_cycle():
             await _track_players(db, data.get("players_list", []), server_num)
             _last_snapshot[server_num] = 0  # bypass TTL — task owns timing
             await _save_snapshot(db, data, server_num)
-        _status_cache[server_num] = data
+        # Server 2's HTTP endpoint carries an `enabled` flag; keep the cached
+        # and broadcast payloads in the same shape so /status2 (served from this
+        # cache for up to STATUS_CACHE_TTL) and SSE pushes never drop the field
+        # — a missing `enabled` made the client hide the whole server-2 block.
+        payload = {**data, "enabled": True} if server_num == 2 else data
+        _status_cache[server_num] = payload
         _status_cache_ts[server_num] = time.time()
-        _broadcast_status({"server": server_num, **data})
+        _broadcast_status({"server": server_num, **payload})
 
 
 async def _monitor_poll_task():

@@ -2856,7 +2856,10 @@ function _applyStatusData(d, sfx) {
 function _applyStatusData2(d) {
   try {
     const section = document.getElementById('server2-section');
-    if (!d.enabled) { if(section) section.style.display='none'; return; }
+    // Only hide on an explicit disable. SSE broadcasts from the poll task
+    // omit `enabled` entirely, so `!d.enabled` would wrongly hide a live
+    // server on every push (section flickered off until the next 30s poll).
+    if (d.enabled === false) { if(section) section.style.display='none'; return; }
     if(section) section.style.display='block';
     renderServerBlock(d, '2');
     window._sb_online2 = d.online ? d.players : 0;
