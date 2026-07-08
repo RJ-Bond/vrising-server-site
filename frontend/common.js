@@ -394,6 +394,7 @@ function showToast(msg, type = 'info', duration = 4500) {
     error:   { bg:'rgba(120,0,15,.92)', border:'rgba(200,0,30,.5)',   color:'#fca5a5', icon:'✘' },
     info:    { bg:'rgba(20,5,30,.92)',  border:'rgba(150,0,28,.4)',   color:'#d4c4e0', icon:'ℹ' },
     warning: { bg:'rgba(90,55,0,.92)', border:'rgba(200,130,0,.5)',  color:'#fcd34d', icon:'⚠' },
+    achievement: { bg:'rgba(40,24,0,.95)', border:'rgba(201,169,74,.55)', color:'#e8cf8a', icon:'✦' },
   };
   const c = colors[type] || colors.info;
   const el = document.createElement('div');

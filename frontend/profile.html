@@ -771,7 +771,7 @@ function _checkNewAchievements(pub, actData, user, username) {
   if (newOnes.length) {
     newOnes.forEach(id => {
       const a = ACHIEVEMENTS.find(x => x.id === id);
-      if (a) showToast(`${a.icon} Новое достижение: ${a.label}`, 'success', 5000);
+      if (a) showToast(`Новое достижение: ${a.icon} ${a.label}`, 'achievement', 5000);
     });
     setTimeout(() => {
       newOnes.forEach(id => {
@@ -783,7 +783,12 @@ function _checkNewAchievements(pub, actData, user, username) {
       });
     }, 100);
   }
-  localStorage.setItem(key, JSON.stringify(now));
+  // Union, never shrink: renderAchievements runs twice per load — first with
+  // partial activity data (fewer earned), then with full data. Overwriting with
+  // `now` let the partial pass drop ids, so the full pass re-flagged them as
+  // "new" and re-toasted every single visit. Merging keeps earned ids sticky.
+  const merged = Array.from(new Set([...prev, ...now]));
+  localStorage.setItem(key, JSON.stringify(merged));
 }
 
 function buildCoverStars() {
