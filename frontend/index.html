@@ -3945,9 +3945,10 @@ async function loadSiteSettings() {
     const title       = (d.site_title || '').trim() || 'V RISING';
     const tagline     = (d.site_tagline || '').trim() || 'Замок';
     const description = (d.site_description || '').trim() || 'Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила.';
-    const logo    = (d.site_logo_url || '').trim();
-    const discord = (d.discord_url || '').trim();
-    const bg      = (d.bg_image_url || '').trim();
+    const logo     = (d.site_logo_url || '').trim();
+    const heroLogo = (d.hero_logo_url || '').trim();
+    const discord  = (d.discord_url || '').trim();
+    const bg       = (d.bg_image_url || '').trim();
 
     if (bg) {
       document.body.style.backgroundImage = [
@@ -3966,7 +3967,12 @@ async function loadSiteSettings() {
       }
     }
 
-    document.getElementById('hero-title').textContent = title;
+    const heroTitleEl = document.getElementById('hero-title');
+    if (heroLogo) {
+      heroTitleEl.innerHTML = `<img src="${heroLogo}" alt="${esc(title)}" style="max-width:100%;max-height:9rem;object-fit:contain;display:block;margin:0 auto;filter:drop-shadow(0 4px 24px rgba(0,0,0,0.6));" onerror="this.parentElement.textContent='${esc(title)}'">`;
+    } else {
+      heroTitleEl.textContent = title;
+    }
     const fullTitle = title + ' — ' + tagline;
     document.title = fullTitle;
     const descMeta = document.getElementById('meta-description');

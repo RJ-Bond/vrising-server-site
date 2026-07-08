@@ -2236,7 +2236,7 @@ def _write_maintenance_flag(enabled: bool) -> None:
 
 @app.get("/api/settings/public")
 async def get_public_settings(db: AsyncSession = Depends(get_db)):
-    keys = ["site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id", "max_url", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules", "timezone", "time_format", "date_format", "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time", "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates", "maintenance_history"]
+    keys = ["site_title", "site_tagline", "site_description", "site_logo_url", "hero_logo_url", "discord_url", "discord_server_id", "max_url", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules", "timezone", "time_format", "date_format", "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time", "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates", "maintenance_history"]
     result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
     settings = result.scalars().all()
     d = {s.key: s.value for s in settings}
@@ -2345,7 +2345,7 @@ async def extend_maintenance(
 ALLOWED_SETTING_KEYS = {
     "setup_completed", "server_ip", "server_port", "server_game_port", "server_connect_ip", "server_name",
     "server2_name", "server2_ip", "server2_port", "server2_game_port", "server2_connect_ip",
-    "site_title", "site_tagline", "site_description", "site_logo_url", "discord_url", "discord_server_id", "max_url",
+    "site_title", "site_tagline", "site_description", "site_logo_url", "hero_logo_url", "discord_url", "discord_server_id", "max_url",
     "bg_image_url", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2",
     "event_active", "event_title", "event_text", "event_color",
     "rules", "https_domain", "https_email",
