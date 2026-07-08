@@ -806,6 +806,11 @@
         background:rgba(10,2,18,0.98) !important;
       }
       .left-panel.drawer-open { left:0 !important; }
+      /* The 480px rule below hides nav-link labels for a narrow docked rail,
+         but on mobile the panel is a full 260px drawer — restore the text so
+         menu items aren't icon-only and unreadable. */
+      .left-panel .nav-link-item span { display:inline !important; }
+      .left-panel .nav-link-item { justify-content:flex-start !important; }
       /* Keep the monitoring panel on mobile instead of hiding it — the connect
          button, player list and sparkline live here and were lost on phones.
          Quick status (online/uptime/wipe) is already in the top status bar, so
