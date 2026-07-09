@@ -56,6 +56,24 @@ window.__DATEFMT = window.__DATEFMT || 'dd.mm.yyyy';
         link.href = favUrl;
       }
 
+      // Nav-header logo — on EVERY page (was only set per-page as text, so an
+      // uploaded logo only showed on the homepage). Renders the image if
+      // site_logo_url is set, else "⚔ <title>". Pages must NOT also set it.
+      const navLogoEl = document.getElementById('nav-logo');
+      if (navLogoEl) {
+        const navLogo  = (s.site_logo_url || '').trim();
+        const navTitle = (s.site_title || '').trim() || 'V Rising';
+        if (navLogo) {
+          const img = document.createElement('img');
+          img.src = navLogo; img.alt = navTitle;
+          img.style.cssText = 'height:2rem;max-width:11rem;object-fit:contain;vertical-align:middle;';
+          img.onerror = () => { navLogoEl.textContent = '⚔ ' + navTitle; };
+          navLogoEl.replaceChildren(img);
+        } else {
+          navLogoEl.textContent = '⚔ ' + navTitle;
+        }
+      }
+
       // Maintenance mode redirect
       if (s.maintenance_mode === 'true' || s.maintenance_mode === true) {
         const path = location.pathname.replace(/\/+$/, '') || '/';

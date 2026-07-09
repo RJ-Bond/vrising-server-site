@@ -2081,12 +2081,7 @@ async function loadSiteSettings() {
     const twDesc = document.getElementById('meta-tw-description');
     if (twDesc) twDesc.setAttribute('content', description);
 
-    const navLogo = document.getElementById('nav-logo');
-    if (logo) {
-      navLogo.innerHTML = `<img src="${logo}" alt="${title}" style="height:2rem;max-width:10rem;object-fit:contain;vertical-align:middle;" onerror="this.parentElement.textContent='⚔ ${title}'">`;
-    } else {
-      navLogo.textContent = '⚔ ' + title;
-    }
+    // nav-header logo is rendered centrally in common.js (all pages)
 
     const discordBtn = document.getElementById('discord-btn');
     if (discord) {

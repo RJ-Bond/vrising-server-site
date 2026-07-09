@@ -608,7 +608,7 @@
   </div>
 </div>
 
-<script src="/common.js?v=4"></script>
+<script src="/common.js?v=5"></script>
 <script>
 const API = '/api';
 
@@ -1100,12 +1100,7 @@ async function loadProfile() {
       window.__TZ = s.timezone || 'Europe/Moscow';
       window.__H12 = (s.time_format || '24h') === '12h';
       window.__DATEFMT = s.date_format || 'dd.mm.yyyy';
-      const logo = document.getElementById('nav-logo');
-      if (s.site_logo_url) {
-        logo.innerHTML = `<img src="${s.site_logo_url}" alt="${s.site_title||'V RISING'}" style="height:1.8rem;object-fit:contain;vertical-align:middle;">`;
-      } else {
-        logo.textContent = s.site_title || 'V RISING';
-      }
+      // nav-header logo is rendered centrally in common.js (all pages)
       document.title = (s.site_title||'V RISING') + ' — Профиль';
       document.getElementById('cover-subtitle').textContent = '— ' + (s.site_title||'V Rising') + ' · Профиль игрока —';
       applySiteBackground(s.bg_image_url);

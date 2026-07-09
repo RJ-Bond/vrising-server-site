@@ -263,7 +263,7 @@
   </div>
 </div>
 
-<script src="/common.js"></script>
+<script src="/common.js?v=5"></script>
 <script>
 const API = '/api';
 
@@ -301,7 +301,6 @@ function toggleMobileNav() {
     const d = await fetch(`${API}/settings/public`).then(r => r.json());
     const title = (d.site_title || 'V Rising').trim();
     document.title = `${title} — Кланы`;
-    document.getElementById('nav-logo').textContent = '⚔ ' + title;
     applySiteBackground(d.bg_image_url);
   } catch {}
 })();

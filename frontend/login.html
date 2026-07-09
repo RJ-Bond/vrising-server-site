@@ -538,7 +538,6 @@ const API = '/api';
     const d = await fetch(`${API}/settings/public`).then(r => r.json());
     const title = (d.site_title || 'V Rising').trim();
     document.title = `Вход — ${title}`;
-    document.getElementById('nav-logo').textContent = `⚔ ${title}`;
     document.getElementById('card-title').textContent = title;
     if (d.bg_image_url) {
       const bg = document.getElementById('bg-layer');
@@ -757,5 +756,6 @@ document.querySelectorAll('.btn-primary').forEach(btn => {
   });
 });
 </script>
+<script src="/common.js?v=5"></script>
 </body>
 </html>

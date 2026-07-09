@@ -218,7 +218,6 @@ function applySiteBackground(bg) {
     const d = await fetch(`${API}/settings/public`).then(r => r.json());
     const title = (d.site_title || 'V Rising').trim();
     document.title = `${title} — FAQ`;
-    document.getElementById('nav-logo').textContent = '⚔ ' + title;
     applySiteBackground(d.bg_image_url);
   } catch {}
 })();
@@ -355,5 +354,6 @@ function toggleMobileNav() {
   document.body.style.overflow = isOpen ? '' : 'hidden';
 }
 </script>
+<script src="/common.js?v=5"></script>
 </body>
 </html>

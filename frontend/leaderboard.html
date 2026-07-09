@@ -370,7 +370,7 @@
   </div>
 </div>
 
-<script src="/common.js?v=4"></script>
+<script src="/common.js?v=5"></script>
 <script>
 const API = '/api';
 const PER_PAGE = 25;
@@ -505,7 +505,6 @@ function applySiteBackground(bg) {
     window.__DATEFMT = d.date_format || 'dd.mm.yyyy';
     const title = (d.site_title || 'V Rising').trim();
     document.title = `${title} — Игроки`;
-    document.getElementById('nav-logo').textContent = '⚔ ' + title;
     applySiteBackground(d.bg_image_url);
     document.getElementById('lb-server1-btn').textContent = (d.server_name || '').trim() || 'Сервер 1';
     const srv2Name = (d.server2_name || '').trim();

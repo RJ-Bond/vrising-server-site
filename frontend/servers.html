@@ -455,7 +455,7 @@
   </div>
 </div>
 
-<script src="/common.js?v=4"></script>
+<script src="/common.js?v=5"></script>
 <script>
 const API = '/api';
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
@@ -535,7 +535,6 @@ function updatePageTitle() {
     const title = (d.site_title || 'V Rising').trim();
     _baseTitle = `${title} — Сервера`;
     document.title = _baseTitle;
-    document.getElementById('nav-logo').textContent = '⚔ ' + title;
     applySiteBackground(d.bg_image_url);
     _wipeSettings = {
       1: { date: (d.wipe_date || '').trim(), type: d.wipe_type || 'full' },

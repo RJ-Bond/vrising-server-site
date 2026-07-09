@@ -233,7 +233,7 @@
 
 </div>
 
-<script src="/common.js?v=4"></script>
+<script src="/common.js?v=5"></script>
 <script>
 const API = '/api';
 
@@ -407,7 +407,6 @@ async function loadUser(){
       window.__TZ = s.timezone || 'Europe/Moscow';
       window.__H12 = (s.time_format || '24h') === '12h';
       window.__DATEFMT = s.date_format || 'dd.mm.yyyy';
-      document.getElementById('nav-logo').textContent=s.site_title||'V RISING';
       document.getElementById('cover-subtitle').textContent='— '+(s.site_title||'V Rising')+' · Профиль игрока —';
       applySiteBackground(s.bg_image_url);
     }catch{}
