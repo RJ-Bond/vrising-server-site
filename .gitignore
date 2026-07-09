@@ -8,3 +8,4 @@ venv/
 *.sqlite3
 tailwindcss.exe
 src/
+.shots/
