@@ -1,0 +1,40 @@
+/* ==========================================================================
+   Just-Skill.Ru — Shared components (top-nav pages)
+   The top navigation, mobile drawer, tooltips and base utilities shared by the
+   content pages (servers, leaderboard, clans, bans, faq, map, events). Uses the
+   design tokens from /theme.css. Loaded AFTER theme.css and BEFORE each page's
+   inline <style>, so a page can still override any rule locally.
+   Bump ?v= in each page's <link> when editing this file (immutable cache).
+   ========================================================================== */
+
+.gothic { font-family:'Cinzel',serif; }
+
+/* ── Top navigation ── */
+.glass-nav { background:rgba(8,0,14,0.9); border-bottom:1px solid rgba(110,0,20,0.35); backdrop-filter:blur(14px); position:sticky; top:0; z-index:40; }
+.nav-links { display:flex; align-items:center; gap:.3rem; flex-wrap:wrap; }
+.topnav-link {
+  font-size:.78rem; font-weight:600; color:var(--muted); text-decoration:none;
+  padding:.4rem .75rem; border-radius:.5rem; border:1px solid transparent; transition:all .2s;
+  background:none; cursor:pointer; font-family:'Inter',sans-serif;
+}
+.topnav-link:hover { color:var(--text); background:rgba(150,0,28,0.12); border-color:rgba(160,0,35,0.35); }
+.topnav-link.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
+
+/* ── Mobile hamburger + drawer ── */
+.nav-burger { display:none; align-items:center; justify-content:center; width:2.2rem; height:2.2rem; border-radius:.5rem; background:none; border:1px solid rgba(110,0,20,0.35); color:var(--muted); cursor:pointer; transition:all .2s; flex-shrink:0; }
+.nav-burger:hover { border-color:rgba(180,0,35,0.5); color:var(--text); }
+.mobile-overlay { display:none; position:fixed; inset:0; z-index:49; background:rgba(0,0,0,0.65); backdrop-filter:blur(3px); opacity:0; transition:opacity .25s; pointer-events:none; }
+.mobile-overlay.open { opacity:1; pointer-events:auto; }
+.mobile-drawer { position:fixed; bottom:0; left:0; right:0; z-index:50; background:rgba(8,0,14,0.98); border-top:1px solid rgba(110,0,20,0.5); backdrop-filter:blur(20px); padding:1rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom)); transform:translateY(100%); transition:transform .3s cubic-bezier(.32,.72,0,1); display:grid; grid-template-columns:1fr 1fr; gap:.5rem; }
+.mobile-drawer.open { transform:translateY(0); }
+.mobile-drawer a { font-size:.85rem; font-weight:600; color:var(--muted); text-decoration:none; padding:.65rem .9rem; border-radius:.6rem; border:1px solid rgba(110,0,20,0.2); transition:all .18s; text-align:center; }
+.mobile-drawer a:hover, .mobile-drawer a.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
+@media (max-width:640px) { .nav-links { display:none; } .nav-burger { display:flex; } .mobile-overlay { display:block; } }
+
+/* ── Dot-grid page texture ── */
+body::before { content:''; position:fixed; inset:0; z-index:0; pointer-events:none; background-image:radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1px); background-size:28px 28px; }
+
+/* ── CSS tooltips ── */
+[data-tip] { position:relative; }
+[data-tip]::after { content:attr(data-tip); position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%); background:rgba(6,0,15,0.96); border:1px solid rgba(180,0,35,0.4); color:#d4c4e0; font-size:.68rem; padding:.28rem .65rem; border-radius:.4rem; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .15s; z-index:999; font-family:'Inter',sans-serif; }
+[data-tip]:hover::after { opacity:1; }
