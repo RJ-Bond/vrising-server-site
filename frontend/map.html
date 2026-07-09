@@ -17,18 +17,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
+  <link rel="stylesheet" href="/theme.css?v=1" />
   <style>
+    /* Base tokens in /theme.css; overrides below for this page's lighter surfaces/text. */
     :root {
-      --bg:      #06000f;
       --card:    rgba(16,7,23,0.92);
       --panel:   rgba(255,255,255,0.035);
-      --border:  rgba(110,0,150,0.22);
       --text:    #f5f0fb;
       --muted:   #b6a8d2;
-      --label:   #d6c9ee;
-      --gold:    #c9a94a;
-      --crimson: #c8002a;
-      --purple:  #7c3aed;
     }
     * { box-sizing:border-box; margin:0; padding:0; }
     html { scroll-behavior:smooth; }

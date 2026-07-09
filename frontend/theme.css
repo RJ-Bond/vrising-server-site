@@ -1,0 +1,41 @@
+/* ==========================================================================
+   Just-Skill.Ru — Design tokens (single source of truth)
+   Loaded on every public page BEFORE its inline <style>. Each page keeps in
+   its own :root ONLY the tokens it intentionally overrides; everything else
+   comes from here, so brand/accent colours change in one place.
+   Bump the ?v= in each page's <link> when you edit this file (immutable cache).
+   ========================================================================== */
+:root {
+  /* Surfaces */
+  --bg:        #06000f;
+  --card:      rgba(14,5,22,0.88);
+  --panel:     rgba(14,5,22,0.82);
+
+  /* Borders */
+  --border:    rgba(110,0,150,0.22);
+  --border-r:  rgba(180,0,35,0.35);
+
+  /* Brand / accent */
+  --crimson:   #c8002a;
+  --purple:    #7c3aed;
+  --gold:      #c9a94a;
+
+  /* Glows */
+  --glow-r:    rgba(200,0,42,0.5);
+  --glow-p:    rgba(124,58,237,0.45);
+
+  /* Text */
+  --text:      #e2d8f0;
+  --muted:     #9488a8;
+  --label:     #d6c9ee;
+
+  /* Status / semantic */
+  --green:     #22c55e;
+  --green-s:   rgba(34,197,94,0.2);
+  --yellow:    #ffcf5c;
+  --red:       #ff5d7e;
+
+  /* Extra accents used by a few pages */
+  --pink-a:    #c2218a;
+  --pink-b:    #9233ea;
+}
