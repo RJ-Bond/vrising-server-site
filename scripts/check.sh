@@ -31,6 +31,20 @@ for f in frontend/*.html; do
   done
 done
 
+# (c) undefined vars inside the extracted/shared stylesheets themselves.
+#     Only no-fallback usages -- var(--x) -- are flagged; var(--x, default) is safe.
+for f in frontend/theme.css frontend/components.css frontend/index.css; do
+  [ -e "$f" ] || continue
+  filedef=$(grep -oE '\-\-[a-z-]+\s*:' "$f" | grep -oE '\-\-[a-z-]+' | sort -u)
+  used=$(grep -oE 'var\(\s*--[a-z-]+\s*\)' "$f" | grep -oE '\-\-[a-z-]+' | sort -u)
+  for v in $used; do
+    printf '%s\n' "$defined" | grep -qxF -- "$v" && continue
+    printf '%s\n' "$filedef" | grep -qxF -- "$v" && continue
+    echo "$f : undefined $v"
+    fail=1
+  done
+done
+
 if [ "$fail" = 0 ]; then
   echo "OK"
 else

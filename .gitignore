@@ -9,3 +9,4 @@ venv/
 tailwindcss.exe
 src/
 .shots/
+frontend/.preview_frame.html
