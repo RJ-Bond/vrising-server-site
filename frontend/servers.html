@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
   <link rel="stylesheet" href="/theme.css?v=1" />
-  <link rel="stylesheet" href="/components.css?v=1" />
+  <link rel="stylesheet" href="/components.css?v=2" />
   <style>
     /* Base tokens in /theme.css; overrides below for this page's lighter surfaces/text. */
     :root {
@@ -55,7 +55,6 @@
       background:linear-gradient(90deg,transparent,rgba(var(--accent-rgb,110,0,150),.7),var(--accent,rgba(200,0,45,0.5)),rgba(var(--accent-rgb,110,0,150),.7),transparent);
       z-index:1;
     }
-    @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
     .g-card { animation:fade-up .4s ease both; }
     @keyframes digit-up { from { transform:translateY(100%); opacity:0; } to { transform:translateY(0); opacity:1; } }
 
@@ -265,9 +264,6 @@
 
     .srv-empty { color:var(--muted); font-size:.78rem; font-style:italic; text-align:center; padding:1rem 0; column-span:all; }
 
-    ::-webkit-scrollbar { width:5px; }
-    ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
-    ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
     /* ── Mobile ── */
     @media (max-width:640px) {
       body { overflow-x:hidden; }

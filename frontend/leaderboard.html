@@ -18,7 +18,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
   <link rel="stylesheet" href="/theme.css?v=1" />
-  <link rel="stylesheet" href="/components.css?v=1" />
+  <link rel="stylesheet" href="/components.css?v=2" />
   <style>
     /* Base tokens in /theme.css; overrides below for this page's lighter surfaces/text. */
     :root {
@@ -129,7 +129,6 @@
       box-shadow:0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
       position:relative; padding:1.25rem;
     }
-    @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
     .g-card { animation:fade-up .4s ease both; }
 
     /* ── Controls ── */
@@ -239,9 +238,6 @@
     @media (max-width:480px) { .lb-seen { display:none; } }
     @media (max-width:480px) { .lb-col-seen { display:none; } }
 
-    ::-webkit-scrollbar { width:5px; }
-    ::-webkit-scrollbar-track { background:rgba(8,0,14,0.4); }
-    ::-webkit-scrollbar-thumb { background:rgba(130,0,24,0.5); border-radius:3px; }
     /* ── Mobile ── */
     @media (max-width:640px) {
       body { overflow-x:hidden; }
