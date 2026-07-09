@@ -622,7 +622,10 @@
     .news-card { animation: news-card-appear .38s ease both; }
     @media (max-width:600px) {
       #modal-prev, #modal-next { display:none !important; }
-      .modal-bg { padding:0; align-items:stretch; }
+      /* Keep align-items:flex-start (not stretch): stretching the box to exactly
+         100vh in this scroll container clipped taller articles and killed
+         scrolling. Full-width comes from the box's width:100% + max-width:none. */
+      .modal-bg { padding:0; }
       .modal-box { border-radius:0; max-width:none; min-height:100vh; margin:0; }
     }
     .modal-nav-preview {
