@@ -11,6 +11,7 @@ import asyncio
 import httpx
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from typing import Optional
@@ -1371,10 +1372,21 @@ async def get_monitor_stats(server: int = Query(1), db: AsyncSession = Depends(g
     peak_7d = max((s.players for s in snaps_week), default=0)
     peak_24h = max((s.players for s in res_day), default=0)
 
-    # hourly heatmap: avg players per hour-of-day over last 7 days
+    # hourly heatmap: avg players per hour-of-day over last 7 days (local tz)
+    tz_res = await db.execute(select(Setting).where(Setting.key == "timezone"))
+    tz_setting = tz_res.scalar_one_or_none()
+    tz_name = tz_setting.value if tz_setting else None
+    try:
+        _tz = ZoneInfo(tz_name or "Europe/Moscow")
+    except Exception:
+        _tz = ZoneInfo("Europe/Moscow")
+
+    def _local_hour(dt):
+        return dt.replace(tzinfo=timezone.utc).astimezone(_tz).hour
+
     buckets: dict[int, list[int]] = {h: [] for h in range(24)}
     for s in snaps_week:
-        buckets[s.recorded_at.hour].append(s.players)
+        buckets[_local_hour(s.recorded_at)].append(s.players)
     heatmap = [round(sum(v) / len(v), 1) if v else 0 for _, v in sorted(buckets.items())]
 
     peak_result = await db.execute(
