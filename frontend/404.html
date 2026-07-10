@@ -376,7 +376,7 @@
 // ── Load settings ─────────────────────────────────────────────────────────
 (async function () {
   try {
-    const d = await fetch('/api/settings/public').then(r => r.json());
+    const d = await (window.getSettings?.() ?? fetch('/api/settings/public').then(r => r.json()));
     const title = (d.site_title || 'V Rising').trim();
     document.title = `404 — ${title}`;
     if (d.bg_image_url) {
@@ -411,6 +411,6 @@ document.querySelectorAll('.btn-primary, .btn-ghost').forEach(btn => {
   });
 });
 </script>
-<script src="/common.js?v=5"></script>
+<script src="/common.js?v=6"></script>
 </body>
 </html>

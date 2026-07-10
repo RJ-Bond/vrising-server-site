@@ -474,7 +474,7 @@
     // ── Init ──────────────────────────────────────────────────────
     async function init() {
       try {
-        const s = await fetch('/api/settings/public').then(r => r.json());
+        const s = await (window.getSettings?.() ?? fetch('/api/settings/public').then(r => r.json()));
 
         // Logo / site title
         const logoEl = document.getElementById('site-logo');
@@ -539,7 +539,7 @@
         // Auto-refresh: redirect to home when maintenance ends
         setInterval(async () => {
           try {
-            const fresh = await fetch('/api/settings/public').then(r => r.json());
+            const fresh = await (window.getSettings?.() ?? fetch('/api/settings/public').then(r => r.json()));
             if (fresh.maintenance_mode !== 'true' && fresh.maintenance_mode !== true)
               window.location.replace('/');
           } catch {}

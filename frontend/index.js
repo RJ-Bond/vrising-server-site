@@ -2027,7 +2027,7 @@ async function acceptRules() {
 // ── Site settings ──────────────────────────────────────────────────────────
 async function loadSiteSettings() {
   try {
-    const d = await fetch(`${API}/settings/public`).then(r => r.json());
+    const d = await (window.getSettings?.() ?? fetch(`${API}/settings/public`).then(r => r.json()));
     const title       = (d.site_title || '').trim() || 'V RISING';
     const tagline     = (d.site_tagline || '').trim() || 'Замок';
     const description = (d.site_description || '').trim() || 'Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила.';

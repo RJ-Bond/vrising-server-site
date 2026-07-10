@@ -370,7 +370,7 @@
   </div>
 </div>
 
-<script src="/common.js?v=5"></script>
+<script src="/common.js?v=6"></script>
 <script>
 const API = '/api';
 const PER_PAGE = 25;
@@ -499,7 +499,7 @@ function applySiteBackground(bg) {
 
 (async function() {
   try {
-    const d = await fetch(`${API}/settings/public`).then(r => r.json());
+    const d = await (window.getSettings?.() ?? fetch(`${API}/settings/public`).then(r => r.json()));
     window.__TZ = d.timezone || 'Europe/Moscow';
     window.__H12 = (d.time_format || '24h') === '12h';
     window.__DATEFMT = d.date_format || 'dd.mm.yyyy';

@@ -144,7 +144,7 @@ const token = new URLSearchParams(location.search).get('token');
 // Load site title
 (async function() {
   try {
-    const d = await fetch(`${API}/settings/public`).then(r => r.json());
+    const d = await (window.getSettings?.() ?? fetch(`${API}/settings/public`).then(r => r.json()));
     const title = (d.site_title || 'V Rising').trim();
     document.title = `Сброс пароля — ${title}`;
     document.getElementById('site-logo').textContent = title;

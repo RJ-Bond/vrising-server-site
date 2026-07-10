@@ -233,7 +233,7 @@
 
 </div>
 
-<script src="/common.js?v=5"></script>
+<script src="/common.js?v=6"></script>
 <script>
 const API = '/api';
 
@@ -403,7 +403,7 @@ async function loadUser(){
       statusEl.style.display = 'inline-flex';
     }
     try{
-      const s=await fetch(`${API}/settings/public`).then(r=>r.json());
+      const s=await (window.getSettings?.() ?? fetch(`${API}/settings/public`).then(r => r.json()));
       window.__TZ = s.timezone || 'Europe/Moscow';
       window.__H12 = (s.time_format || '24h') === '12h';
       window.__DATEFMT = s.date_format || 'dd.mm.yyyy';

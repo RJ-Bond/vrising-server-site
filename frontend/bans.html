@@ -162,7 +162,7 @@
 
 </div>
 
-<script src="/common.js?v=5"></script>
+<script src="/common.js?v=6"></script>
 <script>
 const API = '/api';
 
@@ -220,7 +220,7 @@ function applySiteBackground(bg) {
 }
 (async function() {
   try {
-    const d = await fetch(`${API}/settings/public`).then(r => r.json());
+    const d = await (window.getSettings?.() ?? fetch(`${API}/settings/public`).then(r => r.json()));
     const title = (d.site_title || 'V Rising').trim();
     document.title = `${title} — Баны`;
     applySiteBackground(d.bg_image_url);

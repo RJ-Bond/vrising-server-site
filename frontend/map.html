@@ -244,7 +244,7 @@ function applySiteBackground(bg) {
 
 (async function() {
   try {
-    const d = await fetch(`${API}/settings/public`).then(r => r.json());
+    const d = await (window.getSettings?.() ?? fetch(`${API}/settings/public`).then(r => r.json()));
     const title = (d.site_title || 'V Rising').trim();
     document.title = `${title} — Карта мира`;
     applySiteBackground(d.bg_image_url);
@@ -260,6 +260,6 @@ function toggleMobileNav() {
   document.body.style.overflow = isOpen ? '' : 'hidden';
 }
 </script>
-<script src="/common.js?v=5"></script>
+<script src="/common.js?v=6"></script>
 </body>
 </html>

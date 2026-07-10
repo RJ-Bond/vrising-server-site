@@ -37,11 +37,20 @@ window.__TZ     = window.__TZ     || 'Europe/Moscow';
 window.__H12    = window.__H12    || false;
 window.__DATEFMT = window.__DATEFMT || 'dd.mm.yyyy';
 
+/* Single shared fetch of public settings — memoized so common.js and each
+   page reuse ONE request instead of hitting /api/settings/public twice. */
+window.getSettings = function () {
+  if (!window.__settingsReq) {
+    window.__settingsReq = fetch('/api/settings/public').then(r => r.ok ? r.json() : null).catch(() => null);
+  }
+  return window.__settingsReq;
+};
+
 /* Auto-load timezone / date settings from admin panel once at startup */
 (async function _initSettings() {
   if (window.__settingsLoaded) return;
   try {
-    const s = await fetch('/api/settings/public').then(r => r.ok ? r.json() : null);
+    const s = await window.getSettings();
     if (s) {
       window.__TZ      = s.timezone     || 'Europe/Moscow';
       window.__H12     = (s.time_format || '24h') === '12h';
