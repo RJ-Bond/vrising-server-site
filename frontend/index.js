@@ -1156,8 +1156,8 @@ async function loadNews(page = 1, append = false) {
       const hasFilters = !!(_searchTerm || _activeTag);
       list.innerHTML = `<div class="news-empty">
         <div class="news-empty-icon">⚔</div>
-        <div class="news-empty-title">Архивы пусты</div>
-        <p class="news-empty-sub">${_searchTerm ? 'По запросу «' + esc(_searchTerm) + '» ничего не найдено' : 'Новостей пока нет — следите за обновлениями'}</p>
+        <div class="news-empty-title">${hasFilters ? 'Ничего не найдено' : 'Архивы пусты'}</div>
+        <p class="news-empty-sub">${hasFilters ? (_searchTerm ? 'По запросу «' + esc(_searchTerm) + '» вестей не нашлось' : 'По выбранному фильтру вестей не нашлось') : 'Новостей пока нет — скоро здесь появятся вести из Вардорана'}</p>
         ${hasFilters ? `<button onclick="resetNewsFilters()" style="margin-top:.75rem;background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;font-size:.75rem;cursor:pointer;font-family:'Inter',sans-serif;">Сбросить фильтры</button>` : ''}
       </div>`;
       if (countLabel) countLabel.textContent = '';
@@ -1250,7 +1250,7 @@ async function loadNews(page = 1, append = false) {
   });
   } catch(e) {
     if (loadingMore) loadingMore.style.display = 'none';
-    if (!append && list) list.innerHTML = `<div class="news-empty"><div class="news-empty-icon">⚠</div><div class="news-empty-title">Ошибка загрузки</div><p class="news-empty-sub">Не удалось получить новости. Попробуйте обновить страницу.</p></div>`;
+    if (!append && list) list.innerHTML = `<div class="news-empty"><div class="news-empty-icon">⚠</div><div class="news-empty-title">Ошибка загрузки</div><p class="news-empty-sub">Не удалось загрузить новости — проверьте связь и попробуйте снова.</p><button onclick="loadNews(1)" style="margin-top:.75rem;background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;font-size:.75rem;cursor:pointer;font-family:'Inter',sans-serif;">↻ Повторить</button></div>`;
   } finally {
     hideFetchBar();
   }

@@ -43,11 +43,11 @@
 
     /* ── Hero ── */
     .hero {
-      position: relative; min-height: 26vh;
+      position: relative; min-height: 21vh;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       overflow: hidden;
-      /* Extra bottom room so the centered content doesn't crowd the scroll-hint arrow */
-      padding-bottom: 3.25rem;
+      /* top padding keeps logo/title off the very edge; bottom leaves room for the scroll arrow */
+      padding: 1.75rem 1rem 2.25rem;
     }
     .hero-bg {
       position: absolute; inset: 0;
@@ -772,12 +772,12 @@
          menu items aren't icon-only and unreadable. */
       .left-panel .nav-link-item span { display:inline !important; }
       .left-panel .nav-link-item { justify-content:flex-start !important; }
-      /* Keep the monitoring panel on mobile instead of hiding it — the connect
-         button, player list and sparkline live here and were lost on phones.
-         Quick status (online/uptime/wipe) is already in the top status bar, so
-         showing it in natural order (below news) is fine. */
+      /* Keep the monitoring panel on mobile (connect button, player list,
+         sparkline) AND surface it above the news feed — server status/connect
+         is what visitors want first, so it shouldn't sit at the very bottom. */
       .main-grid { padding:0 .75rem !important; }
-      .right-panel { display:block !important; width:100% !important; }
+      .right-panel { display:block !important; width:100% !important; order:-1; }
+      #news-section { order:0; }
       #drawer-close { display:block !important; }
 
       /* Status bar: 4-col grid overflows narrow screens. Give each server its
