@@ -1,10 +1,15 @@
 /* common.js — shared utilities for all pages */
 
-// Inject toast-in animation if not already present
+// Inject shared styles once: toast animation + a keyboard-focus ring (a11y).
+// :focus-visible shows only on keyboard navigation (not mouse clicks), so it
+// adds an accessible focus indicator without affecting pointer users.
 if (!document.getElementById('common-toast-styles')) {
   const _s = document.createElement('style');
   _s.id = 'common-toast-styles';
-  _s.textContent = '@keyframes toast-in{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:translateX(0)}}';
+  _s.textContent =
+    '@keyframes toast-in{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:translateX(0)}}' +
+    ':focus-visible{outline:2px solid var(--gold,#c9a94a);outline-offset:2px;border-radius:3px}' +
+    'a:focus-visible,button:focus-visible,[role="button"]:focus-visible{outline-offset:3px}';
   document.head.appendChild(_s);
 }
 
