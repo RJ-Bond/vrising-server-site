@@ -593,14 +593,16 @@ function renderWipeChip(num) {
   const diff = date.getTime() - Date.now();
   const label   = WIPE_TYPE_LABELS[w.type] || 'Вайп';
   const rgb     = _wipeTypeRgb(w.type);
+  const accentRgb = SERVER_THEMES[num].accentRgb;
   const icon    = w.type === 'map' ? '🗺️' : w.type === 'progress' ? '🔮' : '⚰️';
   const dateStr = date.toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'2-digit'});
   const weekday = date.toLocaleDateString('ru-RU', {weekday:'long'});
   const timeStr = date.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
 
-  el.style.borderTopColor    = `rgba(${rgb},.18)`;
-  el.style.borderBottomColor = `rgba(${rgb},.1)`;
-  el.style.borderLeftColor   = `rgba(${rgb},.75)`;
+  // Frame (border/background) follows the server's own accent; the badge/icon below keeps the wipe-type color.
+  el.style.borderTopColor    = `rgba(${accentRgb},.18)`;
+  el.style.borderBottomColor = `rgba(${accentRgb},.1)`;
+  el.style.borderLeftColor   = `rgba(${accentRgb},.75)`;
   el.title = `${weekday}, ${dateStr} в ${timeStr}`;
 
   if (diff <= 0) {
@@ -612,7 +614,7 @@ function renderWipeChip(num) {
           <div style="font-size:.64rem;color:var(--muted);margin-top:.1rem;">Сервер сброшен · ${dateStr}</div>
         </div>
       </div>`;
-    el.style.background = `linear-gradient(135deg,rgba(${rgb},.06) 0%,rgba(${rgb},.01) 65%)`;
+    el.style.background = `linear-gradient(135deg,rgba(${accentRgb},.06) 0%,rgba(${accentRgb},.01) 65%)`;
     el.classList.remove('critical');
     el.style.display = 'block';
     return;
@@ -642,7 +644,7 @@ function renderWipeChip(num) {
     </div>
     ${prevLine}
     <div style="position:absolute;bottom:0;left:0;right:0;height:2px;background:rgba(255,255,255,0.05);">
-      <div id="wd-prog-${num}" style="height:100%;width:0%;background:rgba(${rgb},.6);transition:width .8s ease;border-radius:0 1px 1px 0;"></div>
+      <div id="wd-prog-${num}" style="height:100%;width:0%;background:rgba(${accentRgb},.6);transition:width .8s ease;border-radius:0 1px 1px 0;"></div>
     </div>`;
 
   el.style.display = 'block';
@@ -706,13 +708,15 @@ function tickWipeCountdown(num) {
   const diff = date.getTime() - Date.now();
   if (diff <= 0) return;
 
-  const rgb     = _wipeTypeRgb(w.type);
+  const rgb       = _wipeTypeRgb(w.type);
+  const accentRgb = SERVER_THEMES[num].accentRgb;
   const urgent  = diff < 86400000;
   const colored = diff < 7 * 86400000;
   const col     = colored ? `rgb(${rgb})` : '#e8ddf5';
   const alpha   = urgent ? '.18' : colored ? '.13' : '.08';
 
-  el.style.background = `linear-gradient(135deg,rgba(${rgb},${alpha}) 0%,rgba(${rgb},.01) 65%)`;
+  // Background follows the server accent; only the countdown digits flash the wipe-type color as an urgency cue.
+  el.style.background = `linear-gradient(135deg,rgba(${accentRgb},${alpha}) 0%,rgba(${accentRgb},.01) 65%)`;
   el.classList.toggle('critical', urgent);
 
   const dd = Math.floor(diff / 86400000);
