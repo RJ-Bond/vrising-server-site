@@ -350,14 +350,49 @@
       .glass-card table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
       .section-title { font-size:1rem; }
       #files-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)) !important; }
+      /* Tighter table cells so more fits before horizontal scroll kicks in */
+      th, td { padding-left:.55rem !important; padding-right:.55rem !important; }
+      /* Quill: let the toolbar wrap, shorten the editor for phones */
+      .ql-toolbar.ql-snow { display:flex; flex-wrap:wrap; row-gap:.15rem; padding:.5rem .5rem; }
+      .ql-editor { min-height:220px; padding:1rem 1.1rem; }
+      /* Dashboard graph + recent-users stack */
+      #section-dashboard [style*="1.3fr 1fr"] { grid-template-columns:1fr !important; }
     }
     @media(max-width:560px) {
       .relative.z-10 { flex-direction:column; }
+      .relative.z-10.max-w-7xl { padding-top:1.25rem !important; padding-bottom:1.25rem !important; gap:1rem !important; }
       aside { width:100% !important; }
       .glass-card.rounded-xl.overflow-hidden { border-radius:.5rem; }
       aside .glass-card { display:flex; flex-direction:row; flex-wrap:wrap; }
       .sidebar-btn { flex:1; min-width:4.5rem; text-align:center; border-left:none !important; border-bottom:2px solid transparent; }
       .sidebar-btn.active { border-bottom-color:var(--accent) !important; }
+      /* Section header rows (title + actions) wrap instead of overflowing */
+      main .flex.items-center.justify-between { flex-wrap:wrap; gap:.6rem; }
+      #section-settings > div:first-child { flex-wrap:wrap; gap:.75rem; }
+      #section-settings > div:first-child > div:last-child { flex-wrap:wrap; }
+      /* Stack 2-col grids that get too tight on phones */
+      #dash-server-status { grid-template-columns:1fr !important; }
+      #section-editor .glass-card[style*="1fr 1fr"] { grid-template-columns:1fr !important; }
+      /* Settings input+button rows wrap; buttons stay tappable */
+      .s-field-row { flex-wrap:wrap; }
+      .s-field-row .dark-input { min-width:0; }
+      .s-field-row .s-save-btn, .s-field-row .s-clear-btn { flex:1 1 auto; padding-top:.6rem; padding-bottom:.6rem; }
+      /* ── Modals: full-width minus a gutter, capped height w/ internal scroll, tighter padding ── */
+      #event-editor-modal > div { margin:1.25rem .7rem !important; padding:1.25rem !important; max-width:none !important; }
+      #preview-modal { padding:1rem .6rem !important; }
+      #preview-modal > div:last-child > div:last-child { padding:1.15rem !important; }
+      #preview-modal #preview-title { font-size:1.2rem !important; }
+      .templates-overlay { padding:1rem .6rem !important; }
+      .templates-overlay > div:last-child { padding:1.15rem !important; }
+      #confirm-modal > div:last-child,
+      #ban-modal > div:last-child {
+        padding:1.5rem 1.25rem !important; width:calc(100% - 1.4rem) !important;
+        max-height:90vh; overflow-y:auto;
+      }
+    }
+    @media(max-width:420px) {
+      /* Event editor: stack the paired (type/status, start/end) fields */
+      #event-editor-modal div[style*="1fr 1fr"] { grid-template-columns:1fr !important; }
     }
 
     /* ── Section fade-in animation ── */
@@ -3985,6 +4020,7 @@ let _templatesModal = null;
 async function openTemplates() {
   const templates = await fetch(`${API}/admin/news/templates`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => []);
   const modal = document.createElement('div');
+  modal.className = 'templates-overlay';
   modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;';
   modal.innerHTML = `
     <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);" onclick="closeTemplates()"></div>
