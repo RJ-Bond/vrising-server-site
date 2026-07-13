@@ -52,11 +52,11 @@ def _utc_ts(dt: datetime) -> float:
         dt = dt.replace(tzinfo=timezone.utc)
     return dt.timestamp()
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete, text, or_, update
+from sqlalchemy import select, func, delete, text, or_, update, and_
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot
 from .auth import (
     verify_password,
     get_password_hash,
@@ -372,12 +372,14 @@ async def lifespan(app: FastAPI):
     task_cleanup = asyncio.create_task(_cleanup_task())
     task_monitor = asyncio.create_task(_monitor_poll_task())
     task_scheduler = asyncio.create_task(_scheduler_task())
+    task_ranksnap = asyncio.create_task(_leaderboard_snapshot_task())
     yield
     task_publish.cancel()
     task_backup.cancel()
     task_cleanup.cancel()
     task_monitor.cancel()
     task_scheduler.cancel()
+    task_ranksnap.cancel()
 
 
 limiter = Limiter(key_func=get_remote_address, default_limits=[])
@@ -2664,10 +2666,34 @@ async def get_leaderboard(
         users_result = await db.execute(select(User.username, User.avatar_url).where(User.username.in_(names)))
         avatar_map = {u.username: u.avatar_url for u in users_result.all()}
 
+    hist_rank_map = {}
+    if period == "all" and records:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+        sub = (
+            select(PlayerRankSnapshot.player_name, func.max(PlayerRankSnapshot.recorded_at).label("max_ts"))
+            .where(PlayerRankSnapshot.server_num == server, PlayerRankSnapshot.recorded_at <= cutoff)
+            .group_by(PlayerRankSnapshot.player_name)
+            .subquery()
+        )
+        hist_result = await db.execute(
+            select(PlayerRankSnapshot.player_name, PlayerRankSnapshot.total_seconds)
+            .join(sub, and_(
+                PlayerRankSnapshot.player_name == sub.c.player_name,
+                PlayerRankSnapshot.recorded_at == sub.c.max_ts,
+            ))
+            .where(PlayerRankSnapshot.server_num == server)
+        )
+        hist_rows = hist_result.all()
+        for rank_then, (name, _secs) in enumerate(sorted(hist_rows, key=lambda row: row.total_seconds, reverse=True), start=1):
+            hist_rank_map[name] = rank_then
+
     out = []
-    for r in records:
+    for i, r in enumerate(records):
         item = PlayerRecordOut.model_validate(r)
         item.avatar_url = avatar_map.get(r.player_name)
+        if period == "all" and r.player_name in hist_rank_map:
+            current_rank = (page - 1) * per_page + i + 1
+            item.rank_delta = hist_rank_map[r.player_name] - current_rank
         out.append(item)
     return out
 
@@ -3822,6 +3848,28 @@ async def _cleanup_task():
             break
         except Exception as e:
             logger.error("_cleanup_task error: %s", e)
+
+
+async def _leaderboard_snapshot_task():
+    """Nightly: record each player's total_seconds so we can compute rank deltas ~7 days later."""
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            next_run = (now + timedelta(days=1)).replace(hour=0, minute=15, second=0, microsecond=0)
+            await asyncio.sleep((next_run - now).total_seconds())
+            async with AsyncSession(engine, expire_on_commit=False) as db:
+                now_ts = datetime.now(timezone.utc)
+                for server_num in (1, 2):
+                    result = await db.execute(select(PlayerRecord).where(PlayerRecord.server_num == server_num))
+                    records = result.scalars().all()
+                    for r in records:
+                        db.add(PlayerRankSnapshot(server_num=server_num, player_name=r.player_name, total_seconds=r.total_seconds, recorded_at=now_ts))
+                await db.commit()
+                logger.info("Leaderboard rank snapshot recorded for %d server(s)", 2)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error("_leaderboard_snapshot_task error: %s", e)
 
 
 async def _monitor_poll_cycle():

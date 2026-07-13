@@ -94,6 +94,19 @@ class PlayerRecord(Base):
     __table_args__ = (UniqueConstraint("server_num", "player_name", name="uq_player_server"),)
 
 
+class PlayerRankSnapshot(Base):
+    """Nightly copy of each player's total_seconds, used to compute leaderboard rank deltas."""
+    __tablename__ = "player_rank_snapshots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    server_num = Column(Integer, nullable=False, default=1)
+    player_name = Column(String(128), nullable=False)
+    total_seconds = Column(Integer, nullable=False, default=0)
+    recorded_at = Column(DateTime, nullable=False)
+
+    __table_args__ = (Index("ix_rank_snap_server_player_time", "server_num", "player_name", "recorded_at"),)
+
+
 class Wipe(Base):
     __tablename__ = "wipes"
 

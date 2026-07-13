@@ -137,6 +137,7 @@ class PlayerRecordOut(BaseModel):
     last_duration: int = 0
     session_count: int = 0
     avatar_url: Optional[str] = None  # populated at runtime from User table, not stored in PlayerRecord
+    rank_delta: Optional[int] = None  # populated at runtime: rank change vs. ~7 days ago (positive = climbed)
 
     model_config = {"from_attributes": True}
 

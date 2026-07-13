@@ -119,11 +119,22 @@
     .lb-progress { height:2px; border-radius:9999px; background:rgba(255,255,255,0.07); margin-top:.32rem; overflow:hidden; }
     .lb-progress-fill { height:100%; border-radius:9999px; transition:width .4s ease; }
     .lb-badge { font-size:.72rem; line-height:1; flex-shrink:0; }
-    .lb-rank { font-family:'Oswald',sans-serif; font-size:1rem; font-weight:600; color:var(--muted); width:2.2rem; text-align:center; flex-shrink:0; }
+    .lb-rank { font-family:'Oswald',sans-serif; font-size:1rem; font-weight:600; color:var(--muted); width:2.2rem; text-align:center; flex-shrink:0; position:relative; }
     .lb-rank.top1 { color:#ffd54a; text-shadow:0 0 12px rgba(255,213,74,0.7); }
     .lb-rank.top2 { color:#d6d6e8; text-shadow:0 0 8px rgba(214,214,232,0.5); }
     .lb-rank.top3 { color:#e0a361; text-shadow:0 0 8px rgba(224,163,97,0.5); }
     .lb-medal { font-size:1.1rem; }
+    /* Rank-change-since-last-week badge — absolutely positioned so it never widens/wraps the narrow .lb-rank column */
+    .lb-rank-delta {
+      position:absolute; top:-.2rem; right:-.35rem;
+      display:inline-flex; align-items:center; gap:1px;
+      font-size:.55rem; font-weight:700; line-height:1;
+      padding:.05rem .2rem; border-radius:.5rem;
+      background:rgba(10,4,16,0.85); border:1px solid rgba(255,255,255,0.08);
+      cursor:default;
+    }
+    .lb-rank-delta.up { color:#2ee69b; }
+    .lb-rank-delta.down { color:#f87171; }
     .lb-avatar-wrap { position:relative; flex-shrink:0; }
     .lb-avatar {
       width:2rem; height:2rem; border-radius:50%; object-fit:cover;
@@ -636,8 +647,15 @@ function renderRows(players) {
     const meBadge  = isMe ? `<span style="font-size:.5rem;font-weight:700;padding:.1rem .35rem;background:rgba(200,0,42,0.2);border:1px solid rgba(200,0,42,0.4);color:#fca5a5;border-radius:9999px;vertical-align:middle;margin-left:.4rem;">Вы</span>` : '';
     const barPct   = Math.round((p.total_seconds / maxSeconds) * 100);
     const barColor = rank === 1 ? '#ffd54a' : rank === 2 ? 'rgba(214,214,232,0.7)' : rank === 3 ? '#e0a361' : 'rgba(160,0,40,0.55)';
+    let rankDeltaHtml = '';
+    if (p.rank_delta !== null && p.rank_delta !== undefined && p.rank_delta !== 0) {
+      const isUp  = p.rank_delta > 0;
+      const absN  = Math.abs(p.rank_delta);
+      const tip   = isUp ? `Поднялся на ${absN} мест за неделю` : `Опустился на ${absN} мест за неделю`;
+      rankDeltaHtml = `<span class="lb-rank-delta ${isUp ? 'up' : 'down'}" data-tip="${tip}">${isUp ? '▲' : '▼'}${absN}</span>`;
+    }
     return `<div class="lb-row${isMe ? ' me' : ''}${podiumCls}" data-username="${esc(name)}" onclick="location.href='/user.html?u='+encodeURIComponent(this.dataset.username)" style="cursor:pointer;animation:fade-up .35s ease both;animation-delay:${Math.min(i * 25, 300)}ms;">
-      <span class="lb-rank ${rankCls}" style="animation:rank-in .4s ease both;animation-delay:${i * 30}ms;">${medal ? `<span class="lb-medal">${medal}</span>` : rank}</span>
+      <span class="lb-rank ${rankCls}" style="animation:rank-in .4s ease both;animation-delay:${i * 30}ms;">${medal ? `<span class="lb-medal">${medal}</span>` : rank}${rankDeltaHtml}</span>
       <span class="lb-avatar-wrap">${avatarHtml}<span class="lb-online-dot${isOnline ? ' show' : ''}"></span></span>
       <span class="lb-name-col">
         <div style="display:flex;align-items:center;gap:.3rem;">
