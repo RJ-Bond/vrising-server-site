@@ -364,6 +364,14 @@
       aside { width:100% !important; }
       .glass-card.rounded-xl.overflow-hidden { border-radius:.5rem; }
       aside .glass-card { display:flex; flex-direction:row; flex-wrap:wrap; }
+      /* Header logo block + online-status pill are plain <div> siblings of the nav
+         buttons inside .glass-card — force each onto its own full-width row so they
+         sit as a stacked header instead of wrapping into the button flow itself. */
+      aside .glass-card > div:not(.sidebar-group-label) { flex:0 0 100%; width:100%; }
+      /* Section dividers ("Контент", "Сайт", …) only make sense in the vertical desktop
+         list; in the wrapped mobile tab-bar they'd sit inline between buttons as stray
+         text, so hide them here. */
+      .sidebar-group-label { display:none !important; }
       .sidebar-btn { flex:1; min-width:4.5rem; text-align:center; border-left:none !important; border-bottom:2px solid transparent; }
       .sidebar-btn.active { border-bottom-color:var(--accent) !important; }
       /* Section header rows (title + actions) wrap instead of overflowing */
