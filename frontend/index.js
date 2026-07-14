@@ -259,8 +259,10 @@ function owShowAll() {
 
   const ping = () => {
     const u = getUser();
+    // credentials:'include' so the backend can verify identity from the session
+    // cookie itself instead of trusting this request body's self-reported fields.
     fetch('/api/online/ping', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ visitor_id: _vid, is_authed: !!u, username: u?.username || null, page: _page() })
     }).catch(() => {});
   };

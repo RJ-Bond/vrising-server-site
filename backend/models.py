@@ -29,6 +29,11 @@ class User(Base):
     totp_secret = Column(String(64), nullable=True)
     totp_enabled = Column(Boolean, default=False, nullable=False, server_default="0")
     bio = Column(String(160), nullable=True)
+    # Added via ALTER TABLE in main.py's lifespan (not a fresh-install column), but
+    # declared here too so Base.metadata.create_all() (used by backend/tests/) creates
+    # it on a from-scratch test DB. auth.py/main.py still read/write it via raw text()
+    # SQL rather than this attribute — left that way to avoid touching working code.
+    revoke_before = Column(DateTime, nullable=True)
 
 
 class Clan(Base):

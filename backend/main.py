@@ -1,4 +1,5 @@
 ﻿import csv
+import html
 import io
 import logging
 import os
@@ -63,6 +64,7 @@ from .auth import (
     create_access_token,
     get_current_user,
     get_admin_user,
+    get_optional_user,
     revoke_token,
     SECRET_KEY,
     ALGORITHM,
@@ -773,7 +775,19 @@ class OnlinePingBody(BaseModel):
 
 
 @app.post("/api/online/ping", status_code=204)
-async def online_ping(request: Request, body: OnlinePingBody, db: AsyncSession = Depends(get_db)):
+@limiter.limit("20/minute")
+async def online_ping(
+    request: Request,
+    body: OnlinePingBody,
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user),
+):
+    # Identity comes from the session (cookie/bearer token), never from the client-
+    # asserted body.is_authed/body.username — those are self-reported and let anyone
+    # spoof any username into the public "who's online" widget and write to that
+    # user's last_active_at with no auth at all.
+    is_authed = current_user is not None
+    username = current_user.username if current_user else None
     cutoff = time.time() - _GUEST_TTL
     for vid in list(_visitor_data):
         if _visitor_data[vid]["ts"] < cutoff:
@@ -789,21 +803,18 @@ async def online_ping(request: Request, body: OnlinePingBody, db: AsyncSession =
             "first_ts": existing.get("first_ts", now_ts),
             "db_ts": existing.get("db_ts", 0),
             "page": (body.page or "Сайт")[:64],
-            "username": body.username if body.is_authed else None,
-            "is_authed": body.is_authed,
+            "username": username,
+            "is_authed": is_authed,
             "is_bot": is_bot,
             "device": "mobile" if is_mobile else "desktop",
         }
     # Keep last_active_at fresh so the user appears in the online widget immediately.
-    if body.is_authed and body.username:
+    if is_authed and username:
         db_ts = _visitor_data.get(body.visitor_id, {}).get("db_ts", 0)
         if time.time() - db_ts > 55:
-            result = await db.execute(select(User).where(User.username == body.username, User.is_active == True))
-            user = result.scalar_one_or_none()
-            if user:
-                user.last_active_at = datetime.now(timezone.utc)
-                await db.commit()
-                _visitor_data[body.visitor_id]["db_ts"] = time.time()
+            current_user.last_active_at = datetime.now(timezone.utc)
+            await db.commit()
+            _visitor_data[body.visitor_id]["db_ts"] = time.time()
     asyncio.create_task(_sse_broadcast("update"))
     return Response(status_code=204)
 
@@ -922,6 +933,7 @@ async def accept_rules(
 async def change_password(
     request: Request,
     body: ChangePasswordBody,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -934,8 +946,24 @@ async def change_password(
     result = await db.execute(select(User).where(User.id == current_user.id))
     user = result.scalar_one()
     user.hashed_password = get_password_hash(new)
+    # Invalidate every token issued before now (e.g. a stolen/leaked one on another
+    # device) — the exact moment a user expects to be safe again. Then immediately
+    # issue a fresh token for THIS session so the browser that just changed the
+    # password isn't itself logged out.
+    #
+    # The revoke cutoff is backdated by 1s on purpose: create_access_token's `iat` is
+    # a JWT NumericDate (whole seconds), but this timestamp has microsecond precision.
+    # A token minted in the same wall-clock second as an un-backdated `now()` could
+    # get an `iat` that's *earlier* than this cutoff by comparison
+    # (get_current_user checks `iat_datetime < revoke_before`), instantly revoking the
+    # very token meant to keep this session alive. Any token that actually predates
+    # this request — the real threat — is still comfortably older than "now - 1s".
+    now_utc = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
+    await db.execute(text("UPDATE users SET revoke_before = :ts WHERE id = :uid"), {"ts": now_utc, "uid": current_user.id})
     await db.commit()
-    return {"ok": True}
+    token = create_access_token({"sub": str(current_user.id)})
+    _set_auth_cookie(response, token)
+    return {"ok": True, "access_token": token}
 
 
 class TotpCodeBody(BaseModel):
@@ -1056,6 +1084,11 @@ async def do_reset_password(request: Request, token: str, body: ResetPasswordBod
         raise HTTPException(400, "Пользователь не найден")
     user.hashed_password = get_password_hash(body.new_password)
     reset.used = True
+    # Same reasoning as change-password: a reset means the old password (and any
+    # session token issued under it) may be compromised — invalidate everything
+    # issued before now. No session to re-issue here since this flow is unauthenticated.
+    now_utc = datetime.now(timezone.utc).isoformat()
+    await db.execute(text("UPDATE users SET revoke_before = :ts WHERE id = :uid"), {"ts": now_utc, "uid": user.id})
     await db.commit()
     return {"message": "Пароль успешно изменён"}
 
@@ -1745,11 +1778,17 @@ async def add_comment(
             # Send email notification
             parent_user = await db.get(User, parent_c.author_id)
             if parent_user and parent_user.email:
+                # HTML-escape the comment content (freeform user text) before it goes into an
+                # HTML email body — otherwise a comment like `<a href="evil">click</a>` renders
+                # as a live link in the recipient's inbox, sent from the site's own address.
+                safe_username = html.escape(current_user.username)
+                safe_title = html.escape(news.title)
+                safe_preview = html.escape(body.content[:200])
                 asyncio.create_task(_send_notification_email(
                     parent_user.email,
                     f"Новый ответ на ваш комментарий — {news.title}",
                     f"{current_user.username} ответил на ваш комментарий:\n\n{body.content[:200]}\n\nНовость: {news.title}",
-                    f"<p><b>{current_user.username}</b> ответил на ваш комментарий в новости <b>{news.title}</b>:</p><blockquote>{body.content[:200]}</blockquote>",
+                    f"<p><b>{safe_username}</b> ответил на ваш комментарий в новости <b>{safe_title}</b>:</p><blockquote>{safe_preview}</blockquote>",
                 ))
     return {
         "id": comment.id,
@@ -2122,9 +2161,9 @@ async def delete_news(
 
 # ─── File upload ─────────────────────────────────────────────────────────────
 
-_ALLOWED_UPLOAD_EXT = {".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico"}
+_ALLOWED_UPLOAD_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".ico"}
 _ALLOWED_UPLOAD_MIME = {
-    "image/png", "image/jpeg", "image/gif", "image/svg+xml",
+    "image/png", "image/jpeg", "image/gif",
     "image/webp", "image/x-icon", "image/vnd.microsoft.icon",
 }
 _MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
@@ -2135,9 +2174,12 @@ async def upload_file(
     file: UploadFile = File(...),
     _: User = Depends(get_admin_user),
 ):
+    # SVG deliberately excluded: it can embed <script>/event handlers, so an admin
+    # upload used somewhere other than a plain <img> (e.g. an <object>/<iframe>, or a
+    # future markup change) would execute same-origin against every visitor.
     suffix = Path(file.filename or "").suffix.lower()
     if suffix not in _ALLOWED_UPLOAD_EXT:
-        raise HTTPException(400, detail="Допустимые форматы: PNG, JPG, GIF, SVG, WebP, ICO")
+        raise HTTPException(400, detail="Допустимые форматы: PNG, JPG, GIF, WebP, ICO")
     if file.content_type and file.content_type.split(";")[0].strip() not in _ALLOWED_UPLOAD_MIME:
         raise HTTPException(400, detail="Недопустимый MIME-тип файла")
     content = await file.read()
@@ -4006,7 +4048,7 @@ async def upload_badge_icon(
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Только изображения")
     ext = Path(file.filename).suffix.lower() if file.filename else ".png"
-    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif", ".svg"}:
+    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:  # no .svg — see /api/admin/upload
         ext = ".png"
     content = await file.read()
     if len(content) > 2 * 1024 * 1024:

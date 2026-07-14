@@ -975,7 +975,7 @@
             </div>
             <div style="display:flex;align-items:center;gap:.6rem;">
               <label for="logo-file-input" style="display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;padding:.4rem .8rem;border-radius:.4rem;border:1px solid rgba(120,0,24,.4);background:rgba(8,0,16,.8);color:var(--muted);font-size:.76rem;transition:border-color .2s,color .2s;margin:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,.4)';this.style.color='var(--muted)'">📁 Загрузить</label>
-              <input id="logo-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/svg+xml,image/webp,image/x-icon" style="display:none;" onchange="uploadLogoFile(this)">
+              <input id="logo-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/x-icon" style="display:none;" onchange="uploadLogoFile(this)">
               <button type="button" class="s-clear-btn" onclick="clearImageSetting('site_logo_url', previewLogo)">✖ Убрать</button>
               <span id="logo-upload-status" style="font-size:.76rem;color:var(--muted);"></span>
             </div>
@@ -993,14 +993,14 @@
             </div>
             <div style="display:flex;align-items:center;gap:.6rem;">
               <label for="favicon-file-input" style="display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;padding:.4rem .8rem;border-radius:.4rem;border:1px solid rgba(120,0,24,.4);background:rgba(8,0,16,.8);color:var(--muted);font-size:.76rem;transition:border-color .2s,color .2s;margin:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,.4)';this.style.color='var(--muted)'">📁 Загрузить</label>
-              <input id="favicon-file-input" type="file" accept="image/png,image/x-icon,image/svg+xml,image/gif,image/webp" style="display:none;" onchange="uploadFaviconFile(this)">
+              <input id="favicon-file-input" type="file" accept="image/png,image/x-icon,image/gif,image/webp" style="display:none;" onchange="uploadFaviconFile(this)">
               <button type="button" class="s-clear-btn" onclick="clearImageSetting('favicon_url', previewFavicon)">✖ Убрать</button>
               <span id="favicon-upload-status" style="font-size:.76rem;color:var(--muted);"></span>
             </div>
             <div id="favicon-preview" style="margin-top:.6rem;display:none;">
               <img id="favicon-preview-img" src="" alt="Favicon" style="width:2rem;height:2rem;object-fit:contain;border-radius:.3rem;border:1px solid rgba(150,0,28,.3);padding:.2rem;background:rgba(8,0,16,.6);">
             </div>
-            <p class="s-desc">Иконка во вкладке браузера. PNG/ICO/SVG, квадратная (например 64×64). Применяется на всех страницах.</p>
+            <p class="s-desc">Иконка во вкладке браузера. PNG/ICO, квадратная (например 64×64). Применяется на всех страницах.</p>
           </div>
 
           <div class="s-field">
@@ -1011,7 +1011,7 @@
             </div>
             <div style="display:flex;align-items:center;gap:.6rem;">
               <label for="hero-logo-file-input" style="display:inline-flex;align-items:center;gap:.4rem;cursor:pointer;padding:.4rem .8rem;border-radius:.4rem;border:1px solid rgba(120,0,24,.4);background:rgba(8,0,16,.8);color:var(--muted);font-size:.76rem;transition:border-color .2s,color .2s;margin:0;white-space:nowrap;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(120,0,24,.4)';this.style.color='var(--muted)'">📁 Загрузить</label>
-              <input id="hero-logo-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/svg+xml,image/webp,image/x-icon" style="display:none;" onchange="uploadHeroLogoFile(this)">
+              <input id="hero-logo-file-input" type="file" accept="image/png,image/jpeg,image/gif,image/webp,image/x-icon" style="display:none;" onchange="uploadHeroLogoFile(this)">
               <button type="button" class="s-clear-btn" onclick="clearImageSetting('hero_logo_url', previewHeroLogo)">✖ Убрать</button>
               <span id="hero-logo-upload-status" style="font-size:.76rem;color:var(--muted);"></span>
             </div>

@@ -109,6 +109,49 @@ async def get_current_user(
     return user
 
 
+async def get_optional_user(
+    request: Request,
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    """Like get_current_user, but returns None instead of raising 401 for anonymous
+    requests. For endpoints that behave differently for logged-in vs anonymous callers
+    but must still work for anonymous ones — never trust a client-asserted identity
+    (a request body's own `username`/`is_authed` fields) when this is available."""
+    token: Optional[str] = None
+    if credentials is not None:
+        token = credentials.credentials
+    else:
+        token = request.cookies.get(COOKIE_NAME)
+    if token is None:
+        return None
+    try:
+        revoked = await db.execute(select(RevokedToken.id).where(RevokedToken.token == token))
+        if revoked.scalar_one_or_none() is not None:
+            return None
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = int(payload.get("sub"))
+    except (JWTError, TypeError, ValueError):
+        return None
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None or not user.is_active:
+        return None
+    try:
+        rb_row = await db.execute(text("SELECT revoke_before FROM users WHERE id = :uid"), {"uid": user_id})
+        rb_val = rb_row.scalar_one_or_none()
+        if rb_val:
+            iat = payload.get("iat")
+            revoke_before_dt = datetime.fromisoformat(rb_val) if isinstance(rb_val, str) else rb_val
+            if not revoke_before_dt.tzinfo:
+                revoke_before_dt = revoke_before_dt.replace(tzinfo=timezone.utc)
+            if iat and datetime.fromtimestamp(iat, tz=timezone.utc) < revoke_before_dt:
+                return None
+    except Exception:
+        pass
+    return user
+
+
 async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
