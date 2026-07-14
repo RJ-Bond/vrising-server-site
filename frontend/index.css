@@ -780,6 +780,13 @@
       #news-section { order:0; }
       #drawer-close { display:block !important; }
 
+      /* Logged-in top bar (username + Админка + bell + DM + Выйти) doesn't fit a
+         narrow screen — "Выйти" was getting pushed past the viewport edge. Hide the
+         two text-heavy, purely-decorative items here; the drawer's user card already
+         shows the name/role and has its own Профиль/Выйти icon buttons (plus a mirrored
+         Админка icon added there), so nothing is actually lost, just decluttered. */
+      #nav-username, #nav-admin { display:none !important; }
+
       /* Status bar: 4-col grid overflows narrow screens. Give each server its
          own name row spanning full width, with the 3 stats in an even 3-col row. */
       .status-bar-inner { grid-template-columns:1fr 1fr 1fr; padding:.4rem .5rem; }

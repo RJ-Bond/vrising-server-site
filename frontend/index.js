@@ -142,6 +142,11 @@ function toggleDrawer() {
       _isAdmin = true;
       const createBtn = document.getElementById('news-create-btn');
       if (createBtn) createBtn.style.display = 'flex';
+      // Mirrors the top-bar "Админка" link inside the drawer's user card, since the
+      // top-bar copy is hidden on mobile (see index.css) to stop the account-icon
+      // cluster from overflowing past "Выйти" on narrow screens.
+      const cardAdmin = document.getElementById('nav-card-admin');
+      if (cardAdmin) cardAdmin.style.display = 'flex';
     }
     document.getElementById('nav-profile-link').classList.remove('hidden');
     // sidebar nav: replace "Войти" with "Выйти"
