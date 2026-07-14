@@ -372,8 +372,15 @@
          list; in the wrapped mobile tab-bar they'd sit inline between buttons as stray
          text, so hide them here. */
       .sidebar-group-label { display:none !important; }
-      .sidebar-btn { flex:1; min-width:4.5rem; text-align:center; border-left:none !important; border-bottom:2px solid transparent; }
+      .sidebar-btn { flex:1; min-width:4.5rem; text-align:center; border-left:none !important; border-bottom:2px solid transparent; letter-spacing:.02em; }
       .sidebar-btn.active { border-bottom-color:var(--accent) !important; }
+      /* Each button's icon+label is an inline `display:flex` span with no flex-wrap and
+         no min-width:0 — flex items default to min-width:auto, so a long single word
+         (КОММЕНТАРИИ, НАСТРОЙКИ, МЕДИАТЕКА…) refused to shrink/wrap and bled its text
+         (and any trailing .sidebar-badge) across the button's right edge into the next
+         button. Let it wrap onto a second line and shrink to fit instead. */
+      .sidebar-btn > span:not(.sidebar-badge) { flex-wrap:wrap; justify-content:center; min-width:0; row-gap:.15rem; }
+      .sidebar-btn > span:not(.sidebar-badge) > * { min-width:0; }
       /* Section header rows (title + actions) wrap instead of overflowing */
       main .flex.items-center.justify-between { flex-wrap:wrap; gap:.6rem; }
       #section-settings > div:first-child { flex-wrap:wrap; gap:.75rem; }
@@ -455,10 +462,7 @@
 <nav class="glass-nav sticky top-0 z-40 relative">
   <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <a href="/" id="nav-logo" class="gothic font-black tracking-widest" style="color:#e0c8d8;text-decoration:none;display:inline-flex;align-items:center;gap:.5rem;">
-        <img src="/icon-vrising.png" alt="" style="width:1.35rem;height:1.35rem;object-fit:contain;filter:drop-shadow(0 0 8px rgba(200,0,42,.6));">
-        <span class="glow-text" style="font-size:1.05rem;"></span>
-      </a>
+      <a href="/" id="nav-logo" class="gothic" style="font-size:1.05rem;font-weight:900;letter-spacing:.1em;color:#e0c8d8;text-decoration:none;"></a>
       <span class="gothic" style="display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .7rem;border-radius:9999px;background:rgba(150,0,28,0.18);border:1px solid rgba(200,0,45,0.4);color:var(--gold);font-size:.65rem;letter-spacing:.08em;">
         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         Admin
@@ -1915,8 +1919,8 @@ fetch(`${API}/settings/public`).then(r => r.json()).then(d => {
   applySiteBackground(d.bg_image_url);
   const title = (d.site_title || 'V Rising').trim();
   document.title = `${title} — Администратор`;
-  const logo = document.getElementById('nav-logo');
-  if (logo) logo.textContent = '⚔ ' + title.toUpperCase();
+  // nav-logo itself is rendered by common.js's centralized logic (site_logo_url image
+  // if configured, else "⚔ <title>" text) — same as every other page. Don't duplicate it here.
   window.__TZ = d.timezone || 'Europe/Moscow';
   window.__H12 = (d.time_format || '24h') === '12h';
   window.__DATEFMT = d.date_format || 'dd.mm.yyyy';
