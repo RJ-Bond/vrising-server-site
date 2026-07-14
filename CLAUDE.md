@@ -40,8 +40,9 @@ Three layers, loaded in this order (page inline `<style>` wins last):
   layout. **Mobile MUST use `mobile`** (renders inside a 390px iframe) — a direct
   `--window-size=390` shot renders too wide because desktop Chrome ignores the
   viewport meta.
-- `scripts/serve.ps1` — tiny PowerShell static server for `frontend/`
-  (no node/python available in this sandbox; **Chrome is** at
+- `scripts/serve.ps1` — tiny PowerShell static server for `frontend/` (no
+  node and no *system* python in this sandbox — but see the `uv` entry below
+  for backend work; **Chrome is** at
   `C:\Program Files\Google\Chrome\Application\chrome.exe`).
 - Preview has **no backend**, so data regions show loading/empty/error states.
   It's accurate for layout/nav/forms, not for real data.
@@ -59,6 +60,24 @@ Three layers, loaded in this order (page inline `<style>` wins last):
   fixes went through 3 blind iterations before this existed. If you add a new
   section's fetch calls to the mock, keep field shapes in sync with
   `backend/schemas.py`.
+- **Backend verification — `uv` is on PATH and can provision a real Python on
+  demand** (this sandbox's own `python`/`py` are non-functional Windows Store
+  stubs; don't trust them). Use it instead of reading diffs and hoping:
+  - `bash scripts/check_backend.sh` — imports every `backend/*.py` module for
+    real (via `uv run --python 3.12 --with-requirements requirements.txt`).
+    Catches syntax errors, bad imports, undefined names. Run before pushing
+    ANY backend change — cheap, seconds to run.
+  - `bash scripts/test_backend.sh` — runs the pytest suite in `backend/tests/`
+    (via `requirements-dev.txt`, adds pytest + pytest-asyncio on top of prod
+    deps). `backend/tests/conftest.py` gives a fresh file-based sqlite DB per
+    test (monkeypatches `backend.database.engine`/`AsyncSessionLocal` *and*
+    `backend.main.engine`, since main.py imports `engine` by name for its own
+    background tasks) plus an `httpx.ASGITransport` client fixture — add new
+    test files here for any backend logic worth protecting from regressions.
+  - Both exist because the leaderboard rank-delta feature shipped after 3
+    blind CSS-reasoning-only mobile fixes went wrong this same session —
+    don't repeat that pattern for backend code, where a mistake means a 500
+    or a broken deploy, not just an ugly screenshot.
 
 ## Gotchas (bitten by these)
 - **Service worker** (`frontend/sw.js`): never intercept image requests — proxying

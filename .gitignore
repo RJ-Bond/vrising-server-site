@@ -9,4 +9,9 @@ venv/
 tailwindcss.exe
 src/
 .shots/
+.pytest_cache/
 frontend/.preview_frame.html
+frontend/.preview_admin_frame.html
+frontend/.admin_mock*
+frontend/.nav_sim.js
+frontend/.index_nav_sim.html
