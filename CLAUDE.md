@@ -45,6 +45,20 @@ Three layers, loaded in this order (page inline `<style>` wins last):
   `C:\Program Files\Google\Chrome\Application\chrome.exe`).
 - Preview has **no backend**, so data regions show loading/empty/error states.
   It's accurate for layout/nav/forms, not for real data.
+- `bash scripts/preview-admin.sh [mobile|desktop] [width] [height]` — like
+  `preview.sh` but for **`admin.html` specifically**: it's auth-gated (redirects
+  to `/login.html` without a session) and its dashboard fetches live data, so
+  plain `preview.sh` only ever shows the login screen. This builds a throwaway
+  copy of `admin.html` with `scripts/admin-mock-fetch.js` injected as the first
+  `<script>` — it seeds a fake admin session in `localStorage` and monkey-patches
+  `window.fetch` with canned JSON matching the real backend response shapes for
+  the endpoints the dashboard hits on load (`/api/auth/me`, `/api/admin/stats`,
+  `/api/monitor/status(2)`, etc.) — so the sidebar/dashboard actually render with
+  realistic data instead of stopping at the login form. Use this (not blind CSS
+  reasoning) when touching `admin.html` layout — a past round of admin mobile
+  fixes went through 3 blind iterations before this existed. If you add a new
+  section's fetch calls to the mock, keep field shapes in sync with
+  `backend/schemas.py`.
 
 ## Gotchas (bitten by these)
 - **Service worker** (`frontend/sw.js`): never intercept image requests — proxying
