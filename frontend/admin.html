@@ -372,19 +372,19 @@
          list; in the wrapped mobile tab-bar they'd sit inline between buttons as stray
          text, so hide them here. */
       .sidebar-group-label { display:none !important; }
-      .sidebar-btn { flex:1; min-width:4.5rem; text-align:center; border-left:none !important; border-bottom:2px solid transparent; letter-spacing:.02em; }
+      /* min-width raised to 6rem (~3 per row instead of 4) so each label gets enough
+         width that a single long word ("МЕДИАТЕКА", "НАСТРОЙКИ") fits on one line
+         without breaking — a narrower column left almost no room for the text at all. */
+      .sidebar-btn { flex:1; min-width:6rem; text-align:center; border-left:none !important; border-bottom:2px solid transparent; letter-spacing:.02em; }
       .sidebar-btn.active { border-bottom-color:var(--accent) !important; }
-      /* Each button's icon+label is an inline `display:flex` span with no flex-wrap and
-         no min-width:0 — flex items default to min-width:auto, so a long single word
-         (КОММЕНТАРИИ, НАСТРОЙКИ, МЕДИАТЕКА…) refused to shrink/wrap and bled its text
-         (and any trailing .sidebar-badge) across the button's right edge into the next
-         button. Let it wrap onto a second line and shrink to fit instead. */
-      .sidebar-btn > span:not(.sidebar-badge) { flex-wrap:wrap; justify-content:center; min-width:0; row-gap:.15rem; overflow-wrap:anywhere; word-break:break-word; }
-      /* flex-wrap alone only breaks BETWEEN words — multi-word labels ("СБРОС ПАРОЛЕЙ")
-         already wrapped fine, but a single long word ("КОММЕНТАРИИ", "МЕДИАТЕКА") has no
-         word-boundary to break at, so it still overflowed (and, centered, bled into both
-         neighboring buttons). overflow-wrap:anywhere lets it break mid-word as a last resort. */
-      .sidebar-btn > span:not(.sidebar-badge) > * { min-width:0; }
+      /* Each button's icon+label is an inline `display:flex` (row) span. Two earlier
+         attempts here were wrong: (1) plain nowrap let long single words bleed into
+         neighboring buttons; (2) flex-wrap:wrap + overflow-wrap:anywhere let the text
+         item shrink to ~1 character wide and shattered it into 3-4 tiny fragments
+         instead of wrapping cleanly. Stacking icon-above-label (column) sidesteps both:
+         the label always gets the button's *full* width for normal text layout, same
+         as a standard mobile tab-bar icon+label button. */
+      .sidebar-btn > span:not(.sidebar-badge) { flex-direction:column; flex-wrap:nowrap; justify-content:center; min-width:0; width:100%; overflow-wrap:break-word; }
       /* Section header rows (title + actions) wrap instead of overflowing */
       main .flex.items-center.justify-between { flex-wrap:wrap; gap:.6rem; }
       #section-settings > div:first-child { flex-wrap:wrap; gap:.75rem; }
