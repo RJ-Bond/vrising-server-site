@@ -379,7 +379,11 @@
          (КОММЕНТАРИИ, НАСТРОЙКИ, МЕДИАТЕКА…) refused to shrink/wrap and bled its text
          (and any trailing .sidebar-badge) across the button's right edge into the next
          button. Let it wrap onto a second line and shrink to fit instead. */
-      .sidebar-btn > span:not(.sidebar-badge) { flex-wrap:wrap; justify-content:center; min-width:0; row-gap:.15rem; }
+      .sidebar-btn > span:not(.sidebar-badge) { flex-wrap:wrap; justify-content:center; min-width:0; row-gap:.15rem; overflow-wrap:anywhere; word-break:break-word; }
+      /* flex-wrap alone only breaks BETWEEN words — multi-word labels ("СБРОС ПАРОЛЕЙ")
+         already wrapped fine, but a single long word ("КОММЕНТАРИИ", "МЕДИАТЕКА") has no
+         word-boundary to break at, so it still overflowed (and, centered, bled into both
+         neighboring buttons). overflow-wrap:anywhere lets it break mid-word as a last resort. */
       .sidebar-btn > span:not(.sidebar-badge) > * { min-width:0; }
       /* Section header rows (title + actions) wrap instead of overflowing */
       main .flex.items-center.justify-between { flex-wrap:wrap; gap:.6rem; }
