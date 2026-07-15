@@ -60,6 +60,16 @@ Three layers, loaded in this order (page inline `<style>` wins last):
   fixes went through 3 blind iterations before this existed. If you add a new
   section's fetch calls to the mock, keep field shapes in sync with
   `backend/schemas.py`.
+- `bash scripts/preview-mock.sh <page.html> [mobile|desktop] [width] [height]` —
+  like `preview-admin.sh` but for **public pages** (clans/events/leaderboard/
+  servers/bans/…): injects `scripts/public-mock-fetch.js` so `/api/clans`,
+  `/api/events`, `/api/leaderboard`, `/api/monitor/status(2)`, `/api/wipes`,
+  `/api/bans`, etc. resolve with realistic canned data (anonymous visitor, no
+  session) instead of the loading/empty/error states plain `preview.sh` shows.
+  Use this to actually see card/list layouts filled with content — that's how
+  a missing `clan.description` on the clans-page cards got caught. Keep field
+  shapes in sync with `backend/schemas.py` / the route handlers in `main.py`
+  when you add a new page's endpoints to the mock.
 - **Backend verification — `uv` is on PATH and can provision a real Python on
   demand** (this sandbox's own `python`/`py` are non-functional Windows Store
   stubs; don't trust them). Use it instead of reading diffs and hoping:
