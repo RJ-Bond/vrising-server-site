@@ -74,9 +74,28 @@
     ],
   };
 
+  const userProfile = {
+    username: 'Vortigern', avatar_url: null, cover_url: null, role: 'user',
+    created_at: iso(180 * 24 * 3600 * 1000), game_nickname: 'Vortigern',
+    total_seconds: 500000, last_seen: iso(3600 * 1000), session_count: 45,
+    last_duration: 5400, clan: { id: 1, name: 'Кровавые Клыки', tag: 'BLD' },
+    admin_title: null, last_active_at: iso(600000), badge_icon_url: null,
+    badge_style: 'default', comment_count: 23,
+  };
+  const userActivity = {
+    username: 'Vortigern',
+    items: [
+      { type: 'comment', created_at: iso(2 * 3600 * 1000), news_slug: 'news-1', news_title: 'Обновление сервера', preview: 'Отличное обновление, спасибо!' },
+      { type: 'reaction', created_at: iso(5 * 3600 * 1000), news_slug: 'news-2', news_title: 'Хэллоуин ивент', emoji: '🔥' },
+      { type: 'comment', created_at: iso(26 * 3600 * 1000), news_slug: 'news-1', news_title: 'Обновление сервера', preview: 'Когда следующий вайп?' },
+    ],
+  };
+
   const routes = [
     [/\/api\/settings\/public$/, () => settingsPublic],
     [/\/api\/auth\/me$/, () => null], // anonymous visitor — handled as 401 below
+    [/\/api\/users\/[^/]+\/activity/, () => userActivity],
+    [/\/api\/users\/[^/]+$/, () => userProfile],
     [/\/api\/clans$/, () => clans],
     [/\/api\/events/, () => events],
     [/\/api\/leaderboard/, (url) => leaderboardPage(url.includes('server=2') ? 2 : 1)],
