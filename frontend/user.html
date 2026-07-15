@@ -8,7 +8,9 @@
   <meta property="og:site_name" content="V RISING" />
   <meta property="og:title" content="V Rising — Профиль игрока" />
   <meta property="og:description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
-  <meta property="og:image" content="/uploads/og-default.png" />
+  <meta property="og:image" content="https://v.just-skill.ru/uploads/og-default.png" />
+  <meta property="og:url" content="https://v.just-skill.ru/user.html" />
+  <link rel="canonical" href="https://v.just-skill.ru/user.html" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
   <title>V Rising — Профиль игрока</title>
@@ -233,7 +235,7 @@
 
 </div>
 
-<script src="/common.js?v=7"></script>
+<script src="/common.js?v=8"></script>
 <script>
 const API = '/api';
 
@@ -353,6 +355,10 @@ async function loadUser(){
   try{
     const u=await fetch(`${API}/users/${encodeURIComponent(username)}`).then(r=>{if(!r.ok)throw r;return r.json();});
     document.title=`V Rising — ${u.username}`;
+    const _selfUrl='https://v.just-skill.ru/user.html?u='+encodeURIComponent(u.username);
+    document.querySelector('link[rel="canonical"]')?.setAttribute('href', _selfUrl);
+    document.querySelector('meta[property="og:url"]')?.setAttribute('content', _selfUrl);
+    document.querySelector('meta[property="og:title"]')?.setAttribute('content', `V Rising — ${u.username}`);
     const av=document.getElementById('user-avatar');
     if(u.avatar_url){const img=document.createElement('img');img.src=u.avatar_url;av.appendChild(img);}
     else{av.textContent=u.username.charAt(0).toUpperCase();}

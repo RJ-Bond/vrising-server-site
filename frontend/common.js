@@ -168,7 +168,7 @@ function _renderAdminBadge(u) {
   const icon  = u.badge_icon_url;
   const style = u.badge_style || 'default';
   const B = 'display:inline-flex;align-items:center;gap:.28rem;font-size:.55rem;font-weight:700;letter-spacing:.06em;padding:.12rem .52rem;white-space:nowrap;';
-  if (icon) return `<span style="${B}border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;"><img src="${esc(icon)}" style="width:12px;height:12px;object-fit:contain;border-radius:2px;flex-shrink:0;">${label}</span>`;
+  if (icon) return `<span style="${B}border-radius:9999px;background:rgba(180,130,0,0.18);border:1px solid rgba(210,165,0,0.45);color:#f0c040;"><img src="${esc(icon)}" alt="" style="width:12px;height:12px;object-fit:contain;border-radius:2px;flex-shrink:0;">${label}</span>`;
   switch (style) {
     case 'crown':   return `<span style="${B}border-radius:9999px;background:linear-gradient(135deg,rgba(200,150,0,.28),rgba(255,195,0,.14));border:1px solid rgba(225,175,0,.62);color:#f5c842;box-shadow:0 0 9px rgba(200,150,0,.18);"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;margin-bottom:1px;"><path d="M5 16 3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm2 3a1 1 0 0 0 0 2h10a1 1 0 0 0 0-2H7z"/></svg>${label}</span>`;
     case 'shield':  return `<span style="${B}border-radius:.42rem;background:linear-gradient(135deg,rgba(160,0,30,.32),rgba(90,0,15,.18));border:1px solid rgba(205,0,42,.52);color:#f87171;"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>${label}</span>`;

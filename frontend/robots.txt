@@ -6,4 +6,4 @@ Disallow: /setup.html
 Disallow: /reset.html
 Disallow: /api/
 
-Sitemap: https://just-skill.ru/sitemap.xml
+Sitemap: https://v.just-skill.ru/sitemap.xml

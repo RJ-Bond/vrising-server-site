@@ -8,9 +8,10 @@
   <meta property="og:site_name" content="V RISING" />
   <meta property="og:title" content="V Rising — Рейтинг игроков" />
   <meta property="og:description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
-  <meta property="og:image" content="/uploads/og-default.png" />
+  <meta property="og:image" content="https://v.just-skill.ru/uploads/og-default.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <link rel="canonical" href="https://just-skill.ru/leaderboard.html" />
+  <link rel="canonical" href="https://v.just-skill.ru/leaderboard.html" />
+  <meta property="og:url" content="https://v.just-skill.ru/leaderboard.html" />
   <meta name="description" content="Рейтинг лучших игроков серверов V Rising на Just-Skill.Ru. Время игры, статистика, достижения." />
   <title>Лидерборд игроков V Rising — Just-Skill.Ru</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -381,7 +382,7 @@
   </div>
 </div>
 
-<script src="/common.js?v=7"></script>
+<script src="/common.js?v=8"></script>
 <script>
 const API = '/api';
 const PER_PAGE = 25;
@@ -639,7 +640,7 @@ function renderRows(players) {
     const isMe     = _meUsername && _meUsername === name;
     const grad     = nameGradient(name);
     const avatarHtml = p.avatar_url
-      ? `<img class="lb-avatar" src="${esc(p.avatar_url)}" alt="">`
+      ? `<img class="lb-avatar" src="${esc(p.avatar_url)}" alt="" loading="lazy">`
       : `<span class="lb-avatar" style="background:${grad}">${esc(name.charAt(0).toUpperCase())}</span>`;
     const lastSession = p.last_duration > 0
       ? `<span class="lb-last-session">посл. сессия: ${fmtPlaytime(p.last_duration)}</span>` : '';

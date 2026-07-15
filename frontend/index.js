@@ -1,5 +1,44 @@
 const API = '/api';
 
+// ── SEO meta helpers (title/description/canonical/OG/Twitter swap when a news
+//    article opens via ?news=slug, restored when the modal closes) ──────────
+function setMeta(propOrName, val) {
+  let el = document.querySelector(`meta[property="${propOrName}"]`) || document.querySelector(`meta[name="${propOrName}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(propOrName.includes(':') ? 'property' : 'name', propOrName);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', val);
+}
+function setCanonical(href) {
+  let el = document.querySelector('link[rel="canonical"]');
+  if (!el) { el = document.createElement('link'); el.setAttribute('rel', 'canonical'); document.head.appendChild(el); }
+  el.setAttribute('href', href);
+}
+const _defaultMeta = {
+  title: document.title,
+  description: document.getElementById('meta-description')?.getAttribute('content') || '',
+  ogTitle: document.getElementById('meta-og-title')?.getAttribute('content') || '',
+  ogDescription: document.getElementById('meta-og-description')?.getAttribute('content') || '',
+  ogImage: document.querySelector('meta[property="og:image"]')?.getAttribute('content') || '',
+  ogUrl: document.querySelector('meta[property="og:url"]')?.getAttribute('content') || '',
+  twTitle: document.getElementById('meta-tw-title')?.getAttribute('content') || '',
+  twDescription: document.getElementById('meta-tw-description')?.getAttribute('content') || '',
+  canonical: document.querySelector('link[rel="canonical"]')?.getAttribute('href') || ''
+};
+function resetArticleMeta() {
+  document.title = _defaultMeta.title;
+  setMeta('description', _defaultMeta.description);
+  setMeta('og:title', _defaultMeta.ogTitle);
+  setMeta('og:description', _defaultMeta.ogDescription);
+  if (_defaultMeta.ogImage) setMeta('og:image', _defaultMeta.ogImage);
+  setMeta('og:url', _defaultMeta.ogUrl);
+  setMeta('twitter:title', _defaultMeta.twTitle);
+  setMeta('twitter:description', _defaultMeta.twDescription);
+  setCanonical(_defaultMeta.canonical);
+}
+
 // ── Scroll progress ────────────────────────────────────────────────────────
 window.addEventListener('scroll', () => {
   const el = document.getElementById('scroll-progress');
@@ -384,7 +423,7 @@ function _owShowCard(e, data) {
     if (!c) return;
     const roleLabel = data.role === 'admin' ? '👑 Администратор' : data.role === 'moder' ? '🛡 Модератор' : '⚔ Игрок';
     const av = data.avatar_url
-      ? `<img src="${esc(data.avatar_url)}" style="width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover;flex-shrink:0;">`
+      ? `<img src="${esc(data.avatar_url)}" alt="" style="width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover;flex-shrink:0;">`
       : `<span style="width:2.2rem;height:2.2rem;border-radius:50%;background:rgba(60,30,90,.8);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;">${(data.username[0]||'?').toUpperCase()}</span>`;
     c.innerHTML = `
       <div style="display:flex;gap:.55rem;align-items:center;margin-bottom:.35rem;">${av}
@@ -442,7 +481,7 @@ function _owRow(u, isNew = false, isSelf = false, showDm = false) {
     : ['rgba(60,30,90,.45)', 'rgba(110,70,150,.4)', '#c8c5d4'];
   const ph = `<span class='online-avatar-ph' style='background:${bg};border:1px solid ${bd};color:${cl};'>${init}</span>`;
   const av = u.avatar_url
-    ? `<img src="${u.avatar_url}" class="online-avatar" alt="" onerror="this.outerHTML='${ph.replace(/'/g, "\\'")}'">` : ph;
+    ? `<img src="${u.avatar_url}" class="online-avatar" alt="" loading="lazy" onerror="this.outerHTML='${ph.replace(/'/g, "\\'")}'">` : ph;
   const sword = u.in_game
     ? `<span title="Играет на сервере" style="font-size:.72rem;margin-left:.25rem;filter:drop-shadow(0 0 4px rgba(220,80,80,.7));">⚔️</span>`
     : '';
@@ -1181,7 +1220,7 @@ async function loadNews(page = 1, append = false) {
     const authorName = esc(n.author.username);
     const adminBadge = _renderAdminBadge(n.author);
     const miniAvatar = n.author.avatar_url
-      ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.25);flex-shrink:0;">`
+      ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" loading="lazy" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.25);flex-shrink:0;">`
       : `<span style="width:22px;height:22px;border-radius:50%;background:${nameGradient(n.author.username)};border:1px solid rgba(190,0,40,0.22);display:inline-flex;align-items:center;justify-content:center;font-size:.58rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
     const commentBadge = n.comment_count > 0
       ? `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.6rem;color:var(--muted);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${n.comment_count}</span>`
@@ -1292,16 +1331,22 @@ async function openNews(slug, highlightCommentId) {
     const tags = (n.tags || '').split(',').map(t => t.trim()).filter(Boolean);
     const tagHtml = tags.map(t => `<span class="modal-tag" onclick="event.stopPropagation();openTagFromModal('${esc(t)}')">${esc(t)}</span>`).join('');
 
-    // Update OG meta for social sharing
-    const setMeta = (prop, val) => {
-      let el = document.querySelector(`meta[property="${prop}"]`) || document.querySelector(`meta[name="${prop}"]`);
-      if (!el) { el = document.createElement('meta'); el.setAttribute(prop.includes(':') ? 'property' : 'name', prop); document.head.appendChild(el); }
-      el.setAttribute('content', val);
-    };
+    // Update title/description/canonical/OG/Twitter meta for SEO + social sharing.
+    // Without this, every shared article link showed the generic homepage
+    // title/description/image (crawlers that don't execute JS — Discord,
+    // Telegram, Twitter — only ever saw the defaults), and the canonical tag
+    // kept pointing at "/" while a distinct article was open.
+    const _articleDesc = (n.content || '').replace(/<[^>]+>/g, '').trim().slice(0, 160);
+    const _articleUrl = location.origin + '/?news=' + n.slug;
+    document.title = `${n.title} — Just-Skill.Ru`;
+    setMeta('description', _articleDesc);
     setMeta('og:title', n.title);
-    setMeta('og:description', (n.content||'').replace(/<[^>]+>/g,'').slice(0,160));
+    setMeta('og:description', _articleDesc);
     if (n.thumbnail_url) setMeta('og:image', n.thumbnail_url);
-    setMeta('og:url', location.origin + '/?news=' + n.slug);
+    setMeta('og:url', _articleUrl);
+    setMeta('twitter:title', n.title);
+    setMeta('twitter:description', _articleDesc);
+    setCanonical(_articleUrl);
 
     // ── Hero section ──────────────────────────────────────────────────────────
     const heroEl = document.getElementById('modal-hero');
@@ -1406,6 +1451,7 @@ function closeModal() {
   document.body.style.overflow = '';
   _modalSlug = '';
   _syncNewsUrl(true, false);
+  resetArticleMeta();
   const prev = document.getElementById('modal-prev');
   const next = document.getElementById('modal-next');
   if (prev) prev.style.display = 'none';
@@ -1627,7 +1673,7 @@ function _renderRelated(currentSlug, currentTags) {
         <div onclick="openNews('${esc(n.slug)}')" style="display:flex;gap:.75rem;align-items:center;cursor:pointer;padding:.55rem .7rem;border-radius:.55rem;border:1px solid rgba(110,0,150,0.15);background:rgba(10,2,18,0.4);transition:background .15s,border-color .15s;"
           onmouseover="this.style.background='rgba(150,0,28,0.1)';this.style.borderColor='rgba(150,0,28,0.3)'"
           onmouseout="this.style.background='rgba(10,2,18,0.4)';this.style.borderColor='rgba(110,0,150,0.15)'">
-          ${n.thumbnail_url ? `<img src="${esc(n.thumbnail_url)}" style="width:52px;height:36px;object-fit:cover;border-radius:.35rem;flex-shrink:0;">` : `<div style="width:52px;height:36px;border-radius:.35rem;background:linear-gradient(135deg,rgba(80,0,150,0.3),rgba(120,0,20,0.3));flex-shrink:0;"></div>`}
+          ${n.thumbnail_url ? `<img src="${esc(n.thumbnail_url)}" loading="lazy" alt="${esc(n.title)}" style="width:52px;height:36px;object-fit:cover;border-radius:.35rem;flex-shrink:0;">` : `<div style="width:52px;height:36px;border-radius:.35rem;background:linear-gradient(135deg,rgba(80,0,150,0.3),rgba(120,0,20,0.3));flex-shrink:0;"></div>`}
           <div style="min-width:0;">
             <div style="font-size:.78rem;font-weight:600;color:var(--text);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${esc(n.title)}</div>
             <div style="font-size:.62rem;color:var(--muted);margin-top:.15rem;">${fmtDate(n.created_at)}</div>
@@ -1674,7 +1720,7 @@ document.addEventListener('keydown', e => {
 // ── Comments ────────────────────────────────────────────────────────────────
 function commentAvatar(author) {
   if (!author) return `<div class="comment-avatar">?</div>`;
-  if (author.avatar_url) return `<div class="comment-avatar"><img src="${esc(author.avatar_url)}" alt="${esc(author.username)}"></div>`;
+  if (author.avatar_url) return `<div class="comment-avatar"><img src="${esc(author.avatar_url)}" alt="${esc(author.username)}" loading="lazy"></div>`;
   return `<div class="comment-avatar">${esc(author.username.charAt(0).toUpperCase())}</div>`;
 }
 
@@ -2426,7 +2472,7 @@ async function loadTeam() {
     _teamLoaded = true;
     list.innerHTML = data.map((u, i) => {
       const av = u.avatar_url
-        ? `<img src="${esc(u.avatar_url)}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;display:block;">`
+        ? `<img src="${esc(u.avatar_url)}" loading="lazy" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;display:block;">`
         : `<div style="width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(120,0,40,0.7),rgba(80,0,80,0.5));display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:1.3rem;color:var(--gold);">${esc(u.username[0].toUpperCase())}</div>`;
 
       const _raw = _statusInfo(u.last_active_at);
@@ -2555,7 +2601,7 @@ async function loadDmInbox() {
     list.innerHTML = data.map(c => {
       const p = c.partner, lm = c.last_message;
       const av = p.avatar_url
-        ? `<img src="${esc(p.avatar_url)}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
+        ? `<img src="${esc(p.avatar_url)}" loading="lazy" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
         : `<div style="width:32px;height:32px;border-radius:50%;background:rgba(110,0,20,0.5);display:flex;align-items:center;justify-content:center;font-size:.8rem;color:var(--gold);flex-shrink:0;">${esc(p.username[0].toUpperCase())}</div>`;
       const preview = lm ? lm.content.slice(0,38)+(lm.content.length>38?'…':'') : '';
       const time = lm ? _fmtInboxTime(lm.created_at) : '';
@@ -2649,7 +2695,7 @@ async function _refreshDmChat(initial = false) {
     const p = data.partner;
     const avEl = document.getElementById('dm-modal-avatar');
     if (avEl) avEl.innerHTML = p.avatar_url
-      ? `<img src="${esc(p.avatar_url)}" style="width:100%;height:100%;object-fit:cover;">`
+      ? `<img src="${esc(p.avatar_url)}" alt="" style="width:100%;height:100%;object-fit:cover;">`
       : esc(p.username[0].toUpperCase());
 
     const container = document.getElementById('dm-messages');

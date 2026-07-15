@@ -484,7 +484,7 @@ async def sitemap(request: Request, db: AsyncSession = Depends(get_db)):
     ]
     for slug, updated_at in slugs:
         lastmod = updated_at.strftime("%Y-%m-%d") if updated_at else ""
-        urls.append(f"  <url><loc>{base}/news/{slug}</loc><lastmod>{lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>")
+        urls.append(f"  <url><loc>{base}/?news={slug}</loc><lastmod>{lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>")
     # Add events URLs
     try:
         events_res = await db.execute(
