@@ -1,7 +1,33 @@
 from datetime import datetime
+from html.parser import HTMLParser
 from typing import Literal, Optional
 from pydantic import BaseModel, EmailStr, field_validator
 import re
+
+
+class _TagStripper(HTMLParser):
+    """Collects only the text data of an HTML fragment, dropping every tag."""
+    def __init__(self):
+        super().__init__()
+        self._fed = []
+
+    def handle_data(self, d):
+        self._fed.append(d)
+
+    def get_data(self):
+        return ''.join(self._fed)
+
+
+def strip_html_tags(value: str) -> str:
+    """Defense-in-depth for plain-text fields (comments, DMs): today the frontend
+    always escapes/sanitizes before rendering these, so this isn't exploitable via
+    the current UI — but nothing on the backend enforced that contract, so any future
+    rendering path (a new client, an admin-panel tweak) that trusted this field raw
+    would have stored XSS. Strip tags at the source instead of trusting every future
+    consumer to remember to escape."""
+    stripper = _TagStripper()
+    stripper.feed(value)
+    return stripper.get_data()
 
 
 class UserRegister(BaseModel):
@@ -181,7 +207,7 @@ class CommentCreate(BaseModel):
     @field_validator("content")
     @classmethod
     def content_not_empty(cls, v: str) -> str:
-        v = v.strip()
+        v = strip_html_tags(v).strip()
         if not v:
             raise ValueError("Comment cannot be empty")
         if len(v) > 2000:
@@ -195,7 +221,7 @@ class CommentUpdate(BaseModel):
     @field_validator("content")
     @classmethod
     def content_not_empty(cls, v: str) -> str:
-        v = v.strip()
+        v = strip_html_tags(v).strip()
         if not v:
             raise ValueError("Comment cannot be empty")
         if len(v) > 2000:

@@ -105,6 +105,7 @@ from .schemas import (
     ReportOut,
     PollCreate,
     PollOut,
+    strip_html_tags,
 )
 
 OVERSEER_PROMPT = """Ты — Тёмный Управляющий Замком, древний вампирский дух, хранитель этого сервера V Rising.
@@ -4114,7 +4115,7 @@ class MessageSendBody(BaseModel):
     @field_validator("content")
     @classmethod
     def content_not_empty(cls, v: str) -> str:
-        v = v.strip()
+        v = strip_html_tags(v).strip()
         if not v:
             raise ValueError("Сообщение не может быть пустым")
         if len(v) > 2000:
