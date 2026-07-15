@@ -237,6 +237,14 @@
     <p class="gothic" style="font-size:.9rem;font-weight:600;color:var(--text);margin-bottom:.4rem;">Ничего не найдено</p>
     <p style="font-size:.78rem;color:var(--muted);">Попробуйте другой запрос</p>
   </div>
+
+  <!-- Load-error state -->
+  <div id="clans-error" style="display:none;text-align:center;padding:3rem 1rem;">
+    <div style="font-size:2.5rem;margin-bottom:.75rem;opacity:.6;filter:drop-shadow(0 0 12px rgba(180,0,30,0.45));">⚠</div>
+    <p class="gothic" style="font-size:.9rem;font-weight:600;color:var(--gold);margin-bottom:.4rem;">Ошибка загрузки</p>
+    <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;">Не удалось загрузить кланы — проверьте связь и попробуйте снова.</p>
+    <button onclick="init()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
+  </div>
 </div>
 
 <!-- Create-clan modal -->
@@ -454,6 +462,8 @@ function filterCards() {
 
 /* ── Load clans + current user ── */
 async function init() {
+  document.getElementById('clans-error').style.display = 'none';
+  document.getElementById('clans-loading').style.display = 'grid';
   try {
     const [clans, meRes] = await Promise.all([
       fetch(`${API}/clans`).then(r => r.json()),
@@ -477,6 +487,7 @@ async function init() {
     renderGrid(_allClans);
   } catch (err) {
     document.getElementById('clans-loading').style.display = 'none';
+    document.getElementById('clans-error').style.display = 'block';
     showToast('Ошибка загрузки кланов', 'error');
   }
 }

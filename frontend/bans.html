@@ -426,6 +426,7 @@ function applyFilters() {
 <div style="text-align:center;padding:3rem 1rem;animation:fade-up .3s ease both;">
   <div style="font-size:2rem;margin-bottom:.6rem;">⚠</div>
   <p style="font-size:.85rem;color:var(--muted);">Не удалось загрузить список банов.</p>
+  <button onclick="location.reload()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;margin-top:.75rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
 </div>`;
     if (typeof showToast === 'function') showToast('Ошибка загрузки банов', 'error');
   }

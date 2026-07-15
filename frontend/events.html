@@ -199,7 +199,13 @@ async function loadEvents() {
     _allEvents = d.items || [];
     renderEvents();
   } catch {
-    if (grid) grid.innerHTML = '<p style="color:#f87171;text-align:center;grid-column:1/-1;">Ошибка загрузки событий</p>';
+    if (grid) grid.innerHTML = `
+      <div style="grid-column:1/-1;text-align:center;padding:3.5rem 1rem;">
+        <div style="font-size:3rem;margin-bottom:1rem;opacity:.6;filter:drop-shadow(0 0 12px rgba(180,0,30,0.45));">⚠</div>
+        <div class="gothic" style="font-size:1rem;color:var(--gold);margin-bottom:.5rem;">Ошибка загрузки</div>
+        <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">Не удалось загрузить события — проверьте связь и попробуйте снова.</div>
+        <button onclick="loadEvents()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
+      </div>`;
   }
 }
 
