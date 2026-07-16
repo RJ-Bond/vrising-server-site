@@ -176,16 +176,22 @@ function toggleDrawer() {
     if (dmWrap) dmWrap.style.display = '';
     const notifWrap = document.getElementById('notif-bell-wrap');
     if (notifWrap) notifWrap.style.display = '';
-    if (u.role === 'admin') {
+    if (STAFF_ROLES.includes(u.role)) {
+      // Any staff tier can reach admin.html (it hides sections their tier can't use) —
+      // this link/icon just needs to exist, not gate anything itself.
       document.getElementById('nav-admin').classList.remove('hidden');
       _isAdmin = true;
-      const createBtn = document.getElementById('news-create-btn');
-      if (createBtn) createBtn.style.display = 'flex';
       // Mirrors the top-bar "Админка" link inside the drawer's user card, since the
       // top-bar copy is hidden on mobile (see index.css) to stop the account-icon
       // cluster from overflowing past "Выйти" on narrow screens.
       const cardAdmin = document.getElementById('nav-card-admin');
       if (cardAdmin) cardAdmin.style.display = 'flex';
+    }
+    if (u.role === 'admin' || u.role === 'superadmin') {
+      // News creation stays admin-tier+ (moderators can moderate comments/reports/bans,
+      // not author news) — a moderator seeing this shortcut would just hit a 403.
+      const createBtn = document.getElementById('news-create-btn');
+      if (createBtn) createBtn.style.display = 'flex';
     }
     document.getElementById('nav-profile-link').classList.remove('hidden');
     // sidebar nav: replace "Войти" with "Выйти"
@@ -206,7 +212,7 @@ function toggleDrawer() {
       } else {
         avatarWrap.innerHTML = `<div class="nav-user-initial">${esc(u.username.charAt(0).toUpperCase())}</div>`;
       }
-      if (u.role === 'admin') {
+      if (STAFF_ROLES.includes(u.role)) {
         roleEl.style.display = 'inline-block';
         roleEl.innerHTML = _renderAdminBadge(u);
       }
@@ -421,7 +427,7 @@ function _owShowCard(e, data) {
   _owCardTimer = setTimeout(() => {
     const c = document.getElementById('ow-hover-card');
     if (!c) return;
-    const roleLabel = data.role === 'admin' ? '👑 Администратор' : data.role === 'moder' ? '🛡 Модератор' : '⚔ Игрок';
+    const roleLabel = data.role === 'superadmin' ? '👑 Суперадмин' : data.role === 'admin' ? '👑 Администратор' : data.role === 'moderator' ? '🛡 Модератор' : '⚔ Игрок';
     const av = data.avatar_url
       ? `<img src="${esc(data.avatar_url)}" alt="" style="width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover;flex-shrink:0;">`
       : `<span style="width:2.2rem;height:2.2rem;border-radius:50%;background:rgba(60,30,90,.8);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;">${(data.username[0]||'?').toUpperCase()}</span>`;
@@ -472,11 +478,13 @@ function _owDrawSparkline(history) {
 }
 
 function _owRow(u, isNew = false, isSelf = false, showDm = false) {
-  const roleColor = u.role === 'admin' ? 'var(--crimson)' : u.role === 'moder' ? 'var(--purple)' : 'var(--text)';
+  const roleColor = u.role === 'superadmin' ? 'var(--gold)' : u.role === 'admin' ? 'var(--crimson)' : u.role === 'moderator' ? 'var(--purple)' : 'var(--text)';
   const init = (u.username[0] || '?').toUpperCase();
-  const [bg, bd, cl] = u.role === 'admin'
+  const [bg, bd, cl] = u.role === 'superadmin'
+    ? ['rgba(201,169,74,.28)', 'rgba(201,169,74,.5)', '#f0c040']
+    : u.role === 'admin'
     ? ['rgba(200,0,42,.28)', 'rgba(220,0,50,.5)', '#f87171']
-    : u.role === 'moder'
+    : u.role === 'moderator'
     ? ['rgba(153,85,238,.28)', 'rgba(153,85,238,.5)', '#c084fc']
     : ['rgba(60,30,90,.45)', 'rgba(110,70,150,.4)', '#c8c5d4'];
   const ph = `<span class='online-avatar-ph' style='background:${bg};border:1px solid ${bd};color:${cl};'>${init}</span>`;
@@ -1926,7 +1934,7 @@ function renderSingleComment(c, slug, depth = 0) {
   const profileHref = c.author ? `/user.html?u=${encodeURIComponent(c.author.username)}` : null;
   const user = getUser();
   const isOwn = user && c.author && user.id === c.author.id;
-  const canDel = user && (user.role === 'admin' || isOwn);
+  const canDel = user && (STAFF_ROLES.includes(user.role) || isOwn);
   const actions = canDel ? `<div class="comment-actions" id="ca-${c.id}">
     ${isOwn ? `<button class="comment-edit-btn" onclick="editComment(${c.id})" title="Редактировать">✎</button>` : ''}
     <button class="comment-del" onclick="startDeleteConfirm(${c.id},'${slug}')" title="Удалить">✕</button>

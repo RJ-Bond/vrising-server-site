@@ -152,7 +152,33 @@ async def get_optional_user(
     return user
 
 
-async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:
-    if current_user.role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
-    return current_user
+# ─── Role hierarchy ────────────────────────────────────────────────────────
+# Ascending tiers: plain users < moderator (content/user moderation) <
+# admin (site config, content, users) < superadmin (role management, backups,
+# deploy/SSL, RCON — anything that touches infra or full user-data export).
+ROLE_LEVELS = {"user": 0, "moderator": 1, "admin": 2, "superadmin": 3}
+
+
+def role_level(role: str) -> int:
+    """Unrecognized/garbled role strings fail closed (level 0), not open."""
+    return ROLE_LEVELS.get(role, 0)
+
+
+def is_at_least(user: User, min_role: str) -> bool:
+    return role_level(user.role) >= ROLE_LEVELS[min_role]
+
+
+def require_role(min_role: str):
+    """Dependency factory: raise 403 unless current_user's role is at least min_role."""
+    async def _dep(current_user: User = Depends(get_current_user)) -> User:
+        if role_level(current_user.role) < ROLE_LEVELS[min_role]:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Requires {min_role} access or higher")
+        return current_user
+    return _dep
+
+
+get_moderator_user = require_role("moderator")
+# Keeps its historical name so all existing `Depends(get_admin_user)` call sites are
+# unaffected — it now means "admin or superadmin" instead of exactly "admin".
+get_admin_user = require_role("admin")
+get_superadmin_user = require_role("superadmin")

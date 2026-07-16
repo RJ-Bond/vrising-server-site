@@ -64,8 +64,13 @@ from .auth import (
     create_access_token,
     get_current_user,
     get_admin_user,
+    get_moderator_user,
+    get_superadmin_user,
     get_optional_user,
     revoke_token,
+    role_level,
+    is_at_least,
+    ROLE_LEVELS,
     SECRET_KEY,
     ALGORITHM,
     COOKIE_NAME,
@@ -224,6 +229,32 @@ async def _send_notification_email(to_email: str, subject: str, body_text: str, 
         return False
 
 
+async def _migrate_admin_role_tiers(db: AsyncSession):
+    """One-time: promote every pre-existing role="admin" account to "superadmin".
+
+    Before this migration, "admin" was the top tier — capable of backups/rcon/ssl/
+    role-management. After it, those move to a new superadmin-only tier, so any
+    existing admin account must be promoted or its owner silently loses capability
+    they had a moment ago. There's no way to tell "the real owner" from "an admin
+    added later" from the role string alone, so promoting everyone is the only safe
+    default (under-promoting risks bricking someone's access; over-promoting doesn't
+    remove anything anyone already had).
+
+    Flag-gated so this runs exactly once — a second run must be a no-op, and must NOT
+    touch a legitimately-created future "admin"-tier account.
+    """
+    flag_res = await db.execute(select(Setting).where(Setting.key == "role_tiers_migrated"))
+    flag = flag_res.scalar_one_or_none()
+    if flag and flag.value == "true":
+        return
+    await db.execute(update(User).where(User.role == "admin").values(role="superadmin"))
+    if flag:
+        flag.value = "true"
+    else:
+        db.add(Setting(key="role_tiers_migrated", value="true"))
+    await db.commit()
+
+
 async def _seed_defaults(db: AsyncSession):
     default_settings = [
         Setting(key="setup_completed", value="false"),
@@ -278,7 +309,7 @@ async def _seed_defaults(db: AsyncSession):
     await db.flush()
 
     # Если администратор уже существует — считаем настройку завершённой
-    admin_result = await db.execute(select(User).where(User.role == "admin").limit(1))
+    admin_result = await db.execute(select(User).where(User.role.in_(("admin", "superadmin"))).limit(1))
     if admin_result.scalar_one_or_none():
         sc = await db.execute(select(Setting).where(Setting.key == "setup_completed"))
         sc_row = sc.scalar_one_or_none()
@@ -340,6 +371,7 @@ async def lifespan(app: FastAPI):
                 pass  # column already exists
     async with AsyncSession(engine, expire_on_commit=False) as db:
         await _seed_defaults(db)
+        await _migrate_admin_role_tiers(db)
         # Restore maintenance flag file on startup
         try:
             res = await db.execute(select(Setting).where(Setting.key == "maintenance_mode"))
@@ -561,7 +593,7 @@ async def setup_status(db: AsyncSession = Depends(get_db)):
     s = result.scalar_one_or_none()
     if s and s.value == "true":
         return {"completed": True}
-    admin_result = await db.execute(select(User).where(User.role == "admin").limit(1))
+    admin_result = await db.execute(select(User).where(User.role.in_(("admin", "superadmin"))).limit(1))
     if admin_result.scalar_one_or_none():
         return {"completed": True}
     return {"completed": False}
@@ -571,7 +603,7 @@ async def setup_status(db: AsyncSession = Depends(get_db)):
 async def setup_complete(body: SetupComplete, response: Response, db: AsyncSession = Depends(get_db)):
     sc_result = await db.execute(select(Setting).where(Setting.key == "setup_completed"))
     sc = sc_result.scalar_one_or_none()
-    admin_result = await db.execute(select(User).where(User.role == "admin").limit(1))
+    admin_result = await db.execute(select(User).where(User.role.in_(("admin", "superadmin"))).limit(1))
     if (sc and sc.value == "true") or admin_result.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Setup already completed")
     existing = await db.execute(select(User).where(
@@ -579,11 +611,14 @@ async def setup_complete(body: SetupComplete, response: Response, db: AsyncSessi
     ))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="Username or email already taken")
+    # Founding account is superadmin, not plain admin — a fresh install must bootstrap an
+    # owner with full capability (backups/rcon/ssl/role-management) from day one, matching
+    # what the one-time migration does for pre-existing installs (see role_tiers migration).
     admin = User(
         username=body.username,
         email=body.email,
         hashed_password=get_password_hash(body.password),
-        role="admin",
+        role="superadmin",
     )
     db.add(admin)
     await db.flush()
@@ -1814,7 +1849,7 @@ async def update_comment(
     comment = result.scalar_one_or_none()
     if comment is None:
         raise HTTPException(status_code=404, detail="Comment not found")
-    if current_user.role != "admin" and comment.author_id != current_user.id:
+    if not is_at_least(current_user, "moderator") and comment.author_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
     comment.content = body.content
     await db.commit()
@@ -1832,7 +1867,7 @@ async def delete_comment(
     comment = result.scalar_one_or_none()
     if comment is None:
         raise HTTPException(status_code=404, detail="Comment not found")
-    if current_user.role != "admin" and comment.author_id != current_user.id:
+    if not is_at_least(current_user, "moderator") and comment.author_id != current_user.id:
         raise HTTPException(status_code=403, detail="Forbidden")
     await db.delete(comment)
     await db.commit()
@@ -2334,7 +2369,7 @@ async def add_maintenance_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role != "admin":
+    if not is_at_least(current_user, "admin"):
         raise HTTPException(403)
     body.text = body.text.strip()[:200]
     if not body.text:
@@ -2354,7 +2389,7 @@ async def delete_maintenance_status(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role != "admin":
+    if not is_at_least(current_user, "admin"):
         raise HTTPException(403)
     res = await db.execute(select(Setting).where(Setting.key == "maintenance_status_updates"))
     s = res.scalar_one_or_none()
@@ -2374,7 +2409,7 @@ async def extend_maintenance(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.role != "admin":
+    if not is_at_least(current_user, "admin"):
         raise HTTPException(403)
     if body.minutes not in (15, 30, 60, 120):
         raise HTTPException(400, "Invalid duration")
@@ -2453,7 +2488,7 @@ async def update_setting(
 @app.get("/api/admin/users", response_model=list[UserOut])
 async def list_users(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_admin_user),
+    _: User = Depends(get_moderator_user),
 ):
     result = await db.execute(select(User).order_by(User.created_at.desc()))
     return [UserOut.model_validate(u) for u in result.scalars().all()]
@@ -2462,9 +2497,9 @@ async def list_users(
 @app.put("/api/admin/users/{user_id}/role")
 async def change_role(
     user_id: int,
-    role: str = Query(..., regex="^(user|admin)$"),
+    role: str = Query(..., regex="^(user|moderator|admin|superadmin)$"),
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_superadmin_user),
 ):
     if user_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot change own role")
@@ -2482,7 +2517,7 @@ async def change_role(
 async def toggle_active(
     user_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_moderator_user),
 ):
     if user_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot deactivate yourself")
@@ -2490,6 +2525,8 @@ async def toggle_active(
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
+    if role_level(user.role) >= role_level(current_user.role):
+        raise HTTPException(status_code=403, detail="Cannot act on a user with equal or higher access level")
     user.is_active = not user.is_active
     _ban_action = "user.unban" if user.is_active else "user.ban"
     await _audit(db, current_user.id, _ban_action, target_type="user", target_id=user.id, detail=user.username)
@@ -2509,6 +2546,8 @@ async def delete_user(
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=404, detail="User not found")
+    if role_level(user.role) >= role_level(current_user.role):
+        raise HTTPException(status_code=403, detail="Cannot act on a user with equal or higher access level")
     await db.delete(user)
     await log_audit(db, current_user, "user.delete", user.username)
     await db.commit()
@@ -2525,6 +2564,10 @@ async def revoke_user_sessions(
     target = result.scalar_one_or_none()
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
+    # Self-revoke is allowed (unlike delete/toggle-active) — logging yourself out is
+    # self-correcting via re-login, so only guard against acting on a DIFFERENT peer/superior.
+    if user_id != current_user.id and role_level(target.role) >= role_level(current_user.role):
+        raise HTTPException(status_code=403, detail="Cannot act on a user with equal or higher access level")
     now_utc = datetime.now(timezone.utc).isoformat()
     await db.execute(text("UPDATE users SET revoke_before = :ts WHERE id = :uid"), {"ts": now_utc, "uid": user_id})
     await log_audit(db, current_user, "user.revoke_sessions", target.username)
@@ -2822,7 +2865,7 @@ async def update_clan(
     clan = result.scalar_one_or_none()
     if clan is None:
         raise HTTPException(status_code=404, detail="Клан не найден")
-    if clan.leader_id != current_user.id and current_user.role != "admin":
+    if clan.leader_id != current_user.id and not is_at_least(current_user, "admin"):
         raise HTTPException(status_code=403, detail="Только лидер клана может его редактировать")
     clan.description = body.description
     await db.commit()
@@ -2909,7 +2952,7 @@ async def _stream_cmd(*cmd: str):
 
 @app.post("/api/admin/ssl/install")
 async def ssl_install(
-    _: User = Depends(get_admin_user),
+    _: User = Depends(get_superadmin_user),
     db: AsyncSession = Depends(get_db),
 ):
     import os
@@ -3114,7 +3157,7 @@ async def _git_log_oneline(repo: str, old_hash: str, new_hash: str) -> list[str]
 
 
 @app.post("/api/admin/update")
-async def site_update(_: User = Depends(get_admin_user)):
+async def site_update(_: User = Depends(get_superadmin_user)):
     async def stream():
         def sse(msg: str) -> str:
             return f"data: {msg}\n\n"
@@ -3195,7 +3238,7 @@ async def list_all_comments(
     per_page: int = Query(30, ge=1, le=100),
     q: str = Query(""),
     news_slug: Optional[str] = Query(None),
-    _: User = Depends(get_admin_user),
+    _: User = Depends(get_moderator_user),
     db: AsyncSession = Depends(get_db),
 ):
     filters = []
@@ -3239,7 +3282,7 @@ async def list_all_comments(
 @app.delete("/api/admin/comments/{comment_id}", status_code=204)
 async def admin_delete_comment(
     comment_id: int,
-    _: User = Depends(get_admin_user),
+    _: User = Depends(get_moderator_user),
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(select(Comment).where(Comment.id == comment_id))
@@ -3372,7 +3415,7 @@ async def import_settings(
 # ─── DB Backup ───────────────────────────────────────────────────────────────
 
 @app.get("/api/admin/backup")
-async def download_backup(current_user: User = Depends(get_admin_user)):
+async def download_backup(current_user: User = Depends(get_superadmin_user)):
     for candidate in [Path("backend/vrising.db"), Path("vrising.db"), Path("/app/backend/vrising.db")]:
         if candidate.exists():
             return FileResponse(
@@ -3421,7 +3464,7 @@ class RconBody(BaseModel):
 
 
 @app.post("/api/admin/rcon")
-async def admin_rcon(body: RconBody, current_user: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
+async def admin_rcon(body: RconBody, current_user: User = Depends(get_superadmin_user), db: AsyncSession = Depends(get_db)):
     if not body.command.strip():
         raise HTTPException(400, "Empty command")
     res = await db.execute(select(Setting).where(Setting.key.in_(["server_ip","rcon_port","rcon_password","server2_ip","rcon2_port","rcon2_password"])))
@@ -3992,8 +4035,10 @@ async def update_game_nickname(
 
 @app.get("/api/team")
 async def get_team(db: AsyncSession = Depends(get_db)):
+    # Public staff roster — admin tier and up. Moderators stay internal/non-public,
+    # consistent with the usual mod/admin distinction.
     result = await db.execute(
-        select(User).where(User.role == "admin", User.is_active == True).order_by(User.created_at)
+        select(User).where(User.role.in_(("admin", "superadmin")), User.is_active == True).order_by(User.created_at)
     )
     admins = result.scalars().all()
     now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -4028,7 +4073,7 @@ async def set_admin_title(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role != "admin":
+    if not is_at_least(current_user, "moderator"):
         raise HTTPException(status_code=403, detail="Только для администраторов")
     title = body.title.strip()[:128]
     current_user.admin_title = title or None
@@ -4044,7 +4089,7 @@ async def upload_badge_icon(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role != "admin":
+    if not is_at_least(current_user, "moderator"):
         raise HTTPException(status_code=403, detail="Только для администраторов")
     if not file.content_type or not file.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Только изображения")
@@ -4071,7 +4116,7 @@ async def clear_badge_icon(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role != "admin":
+    if not is_at_least(current_user, "moderator"):
         raise HTTPException(status_code=403, detail="Только для администраторов")
     old = (current_user.badge_icon_url or "").rsplit("/", 1)[-1]
     if old.startswith("badge_"):
@@ -4095,7 +4140,7 @@ async def set_badge_style(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if current_user.role != "admin":
+    if not is_at_least(current_user, "moderator"):
         raise HTTPException(status_code=403, detail="Только для администраторов")
     if body.style not in _BADGE_STYLES:
         raise HTTPException(status_code=400, detail="Недопустимый стиль")
@@ -4293,7 +4338,7 @@ async def list_reports(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     status: str = Query(""),
-    _: User = Depends(get_admin_user),
+    _: User = Depends(get_moderator_user),
     db: AsyncSession = Depends(get_db),
 ):
     filters = []
@@ -4324,7 +4369,7 @@ async def list_reports(
 async def review_report(
     report_id: int,
     body: ReportReview,
-    current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_moderator_user),
     db: AsyncSession = Depends(get_db),
 ):
     r = (await db.execute(select(Report).where(Report.id == report_id))).scalar_one_or_none()
@@ -4608,7 +4653,7 @@ async def export_audit_log(
 @app.get("/api/admin/export/bans")
 async def export_bans(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_admin_user),
+    _: User = Depends(get_moderator_user),
 ):
     # Banned users are those with is_active=False
     rows = (await db.execute(
@@ -4655,7 +4700,7 @@ async def get_error_log(
 # ─── Auto backups list ────────────────────────────────────────────────────────
 
 @app.get("/api/admin/backups")
-async def list_backups(_: User = Depends(get_admin_user)):
+async def list_backups(_: User = Depends(get_superadmin_user)):
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     files = sorted(BACKUP_DIR.glob("vrising_*.db"), reverse=True)
     return [
@@ -4666,7 +4711,7 @@ async def list_backups(_: User = Depends(get_admin_user)):
 
 
 @app.get("/api/admin/backups/{filename}")
-async def download_named_backup(filename: str, _: User = Depends(get_admin_user)):
+async def download_named_backup(filename: str, _: User = Depends(get_superadmin_user)):
     if ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(400, "Invalid filename")
     path = BACKUP_DIR / filename
@@ -4676,7 +4721,7 @@ async def download_named_backup(filename: str, _: User = Depends(get_admin_user)
 
 
 @app.post("/api/admin/backups/create", status_code=201)
-async def create_backup_now(current_user: User = Depends(get_admin_user)):
+async def create_backup_now(current_user: User = Depends(get_superadmin_user)):
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     db_candidates = [Path("backend/vrising.db"), Path("vrising.db"), Path("/app/backend/vrising.db"), Path("/data/vrising.db")]
     src = next((p for p in db_candidates if p.exists()), None)
@@ -4709,9 +4754,12 @@ async def bulk_user_action(
     if len(body.user_ids) > 100:
         raise HTTPException(400, "Too many users (max 100)")
 
-    rows = (await db.execute(
-        select(User).where(User.id.in_(body.user_ids), User.role != "admin")
+    candidates = (await db.execute(
+        select(User).where(User.id.in_(body.user_ids))
     )).scalars().all()
+    # Role is a plain string column — filter the hierarchy rule in Python rather than SQL.
+    # user_ids is capped at 100 above, so this is cheap.
+    rows = [u for u in candidates if role_level(u.role) < role_level(current_user.role)]
 
     affected = 0
     for u in rows:

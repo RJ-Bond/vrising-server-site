@@ -8,7 +8,11 @@
 //      endpoints resolve with canned JSON instead of 404ing against the static server.
 // Never committed as part of admin.html itself — this is a dev-only test harness.
 (function () {
-  localStorage.setItem('user', JSON.stringify({ id: 1, username: 'RJ Bond', role: 'admin', email: 'admin@example.com' }));
+  // Role is mockable via ?mockRole=moderator|admin|superadmin on the page URL (the
+  // outer iframe's src, since this shim reads the iframe document's own location) —
+  // defaults to 'admin' for backward-compat with existing preview-admin.sh calls.
+  const _mockRole = new URLSearchParams(location.search).get('mockRole') || 'admin';
+  localStorage.setItem('user', JSON.stringify({ id: 1, username: 'RJ Bond', role: _mockRole, email: 'admin@example.com' }));
   localStorage.setItem('token', 'mock-token');
 
   const now = Date.now();
@@ -62,7 +66,7 @@
   }));
 
   const routes = [
-    [/\/api\/auth\/me$/, () => userOut(1, 'RJ Bond', 'admin')],
+    [/\/api\/auth\/me$/, () => userOut(1, 'RJ Bond', _mockRole)],
     [/\/api\/settings\/public$/, () => settingsPublic],
     [/\/api\/admin\/stats$/, () => ({
       user_count: fakeUsers.length, news_count: 37, comment_count: 214, file_count: 58,

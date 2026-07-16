@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Screenshot frontend/admin.html fully "logged in" with mock API data — no backend needed.
-#   bash scripts/preview-admin.sh [mobile|desktop] [width] [height]
+#   bash scripts/preview-admin.sh [mobile|desktop] [width] [height] [role]
+#     role: moderator|admin|superadmin (default admin) — see scripts/admin-mock-fetch.js
 #
 # admin.html is auth-gated (redirects to /login.html without a real session) and most of
 # its sections fetch live data, so scripts/preview.sh alone only ever shows the login
@@ -10,7 +11,7 @@
 # hits on load — then screenshots that copy the same way preview.sh does (mobile renders
 # inside a 390px iframe; headless Chrome ignores <meta viewport> otherwise).
 set -u
-mode="${1:-mobile}"; width="${2:-}"; height="${3:-4000}"
+mode="${1:-mobile}"; width="${2:-}"; height="${3:-4000}"; role="${4:-admin}"
 port=8977
 root="$(cd "$(dirname "$0")/.." && pwd)"
 winroot="$(cygpath -m "$root" 2>/dev/null || printf '%s' "$root" | sed -E 's#^/([a-zA-Z])/#\1:/#')"
@@ -43,17 +44,17 @@ awk '{
 
 if [ "$mode" = "mobile" ]; then
   w="${width:-390}"
-  printf '<!doctype html><meta charset=utf-8><body style="margin:0;background:#06000f"><iframe src="/.admin_mock.html" style="width:%spx;height:%spx;border:0;display:block"></iframe>' "$w" "$height" > "$frame"
-  out="$root/.shots/admin_mock_mobile_${w}.png"
+  printf '<!doctype html><meta charset=utf-8><body style="margin:0;background:#06000f"><iframe src="/.admin_mock.html?mockRole=%s" style="width:%spx;height:%spx;border:0;display:block"></iframe>' "$role" "$w" "$height" > "$frame"
+  out="$root/.shots/admin_mock_mobile_${w}_${role}.png"
   "$CHROME" --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
     --window-size="${w},${height}" --virtual-time-budget=4000 \
     --screenshot="$out" "http://127.0.0.1:$port/.preview_admin_frame.html" 2>/dev/null
 else
   w="${width:-1280}"
-  out="$root/.shots/admin_mock_desktop_${w}.png"
+  out="$root/.shots/admin_mock_desktop_${w}_${role}.png"
   "$CHROME" --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
     --window-size="${w},${height}" --virtual-time-budget=4000 \
-    --screenshot="$out" "http://127.0.0.1:$port/.admin_mock.html" 2>/dev/null
+    --screenshot="$out" "http://127.0.0.1:$port/.admin_mock.html?mockRole=${role}" 2>/dev/null
 fi
 
 [ -f "$out" ] && echo "$out" || { echo "FAILED" >&2; exit 1; }

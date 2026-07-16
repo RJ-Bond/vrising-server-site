@@ -326,6 +326,9 @@
       try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; }
     }
 
+    // This page doesn't load common.js, so mirror its STAFF_ROLES constant locally.
+    const STAFF_ROLES = ['moderator', 'admin', 'superadmin'];
+
     // ── Extract video ID ──────────────────────────────────────────
     function parseVideoUrl(url) {
       if (!url) return null;
@@ -457,7 +460,7 @@
         localStorage.setItem('user', JSON.stringify(d.user || d));
         if (d.token) localStorage.setItem('token', d.token);
         const role = (d.user || d).role;
-        if (role === 'admin') {
+        if (STAFF_ROLES.includes(role)) {
           window.location.href = '/admin.html';
         } else {
           err.textContent = 'Доступ только для администраторов';
@@ -530,7 +533,7 @@
           hasBtn = true;
         }
         const u = getUser();
-        if (u && u.role === 'admin') {
+        if (u && STAFF_ROLES.includes(u.role)) {
           row.innerHTML += `<a href="/admin.html" class="btn btn-admin">⚙️ Панель</a>`;
           hasBtn = true;
         }

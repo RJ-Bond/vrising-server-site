@@ -609,7 +609,7 @@
   </div>
 </div>
 
-<script src="/common.js?v=8"></script>
+<script src="/common.js?v=9"></script>
 <script>
 const API = '/api';
 
@@ -992,8 +992,9 @@ async function loadProfile() {
       if (bioCounter) bioCounter.textContent = u.bio.length + '/160';
     }
 
+    const _staffTiers = ['moderator', 'admin', 'superadmin'];
     const roleEl = document.getElementById('profile-role');
-    if (u.role === 'admin') {
+    if (_staffTiers.includes(u.role)) {
       roleEl.innerHTML = _renderAdminBadge(u);
     } else {
       roleEl.innerHTML = '<span style="font-size:.8rem;font-weight:700;letter-spacing:.06em;padding:.25rem .75rem;border-radius:9999px;background:rgba(80,40,140,0.2);border:1px solid rgba(120,80,200,0.4);color:#c4b5fd;font-family:\'Inter\',sans-serif;">Игрок</span>';
@@ -1016,7 +1017,7 @@ async function loadProfile() {
     }
 
     const badgeEl = document.getElementById('profile-role-badge');
-    if (u.role === 'admin') {
+    if (_staffTiers.includes(u.role)) {
       badgeEl.innerHTML = _renderAdminBadge(u);
       badgeEl.style.cssText = '';
     } else {
@@ -1024,7 +1025,7 @@ async function loadProfile() {
       badgeEl.style.color='#c4b5fd'; badgeEl.style.borderColor='rgba(120,80,200,0.4)'; badgeEl.style.background='rgba(80,40,140,0.2)';
     }
 
-    if (u.role === 'admin') {
+    if (_staffTiers.includes(u.role)) {
       document.getElementById('admin-link').style.display = '';
       // Show admin tab
       const adminTabBtn = document.getElementById('tab-btn-admin');

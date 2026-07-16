@@ -241,7 +241,7 @@
 
 </div>
 
-<script src="/common.js?v=8"></script>
+<script src="/common.js?v=9"></script>
 <script>
 const API = '/api';
 
@@ -408,15 +408,21 @@ async function loadUser(){
         else if (dmBtn) dmBtn.style.display = 'none';
       } else if (dmBtn) dmBtn.style.display = 'none';
     } catch { if (dmBtn) dmBtn.style.display = 'none'; }
+    // Public profile badge: admin-tier and up only (matches /api/team's public staff
+    // roster policy — moderators stay internal/non-public by design). Must be
+    // ['admin','superadmin'], not just literally 'admin' — the real site owner's role
+    // is "superadmin" after the 3-tier migration, and a strict-equality check here
+    // would silently show them as a plain "Игрок" on their own public profile.
+    const _publicStaffRoles = ['admin', 'superadmin'];
     const badge=document.getElementById('user-role-badge');
-    if (u.role === 'admin') {
+    if (_publicStaffRoles.includes(u.role)) {
       badge.innerHTML = _renderAdminBadge(u);
       badge.style.cssText = '';
     } else {
       badge.textContent = 'Игрок';
       badge.style.color='#c4b5fd'; badge.style.borderColor='rgba(120,80,200,0.4)'; badge.style.background='rgba(80,40,140,0.2)';
     }
-    document.getElementById('user-role').textContent=u.role==='admin'?(u.admin_title||'Администратор'):'Игрок';
+    document.getElementById('user-role').textContent=_publicStaffRoles.includes(u.role)?(u.admin_title||'Администратор'):'Игрок';
     document.getElementById('user-since').textContent=fmtDate(u.created_at);
     document.getElementById('user-playtime').textContent=u.total_seconds>0?fmtSec(u.total_seconds):'Ещё не играл';
     document.getElementById('user-last-seen').textContent=u.last_seen?fmtAgo(u.last_seen):'Не играл';

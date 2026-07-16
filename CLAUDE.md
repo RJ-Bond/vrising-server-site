@@ -12,6 +12,28 @@ are served as-is by nginx. Tailwind is a static `frontend/tailwind.min.css`.
 CSP blocks external CDNs, so third-party libs are vendored locally
 (`purify.min.js`, `quill*`, `tailwind.min.css`).
 
+## Admin roles (3-tier)
+`User.role` is `"user"` | `"moderator"` | `"admin"` | `"superadmin"` (ascending
+capability — see `ROLE_LEVELS` in `backend/auth.py`). `get_admin_user` kept its
+name but now means "admin or superadmin"; `get_moderator_user`/
+`get_superadmin_user` are the other two tiers. Moderator = content/user
+moderation only (comments, reports, ban toggle); superadmin = role management,
+backups, deploy/SSL, RCON (full-DB/infra access). When adding a new
+admin-gated endpoint or a manual `current_user.role` check, use
+`role_level()`/`is_at_least()` from `backend/auth.py` — **never** compare
+against the literal string `"admin"` (a `superadmin` legitimately fails that
+comparison and silently loses access — this bit the migration itself twice
+during development). `frontend/admin.html` mirrors the hierarchy client-side
+via `SECTION_MIN_ROLE` (hides sidebar sections + gates `showSection()`) — that
+map, `ROLE_LEVELS`, and `ROLE_LABELS` **must** be declared as plain top-level
+`const`s, not inside a function that runs later, since `applyRoleVisibility()`
+is called from the auth-gate IIFE near the top of the script; a `const`
+declared further down throws "Cannot access before initialization" the
+moment that early call runs (caught via a live screenshot, not by reading the
+diff — `scripts/preview-admin.sh mobile 390 3000 moderator` reproduces it).
+`scripts/preview-admin.sh` takes a `[role]` 4th arg (`moderator`/`admin`/
+`superadmin`) for exactly this kind of verification.
+
 ## Deploy (IMPORTANT)
 Changes go live only when the maintainer runs the server-side deploy. After you
 commit **and push to `master`**, always tell the user: **«На сервере: `sudo js`»**.

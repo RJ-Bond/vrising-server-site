@@ -29,6 +29,9 @@ function getUser() {
   try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; }
 }
 
+/* Any staff tier (moderator/admin/superadmin) — used for maintenance-mode bypass etc. */
+const STAFF_ROLES = ['moderator', 'admin', 'superadmin'];
+
 /* Gradient avatar background from username hash */
 function nameGradient(name) {
   let h = 0;
@@ -95,7 +98,7 @@ window.getSettings = function () {
         if (!exempt.includes(path)) {
           try {
             const u = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || 'null');
-            if (!u || u.role !== 'admin') {
+            if (!u || !STAFF_ROLES.includes(u.role)) {
               window.location.replace('/maintenance.html');
             }
           } catch {
@@ -110,7 +113,7 @@ window.getSettings = function () {
         if (path !== '/maintenance.html') {
           try {
             const u2 = JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user') || 'null');
-            if (u2 && u2.role === 'admin' && !document.getElementById('maint-admin-banner')) {
+            if (u2 && STAFF_ROLES.includes(u2.role) && !document.getElementById('maint-admin-banner')) {
               const banner = document.createElement('div');
               banner.id = 'maint-admin-banner';
               banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(180,0,30,0.95);backdrop-filter:blur(8px);border-top:1px solid rgba(255,80,80,0.4);padding:.55rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;font-size:.78rem;font-family:Inter,sans-serif;color:#fff;';
@@ -161,10 +164,15 @@ function _dateOpts() {
 function fmtDate(iso)     { if (!iso) return '—'; return _toDate(iso).toLocaleDateString('ru-RU', _dateOpts()); }
 function fmtDateTime(iso) { if (!iso) return '—'; return _toDate(iso).toLocaleString('ru-RU', { ..._dateOpts(), hour:'2-digit', minute:'2-digit', hour12: !!(window.__H12) }); }
 
-/* Admin role badge */
+/* Admin role badge — shows for any staff tier (moderator/admin/superadmin), not just
+   literally "admin". Before this, an account migrated to "superadmin" (the real site
+   owner, post role-tiers migration) would render NO badge anywhere this is used
+   (comments, news authorship, profile) — a regression the 3-tier role system would
+   otherwise have introduced silently. */
 function _renderAdminBadge(u) {
-  if ((u.role || u.type) !== 'admin') return '';
-  const label = esc(u.admin_title || 'Админ');
+  if (!STAFF_ROLES.includes(u.role || u.type)) return '';
+  const _roleDefaultLabel = { superadmin: 'Суперадмин', admin: 'Админ', moderator: 'Модератор' };
+  const label = esc(u.admin_title || _roleDefaultLabel[u.role] || 'Админ');
   const icon  = u.badge_icon_url;
   const style = u.badge_style || 'default';
   const B = 'display:inline-flex;align-items:center;gap:.28rem;font-size:.55rem;font-weight:700;letter-spacing:.06em;padding:.12rem .52rem;white-space:nowrap;';

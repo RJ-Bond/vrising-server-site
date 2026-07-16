@@ -496,6 +496,11 @@
 
 <script>
 const API = '/api';
+// common.js (which defines the shared STAFF_ROLES) loads via <script src> at the
+// bottom of this page, i.e. AFTER this inline block runs — the auto-redirect IIFE
+// below fires during initial parse, before that script has executed. Inline a
+// local copy so the check works regardless of load order.
+const STAFF_ROLES = ['moderator', 'admin', 'superadmin'];
 
 // ── Stars ────────────────────────────────────────────────────────────────────
 (function() {
@@ -553,7 +558,7 @@ const _user = (() => { try { return JSON.parse(localStorage.getItem('user') || s
 if (_user) {
   // Verify with server (cookie might be expired)
   fetch('/api/auth/me', { credentials: 'include' })
-    .then(r => r.ok ? window.location.replace(_user.role === 'admin' ? '/admin.html' : '/') : null)
+    .then(r => r.ok ? window.location.replace(STAFF_ROLES.includes(_user.role) ? '/admin.html' : '/') : null)
     .catch(() => null);
 }
 
@@ -698,7 +703,7 @@ async function submitLogin(e) {
     // Token is set via httpOnly cookie by the server; save user info for UI
     const store = document.getElementById('remember-me')?.checked !== false ? localStorage : sessionStorage;
     store.setItem('user', JSON.stringify(data.user));
-    window.location.href = data.user.role === 'admin' ? '/admin.html' : '/';
+    window.location.href = STAFF_ROLES.includes(data.user.role) ? '/admin.html' : '/';
   } catch (err) { showAlert('login-error', 'Нет связи с сервером: ' + err.message); }
   finally { btn.disabled = false; btn.textContent = 'Войти'; }
 }
@@ -757,6 +762,6 @@ document.querySelectorAll('.btn-primary').forEach(btn => {
   });
 });
 </script>
-<script src="/common.js?v=8"></script>
+<script src="/common.js?v=9"></script>
 </body>
 </html>
