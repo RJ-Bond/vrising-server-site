@@ -114,6 +114,8 @@ from .schemas import (
     ReportOut,
     PollCreate,
     PollOut,
+    PluginRegister,
+    PluginLogin,
     strip_html_tags,
 )
 
@@ -296,6 +298,7 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="rcon2_port", value="25575"),
         Setting(key="rcon2_password", value=""),
         Setting(key="discord_webhook_url", value=""),
+        Setting(key="plugin_api_key", value=""),
         Setting(key="maintenance_mode",    value="false"),
         Setting(key="maintenance_title",   value="Технические работы"),
         Setting(key="maintenance_message", value="Сайт временно недоступен. Скоро вернёмся."),
@@ -368,6 +371,8 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE audit_log ADD COLUMN target_type VARCHAR(50) DEFAULT NULL",
             "ALTER TABLE audit_log ADD COLUMN target_id INTEGER DEFAULT NULL",
             "ALTER TABLE users ADD COLUMN bio VARCHAR(160) DEFAULT NULL",
+            "ALTER TABLE users ADD COLUMN steam_id VARCHAR(32) DEFAULT NULL",
+            "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_steam_id ON users(steam_id)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -843,6 +848,97 @@ async def me(current_user: User = Depends(get_current_user), db: AsyncSession = 
         current_user.last_active_at = now
         await db.commit()
     return UserOut.model_validate(current_user)
+
+
+# ─── Game Plugin Integration ──────────────────────────────────────────────────
+# Server-to-site channel used by the BepInEx plugin (vrising-bepinex-plugin) for the
+# in-game .register/.login chat commands. Authenticated via a shared secret (Setting
+# "plugin_api_key", set in admin settings) sent as the X-Plugin-Key header — this is
+# the game server itself calling as a trusted caller, not an individual player, so it
+# does not go through the user JWT scheme at all.
+
+async def _require_plugin_key(request: Request, db: AsyncSession = Depends(get_db)) -> None:
+    result = await db.execute(select(Setting).where(Setting.key == "plugin_api_key"))
+    setting = result.scalar_one_or_none()
+    expected = (setting.value if setting else "") or ""
+    provided = request.headers.get("X-Plugin-Key", "")
+    if not expected or provided != expected:
+        raise HTTPException(status_code=401, detail="Invalid or missing plugin key")
+
+
+@app.get("/api/plugin/status")
+@limiter.limit("60/minute")
+async def plugin_status(
+    request: Request,
+    steam_id: str,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Checked by the plugin on player connect to decide whether to show the
+    "you're not registered yet" chat message."""
+    result = await db.execute(select(User.id).where(User.steam_id == steam_id))
+    return {"registered": result.scalar_one_or_none() is not None}
+
+
+@app.post("/api/plugin/register")
+@limiter.limit("10/minute")
+async def plugin_register(
+    request: Request,
+    body: PluginRegister,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Backs the in-game .register <password> command. Username is the game character
+    name (not a separate field the player types); email is a synthesized placeholder
+    since chat commands have nowhere to collect a real one — the player can set a real
+    email later from their site profile."""
+    existing_steam = await db.execute(select(User.id).where(User.steam_id == body.steam_id))
+    if existing_steam.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="already_registered")
+
+    username = body.character_name.strip()[:32]
+    if not re.match(r"^[a-zA-Z0-9_а-яёА-ЯЁ ]{3,32}$", username):
+        raise HTTPException(status_code=400, detail="invalid_username")
+
+    existing_username = await db.execute(select(User.id).where(User.username == username))
+    if existing_username.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="username_taken")
+
+    user = User(
+        username=username,
+        email=f"steam_{body.steam_id}@vrising.local",
+        hashed_password=get_password_hash(body.password),
+        role="user",
+        game_nickname=username,
+        steam_id=body.steam_id,
+    )
+    db.add(user)
+    await db.commit()
+    return {"success": True, "username": username}
+
+
+@app.post("/api/plugin/login")
+@limiter.limit("10/minute")
+async def plugin_login(
+    request: Request,
+    body: PluginLogin,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Backs the in-game .login <password> command — links steam_id to an existing
+    site account (e.g. one created via the website) after verifying credentials, for
+    players who already have a site account under their character name."""
+    username = body.character_name.strip()[:32]
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
+    if user is None or not verify_password(body.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="bad_credentials")
+    if user.steam_id and user.steam_id != body.steam_id:
+        raise HTTPException(status_code=409, detail="linked_elsewhere")
+    if user.steam_id != body.steam_id:
+        user.steam_id = body.steam_id
+        await db.commit()
+    return {"success": True, "username": user.username}
 
 
 # ─── Who's online ─────────────────────────────────────────────────────────────
@@ -2525,7 +2621,7 @@ ALLOWED_SETTING_KEYS = {
     "event_active", "event_title", "event_text", "event_color",
     "rules", "https_domain", "https_email",
     "timezone", "time_format", "date_format",
-    "rcon_port", "rcon_password", "rcon2_port", "rcon2_password", "discord_webhook_url",
+    "rcon_port", "rcon_password", "rcon2_port", "rcon2_password", "discord_webhook_url", "plugin_api_key",
     "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time",
     "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates", "maintenance_history",
 }

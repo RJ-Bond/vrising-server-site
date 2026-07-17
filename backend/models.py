@@ -29,6 +29,11 @@ class User(Base):
     totp_secret = Column(String(64), nullable=True)
     totp_enabled = Column(Boolean, default=False, nullable=False, server_default="0")
     bio = Column(String(160), nullable=True)
+    # Set by the BepInEx plugin's .register/.login in-game commands — the authoritative
+    # link between a site account and a game account (unlike game_nickname, which is just
+    # a free-text field with no verification). Nullable: most existing/web-registered users
+    # have no linked game account.
+    steam_id = Column(String(32), unique=True, nullable=True, index=True)
     # Added via ALTER TABLE in main.py's lifespan (not a fresh-install column), but
     # declared here too so Base.metadata.create_all() (used by backend/tests/) creates
     # it on a from-scratch test DB. auth.py/main.py still read/write it via raw text()

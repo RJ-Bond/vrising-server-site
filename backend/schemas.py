@@ -58,6 +58,32 @@ class UserLogin(BaseModel):
     totp_code: Optional[str] = None
 
 
+class PluginRegister(BaseModel):
+    """Body for POST /api/plugin/register — sent by the BepInEx plugin's .register
+    in-game command. steam_id is the authoritative identity; character_name becomes
+    the site username."""
+    steam_id: str
+    character_name: str
+    password: str
+    server_num: int = 1
+
+    @field_validator("password")
+    @classmethod
+    def password_length(cls, v: str) -> str:
+        if len(v) < 6:
+            raise ValueError("Password must be at least 6 characters")
+        return v
+
+
+class PluginLogin(BaseModel):
+    """Body for POST /api/plugin/login — links steam_id to an existing site account
+    (e.g. one created via the website) after verifying username+password."""
+    steam_id: str
+    character_name: str
+    password: str
+    server_num: int = 1
+
+
 class UserOut(BaseModel):
     id: int
     username: str
