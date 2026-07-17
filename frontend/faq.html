@@ -9,9 +9,9 @@
   <meta name="description" content="Часто задаваемые вопросы по серверам V Rising на Just-Skill.Ru. Правила, подключение, помощь." />
     <!-- Open Graph -->
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="V RISING" />
+  <meta property="og:site_name" content="Just-Skill.Ru" />
   <meta property="og:title" content="V Rising — FAQ" />
-  <meta property="og:description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
+  <meta property="og:description" content="Часто задаваемые вопросы по серверам V Rising на Just-Skill.Ru. Правила, подключение, помощь." />
   <meta property="og:image" content="https://v.just-skill.ru/uploads/og-default.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -268,6 +268,24 @@ const FAQ = [
     a: 'Через Discord сервера (ссылка в шапке/подвале сайта) — это самый быстрый способ связаться с администрацией.',
   },
 ];
+
+// ── FAQPage structured data (schema.org) — content is static/known at load
+// time, so it's built once from the same FAQ array that renders the page. ──
+(function setFaqJsonLd() {
+  const stripTags = (html) => html.replace(/<[^>]+>/g, '').trim();
+  const el = document.createElement('script');
+  el.type = 'application/ld+json';
+  el.textContent = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQ.map((item) => ({
+      '@type': 'Question',
+      name: item.q,
+      acceptedAnswer: { '@type': 'Answer', text: stripTags(item.a) },
+    })),
+  });
+  document.head.appendChild(el);
+})();
 
 let _faqQ = '';
 

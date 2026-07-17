@@ -25,7 +25,8 @@ const _defaultMeta = {
   ogUrl: document.querySelector('meta[property="og:url"]')?.getAttribute('content') || '',
   twTitle: document.getElementById('meta-tw-title')?.getAttribute('content') || '',
   twDescription: document.getElementById('meta-tw-description')?.getAttribute('content') || '',
-  canonical: document.querySelector('link[rel="canonical"]')?.getAttribute('href') || ''
+  canonical: document.querySelector('link[rel="canonical"]')?.getAttribute('href') || '',
+  ogType: document.querySelector('meta[property="og:type"]')?.getAttribute('content') || 'website'
 };
 function resetArticleMeta() {
   document.title = _defaultMeta.title;
@@ -36,7 +37,36 @@ function resetArticleMeta() {
   setMeta('og:url', _defaultMeta.ogUrl);
   setMeta('twitter:title', _defaultMeta.twTitle);
   setMeta('twitter:description', _defaultMeta.twDescription);
+  setMeta('og:type', _defaultMeta.ogType);
   setCanonical(_defaultMeta.canonical);
+  _removeArticleJsonLd();
+}
+// NewsArticle structured data (Google News / rich-result eligibility) — the static
+// page only ships an Organization schema, so this is added while an article is open
+// and removed on close, mirroring the meta-tag swap above. Mirrored server-side for
+// crawlers in backend/main.py's /api/news-embed (they never run this JS).
+function _setArticleJsonLd(n, url, desc) {
+  let el = document.getElementById('article-jsonld');
+  if (!el) {
+    el = document.createElement('script');
+    el.type = 'application/ld+json';
+    el.id = 'article-jsonld';
+    document.head.appendChild(el);
+  }
+  el.textContent = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: n.title,
+    description: desc,
+    image: [n.thumbnail_url || (location.origin + '/uploads/og-default.png')],
+    datePublished: n.created_at,
+    dateModified: n.updated_at || n.created_at,
+    author: { '@type': 'Person', name: n.author.username },
+    mainEntityOfPage: url,
+  });
+}
+function _removeArticleJsonLd() {
+  document.getElementById('article-jsonld')?.remove();
 }
 
 // ── Scroll progress ────────────────────────────────────────────────────────
@@ -1320,9 +1350,17 @@ const _newsObserver = new IntersectionObserver(entries => {
 _newsObserver.observe(document.getElementById('news-sentinel'));
 
 let _modalSlug = '';
+let _modalTriggerEl = null; // element to restore focus to when the modal closes
 
 async function openNews(slug, highlightCommentId) {
   _modalSlug = slug;
+  // Only capture the trigger the first time (not already open) — otherwise
+  // clicking prev/next while browsing articles would overwrite it with the
+  // nav button itself, and focus would land there instead of the original
+  // card/link that opened the modal.
+  if (!document.getElementById('modal-bg').classList.contains('open')) {
+    _modalTriggerEl = document.activeElement;
+  }
   const _pns = new URLSearchParams(location.search);
   _pns.set('news', slug);
   _pns.delete('comment');
@@ -1354,7 +1392,9 @@ async function openNews(slug, highlightCommentId) {
     setMeta('og:url', _articleUrl);
     setMeta('twitter:title', n.title);
     setMeta('twitter:description', _articleDesc);
+    setMeta('og:type', 'article');
     setCanonical(_articleUrl);
+    _setArticleJsonLd(n, _articleUrl, _articleDesc);
 
     // ── Hero section ──────────────────────────────────────────────────────────
     const heroEl = document.getElementById('modal-hero');
@@ -1414,6 +1454,7 @@ async function openNews(slug, highlightCommentId) {
     modalBg.scrollTop = 0;  // reset scroll so a new article opens at the top,
                             // not wherever the previous one was left scrolled
     document.body.style.overflow = 'hidden';
+    document.getElementById('modal-box')?.focus(); // move focus into the dialog
     loadPoll(slug);
     loadComments(slug, 1, highlightCommentId);
     renderCommentForm(slug);
@@ -1450,11 +1491,13 @@ async function openNews(slug, highlightCommentId) {
     if (pw) pw.style.display = 'none';
     document.getElementById('modal-bg').classList.add('open');
     document.body.style.overflow = 'hidden';
+    document.getElementById('modal-box')?.focus(); // move focus into the dialog
     _updateModalNav();
   }
 }
 
 function closeModal() {
+  const wasOpen = document.getElementById('modal-bg').classList.contains('open');
   document.getElementById('modal-bg').classList.remove('open');
   document.body.style.overflow = '';
   _modalSlug = '';
@@ -1466,6 +1509,12 @@ function closeModal() {
   if (next) next.style.display = 'none';
   const scrollTopBtn = document.getElementById('modal-scrolltop');
   if (scrollTopBtn) scrollTopBtn.style.display = 'none';
+  // Return focus to whatever opened the modal (card/link/button), so keyboard
+  // and screen-reader users land back where they were instead of at <body>.
+  if (wasOpen && _modalTriggerEl && document.contains(_modalTriggerEl) && typeof _modalTriggerEl.focus === 'function') {
+    _modalTriggerEl.focus();
+  }
+  _modalTriggerEl = null;
 }
 
 function navigateModal(dir) {
@@ -1518,7 +1567,11 @@ function _buildTOC() {
   const content = document.getElementById('modal-content');
   const tocEl = document.getElementById('modal-toc');
   if (!content || !tocEl) return;
-  const heads = content.querySelectorAll('h2, h3');
+  // Quill's toolbar (admin.html) offers H1/H2/H3, so admin-authored content
+  // can legitimately contain any of the three — h1 used to be silently
+  // dropped from the TOC here, which meant an article using top-level H1
+  // subheadings got an incomplete table of contents.
+  const heads = content.querySelectorAll('h1, h2, h3');
   if (heads.length < 2) { tocEl.innerHTML = ''; return; }
   const items = [];
   heads.forEach((h, i) => {
@@ -1714,15 +1767,44 @@ function _scrollModalToTop() {
 }
 
 document.getElementById('modal-bg').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+
+// Elements considered part of the open news modal for focus trapping: every
+// focusable element inside the dialog box, plus the prev/next/scroll-top
+// buttons — those render as DOM siblings of #modal-bg (fixed-position nav
+// arrows) but are visually and functionally part of the modal UI while it's
+// open, so excluding them would make them keyboard-unreachable while visible.
+function _modalFocusables() {
+  const selector = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  const box = document.getElementById('modal-box');
+  const inBox = box ? Array.from(box.querySelectorAll(selector)) : [];
+  const extra = ['modal-prev', 'modal-next', 'modal-scrolltop'].map(id => document.getElementById(id)).filter(Boolean);
+  // offsetParent is spec'd to be null for position:fixed elements (modal-prev/next/
+  // scrolltop all are) regardless of whether they're actually visible, so it can't be
+  // used as the visibility check here — offsetWidth/offsetHeight reflect the rendered
+  // box size for any positioning scheme and correctly go 0x0 when display:none.
+  return [...inBox, ...extra].filter(el => el.offsetWidth > 0 || el.offsetHeight > 0);
+}
+
+function _trapModalFocus(e) {
+  const list = _modalFocusables();
+  if (!list.length) return;
+  const first = list[0], last = list[list.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}
+
 document.addEventListener('keydown', e => {
+  const bg = document.getElementById('modal-bg');
+  const isOpen = !!bg && bg.classList.contains('open');
   if (e.key === 'Escape') {
     if (document.getElementById('img-lightbox').style.display === 'flex') { closeLightbox(); return; }
-    closeModal();
+    if (isOpen) closeModal();
+    return;
   }
-  const bg = document.getElementById('modal-bg');
-  if (!bg || !bg.classList.contains('open')) return;
+  if (!isOpen) return;
   if (e.key === 'ArrowLeft') navigateModal(-1);
   if (e.key === 'ArrowRight') navigateModal(1);
+  if (e.key === 'Tab') _trapModalFocus(e);
 });
 
 // ── Comments ────────────────────────────────────────────────────────────────

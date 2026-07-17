@@ -31,7 +31,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
   <link rel="stylesheet" href="/theme.css?v=1" />
-  <link rel="stylesheet" href="/index.css?v=3" />
+  <link rel="stylesheet" href="/index.css?v=4" />
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#06000f">
   <meta name="mobile-web-app-capable" content="yes">
@@ -567,7 +567,7 @@
 
 <!-- ══ MODAL ═════════════════════════════════════════════════════════════════ -->
 <div id="modal-bg" class="modal-bg" onclick="if(event.target===this)closeModal()">
-  <div class="modal-box">
+  <div class="modal-box" id="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-mini-title" tabindex="-1">
     <!-- Reading progress bar -->
     <div id="read-progress-bar" style="position:sticky;top:0;left:0;right:0;height:3px;background:rgba(110,0,150,0.15);z-index:10;">
       <div id="read-progress-fill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--crimson),rgba(120,0,200,0.8));transition:width .1s linear;border-radius:0 2px 2px 0;"></div>
@@ -691,7 +691,7 @@
 
 <script src="/purify.min.js"></script>
 <script src="/common.js?v=9"></script>
-<script src="/index.js?v=8"></script>
+<script src="/index.js?v=10"></script>
 <div id="ow-hover-card"></div>
 
 <!-- ══ NEWS EDITOR MODAL ══════════════════════════════════════════════════════ -->

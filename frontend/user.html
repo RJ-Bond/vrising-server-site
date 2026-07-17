@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="V RISING" />
+  <meta property="og:site_name" content="Just-Skill.Ru" />
   <meta property="og:title" content="V Rising — Профиль игрока" />
-  <meta property="og:description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
+  <meta property="og:description" content="Профиль игрока V Rising на Just-Skill.Ru — статистика, время в игре, клан и достижения." />
   <meta property="og:image" content="https://v.just-skill.ru/uploads/og-default.png" />
   <meta property="og:url" content="https://v.just-skill.ru/user.html" />
   <link rel="canonical" href="https://v.just-skill.ru/user.html" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="description" content="Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила." />
+  <meta name="description" content="Профиль игрока V Rising на Just-Skill.Ru — статистика, время в игре, клан и достижения." />
   <title>V Rising — Профиль игрока</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -388,6 +388,12 @@ async function loadUser(){
     document.querySelector('link[rel="canonical"]')?.setAttribute('href', _selfUrl);
     document.querySelector('meta[property="og:url"]')?.setAttribute('content', _selfUrl);
     document.querySelector('meta[property="og:title"]')?.setAttribute('content', `V Rising — ${u.username}`);
+    const _descBits=[];
+    if (u.clan) _descBits.push(`клан «${u.clan.name}»`);
+    _descBits.push(u.total_seconds>0 ? `${fmtSec(u.total_seconds)} в игре` : 'статистика и достижения');
+    const _selfDesc=`Профиль игрока ${u.username} на Just-Skill.Ru — ${_descBits.join(', ')}.`;
+    document.querySelector('meta[name="description"]')?.setAttribute('content', _selfDesc);
+    document.querySelector('meta[property="og:description"]')?.setAttribute('content', _selfDesc);
     const av=document.getElementById('user-avatar');
     if(u.avatar_url){const img=document.createElement('img');img.src=u.avatar_url;av.appendChild(img);}
     else{av.textContent=u.username.charAt(0).toUpperCase();}

@@ -260,6 +260,10 @@
       transition:transform .25s cubic-bezier(.22,.8,.32,1);
     }
     .modal-bg.open .modal-box { transform:translateY(0) scale(1); }
+    /* Dialog container is focused programmatically on open (focus management,
+       not tab traversal) — the modal's own border/shadow already signal its
+       boundary, so the default focus ring here is redundant noise. */
+    .modal-box:focus { outline:none; }
     .modal-top-bar {
       position:sticky; top:0; z-index:20;
       display:flex; align-items:center; justify-content:space-between; gap:.4rem;

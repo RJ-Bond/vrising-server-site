@@ -33,6 +33,10 @@ logger = logging.getLogger(__name__)
 UPLOAD_DIR = Path("/data/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+# Repo root is bind-mounted read/write at /opt/vrising-site (see docker-compose.yml) for
+# the deploy/update endpoints; reused here to serve frontend/index.html for news-embed.
+_INDEX_HTML_PATH = "/opt/vrising-site/frontend/index.html"
+
 _totp_pending: dict[int, str] = {}
 
 
@@ -513,19 +517,11 @@ async def sitemap(request: Request, db: AsyncSession = Depends(get_db)):
         f"  <url><loc>{base}/map.html</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>",
         f"  <url><loc>{base}/faq.html</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>",
         f"  <url><loc>{base}/bans.html</loc><changefreq>weekly</changefreq><priority>0.4</priority></url>",
+        f"  <url><loc>{base}/events.html</loc><changefreq>daily</changefreq><priority>0.6</priority></url>",
     ]
     for slug, updated_at in slugs:
         lastmod = updated_at.strftime("%Y-%m-%d") if updated_at else ""
         urls.append(f"  <url><loc>{base}/?news={slug}</loc><lastmod>{lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>")
-    # Add events URLs
-    try:
-        events_res = await db.execute(
-            select(Event.id).where(Event.status != "cancelled").order_by(Event.start_date.desc())
-        )
-        for (ev_id,) in events_res.all():
-            urls.append(f"  <url><loc>{base}/events.html#{ev_id}</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>")
-    except Exception:
-        pass
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     xml += "\n".join(urls) + "\n</urlset>"
     return Response(content=xml, media_type="application/xml")
@@ -583,6 +579,93 @@ async def rss_feed(db: AsyncSession = Depends(get_db)):
   </channel>
 </rss>"""
     return Response(content=rss, media_type="application/rss+xml; charset=utf-8")
+
+
+_NEWS_EMBED_META_PATTERNS = [
+    (re.compile(r'(<title id="page-title">).*?(</title>)'), "title"),
+    (re.compile(r'(<meta id="meta-description"[^>]*content=")[^"]*(")'), "desc"),
+    (re.compile(r'(<link rel="canonical" href=")[^"]*(")'), "url"),
+    (re.compile(r'(<meta property="og:url" content=")[^"]*(")'), "url"),
+    (re.compile(r'(<meta id="meta-og-title"[^>]*content=")[^"]*(")'), "title"),
+    (re.compile(r'(<meta id="meta-og-description"[^>]*content=")[^"]*(")'), "desc"),
+    (re.compile(r'(<meta property="og:image" content=")[^"]*(")'), "image"),
+    (re.compile(r'(<meta property="og:type" content=")[^"]*(")'), "article_type"),
+    (re.compile(r'(<meta id="meta-tw-title"[^>]*content=")[^"]*(")'), "title"),
+    (re.compile(r'(<meta id="meta-tw-description"[^>]*content=")[^"]*(")'), "desc"),
+]
+
+
+@app.get("/api/news-embed")
+async def news_embed(slug: str, db: AsyncSession = Depends(get_db)):
+    """Server-rendered <head> meta for one article, for crawlers that don't run JS
+    (Discord/Telegram/VK/Twitter link-unfurlers, most search bots) — they never see
+    index.js's client-side setMeta() call, so a shared article link previously showed
+    the generic homepage title/description/image no matter which article it was.
+    nginx (see nginx-ssl.conf's $is_crawler_ua map) routes just those user-agents hitting
+    "/?news=<slug>" here instead of the static index.html; everyone else still gets the
+    plain SPA. Re-uses frontend/index.html itself (read from the repo mount at
+    /opt/vrising-site) so layout/styling never drifts out of sync — only the meta tag
+    values are swapped before serving.
+    """
+    try:
+        with open(_INDEX_HTML_PATH, "r", encoding="utf-8") as f:
+            page = f.read()
+    except OSError:
+        raise HTTPException(status_code=404, detail="index.html not found")
+
+    result = await db.execute(
+        select(News).options(selectinload(News.author)).where(News.slug == slug, News.published == True)
+    )
+    news = result.scalar_one_or_none()
+    if news is None:
+        return Response(content=page, media_type="text/html; charset=utf-8")
+
+    base_url = "https://v.just-skill.ru"
+    try:
+        su_res = await db.execute(select(Setting).where(Setting.key == "https_domain"))
+        su = su_res.scalar_one_or_none()
+        if su and su.value.strip():
+            base_url = f"https://{su.value.strip()}"
+    except Exception:
+        pass
+
+    image = news.thumbnail_url or f"{base_url}/uploads/og-default.png"
+    if image.startswith("/"):
+        image = base_url + image
+    plain_desc = re.sub(r"<[^>]+>", "", news.summary or news.content or "").strip()[:160]
+
+    values = {
+        "title": html.escape(f"{news.title} — Just-Skill.Ru"),
+        "desc": html.escape(plain_desc),
+        "url": html.escape(f"{base_url}/?news={news.slug}"),
+        "image": html.escape(image),
+        "article_type": "article",
+    }
+    for pattern, key in _NEWS_EMBED_META_PATTERNS:
+        page = pattern.sub(lambda m, v=values[key]: m.group(1) + v + m.group(2), page, count=1)
+
+    # NewsArticle structured data — makes the article eligible for Google News /
+    # rich-result treatment; the static page only ever carries an Organization schema.
+    def _iso(dt):
+        if dt is None:
+            return None
+        return (dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt).isoformat()
+
+    jsonld = {
+        "@context": "https://schema.org",
+        "@type": "NewsArticle",
+        "headline": news.title,
+        "description": plain_desc,
+        "image": [image],
+        "datePublished": _iso(news.created_at),
+        "dateModified": _iso(news.updated_at) or _iso(news.created_at),
+        "author": {"@type": "Person", "name": news.author.username},
+        "mainEntityOfPage": f"{base_url}/?news={news.slug}",
+    }
+    jsonld_tag = f'<script type="application/ld+json">{json.dumps(jsonld, ensure_ascii=False)}</script>\n</head>'
+    page = page.replace("</head>", jsonld_tag, 1)
+
+    return Response(content=page, media_type="text/html; charset=utf-8")
 
 
 # ─── Setup ──────────────────────────────────────────────────────────────────

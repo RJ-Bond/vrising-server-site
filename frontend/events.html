@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="V RISING" />
+  <meta property="og:site_name" content="Just-Skill.Ru" />
   <meta property="og:title" content="V Rising — События" />
-  <meta property="og:description" content="Официальный сайт игрового сервера V Rising — события, турниры, PvP и PvE активности." />
+  <meta property="og:description" content="События и турниры сервера V Rising — участвуйте в PvP и PvE активностях." />
   <meta property="og:image" content="https://v.just-skill.ru/uploads/og-default.png" />
   <meta property="og:url" content="https://v.just-skill.ru/events.html" />
   <link rel="canonical" href="https://v.just-skill.ru/events.html" />
@@ -194,12 +194,43 @@ function startCountdowns() {
   });
 }
 
+// ── Event structured data (schema.org) — mirrors the NewsArticle JSON-LD
+// pattern used for news articles (see _setArticleJsonLd in index.js), but
+// for the real, currently-listed events rather than placeholder data. ──
+function setEventsJsonLd(events) {
+  const id = 'events-jsonld';
+  document.getElementById(id)?.remove();
+  const listable = (events || []).filter(e => e.status !== 'cancelled');
+  if (!listable.length) return;
+  const el = document.createElement('script');
+  el.type = 'application/ld+json';
+  el.id = id;
+  el.textContent = JSON.stringify(listable.map(ev => ({
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: ev.title,
+    description: ev.description || ev.title,
+    startDate: ev.start_date,
+    endDate: ev.end_date || undefined,
+    // Cancelled events are filtered out above; everything remaining ran/will
+    // run as scheduled — schema.org's eventStatus enum has no "ended" value.
+    eventStatus: 'https://schema.org/EventScheduled',
+    eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
+    location: { '@type': 'VirtualLocation', url: `${location.origin}/events.html#${ev.id}` },
+    image: ev.cover_url || `${location.origin}/uploads/og-default.png`,
+    url: `${location.origin}/events.html#${ev.id}`,
+    organizer: { '@type': 'Organization', name: 'Just-Skill.Ru', url: 'https://v.just-skill.ru' },
+  })));
+  document.head.appendChild(el);
+}
+
 async function loadEvents() {
   const grid = document.getElementById('events-grid');
   try {
     const d = await fetch(`${API}/events?per_page=50`).then(r=>r.json());
     _allEvents = d.items || [];
     renderEvents();
+    setEventsJsonLd(_allEvents);
   } catch {
     if (grid) grid.innerHTML = `
       <div style="grid-column:1/-1;text-align:center;padding:3.5rem 1rem;">
