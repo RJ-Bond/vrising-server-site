@@ -84,6 +84,25 @@ class PluginLogin(BaseModel):
     server_num: int = 1
 
 
+class PluginHeartbeatIn(BaseModel):
+    """Body for POST /api/plugin/heartbeat — sent periodically (~every 60s) by the
+    BepInEx plugin so the admin panel can show whether it's actually talking to the site."""
+    server_num: int = 1
+    server_name: Optional[str] = None
+    plugin_version: Optional[str] = None
+    player_count: int = 0
+
+
+class PluginHeartbeatOut(BaseModel):
+    server_num: int
+    server_name: Optional[str] = None
+    plugin_version: Optional[str] = None
+    player_count: int = 0
+    last_seen_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class UserOut(BaseModel):
     id: int
     username: str

@@ -61,7 +61,7 @@ from sqlalchemy import select, func, delete, text, or_, update, and_
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat
 from .auth import (
     verify_password,
     get_password_hash,
@@ -116,6 +116,8 @@ from .schemas import (
     PollOut,
     PluginRegister,
     PluginLogin,
+    PluginHeartbeatIn,
+    PluginHeartbeatOut,
     strip_html_tags,
 )
 
@@ -373,6 +375,7 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE users ADD COLUMN bio VARCHAR(160) DEFAULT NULL",
             "ALTER TABLE users ADD COLUMN steam_id VARCHAR(32) DEFAULT NULL",
             "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_steam_id ON users(steam_id)",
+            "CREATE TABLE IF NOT EXISTS plugin_heartbeats (server_num INTEGER PRIMARY KEY, server_name VARCHAR(128), plugin_version VARCHAR(32), player_count INTEGER NOT NULL DEFAULT 0, last_seen_at DATETIME NOT NULL)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -939,6 +942,40 @@ async def plugin_login(
         user.steam_id = body.steam_id
         await db.commit()
     return {"success": True, "username": user.username}
+
+
+@app.post("/api/plugin/heartbeat")
+@limiter.limit("120/minute")
+async def plugin_heartbeat(
+    request: Request,
+    body: PluginHeartbeatIn,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Sent periodically (~every 60s) by the plugin so the admin panel can show a
+    connection-status pill (see GET /api/admin/plugin-status). Upserts the single
+    row for this server_num — no history is kept, just the latest snapshot."""
+    result = await db.execute(select(PluginHeartbeat).where(PluginHeartbeat.server_num == body.server_num))
+    hb = result.scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    if hb is None:
+        hb = PluginHeartbeat(server_num=body.server_num)
+        db.add(hb)
+    hb.server_name = body.server_name
+    hb.plugin_version = body.plugin_version
+    hb.player_count = body.player_count
+    hb.last_seen_at = now
+    await db.commit()
+    return {"success": True}
+
+
+@app.get("/api/admin/plugin-status", response_model=list[PluginHeartbeatOut])
+async def get_plugin_status(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(select(PluginHeartbeat).order_by(PluginHeartbeat.server_num))
+    return [PluginHeartbeatOut.model_validate(h) for h in result.scalars().all()]
 
 
 # ─── Who's online ─────────────────────────────────────────────────────────────

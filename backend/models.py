@@ -316,3 +316,13 @@ class EventParticipant(Base):
 
     event = relationship("Event", back_populates="participants")
     user = relationship("User", lazy="selectin")
+
+
+class PluginHeartbeat(Base):
+    __tablename__ = "plugin_heartbeats"
+
+    server_num = Column(Integer, primary_key=True)
+    server_name = Column(String(128), nullable=True)
+    plugin_version = Column(String(32), nullable=True)
+    player_count = Column(Integer, nullable=False, default=0)
+    last_seen_at = Column(DateTime, nullable=False)

@@ -1446,6 +1446,12 @@
             </div>
             <p class="s-desc">Должен совпадать со значением ApiKey в BepInEx/config/rjbond.vrising.bepinexplugin.cfg на игровом сервере.</p>
           </div>
+          <div class="s-field">
+            <label>Статус подключения</label>
+            <div id="plugin-status-container" style="display:flex;flex-direction:column;gap:.4rem;">
+              <div style="font-size:.72rem;color:var(--muted);">Загрузка…</div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -2054,7 +2060,7 @@ function showSection(name) {
     _target.style.animation = '';
   }
   if (name === 'editor')   document.getElementById('btn-news').className = 'sidebar-btn active';
-  if (name === 'settings') { loadSettings(); loadRules(); loadMaintenanceStatuses(); loadMaintenanceHistory(); }
+  if (name === 'settings') { loadSettings(); loadRules(); loadMaintenanceStatuses(); loadMaintenanceHistory(); loadPluginStatus(); }
   if (name === 'users')    loadUsers();
   if (name === 'news')     loadAdminNews(adminNewsPage);
   if (name === 'dashboard')  loadDashboard();
@@ -2434,6 +2440,33 @@ async function loadSettings() {
     badge.textContent = 'HTTPS'; badge.className = 's-status-badge s-status-https';
   }
   updateEventPreview();
+}
+
+async function loadPluginStatus() {
+  const container = document.getElementById('plugin-status-container');
+  if (!container) return;
+  try {
+    const res = await fetch(`${API}/admin/plugin-status`, { credentials: 'include', headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const rows = await res.json();
+    if (!rows.length) {
+      container.innerHTML = '<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(200,0,42,.2);color:#f87171;border:1px solid rgba(200,0,42,.4);width:fit-content;">🔴 Не подключён</span>';
+      return;
+    }
+    const now = Date.now();
+    container.innerHTML = rows.map(hb => {
+      const lastSeen = new Date(hb.last_seen_at + (hb.last_seen_at.endsWith('Z') ? '' : 'Z')).getTime();
+      const secAgo = Math.floor((now - lastSeen) / 1000);
+      const stale = !isFinite(secAgo) || secAgo > 120;
+      const rel = secAgo < 10 ? 'только что' : secAgo < 60 ? `${secAgo} сек.` : secAgo < 3600 ? `${Math.floor(secAgo / 60)} мин.` : `${Math.floor(secAgo / 3600)} ч.`;
+      if (stale) {
+        return `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(200,0,42,.2);color:#f87171;border:1px solid rgba(200,0,42,.4);width:fit-content;">🔴 Сервер ${hb.server_num}: не подключён</span>`;
+      }
+      const name = hb.server_name ? esc(hb.server_name) : `Сервер ${hb.server_num}`;
+      const ver = hb.plugin_version ? `версия ${esc(hb.plugin_version)}, ` : '';
+      return `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(0,150,50,.15);color:#86efac;border:1px solid rgba(0,180,60,.3);width:fit-content;">🟢 Подключён — ${name}, ${ver}${hb.player_count} игроков онлайн, обновлено ${rel} назад</span>`;
+    }).join('');
+  } catch { container.innerHTML = '<span style="font-size:.65rem;color:var(--muted);">Ошибка загрузки статуса</span>'; }
 }
 
 async function loadMaintenanceStatuses() {
