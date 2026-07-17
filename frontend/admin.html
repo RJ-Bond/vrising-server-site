@@ -1426,6 +1426,29 @@
         </div>
       </div>
 
+      <!-- Game Plugin Integration -->
+      <div class="s-row" style="margin-top:1.25rem;">
+        <div class="s-card s-card-blue">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(0,60,140,.18);border:1px solid rgba(0,120,220,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h.01M15 9h.01M9.5 15a3.5 3.5 0 0 0 5 0"/></svg>
+            </div>
+            <div>
+              <h2>Игровой плагин</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Ключ для .register/.login из игры (vrising-bepinex-plugin)</p>
+            </div>
+          </div>
+          <div class="s-field">
+            <label>Plugin API Key</label>
+            <div class="s-field-row">
+              <input id="setting-plugin_api_key" type="password" class="dark-input" placeholder="общий секрет с плагином">
+              <button class="s-save-btn" onclick="saveSetting('plugin_api_key')">Сохранить</button>
+            </div>
+            <p class="s-desc">Должен совпадать со значением ApiKey в BepInEx/config/rjbond.vrising.bepinexplugin.cfg на игровом сервере.</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Rules editor -->
       <div class="s-row" style="margin-top:1.25rem;">
         <div class="s-card s-card-gold">
@@ -2378,7 +2401,7 @@ async function submitEditor() {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
-const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','hero_logo_url','hero_subtitle','favicon_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time','maintenance_start_time','maintenance_fallback_image'];
+const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','hero_logo_url','hero_subtitle','favicon_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','plugin_api_key','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time','maintenance_start_time','maintenance_fallback_image'];
 let _settingsBaseline = {};
 
 async function loadSettings() {
