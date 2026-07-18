@@ -1744,6 +1744,36 @@
         </div>
       </div>
 
+      <!-- Scheduled server restart -->
+      <div class="s-row" style="margin-top:1.25rem;">
+        <div class="s-card s-card-blue">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(0,60,140,.18);border:1px solid rgba(0,120,220,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.8"><path d="M21.5 2v6h-6M2.5 22v-6h6"/><path d="M2 11.5a10 10 0 0117.5-6.5L21.5 8M22 12.5a10 10 0 01-17.5 6.5L2.5 16"/></svg>
+            </div>
+            <div>
+              <h2>Рестарт сервера</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Плагин опрашивает раз в минуту, транслирует обратный отсчёт игрокам и выполняет рестарт по истечении таймера</p>
+            </div>
+          </div>
+
+          <div id="restart-pending-box" style="display:none;margin-bottom:.85rem;background:#0a0a0f;border:1px solid rgba(200,0,42,.35);border-radius:.5rem;padding:.65rem .85rem;">
+            <div style="font-size:.7rem;color:var(--muted);margin-bottom:.2rem;">Рестарт запланирован</div>
+            <div id="restart-countdown" style="font-family:'Consolas','Courier New',monospace;font-size:1.3rem;color:#f87171;font-weight:600;">--:--</div>
+          </div>
+
+          <div class="s-field" style="margin-bottom:0;">
+            <label>Через сколько минут</label>
+            <div class="s-field-row">
+              <input id="restart-minutes" type="number" min="1" value="5" class="dark-input" style="max-width:100px;">
+              <button id="restart-schedule-btn" class="s-save-btn" onclick="scheduleRestart()">Запланировать рестарт</button>
+              <button id="restart-cancel-btn" class="btn-ghost" style="display:none;" onclick="cancelRestart()">Отменить рестарт</button>
+            </div>
+            <p class="s-desc">Игроки увидят обратный отсчёт в игровом чате каждую минуту.</p>
+          </div>
+        </div>
+      </div>
+
       </div> <!-- /#plugin-server-content -->
 
       <!-- Linked game accounts (global — a site account links one SteamID, not tied to a server) -->
@@ -2697,6 +2727,7 @@ async function loadPluginSection() {
   loadAnnouncements();
   loadMessageTemplates();
   loadServerApiKey();
+  loadRestartStatus();
 }
 
 async function loadPluginStatus() {
@@ -2744,6 +2775,7 @@ function selectPluginServer(serverNum) {
   loadAnnouncements();
   loadMessageTemplates();
   loadServerApiKey();
+  loadRestartStatus();
 }
 
 function renderPluginStatusPill() {
@@ -3118,6 +3150,85 @@ async function saveServerApiKey() {
     });
     if (res.ok) adminToast('Сохранено', 'success');
     else showToast('Ошибка сохранения', 'error');
+  } catch { showToast('Ошибка сети', 'error'); }
+}
+
+// ─── Scheduled server restart (GET/POST/DELETE /api/admin/servers/{server_num}/restart) ──
+// restart_at is fetched once (on tab load/switch) and the on-screen countdown is then just
+// recomputed client-side every second from that timestamp — no per-second polling. Shares
+// the underlying ScheduledRestart row with POST /api/plugin/schedule-restart /
+// cancel-restart, so a restart set via an in-game admin command also shows up here.
+let _restartAt = null;        // Date | null, for the currently selected _pluginActiveServer
+let _restartTickTimer = null;
+
+async function loadRestartStatus() {
+  if (_restartTickTimer) { clearInterval(_restartTickTimer); _restartTickTimer = null; }
+  _restartAt = null;
+  if (_pluginActiveServer == null) { renderRestartBox(); return; }
+  try {
+    const res = await fetch(`${API}/admin/servers/${_pluginActiveServer}/restart`, { credentials: 'include', headers: authH() });
+    if (!res.ok) { handleAuth(res); renderRestartBox(); return; }
+    const d = await res.json();
+    _restartAt = d.restart_at ? new Date(d.restart_at) : null;
+  } catch { /* leave as unscheduled on network error */ }
+  renderRestartBox();
+  if (_restartAt) _restartTickTimer = setInterval(tickRestartCountdown, 1000);
+}
+
+function renderRestartBox() {
+  const box = document.getElementById('restart-pending-box');
+  const cancelBtn = document.getElementById('restart-cancel-btn');
+  if (!box || !cancelBtn) return;
+  if (_restartAt) {
+    box.style.display = '';
+    cancelBtn.style.display = '';
+    tickRestartCountdown();
+  } else {
+    box.style.display = 'none';
+    cancelBtn.style.display = 'none';
+  }
+}
+
+function tickRestartCountdown() {
+  const el = document.getElementById('restart-countdown');
+  if (!el) return;
+  if (!_restartAt) { el.textContent = '--:--'; return; }
+  const remainingSec = Math.max(0, Math.round((_restartAt.getTime() - Date.now()) / 1000));
+  const m = Math.floor(remainingSec / 60);
+  const s = remainingSec % 60;
+  el.textContent = `${m}:${String(s).padStart(2, '0')}`;
+  if (remainingSec <= 0 && _restartTickTimer) { clearInterval(_restartTickTimer); _restartTickTimer = null; }
+}
+
+async function scheduleRestart() {
+  if (_pluginActiveServer == null) return;
+  const minutes = parseInt(document.getElementById('restart-minutes')?.value, 10);
+  if (!minutes || minutes < 1) { showToast('Укажите минуты (не менее 1)', 'error'); return; }
+  try {
+    const res = await fetch(`${API}/admin/servers/${_pluginActiveServer}/restart`, {
+      method: 'POST', credentials: 'include', headers: authH(), body: JSON.stringify({ minutes }),
+    });
+    if (!res.ok) { showToast('Ошибка планирования рестарта', 'error'); return; }
+    const d = await res.json();
+    if (_restartTickTimer) { clearInterval(_restartTickTimer); _restartTickTimer = null; }
+    _restartAt = d.restart_at ? new Date(d.restart_at) : null;
+    renderRestartBox();
+    if (_restartAt) _restartTickTimer = setInterval(tickRestartCountdown, 1000);
+    adminToast('Рестарт запланирован', 'success');
+  } catch { showToast('Ошибка сети', 'error'); }
+}
+
+async function cancelRestart() {
+  if (_pluginActiveServer == null) return;
+  try {
+    const res = await fetch(`${API}/admin/servers/${_pluginActiveServer}/restart`, {
+      method: 'DELETE', credentials: 'include', headers: authH(),
+    });
+    if (!res.ok) { showToast('Ошибка отмены рестарта', 'error'); return; }
+    if (_restartTickTimer) { clearInterval(_restartTickTimer); _restartTickTimer = null; }
+    _restartAt = null;
+    renderRestartBox();
+    adminToast('Рестарт отменён', 'success');
   } catch { showToast('Ошибка сети', 'error'); }
 }
 

@@ -401,3 +401,18 @@ class ServerApiKey(Base):
     server_num = Column(Integer, primary_key=True)
     api_key = Column(String(128), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class ScheduledRestart(Base):
+    """Per-server pending scheduled restart — one row per server_num, upserted via
+    POST /api/plugin/schedule-restart (in-game admin chat command) or the admin panel's
+    POST /api/admin/servers/{server_num}/restart. The plugin polls
+    GET /api/plugin/restart-status?server_num=N (same cadence as its heartbeat) to know
+    when to start broadcasting a countdown and when to execute the actual restart;
+    restart_at is naive UTC (this repo's usual DateTime convention) and is cleared back
+    to None (row kept, not deleted) rather than deleted, both when an admin cancels a
+    pending restart and by the plugin itself right after it executes one."""
+    __tablename__ = "scheduled_restarts"
+
+    server_num = Column(Integer, primary_key=True)
+    restart_at = Column(DateTime, nullable=True)

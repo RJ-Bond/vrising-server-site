@@ -107,6 +107,21 @@ class PluginHeartbeatIn(BaseModel):
     player_count: int = 0
 
 
+class PluginScheduleRestartIn(BaseModel):
+    """Body for POST /api/plugin/schedule-restart — e.g. from an in-game admin chat
+    command ("restart in N minutes"). Overwrites any previously scheduled restart for
+    this server_num rather than stacking."""
+    server_num: int = 1
+    minutes: int
+
+
+class PluginCancelRestartIn(BaseModel):
+    """Body for POST /api/plugin/cancel-restart — used BOTH when an admin cancels a
+    pending restart, AND by the plugin itself right after it executes a restart
+    (cleanup); idempotent either way, no distinction needed server-side."""
+    server_num: int = 1
+
+
 class PluginHeartbeatOut(BaseModel):
     server_num: int
     server_name: Optional[str] = None

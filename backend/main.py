@@ -49,6 +49,17 @@ def _fmt_dt(dt: datetime | None) -> str | None:
     return dt.isoformat()
 
 
+def _fmt_dt_z(dt: datetime | None) -> str | None:
+    """Like _fmt_dt, but with a trailing "Z" instead of a "+00:00" offset — used for the
+    scheduled-restart endpoints specifically so the C# plugin can unambiguously
+    DateTime.Parse the value as UTC without needing DateTimeOffset handling."""
+    if dt is None:
+        return None
+    if dt.tzinfo is not None:
+        dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return dt.isoformat() + "Z"
+
+
 def _utc_ts(dt: datetime) -> float:
     """Unix epoch for a DB datetime. SQLite drops tzinfo, so a naive value must be
     treated as UTC — otherwise .timestamp() assumes the server's local zone and
@@ -61,7 +72,7 @@ from sqlalchemy import select, func, delete, text, or_, update, and_
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate, ServerApiKey
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate, ServerApiKey, ScheduledRestart
 from .auth import (
     verify_password,
     get_password_hash,
@@ -128,6 +139,8 @@ from .schemas import (
     ServerMessageTemplateUpdate,
     ServerApiKeyOut,
     ServerApiKeyUpdate,
+    PluginScheduleRestartIn,
+    PluginCancelRestartIn,
     LinkedAccountOut,
     strip_html_tags,
 )
@@ -398,6 +411,7 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE announcements ADD COLUMN server_num INTEGER NOT NULL DEFAULT 1",
             "CREATE TABLE IF NOT EXISTS server_message_templates (server_num INTEGER PRIMARY KEY, connect_template TEXT, disconnect_template TEXT, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS server_api_keys (server_num INTEGER PRIMARY KEY, api_key VARCHAR(128) NOT NULL, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS scheduled_restarts (server_num INTEGER PRIMARY KEY, restart_at DATETIME)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -1270,6 +1284,81 @@ async def plugin_get_message_templates(
     )
 
 
+# ─── Scheduled server restart ──────────────────────────────────────────────────
+# An admin sets "restart in N minutes" either from the site admin panel (POST/DELETE
+# /api/admin/servers/{server_num}/restart, below in the admin section) or, separately,
+# from an in-game admin chat command that hits the plugin-facing endpoints here — both
+# paths share the ScheduledRestart row and the _schedule_restart/_cancel_restart helpers
+# below so they can't get out of sync. The plugin polls GET .../restart-status (same
+# cadence as its heartbeat) to know when to start broadcasting a countdown to players and
+# when to actually execute the restart; it is expected to POST cancel-restart itself right
+# after doing so, as cleanup — this endpoint makes no distinction between that call and an
+# admin explicitly cancelling a pending restart.
+
+async def _schedule_restart(db: AsyncSession, server_num: int, minutes: int) -> datetime:
+    if minutes < 1:
+        raise HTTPException(status_code=400, detail="invalid_minutes")
+    restart_at = datetime.utcnow() + timedelta(minutes=minutes)
+    result = await db.execute(select(ScheduledRestart).where(ScheduledRestart.server_num == server_num))
+    row = result.scalar_one_or_none()
+    if row is None:
+        row = ScheduledRestart(server_num=server_num)
+        db.add(row)
+    row.restart_at = restart_at
+    await db.commit()
+    return restart_at
+
+
+async def _cancel_restart(db: AsyncSession, server_num: int) -> None:
+    result = await db.execute(select(ScheduledRestart).where(ScheduledRestart.server_num == server_num))
+    row = result.scalar_one_or_none()
+    if row is not None and row.restart_at is not None:
+        row.restart_at = None
+        await db.commit()
+
+
+@app.get("/api/plugin/restart-status")
+@limiter.limit("120/minute")
+async def plugin_restart_status(
+    request: Request,
+    server_num: int = Query(default=1),
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Polled by the plugin (same cadence as its heartbeat, ~every 60s). Response shape:
+    {"restart_at": "<ISO-8601 UTC, 'Z' suffix>" | null} — null means no restart pending."""
+    result = await db.execute(select(ScheduledRestart).where(ScheduledRestart.server_num == server_num))
+    row = result.scalar_one_or_none()
+    return {"restart_at": _fmt_dt_z(row.restart_at if row else None)}
+
+
+@app.post("/api/plugin/schedule-restart")
+@limiter.limit("30/minute")
+async def plugin_schedule_restart(
+    request: Request,
+    body: PluginScheduleRestartIn,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Backs an in-game admin chat command (e.g. "restart in 10 minutes"). Overwrites
+    any previously scheduled restart for body.server_num rather than stacking."""
+    restart_at = await _schedule_restart(db, body.server_num, body.minutes)
+    return {"restart_at": _fmt_dt_z(restart_at)}
+
+
+@app.post("/api/plugin/cancel-restart")
+@limiter.limit("30/minute")
+async def plugin_cancel_restart(
+    request: Request,
+    body: PluginCancelRestartIn,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Idempotent — 200 with no error whether or not a restart was actually pending."""
+    await _cancel_restart(db, body.server_num)
+    return {"success": True}
+
+
 @app.get("/api/admin/plugin-status", response_model=list[PluginHeartbeatOut])
 async def get_plugin_status(
     db: AsyncSession = Depends(get_db),
@@ -1500,6 +1589,53 @@ async def update_server_api_key(
     await _audit(db, current_user.id, "server_api_key.update", target_type="server_api_key", target_id=server_num)
     await db.commit()
     return ServerApiKeyOut(api_key=value)
+
+
+# ─── Scheduled server restart (admin) ──────────────────────────────────────────
+# Admin-panel counterpart to POST /api/plugin/schedule-restart / cancel-restart above —
+# shares the same ScheduledRestart row and _schedule_restart/_cancel_restart helpers so
+# the site admin panel and an in-game admin chat command can't get out of sync.
+
+@app.get("/api/admin/servers/{server_num}/restart")
+async def get_scheduled_restart(
+    server_num: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    """Same response shape as GET /api/plugin/restart-status, for the admin panel to show
+    current countdown state on page load / server-tab switch: {"restart_at": iso | null}."""
+    result = await db.execute(select(ScheduledRestart).where(ScheduledRestart.server_num == server_num))
+    row = result.scalar_one_or_none()
+    return {"restart_at": _fmt_dt_z(row.restart_at if row else None)}
+
+
+class AdminScheduleRestartBody(BaseModel):
+    minutes: int
+
+
+@app.post("/api/admin/servers/{server_num}/restart")
+async def schedule_restart_admin(
+    server_num: int,
+    body: AdminScheduleRestartBody,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    restart_at = await _schedule_restart(db, server_num, body.minutes)
+    await _audit(db, current_user.id, "restart.schedule", target_type="scheduled_restart", target_id=server_num, detail=f"{body.minutes}m")
+    await db.commit()
+    return {"restart_at": _fmt_dt_z(restart_at)}
+
+
+@app.delete("/api/admin/servers/{server_num}/restart")
+async def cancel_restart_admin(
+    server_num: int,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _cancel_restart(db, server_num)
+    await _audit(db, current_user.id, "restart.cancel", target_type="scheduled_restart", target_id=server_num)
+    await db.commit()
+    return {"success": True}
 
 
 # ─── Who's online ─────────────────────────────────────────────────────────────
