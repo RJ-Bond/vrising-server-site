@@ -122,6 +122,17 @@ class PluginCancelRestartIn(BaseModel):
     server_num: int = 1
 
 
+class PluginWarnIn(BaseModel):
+    """Body for POST /api/plugin/warn — backs the in-game .warn admin chat command.
+    admin_name is the issuing admin's in-game character name (audit trail only, no
+    site user_id FK)."""
+    steam_id: str
+    character_name: str
+    reason: str
+    admin_name: str
+    server_num: int = 1
+
+
 class PluginHeartbeatOut(BaseModel):
     server_num: int
     server_name: Optional[str] = None

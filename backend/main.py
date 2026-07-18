@@ -72,7 +72,7 @@ from sqlalchemy import select, func, delete, text, or_, update, and_
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate, ServerApiKey, ScheduledRestart
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate, ServerApiKey, ScheduledRestart, Warning
 from .auth import (
     verify_password,
     get_password_hash,
@@ -141,6 +141,7 @@ from .schemas import (
     ServerApiKeyUpdate,
     PluginScheduleRestartIn,
     PluginCancelRestartIn,
+    PluginWarnIn,
     LinkedAccountOut,
     strip_html_tags,
 )
@@ -413,6 +414,8 @@ async def lifespan(app: FastAPI):
             "CREATE TABLE IF NOT EXISTS server_api_keys (server_num INTEGER PRIMARY KEY, api_key VARCHAR(128) NOT NULL, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS scheduled_restarts (server_num INTEGER PRIMARY KEY, restart_at DATETIME)",
             "ALTER TABLE scheduled_restarts ADD COLUMN daily_restart_time VARCHAR(8) DEFAULT NULL",
+            "CREATE TABLE IF NOT EXISTS warnings (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, steam_id VARCHAR(32) NOT NULL, character_name VARCHAR(64) NOT NULL, reason VARCHAR(512) NOT NULL, admin_name VARCHAR(64) NOT NULL, created_at DATETIME NOT NULL)",
+            "CREATE INDEX IF NOT EXISTS ix_warnings_steam_id ON warnings(steam_id)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -1472,6 +1475,61 @@ async def plugin_cancel_restart(
     """Idempotent — 200 with no error whether or not a restart was actually pending."""
     await _cancel_restart(db, body.server_num)
     return {"success": True}
+
+
+@app.post("/api/plugin/warn")
+@limiter.limit("30/minute")
+async def plugin_warn(
+    request: Request,
+    body: PluginWarnIn,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Backs the in-game .warn admin chat command. Logs a moderation warning against
+    body.steam_id; warning_count is the player's total across all servers/time,
+    including the one just inserted."""
+    db.add(Warning(
+        server_num=body.server_num,
+        steam_id=body.steam_id,
+        character_name=body.character_name,
+        reason=body.reason,
+        admin_name=body.admin_name,
+        created_at=datetime.utcnow(),
+    ))
+    await db.commit()
+    count_result = await db.execute(select(func.count()).where(Warning.steam_id == body.steam_id))
+    warning_count = count_result.scalar_one()
+    return {"success": True, "warning_count": warning_count}
+
+
+@app.get("/api/plugin/warnings")
+@limiter.limit("60/minute")
+async def plugin_warnings(
+    request: Request,
+    steam_id: str,
+    server_num: int = Query(default=1),
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Backs the in-game .warnings admin chat command — lists ALL warnings for
+    steam_id across every server, most recent first. server_num is accepted only for
+    the usual API-key resolution in _require_plugin_key; results are never filtered
+    by it, since a player's warning history should follow them across servers."""
+    result = await db.execute(
+        select(Warning).where(Warning.steam_id == steam_id).order_by(Warning.created_at.desc())
+    )
+    warnings = result.scalars().all()
+    return {
+        "warnings": [
+            {
+                "reason": w.reason,
+                "admin_name": w.admin_name,
+                "created_at": _fmt_dt_z(w.created_at),
+                "server_num": w.server_num,
+            }
+            for w in warnings
+        ]
+    }
 
 
 @app.get("/api/admin/plugin-status", response_model=list[PluginHeartbeatOut])

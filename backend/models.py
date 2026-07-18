@@ -427,3 +427,23 @@ class ScheduledRestart(Base):
     server_num = Column(Integer, primary_key=True)
     restart_at = Column(DateTime, nullable=True)
     daily_restart_time = Column(String(8), nullable=True)
+
+
+class Warning(Base):
+    """A moderation warning issued to a player via the in-game .warn admin chat command
+    (POST /api/plugin/warn), listed back via .warnings (GET /api/plugin/warnings).
+    steam_id is the authoritative identity (players may rename their in-game character);
+    admin_name is just the issuing admin's in-game character name for an audit trail —
+    there's no admin user_id FK since the "admin" here is whoever had IsAdmin in-game at
+    the time, not necessarily a linked site account. created_at is naive UTC (this repo's
+    usual DateTime convention), set explicitly by the endpoint rather than a column
+    default."""
+    __tablename__ = "warnings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    server_num = Column(Integer, nullable=False, default=1)
+    steam_id = Column(String(32), nullable=False, index=True)
+    character_name = Column(String(64), nullable=False)
+    reason = Column(String(512), nullable=False)
+    admin_name = Column(String(64), nullable=False)
+    created_at = Column(DateTime, nullable=False)
