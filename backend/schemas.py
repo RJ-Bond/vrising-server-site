@@ -458,6 +458,11 @@ class ChangePasswordBody(BaseModel):
         return v.strip()
 
 
+class ChangeEmailBody(BaseModel):
+    new_email: EmailStr
+    password: str
+
+
 class ReactBody(BaseModel):
     emoji: str
 

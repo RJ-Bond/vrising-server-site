@@ -104,6 +104,7 @@ from .schemas import (
     ForgotPasswordRequest,
     ResetPasswordBody,
     ChangePasswordBody,
+    ChangeEmailBody,
     ReactBody,
     ReportCreate,
     ReportReview,
@@ -1684,6 +1685,29 @@ async def change_password(
     token = create_access_token({"sub": str(current_user.id)})
     _set_auth_cookie(response, token)
     return {"ok": True, "access_token": token}
+
+
+@app.post("/api/auth/change-email")
+@limiter.limit("5/minute")
+async def change_email(
+    request: Request,
+    body: ChangeEmailBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verify_password(body.password, current_user.hashed_password):
+        raise HTTPException(400, "Неверный пароль")
+    new_email = body.new_email.strip().lower()
+    existing = await db.execute(
+        select(User.id).where(User.email == new_email, User.id != current_user.id)
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(400, "Этот email уже используется")
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one()
+    user.email = new_email
+    await db.commit()
+    return {"ok": True, "email": new_email}
 
 
 class TotpCodeBody(BaseModel):
