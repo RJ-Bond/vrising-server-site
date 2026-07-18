@@ -3199,13 +3199,23 @@ async def delete_leaderboard_record(
 # POST /api/plugin/clans/sync (see "Game Plugin Integration" above). The website only
 # ever displays it; there is no web-managed create/join/leave/delete anymore.
 
-async def _game_clan_out(db: AsyncSession, clan: GameClan, with_members: bool = False):
+async def _get_server_names(db: AsyncSession) -> dict:
+    """server_num -> real server name, sourced from the plugin's own heartbeat (the actual
+    ServerHostSettings.json "Name", not a site setting that could drift out of sync)."""
+    result = await db.execute(select(PluginHeartbeat.server_num, PluginHeartbeat.server_name))
+    return {num: name for num, name in result.all() if name}
+
+
+async def _game_clan_out(db: AsyncSession, clan: GameClan, with_members: bool = False, server_names: Optional[dict] = None):
     count_result = await db.execute(
         select(func.count(GameClanMember.id)).where(GameClanMember.clan_id == clan.id)
     )
     member_count = count_result.scalar_one()
+    if server_names is None:
+        server_names = await _get_server_names(db)
     base = {
         "id": clan.id, "server_num": clan.server_num, "clan_guid": clan.clan_guid,
+        "server_name": server_names.get(clan.server_num) or f"Сервер {clan.server_num}",
         "name": clan.name, "motto": clan.motto or "", "updated_at": clan.updated_at,
         "member_count": member_count,
     }
@@ -3241,7 +3251,8 @@ async def list_clans(search: Optional[str] = None, limit: Optional[int] = None, 
         query = query.limit(limit)
     result = await db.execute(query)
     clans = result.scalars().all()
-    return [await _game_clan_out(db, c) for c in clans]
+    server_names = await _get_server_names(db)
+    return [await _game_clan_out(db, c, server_names=server_names) for c in clans]
 
 
 @app.get("/api/clans/{clan_id}", response_model=GameClanDetailOut)

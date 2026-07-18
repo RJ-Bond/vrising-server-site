@@ -482,6 +482,7 @@ class GameClanMemberOut(BaseModel):
 class GameClanOut(BaseModel):
     id: int
     server_num: int
+    server_name: str
     clan_guid: str
     name: str
     motto: Optional[str] = ""
