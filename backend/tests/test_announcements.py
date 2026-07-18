@@ -277,3 +277,107 @@ async def test_test_send_row_excluded_from_admin_list(client, db_session):
     list_r = await client.get("/api/admin/announcements", headers=_bearer(admin))
     assert list_r.status_code == 200
     assert list_r.json() == []
+
+
+# ─── Per-server scoping (server_num) ────────────────────────────────────────
+
+async def test_create_announcement_defaults_server_num_to_1(client, db_session):
+    admin = await _make_admin(db_session)
+    r = await client.post("/api/admin/announcements", json={"text": "hi"}, headers=_bearer(admin))
+    assert r.status_code == 201
+    assert r.json()["server_num"] == 1
+
+
+async def test_create_announcement_with_explicit_server_num(client, db_session):
+    admin = await _make_admin(db_session)
+    r = await client.post(
+        "/api/admin/announcements",
+        json={"text": "Только для сервера 2", "server_num": 2},
+        headers=_bearer(admin),
+    )
+    assert r.status_code == 201
+    assert r.json()["server_num"] == 2
+
+
+async def test_admin_list_announcements_filtered_by_server_num(client, db_session):
+    admin = await _make_admin(db_session)
+    headers = _bearer(admin)
+    await client.post("/api/admin/announcements", json={"text": "Сервер 1", "server_num": 1}, headers=headers)
+    await client.post("/api/admin/announcements", json={"text": "Сервер 2", "server_num": 2}, headers=headers)
+
+    r1 = await client.get("/api/admin/announcements?server_num=1", headers=headers)
+    assert [a["text"] for a in r1.json()] == ["Сервер 1"]
+
+    r2 = await client.get("/api/admin/announcements?server_num=2", headers=headers)
+    assert [a["text"] for a in r2.json()] == ["Сервер 2"]
+
+    # Omitting server_num returns everything (backward compat).
+    r_all = await client.get("/api/admin/announcements", headers=headers)
+    assert len(r_all.json()) == 2
+
+
+async def test_plugin_announcements_scoped_to_server_num(client, db_session):
+    await _set_plugin_key(db_session)
+    db_session.add(Announcement(text="Для сервера 1", interval_minutes=None, server_num=1))
+    db_session.add(Announcement(text="Для сервера 2", interval_minutes=None, server_num=2))
+    await db_session.commit()
+
+    r1 = await client.get("/api/plugin/announcements?server_num=1", headers=_hdr())
+    assert r1.status_code == 200
+    assert r1.json()["announcements"] == [{"text": "Для сервера 1", "target_steam_id": None}]
+
+    r2 = await client.get("/api/plugin/announcements?server_num=2", headers=_hdr())
+    assert r2.status_code == 200
+    assert r2.json()["announcements"] == [{"text": "Для сервера 2", "target_steam_id": None}]
+
+
+async def test_plugin_announcements_defaults_server_num_to_1(client, db_session):
+    """An old plugin build that never sends server_num should still get server 1's
+    announcements (and never see a server_num=2-only announcement)."""
+    await _set_plugin_key(db_session)
+    db_session.add(Announcement(text="Для сервера 1", interval_minutes=None, server_num=1))
+    db_session.add(Announcement(text="Для сервера 2", interval_minutes=None, server_num=2))
+    await db_session.commit()
+
+    r = await client.get("/api/plugin/announcements", headers=_hdr())
+    assert r.status_code == 200
+    assert r.json()["announcements"] == [{"text": "Для сервера 1", "target_steam_id": None}]
+
+
+async def test_update_announcement_can_move_to_different_server(client, db_session):
+    admin = await _make_admin(db_session)
+    headers = _bearer(admin)
+    create_r = await client.post("/api/admin/announcements", json={"text": "Перемещаемое"}, headers=headers)
+    ann_id = create_r.json()["id"]
+    assert create_r.json()["server_num"] == 1
+
+    update_r = await client.put(
+        f"/api/admin/announcements/{ann_id}",
+        json={"server_num": 2},
+        headers=headers,
+    )
+    assert update_r.status_code == 200
+    assert update_r.json()["server_num"] == 2
+
+
+async def test_test_send_targets_specific_server(client, db_session):
+    admin = await _make_admin(db_session)
+    admin.steam_id = "76561198000000002"
+    await db_session.commit()
+    await _set_plugin_key(db_session)
+
+    r = await client.post(
+        "/api/admin/announcements/test-send",
+        json={"text": "Проверка на сервере 2", "server_num": 2},
+        headers=_bearer(admin),
+    )
+    assert r.status_code == 201
+    assert r.json()["server_num"] == 2
+
+    poll_r1 = await client.get("/api/plugin/announcements?server_num=1", headers=_hdr())
+    assert poll_r1.json()["announcements"] == []
+
+    poll_r2 = await client.get("/api/plugin/announcements?server_num=2", headers=_hdr())
+    assert poll_r2.json()["announcements"] == [
+        {"text": "Проверка на сервере 2", "target_steam_id": "76561198000000002"}
+    ]

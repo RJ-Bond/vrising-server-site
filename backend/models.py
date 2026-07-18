@@ -374,5 +374,18 @@ class Announcement(Base):
     expires_at = Column(DateTime, nullable=True)  # optional; NULL = never expires
     last_sent_at = Column(DateTime, nullable=True)
     target_steam_id = Column(String(32), nullable=True)  # NULL = broadcast to everyone (normal case); set = a one-off test send to a single player's SteamID
+    server_num = Column(Integer, nullable=False, default=1)  # which game server this announcement broadcasts to
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class ServerMessageTemplate(Base):
+    """Per-server connect/disconnect in-game chat message templates, replacing the old
+    global "connect_message_template"/"disconnect_message_template" Settings now that the
+    plugin runs on more than one server — one row per server_num, created on first save."""
+    __tablename__ = "server_message_templates"
+
+    server_num = Column(Integer, primary_key=True)
+    connect_template = Column(Text, nullable=True)
+    disconnect_template = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)

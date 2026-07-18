@@ -85,15 +85,30 @@
       { id: 1, server_num: 1, wipe_type: 'full', wipe_date: iso(-56 * 24 * 3600 * 1000), note: null, created_at: iso(30 * 24 * 3600 * 1000) },
       { id: 2, server_num: 2, wipe_type: 'map', wipe_date: iso(-56 * 24 * 3600 * 1000), note: null, created_at: iso(30 * 24 * 3600 * 1000) },
     ])],
-    // PluginHeartbeatOut shape (backend/schemas.py) — GET /api/admin/plugin-status.
-    [/\/api\/admin\/plugin-status$/, () => ([
+    // PluginHeartbeatOut shape (backend/schemas.py) — GET /api/admin/plugin-status. Two
+    // rows so the admin.html preview exercises the per-server sub-tab strip, not just a
+    // single-tab degenerate case.
+    [/\/api\/admin\/plugin-status(\?.*)?$/, () => ([
       { server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', plugin_version: '1.2.0', player_count: 7, last_seen_at: iso(15000) },
+      { server_num: 2, server_name: '[RU] Just-Skill.Ru | Brutal PvE', plugin_version: '1.2.0', player_count: 3, last_seen_at: iso(20000) },
     ])],
-    // AnnouncementOut shape (backend/schemas.py) — GET /api/admin/announcements.
-    [/\/api\/admin\/announcements$/, () => ([
-      { id: 2, text: 'Раз в час сервер синхронизирует кланы с сайтом <color=#ffcc00>автоматически</color>', interval_minutes: 60, enabled: true, expires_at: null, last_sent_at: iso(20 * 60 * 1000), created_at: iso(2 * 24 * 3600 * 1000), updated_at: iso(2 * 24 * 3600 * 1000) },
-      { id: 1, text: 'Добро пожаловать на сервер!', interval_minutes: null, enabled: true, expires_at: null, last_sent_at: iso(3 * 24 * 3600 * 1000), created_at: iso(5 * 24 * 3600 * 1000), updated_at: iso(5 * 24 * 3600 * 1000) },
-    ])],
+    // AnnouncementOut shape (backend/schemas.py) — GET /api/admin/announcements?server_num=N.
+    [/\/api\/admin\/announcements(\?.*)?$/, (url) => {
+      const server_num = url.includes('server_num=2') ? 2 : 1;
+      return server_num === 2
+        ? [{ id: 3, text: 'Добро пожаловать на Brutal PvE!', interval_minutes: null, enabled: true, expires_at: null, last_sent_at: iso(3 * 24 * 3600 * 1000), server_num: 2, created_at: iso(5 * 24 * 3600 * 1000), updated_at: iso(5 * 24 * 3600 * 1000) }]
+        : [
+          { id: 2, text: 'Раз в час сервер синхронизирует кланы с сайтом <color=#ffcc00>автоматически</color>', interval_minutes: 60, enabled: true, expires_at: null, last_sent_at: iso(20 * 60 * 1000), server_num: 1, created_at: iso(2 * 24 * 3600 * 1000), updated_at: iso(2 * 24 * 3600 * 1000) },
+          { id: 1, text: 'Добро пожаловать на сервер!', interval_minutes: null, enabled: true, expires_at: null, last_sent_at: iso(3 * 24 * 3600 * 1000), server_num: 1, created_at: iso(5 * 24 * 3600 * 1000), updated_at: iso(5 * 24 * 3600 * 1000) },
+        ];
+    }],
+    // ServerMessageTemplateOut shape (backend/schemas.py) — GET /api/admin/message-templates?server_num=N.
+    [/\/api\/admin\/message-templates(\?.*)?$/, (url) => {
+      const server_num = url.includes('server_num=2') ? 2 : 1;
+      return server_num === 2
+        ? { connect: '<color=#00FF00>{name} присоединился (Brutal PvE)</color>', disconnect: '<color=#FF3355>{name} покинул сервер</color>' }
+        : { connect: '<color=#00FF00>{name} присоединился к игре</color>', disconnect: '<color=#FF3355>{name} покинул сервер</color>' };
+    }],
   ];
 
   const realFetch = window.fetch.bind(window);

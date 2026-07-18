@@ -103,6 +103,16 @@
       font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .2s;
     }
     .btn-ghost:hover { border-color: rgba(150,0,28,0.6); color: var(--text); }
+    .server-subtab {
+      background: rgba(14,3,24,0.8); border: 1px solid rgba(0,120,220,.3);
+      color: var(--muted); border-radius: 9999px; padding: .45rem 1.1rem;
+      font-size: .78rem; font-weight: 600; cursor: pointer; transition: all .2s;
+    }
+    .server-subtab:hover { border-color: rgba(0,120,220,.6); color: var(--text); }
+    .server-subtab.active {
+      background: rgba(0,60,140,.25); border-color: rgba(0,140,255,.6); color: #93c5fd;
+      box-shadow: 0 0 12px rgba(0,120,220,.25);
+    }
     .btn-danger {
       background: rgba(100,0,15,0.3); border: 1px solid rgba(180,0,25,0.4);
       color: #f87171; border-radius: .4rem; padding: .4rem .8rem;
@@ -503,7 +513,7 @@
 
       <div class="sidebar-group-label">Сайт</div>
       <button id="btn-settings"  onclick="showSection('settings')"  class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Настройки</span></button>
-      <button id="btn-plugin"    onclick="showSection('plugin')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h.01M15 9h.01M9.5 15a3.5 3.5 0 0 0 5 0"/></svg> Плагин</span></button>
+      <button id="btn-plugin"    onclick="showSection('plugin')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h.01M15 9h.01M9.5 15a3.5 3.5 0 0 0 5 0"/></svg> Плагины</span></button>
       <button id="btn-files"     onclick="showSection('files')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg> Файлы</span></button>
       <button id="btn-media"     onclick="showSection('media')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> Медиатека</span></button>
 
@@ -1502,10 +1512,10 @@
     <!-- PLUGIN -->
     <div id="section-plugin" class="hidden">
       <div class="flex items-center justify-between mb-5">
-        <h1 class="section-title" style="margin-bottom:.3rem;">Игровой плагин</h1>
+        <h1 class="section-title" style="margin-bottom:.3rem;">Игровые плагины</h1>
       </div>
 
-      <!-- Connection status (moved from Настройки) -->
+      <!-- Plugin API Key (global — one shared secret for every game-server plugin instance) -->
       <div class="s-row">
         <div class="s-card s-card-blue">
           <div class="s-card-head">
@@ -1514,10 +1524,10 @@
             </div>
             <div>
               <h2>Подключение плагина</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Ключ для .register/.login из игры (vrising-bepinex-plugin)</p>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Ключ для .register/.login из игры (vrising-bepinex-plugin) — общий для всех серверов</p>
             </div>
           </div>
-          <div class="s-field">
+          <div class="s-field" style="margin-bottom:0;">
             <label>Plugin API Key</label>
             <div class="s-field-row">
               <input id="setting-plugin_api_key" type="password" class="dark-input" placeholder="общий секрет с плагином">
@@ -1525,8 +1535,33 @@
             </div>
             <p class="s-desc">Должен совпадать со значением ApiKey в BepInEx/config/rjbond.vrising.bepinexplugin.cfg на игровом сервере.</p>
           </div>
-          <div class="s-field">
-            <label>Статус подключения</label>
+        </div>
+      </div>
+
+      <!-- Per-server sub-navigation — one pill per server_num that has ever sent a heartbeat -->
+      <div style="margin-top:1.5rem;">
+        <h2 class="gothic" style="font-size:.8rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;">Серверы</h2>
+        <div id="plugin-server-tabs" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem;"></div>
+        <div id="plugin-server-empty" class="glass-card rounded-xl" style="display:none;padding:1.5rem;text-align:center;color:var(--muted);font-size:.85rem;">
+          Серверы появятся здесь после первого подключения плагина
+        </div>
+      </div>
+
+      <div id="plugin-server-content">
+
+      <!-- Connection status pill for the selected server -->
+      <div class="s-row">
+        <div class="s-card s-card-blue">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(0,60,140,.18);border:1px solid rgba(0,120,220,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.8"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+            </div>
+            <div>
+              <h2>Статус подключения</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Последний heartbeat от плагина на этом сервере</p>
+            </div>
+          </div>
+          <div class="s-field" style="margin-bottom:0;">
             <div id="plugin-status-container" style="display:flex;flex-direction:column;gap:.4rem;">
               <div style="font-size:.72rem;color:var(--muted);">Загрузка…</div>
             </div>
@@ -1686,7 +1721,9 @@
         </div>
       </div>
 
-      <!-- Linked game accounts -->
+      </div> <!-- /#plugin-server-content -->
+
+      <!-- Linked game accounts (global — a site account links one SteamID, not tied to a server) -->
       <div class="flex items-center justify-between" style="margin-top:1.25rem;margin-bottom:.75rem;">
         <h2 class="gothic" style="font-size:.8rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Привязанные игровые аккаунты</h2>
         <span id="linked-accounts-total" style="font-size:.78rem;color:var(--muted);"></span>
@@ -2239,7 +2276,7 @@ function showSection(name) {
   }
   if (name === 'editor')   document.getElementById('btn-news').className = 'sidebar-btn active';
   if (name === 'settings') { loadSettings(); loadRules(); loadMaintenanceStatuses(); loadMaintenanceHistory(); }
-  if (name === 'plugin')   { loadSettings(); loadPluginStatus(); loadAnnouncements(); loadLinkedAccounts(); }
+  if (name === 'plugin')   { loadSettings(); loadPluginSection(); loadLinkedAccounts(); }
   if (name === 'users')    loadUsers();
   if (name === 'news')     loadAdminNews(adminNewsPage);
   if (name === 'dashboard')  loadDashboard();
@@ -2619,41 +2656,91 @@ async function loadSettings() {
     badge.textContent = 'HTTPS'; badge.className = 's-status-badge s-status-https';
   }
   updateEventPreview();
-  // Connect/disconnect message templates (#tmpl-connect/#tmpl-disconnect) — plain Setting
-  // values like the rest of this response, but with their own field ids (see TMPL_KEYS),
-  // so they're populated here explicitly rather than via the SETTINGS_FIELD_KEYS loop above.
-  Object.entries(TMPL_KEYS).forEach(([kind, key]) => {
-    const el = document.getElementById(`tmpl-${kind}`);
-    if (el && map[key] !== undefined) el.value = map[key];
-    updateTmplPreview(kind);
-  });
+}
+
+// ─── Per-server plugin sub-tabs ─────────────────────────────────────────────
+// One tab per server_num that has ever sent a heartbeat (GET /api/admin/plugin-status),
+// labeled with PluginHeartbeat.server_name (falls back to "Сервер N"). Derived dynamically
+// so a third/fourth server just appears here once its plugin starts heartbeating — nothing
+// hardcoded to "1 and 2". _pluginActiveServer is the simple JS var tracking which tab is
+// selected; switching tabs re-fetches that server's announcements/templates/status without
+// a full page reload (see selectPluginServer below).
+let _pluginHeartbeats = [];   // raw cache from the last GET /api/admin/plugin-status
+let _pluginServers = [];      // [{server_num, server_name}] derived from _pluginHeartbeats
+let _pluginActiveServer = null;
+
+async function loadPluginSection() {
+  await loadPluginStatus();   // populates _pluginServers + _pluginActiveServer, renders tabs
+  loadAnnouncements();
+  loadMessageTemplates();
 }
 
 async function loadPluginStatus() {
-  const container = document.getElementById('plugin-status-container');
-  if (!container) return;
   try {
     const res = await fetch(`${API}/admin/plugin-status`, { credentials: 'include', headers: authH() });
-    if (!res.ok) { handleAuth(res); return; }
-    const rows = await res.json();
-    if (!rows.length) {
-      container.innerHTML = '<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(200,0,42,.2);color:#f87171;border:1px solid rgba(200,0,42,.4);width:fit-content;">🔴 Не подключён</span>';
-      return;
-    }
-    const now = Date.now();
-    container.innerHTML = rows.map(hb => {
-      const lastSeen = new Date(hb.last_seen_at + (hb.last_seen_at.endsWith('Z') ? '' : 'Z')).getTime();
-      const secAgo = Math.floor((now - lastSeen) / 1000);
-      const stale = !isFinite(secAgo) || secAgo > 120;
-      const rel = secAgo < 10 ? 'только что' : secAgo < 60 ? `${secAgo} сек.` : secAgo < 3600 ? `${Math.floor(secAgo / 60)} мин.` : `${Math.floor(secAgo / 3600)} ч.`;
-      if (stale) {
-        return `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(200,0,42,.2);color:#f87171;border:1px solid rgba(200,0,42,.4);width:fit-content;">🔴 Сервер ${hb.server_num}: не подключён</span>`;
-      }
-      const name = hb.server_name ? esc(hb.server_name) : `Сервер ${hb.server_num}`;
-      const ver = hb.plugin_version ? `версия ${esc(hb.plugin_version)}, ` : '';
-      return `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(0,150,50,.15);color:#86efac;border:1px solid rgba(0,180,60,.3);width:fit-content;">🟢 Подключён — ${name}, ${ver}${hb.player_count} игроков онлайн, обновлено ${rel} назад</span>`;
-    }).join('');
-  } catch { container.innerHTML = '<span style="font-size:.65rem;color:var(--muted);">Ошибка загрузки статуса</span>'; }
+    if (!res.ok) { handleAuth(res); _pluginHeartbeats = []; }
+    else _pluginHeartbeats = await res.json();
+  } catch { _pluginHeartbeats = []; }
+  _pluginServers = _pluginHeartbeats
+    .slice()
+    .sort((a, b) => a.server_num - b.server_num)
+    .map(hb => ({ server_num: hb.server_num, server_name: (hb.server_name || '').trim() || `Сервер ${hb.server_num}` }));
+  renderPluginServerTabs();
+  renderPluginStatusPill();
+}
+
+function renderPluginServerTabs() {
+  const tabsEl = document.getElementById('plugin-server-tabs');
+  const emptyEl = document.getElementById('plugin-server-empty');
+  const contentEl = document.getElementById('plugin-server-content');
+  if (!tabsEl) return;
+  if (!_pluginServers.length) {
+    tabsEl.innerHTML = '';
+    if (emptyEl) emptyEl.style.display = '';
+    if (contentEl) contentEl.style.display = 'none';
+    _pluginActiveServer = null;
+    return;
+  }
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (contentEl) contentEl.style.display = '';
+  if (_pluginActiveServer == null || !_pluginServers.some(s => s.server_num === _pluginActiveServer)) {
+    _pluginActiveServer = _pluginServers[0].server_num;
+  }
+  tabsEl.innerHTML = _pluginServers.map(s => `
+    <button type="button" class="server-subtab${s.server_num === _pluginActiveServer ? ' active' : ''}" onclick="selectPluginServer(${s.server_num})">${esc(s.server_name)}</button>
+  `).join('');
+}
+
+function selectPluginServer(serverNum) {
+  if (serverNum === _pluginActiveServer) return;
+  _pluginActiveServer = serverNum;
+  renderPluginServerTabs();
+  cancelEditAnnouncement();
+  renderPluginStatusPill();
+  loadAnnouncements();
+  loadMessageTemplates();
+}
+
+function renderPluginStatusPill() {
+  const container = document.getElementById('plugin-status-container');
+  if (!container) return;
+  const hb = _pluginHeartbeats.find(h => h.server_num === _pluginActiveServer);
+  if (!hb) {
+    container.innerHTML = '<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(200,0,42,.2);color:#f87171;border:1px solid rgba(200,0,42,.4);width:fit-content;">🔴 Не подключён</span>';
+    return;
+  }
+  const now = Date.now();
+  const lastSeen = new Date(hb.last_seen_at + (hb.last_seen_at.endsWith('Z') ? '' : 'Z')).getTime();
+  const secAgo = Math.floor((now - lastSeen) / 1000);
+  const stale = !isFinite(secAgo) || secAgo > 120;
+  if (stale) {
+    container.innerHTML = `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(200,0,42,.2);color:#f87171;border:1px solid rgba(200,0,42,.4);width:fit-content;">🔴 Не подключён</span>`;
+    return;
+  }
+  const rel = secAgo < 10 ? 'только что' : secAgo < 60 ? `${secAgo} сек.` : secAgo < 3600 ? `${Math.floor(secAgo / 60)} мин.` : `${Math.floor(secAgo / 3600)} ч.`;
+  const name = hb.server_name ? esc(hb.server_name) : `Сервер ${hb.server_num}`;
+  const ver = hb.plugin_version ? `версия ${esc(hb.plugin_version)}, ` : '';
+  container.innerHTML = `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(0,150,50,.15);color:#86efac;border:1px solid rgba(0,180,60,.3);width:fit-content;">🟢 Подключён — ${name}, ${ver}${hb.player_count} игроков онлайн, обновлено ${rel} назад</span>`;
 }
 
 // ─── Scheduled announcements ───────────────────────────────────────────────
@@ -2766,9 +2853,16 @@ function relativeTimeFromIso(iso, nullText = '—') {
 async function loadAnnouncements() {
   const tbody = document.getElementById('announcements-tbody');
   if (!tbody) return;
+  if (_pluginActiveServer == null) {
+    _annCache = [];
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Нет данных</td></tr>';
+    const total = document.getElementById('announcements-total');
+    if (total) total.textContent = '';
+    return;
+  }
   tableShowSkeleton('announcements-tbody', 6);
   try {
-    const res = await fetch(`${API}/admin/announcements`, { credentials: 'include', headers: authH() });
+    const res = await fetch(`${API}/admin/announcements?server_num=${_pluginActiveServer}`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     _annCache = await res.json();
     const total = document.getElementById('announcements-total');
@@ -2864,6 +2958,7 @@ async function saveAnnouncement() {
     interval_minutes,
     expires_at: expiresRaw ? new Date(expiresRaw).toISOString() : null,
     enabled: document.getElementById('ann-enabled').checked,
+    server_num: _pluginActiveServer,
   };
 
   try {
@@ -2888,7 +2983,7 @@ async function testSendAnnouncement() {
   btn.disabled = true; btn.textContent = 'Отправка...';
   try {
     const res = await fetch(`${API}/admin/announcements/test-send`, {
-      method: 'POST', credentials: 'include', headers: authH(), body: JSON.stringify({ text }),
+      method: 'POST', credentials: 'include', headers: authH(), body: JSON.stringify({ text, server_num: _pluginActiveServer }),
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok) {
@@ -2926,13 +3021,32 @@ function deleteAnnouncementRow(id) {
 }
 
 // ─── Connect/disconnect message templates ──────────────────────────────────
-// Plain Setting keys ("connect_message_template" / "disconnect_message_template"),
-// same storage as plugin_api_key/server_announcement — populated by loadSettings()
-// below (piggybacking on the single GET /api/admin/settings call already made when
-// the Плагин tab opens) since they don't follow the setting-${key} input id
-// convention the rest of the settings form uses (textarea ids are #tmpl-connect/
-// #tmpl-disconnect per the field spec).
-const TMPL_KEYS = { connect: 'connect_message_template', disconnect: 'disconnect_message_template' };
+// Per-server ServerMessageTemplate rows (GET/PUT /api/admin/message-templates?server_num=N),
+// replacing the old global "connect_message_template"/"disconnect_message_template" Settings
+// now that the plugin runs on more than one server. Loaded/saved for whichever server tab
+// is currently selected (_pluginActiveServer) — see loadPluginSection/selectPluginServer.
+
+async function loadMessageTemplates() {
+  if (_pluginActiveServer == null) {
+    ['connect', 'disconnect'].forEach(kind => {
+      const el = document.getElementById(`tmpl-${kind}`);
+      if (el) el.value = '';
+      updateTmplPreview(kind);
+    });
+    return;
+  }
+  try {
+    const res = await fetch(`${API}/admin/message-templates?server_num=${_pluginActiveServer}`, { credentials: 'include', headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const d = await res.json();
+    const connectEl = document.getElementById('tmpl-connect');
+    const disconnectEl = document.getElementById('tmpl-disconnect');
+    if (connectEl) connectEl.value = d.connect || '';
+    if (disconnectEl) disconnectEl.value = d.disconnect || '';
+  } catch { /* leave fields as-is on network error */ }
+  updateTmplPreview('connect');
+  updateTmplPreview('disconnect');
+}
 
 function updateTmplPreview(kind) {
   updateChatPreview(`tmpl-${kind}`, `tmpl-${kind}-preview`, `tmpl-${kind}-char-count`);
@@ -2943,9 +3057,15 @@ function wrapTmplSelectionWithColor(kind, hex) {
 }
 
 async function saveMessageTemplate(kind) {
-  const key = TMPL_KEYS[kind];
+  if (_pluginActiveServer == null) return;
   const value = document.getElementById(`tmpl-${kind}`)?.value ?? '';
-  await _doSaveSetting(key, value);
+  try {
+    const res = await fetch(`${API}/admin/message-templates?server_num=${_pluginActiveServer}`, {
+      method: 'PUT', credentials: 'include', headers: authH(), body: JSON.stringify({ [kind]: value }),
+    });
+    if (res.ok) adminToast('Сохранено', 'success');
+    else showToast('Ошибка сохранения', 'error');
+  } catch { showToast('Ошибка сети', 'error'); }
 }
 
 // ─── Linked game accounts ───────────────────────────────────────────────────

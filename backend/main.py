@@ -61,7 +61,7 @@ from sqlalchemy import select, func, delete, text, or_, update, and_
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate
 from .auth import (
     verify_password,
     get_password_hash,
@@ -122,6 +122,8 @@ from .schemas import (
     AnnouncementUpdate,
     AnnouncementOut,
     AnnouncementTestSend,
+    ServerMessageTemplateOut,
+    ServerMessageTemplateUpdate,
     LinkedAccountOut,
     strip_html_tags,
 )
@@ -307,8 +309,6 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="discord_webhook_url", value=""),
         Setting(key="plugin_api_key", value=""),
         Setting(key="server_announcement", value=""),
-        Setting(key="connect_message_template", value=""),
-        Setting(key="disconnect_message_template", value=""),
         Setting(key="maintenance_mode",    value="false"),
         Setting(key="maintenance_title",   value="Технические работы"),
         Setting(key="maintenance_message", value="Сайт временно недоступен. Скоро вернёмся."),
@@ -391,6 +391,8 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE announcements ADD COLUMN target_steam_id VARCHAR(32) DEFAULT NULL",
             "ALTER TABLE player_records ADD COLUMN steam_id VARCHAR(32) DEFAULT NULL",
             "CREATE INDEX IF NOT EXISTS ix_player_records_steam_id ON player_records(steam_id)",
+            "ALTER TABLE announcements ADD COLUMN server_num INTEGER NOT NULL DEFAULT 1",
+            "CREATE TABLE IF NOT EXISTS server_message_templates (server_num INTEGER PRIMARY KEY, connect_template TEXT, disconnect_template TEXT, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -1091,6 +1093,7 @@ async def plugin_clans_sync(
 @limiter.limit("120/minute")
 async def plugin_get_announcements(
     request: Request,
+    server_num: int = Query(default=1),
     db: AsyncSession = Depends(get_db),
     _key: None = Depends(_require_plugin_key),
 ):
@@ -1102,7 +1105,10 @@ async def plugin_get_announcements(
     sent, or (for recurring rows) if interval_minutes have elapsed since last_sent_at —
     once a due row is returned here, last_sent_at is stamped immediately, since the plugin
     is trusted to broadcast on receipt (same resilience level as the rest of this
-    integration — no separate delivery-ack round-trip). Response shape:
+    integration — no separate delivery-ack round-trip). server_num scopes the poll to a
+    single game server (each plugin instance sends its own server_num, matching its config)
+    — defaults to 1 for backward compat with an old plugin build that predates per-server
+    announcements, but the current plugin always sends it explicitly. Response shape:
     {"announcements": [{"text": str, "target_steam_id": str|null}, ...]} — target_steam_id
     is null for normal (broadcast-to-everyone) rows and a SteamID for one-off test-sends
     created via POST /api/admin/announcements/test-send, which the plugin should deliver
@@ -1112,6 +1118,7 @@ async def plugin_get_announcements(
         select(Announcement)
         .where(
             Announcement.enabled == True,  # noqa: E712
+            Announcement.server_num == server_num,
             or_(Announcement.expires_at.is_(None), Announcement.expires_at > now),
         )
         .order_by(Announcement.created_at.asc())
@@ -1139,27 +1146,30 @@ async def plugin_get_announcements(
     return {"announcements": [{"text": a.text, "target_steam_id": a.target_steam_id} for a in due]}
 
 
-@app.get("/api/plugin/message-templates")
+@app.get("/api/plugin/message-templates", response_model=ServerMessageTemplateOut)
 @limiter.limit("120/minute")
 async def plugin_get_message_templates(
     request: Request,
+    server_num: int = Query(default=1),
     db: AsyncSession = Depends(get_db),
     _key: None = Depends(_require_plugin_key),
 ):
     """Polled by the plugin (same cadence as its heartbeat) so the site can drive the
-    connect/disconnect in-game chat message text — Settings "connect_message_template" /
-    "disconnect_message_template" — without editing the plugin's local BepInEx .cfg and
-    restarting the game server. Empty string means "not set"; the plugin falls back to
-    its own local config default in that case. Response shape:
-    {"connect": str, "disconnect": str}."""
+    connect/disconnect in-game chat message text — per-server ServerMessageTemplate rows,
+    replacing the old global "connect_message_template"/"disconnect_message_template"
+    Settings now that the plugin runs on more than one server — without editing the
+    plugin's local BepInEx .cfg and restarting the game server. server_num defaults to 1
+    for backward compat with an old plugin build; the current plugin always sends it
+    explicitly. Empty string means "not set"; the plugin falls back to its own local
+    config default in that case. Response shape: {"connect": str, "disconnect": str}."""
     result = await db.execute(
-        select(Setting).where(Setting.key.in_(["connect_message_template", "disconnect_message_template"]))
+        select(ServerMessageTemplate).where(ServerMessageTemplate.server_num == server_num)
     )
-    values = {s.key: s.value for s in result.scalars().all()}
-    return {
-        "connect": values.get("connect_message_template") or "",
-        "disconnect": values.get("disconnect_message_template") or "",
-    }
+    row = result.scalar_one_or_none()
+    return ServerMessageTemplateOut(
+        connect=(row.connect_template or "") if row else "",
+        disconnect=(row.disconnect_template or "") if row else "",
+    )
 
 
 @app.get("/api/admin/plugin-status", response_model=list[PluginHeartbeatOut])
@@ -1179,14 +1189,19 @@ async def get_plugin_status(
 
 @app.get("/api/admin/announcements", response_model=list[AnnouncementOut])
 async def list_announcements(
+    server_num: Optional[int] = Query(default=None),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
     # Exclude one-off test-sends (target_steam_id set) — they're single-use, self-expiring
-    # (see /test-send below) and would just clutter the management table.
+    # (see /test-send below) and would just clutter the management table. server_num is
+    # optional here for backward compat (omit = all servers); the admin UI always passes it.
+    filters = [Announcement.target_steam_id.is_(None)]
+    if server_num is not None:
+        filters.append(Announcement.server_num == server_num)
     result = await db.execute(
         select(Announcement)
-        .where(Announcement.target_steam_id.is_(None))
+        .where(*filters)
         .order_by(Announcement.created_at.desc())
     )
     return [AnnouncementOut.model_validate(a) for a in result.scalars().all()]
@@ -1203,6 +1218,7 @@ async def create_announcement(
         interval_minutes=body.interval_minutes,
         enabled=body.enabled,
         expires_at=body.expires_at,
+        server_num=body.server_num,
     )
     db.add(a)
     await db.commit()
@@ -1282,6 +1298,7 @@ async def test_send_announcement(
         target_steam_id=current_user.steam_id,
         expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
         last_sent_at=None,
+        server_num=body.server_num,
     )
     db.add(a)
     await db.commit()
@@ -1289,6 +1306,58 @@ async def test_send_announcement(
     await _audit(db, current_user.id, "announcement.test_send", target_type="announcement", target_id=a.id, detail=a.text)
     await db.commit()
     return AnnouncementOut.model_validate(a)
+
+
+# ─── Per-server message templates (admin) ──────────────────────────────────────
+# Connect/disconnect in-game chat message text, one row per server_num (ServerMessageTemplate
+# model), replacing the old global "connect_message_template"/"disconnect_message_template"
+# Settings now that the plugin runs on more than one server. Consumed by the plugin via
+# GET /api/plugin/message-templates?server_num=N above.
+
+@app.get("/api/admin/message-templates", response_model=ServerMessageTemplateOut)
+async def get_message_templates(
+    server_num: int = Query(default=1),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(
+        select(ServerMessageTemplate).where(ServerMessageTemplate.server_num == server_num)
+    )
+    row = result.scalar_one_or_none()
+    return ServerMessageTemplateOut(
+        connect=(row.connect_template or "") if row else "",
+        disconnect=(row.disconnect_template or "") if row else "",
+    )
+
+
+@app.put("/api/admin/message-templates", response_model=ServerMessageTemplateOut)
+async def update_message_templates(
+    body: ServerMessageTemplateUpdate,
+    server_num: int = Query(default=1),
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Partial update (exclude_unset), same convention as AnnouncementUpdate — a field
+    omitted from the body leaves that side of the row untouched. Upserts the row for
+    server_num on first save."""
+    result = await db.execute(
+        select(ServerMessageTemplate).where(ServerMessageTemplate.server_num == server_num)
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        row = ServerMessageTemplate(server_num=server_num)
+        db.add(row)
+    updates = body.model_dump(exclude_unset=True)
+    if "connect" in updates:
+        row.connect_template = updates["connect"]
+    if "disconnect" in updates:
+        row.disconnect_template = updates["disconnect"]
+    await _audit(db, current_user.id, "message_templates.update", target_type="server_message_template", target_id=server_num)
+    await db.commit()
+    return ServerMessageTemplateOut(
+        connect=row.connect_template or "",
+        disconnect=row.disconnect_template or "",
+    )
 
 
 # ─── Who's online ─────────────────────────────────────────────────────────────
@@ -2972,7 +3041,6 @@ ALLOWED_SETTING_KEYS = {
     "rules", "https_domain", "https_email",
     "timezone", "time_format", "date_format",
     "rcon_port", "rcon_password", "rcon2_port", "rcon2_password", "discord_webhook_url", "plugin_api_key", "server_announcement",
-    "connect_message_template", "disconnect_message_template",
     "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time",
     "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates", "maintenance_history",
 }

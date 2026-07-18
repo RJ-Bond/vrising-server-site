@@ -110,6 +110,7 @@ class AnnouncementCreate(BaseModel):
     interval_minutes: Optional[int] = None
     expires_at: Optional[datetime] = None
     enabled: bool = True
+    server_num: int = 1
 
     @field_validator("text")
     @classmethod
@@ -128,11 +129,15 @@ class AnnouncementCreate(BaseModel):
 
 
 class AnnouncementUpdate(BaseModel):
-    """Body for PUT /api/admin/announcements/{id} — every field optional (partial update)."""
+    """Body for PUT /api/admin/announcements/{id} — every field optional (partial update),
+    same exclude_unset convention as the rest of this schema: server_num defaults to None
+    (not 1) so an update that omits it never silently reassigns the announcement to a
+    different server."""
     text: Optional[str] = None
     interval_minutes: Optional[int] = None
     expires_at: Optional[datetime] = None
     enabled: Optional[bool] = None
+    server_num: Optional[int] = None
 
     @field_validator("text")
     @classmethod
@@ -160,6 +165,7 @@ class AnnouncementOut(BaseModel):
     expires_at: Optional[datetime] = None
     last_sent_at: Optional[datetime] = None
     target_steam_id: Optional[str] = None
+    server_num: int = 1
     created_at: datetime
     updated_at: datetime
 
@@ -169,8 +175,10 @@ class AnnouncementOut(BaseModel):
 class AnnouncementTestSend(BaseModel):
     """Body for POST /api/admin/announcements/test-send — a one-off announcement sent
     only to the requesting admin's own linked SteamID (see current_user.steam_id), not
-    broadcast to everyone."""
+    broadcast to everyone. server_num picks which server's plugin instance should deliver
+    it, since the admin's character might only be online on one of several servers."""
     text: str
+    server_num: int = 1
 
     @field_validator("text")
     @classmethod
@@ -179,6 +187,21 @@ class AnnouncementTestSend(BaseModel):
         if not v:
             raise ValueError("Announcement text cannot be empty")
         return v[:200]
+
+
+class ServerMessageTemplateOut(BaseModel):
+    """Response for GET /api/admin/message-templates and GET /api/plugin/message-templates
+    — empty strings mean "not set" (the plugin falls back to its own local default)."""
+    connect: str = ""
+    disconnect: str = ""
+
+
+class ServerMessageTemplateUpdate(BaseModel):
+    """Body for PUT /api/admin/message-templates?server_num=N — partial update, same
+    exclude_unset convention as AnnouncementUpdate: a field omitted from the body leaves
+    that side of the row untouched."""
+    connect: Optional[str] = None
+    disconnect: Optional[str] = None
 
 
 class UserOut(BaseModel):
