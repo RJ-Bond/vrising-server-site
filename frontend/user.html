@@ -36,6 +36,9 @@
     [data-tip]{position:relative;}
     [data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%);background:rgba(6,0,15,0.96);border:1px solid rgba(180,0,35,0.4);color:#d4c4e0;font-size:.68rem;padding:.28rem .65rem;border-radius:.4rem;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:999;font-family:'Inter',sans-serif;}
     [data-tip]:hover::after{opacity:1;}
+    /* Plugin-verified playtime marker — at least one session was reported by the
+       in-game plugin (not just estimated from Steam A2S polling). */
+    .pub-verified{font-size:.62rem;color:#2ee69b;margin-left:.2rem;cursor:default;vertical-align:middle;}
     .profile-cover{
       position:relative;height:160px;overflow:hidden;
       background:linear-gradient(135deg,rgba(40,0,80,0.9),rgba(90,0,20,0.85),rgba(20,0,50,0.9));
@@ -226,7 +229,9 @@
       </div>
       <div class="stat-row">
         <span style="color:var(--muted);font-size:.82rem;">Всего на серверах</span>
-        <span id="user-playtime" style="font-size:.85rem;color:var(--text);font-weight:500;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;">—</span>
+        <span>
+          <span id="user-playtime" style="font-size:.85rem;color:var(--text);font-weight:500;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;">—</span><span id="user-playtime-verified"></span>
+        </span>
       </div>
       <div class="stat-row">
         <span style="color:var(--muted);font-size:.82rem;">Последний сеанс</span>
@@ -431,6 +436,8 @@ async function loadUser(){
     document.getElementById('user-role').textContent=_publicStaffRoles.includes(u.role)?(u.admin_title||'Администратор'):'Игрок';
     document.getElementById('user-since').textContent=fmtDate(u.created_at);
     document.getElementById('user-playtime').textContent=u.total_seconds>0?fmtSec(u.total_seconds):'Ещё не играл';
+    const _vEl=document.getElementById('user-playtime-verified');
+    if(_vEl) _vEl.innerHTML=(u.verified&&u.total_seconds>0)?'<span class="pub-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>':'';
     document.getElementById('user-last-seen').textContent=u.last_seen?fmtAgo(u.last_seen):'Не играл';
     document.getElementById('user-comment-count').textContent=u.comment_count??'0';
     renderRank(u.total_seconds||0);

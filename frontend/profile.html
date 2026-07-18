@@ -38,6 +38,9 @@
     [data-tip] { position:relative; }
     [data-tip]::after { content:attr(data-tip); position:absolute; bottom:calc(100% + 7px); left:50%; transform:translateX(-50%); background:rgba(6,0,15,0.96); border:1px solid rgba(180,0,35,0.4); color:#d4c4e0; font-size:.68rem; padding:.28rem .65rem; border-radius:.4rem; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .15s; z-index:999; font-family:'Inter',sans-serif; }
     [data-tip]:hover::after { opacity:1; }
+    /* Plugin-verified playtime marker — at least one session was reported by the
+       in-game plugin (not just estimated from Steam A2S polling). */
+    .pub-verified { font-size:.62rem; color:#2ee69b; margin-left:.2rem; cursor:default; vertical-align:middle; }
 
     /* COVER */
     .profile-cover {
@@ -1059,7 +1062,7 @@ async function loadProfile() {
       if (tiles) {
         const playtimeVal = document.getElementById('stat-tile-playtime-val');
         const lastVal = document.getElementById('stat-tile-last-val');
-        if (playtimeVal) playtimeVal.textContent = pubData.total_seconds > 0 ? fmtSec(pubData.total_seconds) : '—';
+        if (playtimeVal) playtimeVal.innerHTML = (pubData.total_seconds > 0 ? esc(fmtSec(pubData.total_seconds)) : '—') + (pubData.verified && pubData.total_seconds > 0 ? '<span class="pub-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>' : '');
         if (lastVal && pubData.last_seen) {
           const d = new Date(pubData.last_seen);
           lastVal.textContent = d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
@@ -1083,7 +1086,7 @@ async function loadProfile() {
           wrap.style.display = '';
           const h = Math.floor((pubData.total_seconds || 0) / 3600);
           const m = Math.floor(((pubData.total_seconds || 0) % 3600) / 60);
-          document.getElementById('gs-playtime').textContent = h > 0 ? `${h}ч ${m}м` : `${m}м`;
+          document.getElementById('gs-playtime').innerHTML = (h > 0 ? `${h}ч ${m}м` : `${m}м`) + (pubData.verified ? '<span class="pub-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>' : '');
           const lastEl = document.getElementById('gs-last');
           if (pubData.last_seen) {
             const d = new Date(pubData.last_seen);

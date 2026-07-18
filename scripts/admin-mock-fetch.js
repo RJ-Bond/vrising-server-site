@@ -109,6 +109,13 @@
         ? { connect: '<color=#00FF00>{name} присоединился (Brutal PvE)</color>', disconnect: '<color=#FF3355>{name} покинул сервер</color>' }
         : { connect: '<color=#00FF00>{name} присоединился к игре</color>', disconnect: '<color=#FF3355>{name} покинул сервер</color>' };
     }],
+    // ServerApiKeyOut shape (backend/schemas.py) — GET /api/admin/server-api-key?server_num=N.
+    // Server 2 has its own override configured; server 1 is left blank (uses the global
+    // fallback key) so the preview exercises both states of the field.
+    [/\/api\/admin\/server-api-key(\?.*)?$/, (url) => {
+      const server_num = url.includes('server_num=2') ? 2 : 1;
+      return { api_key: server_num === 2 ? 'server-2-only-secret' : '' };
+    }],
   ];
 
   const realFetch = window.fetch.bind(window);

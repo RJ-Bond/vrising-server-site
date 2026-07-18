@@ -204,6 +204,20 @@ class ServerMessageTemplateUpdate(BaseModel):
     disconnect: Optional[str] = None
 
 
+class ServerApiKeyOut(BaseModel):
+    """Response for GET /api/admin/server-api-key?server_num=N — empty string means this
+    server has no key of its own and is using the global plugin_api_key Setting as a
+    fallback (see _require_plugin_key in main.py)."""
+    api_key: str = ""
+
+
+class ServerApiKeyUpdate(BaseModel):
+    """Body for PUT /api/admin/server-api-key?server_num=N. An empty api_key clears the
+    per-server override (deletes the row) so the server reverts to the global fallback
+    key, rather than being stored as a literal empty-string secret."""
+    api_key: str = ""
+
+
 class UserOut(BaseModel):
     id: int
     username: str
@@ -323,6 +337,9 @@ class PlayerRecordOut(BaseModel):
     session_count: int = 0
     avatar_url: Optional[str] = None  # populated at runtime from User table, not stored in PlayerRecord
     rank_delta: Optional[int] = None  # populated at runtime: rank change vs. ~7 days ago (positive = climbed)
+    verified: bool = False  # populated at runtime from PlayerRecord.steam_id is not None — True once at least
+    # one session for this row was reported by the game plugin, vs. purely from A2S polling.
+    # Exposed as a boolean (not the raw steam_id) since this is a public-facing response.
 
     model_config = {"from_attributes": True}
 

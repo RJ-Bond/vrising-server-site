@@ -389,3 +389,15 @@ class ServerMessageTemplate(Base):
     connect_template = Column(Text, nullable=True)
     disconnect_template = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+
+class ServerApiKey(Base):
+    """Optional per-server override of the global "plugin_api_key" Setting — lets one
+    game server have its own secret (better isolation: a leaked config only compromises
+    that server) while servers without a row here keep using the global key as a
+    fallback. See _require_plugin_key in main.py for the lookup/precedence logic."""
+    __tablename__ = "server_api_keys"
+
+    server_num = Column(Integer, primary_key=True)
+    api_key = Column(String(128), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)

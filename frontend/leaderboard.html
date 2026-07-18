@@ -163,6 +163,9 @@
     .lb-last-session { font-size:.62rem; color:var(--muted); }
     .lb-time { font-family:'Oswald',sans-serif; font-size:.85rem; color:var(--gold); white-space:nowrap; flex-shrink:0; }
     .lb-seen { font-size:.66rem; color:var(--muted); white-space:nowrap; flex-shrink:0; min-width:5.5rem; text-align:right; }
+    /* Plugin-verified playtime marker — a session for this player was reported by the
+       in-game plugin (not just estimated from Steam A2S polling). */
+    .lb-verified { font-size:.62rem; color:#2ee69b; margin-left:.15rem; cursor:default; vertical-align:middle; }
 
     /* ①  Skeleton rows */
     @keyframes skel-shimmer {
@@ -578,12 +581,13 @@ function renderPodium(top3) {
       ? `<img class="podium-avatar" src="${esc(u.avatar_url)}" alt="" style="border:2px solid ${borders[i]};">`
       : `<span class="podium-avatar" style="background:${grad};border:2px solid ${borders[i]};">${esc(name.charAt(0).toUpperCase())}</span>`;
     const hours = Math.floor((u.total_seconds || 0) / 3600);
+    const verifiedHtml = u.verified ? `<span class="lb-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>` : '';
     return `<a class="podium-card" href="/user.html?u=${encodeURIComponent(name)}"
         style="animation:podium-in .5s ease both;animation-delay:${i * 120}ms;">
       ${avatarHtml}
       <div class="podium-medal">${medals[i]}</div>
       <span class="podium-name">${esc(name)}</span>
-      <div class="podium-time">${hours}ч</div>
+      <div class="podium-time">${hours}ч${verifiedHtml}</div>
       <div class="podium-pillar" style="height:${pillH[i]};background:${pillBg[i]};border-top:2px solid ${borders[i]};">
         <span style="font-family:'Oswald',sans-serif;font-size:.68rem;color:rgba(255,255,255,.4);">#${ranks[i]}</span>
       </div>
@@ -666,7 +670,7 @@ function renderRows(players) {
         ${lastSession}
         <div class="lb-progress"><div class="lb-progress-fill" style="width:${barPct}%;background:${barColor};"></div></div>
       </span>
-      <span class="lb-time">${fmtPlaytime(p.total_seconds)}</span>
+      <span class="lb-time">${fmtPlaytime(p.total_seconds)}${p.verified ? `<span class="lb-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>` : ''}</span>
       <span class="lb-seen">${relativeDate(p.last_seen)}</span>
     </div>`;
   }).join('');
@@ -854,7 +858,7 @@ async function openPlayerModal(playerName, serverNum, playerRank) {
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-top:.85rem;text-align:left;">
         <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.55rem .7rem;">
           <div style="font-size:.55rem;color:#9488a8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;">Всего</div>
-          <div style="font-size:.92rem;font-weight:700;color:#e2d8f0;font-family:'Oswald',sans-serif;">${totalH}ч ${totalM}м</div>
+          <div style="font-size:.92rem;font-weight:700;color:#e2d8f0;font-family:'Oswald',sans-serif;">${totalH}ч ${totalM}м${data.verified ? `<span class="lb-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>` : ''}</div>
         </div>
         <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.55rem .7rem;">
           <div style="font-size:.55rem;color:#9488a8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;">Ср. сессия</div>

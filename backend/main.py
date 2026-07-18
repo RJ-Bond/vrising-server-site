@@ -61,7 +61,7 @@ from sqlalchemy import select, func, delete, text, or_, update, and_
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate, ServerApiKey
 from .auth import (
     verify_password,
     get_password_hash,
@@ -124,6 +124,8 @@ from .schemas import (
     AnnouncementTestSend,
     ServerMessageTemplateOut,
     ServerMessageTemplateUpdate,
+    ServerApiKeyOut,
+    ServerApiKeyUpdate,
     LinkedAccountOut,
     strip_html_tags,
 )
@@ -393,6 +395,7 @@ async def lifespan(app: FastAPI):
             "CREATE INDEX IF NOT EXISTS ix_player_records_steam_id ON player_records(steam_id)",
             "ALTER TABLE announcements ADD COLUMN server_num INTEGER NOT NULL DEFAULT 1",
             "CREATE TABLE IF NOT EXISTS server_message_templates (server_num INTEGER PRIMARY KEY, connect_template TEXT, disconnect_template TEXT, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+            "CREATE TABLE IF NOT EXISTS server_api_keys (server_num INTEGER PRIMARY KEY, api_key VARCHAR(128) NOT NULL, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -872,16 +875,55 @@ async def me(current_user: User = Depends(get_current_user), db: AsyncSession = 
 
 # ─── Game Plugin Integration ──────────────────────────────────────────────────
 # Server-to-site channel used by the BepInEx plugin (vrising-bepinex-plugin) for the
-# in-game .register/.login chat commands. Authenticated via a shared secret (Setting
-# "plugin_api_key", set in admin settings) sent as the X-Plugin-Key header — this is
-# the game server itself calling as a trusted caller, not an individual player, so it
-# does not go through the user JWT scheme at all.
+# in-game .register/.login chat commands. Authenticated via a shared secret sent as the
+# X-Plugin-Key header — this is the game server itself calling as a trusted caller, not
+# an individual player, so it does not go through the user JWT scheme at all.
+#
+# Each server_num may optionally have its own key (ServerApiKey table, managed via
+# GET/PUT /api/admin/server-api-key below) for better isolation — a leaked config only
+# compromises the one server. Servers without a row there fall back to the single
+# global secret (Setting "plugin_api_key", set in admin settings), preserving backward
+# compatibility with already-deployed plugin configs that only know the shared key.
 
 async def _require_plugin_key(request: Request, db: AsyncSession = Depends(get_db)) -> None:
+    provided = request.headers.get("X-Plugin-Key", "")
+    if not provided:
+        raise HTTPException(status_code=401, detail="Invalid or missing plugin key")
+
+    # Determine which server this call is for: query param first (GET endpoints like
+    # /api/plugin/announcements?server_num=N), else the JSON body (POST endpoints like
+    # /api/plugin/heartbeat send server_num as a body field). Starlette caches the raw
+    # request body internally, so reading it here via request.json() does not prevent
+    # the endpoint's own Pydantic model from reading it again afterward.
+    server_num: Optional[int] = None
+    raw = request.query_params.get("server_num")
+    if raw is not None:
+        try:
+            server_num = int(raw)
+        except ValueError:
+            server_num = None
+    if server_num is None:
+        try:
+            body = await request.json()
+            if isinstance(body, dict) and "server_num" in body:
+                server_num = int(body["server_num"])
+        except Exception:
+            server_num = None
+    if server_num is None:
+        server_num = 1
+
+    per_server_result = await db.execute(select(ServerApiKey).where(ServerApiKey.server_num == server_num))
+    per_server = per_server_result.scalar_one_or_none()
+    if per_server is not None:
+        # A per-server key is configured — it alone is valid for this server_num, no
+        # fallback to the global key (opting into an isolated key should mean isolated).
+        if provided != per_server.api_key:
+            raise HTTPException(status_code=401, detail="Invalid or missing plugin key")
+        return
+
     result = await db.execute(select(Setting).where(Setting.key == "plugin_api_key"))
     setting = result.scalar_one_or_none()
     expected = (setting.value if setting else "") or ""
-    provided = request.headers.get("X-Plugin-Key", "")
     if not expected or provided != expected:
         raise HTTPException(status_code=401, detail="Invalid or missing plugin key")
 
@@ -1358,6 +1400,50 @@ async def update_message_templates(
         connect=row.connect_template or "",
         disconnect=row.disconnect_template or "",
     )
+
+
+# ─── Per-server plugin API key (admin) ─────────────────────────────────────────
+# Optional per-server override of the global "plugin_api_key" Setting — see the
+# _require_plugin_key docstring/comment above for the full precedence rules.
+
+@app.get("/api/admin/server-api-key", response_model=ServerApiKeyOut)
+async def get_server_api_key(
+    server_num: int = Query(default=1),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(select(ServerApiKey).where(ServerApiKey.server_num == server_num))
+    row = result.scalar_one_or_none()
+    return ServerApiKeyOut(api_key=row.api_key if row else "")
+
+
+@app.put("/api/admin/server-api-key", response_model=ServerApiKeyOut)
+async def update_server_api_key(
+    body: ServerApiKeyUpdate,
+    server_num: int = Query(default=1),
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """An empty api_key clears the override (deletes the row) so the server reverts to
+    the global fallback key, rather than being stored as a literal empty-string secret."""
+    result = await db.execute(select(ServerApiKey).where(ServerApiKey.server_num == server_num))
+    row = result.scalar_one_or_none()
+    value = body.api_key.strip()
+    if not value:
+        if row is not None:
+            await db.delete(row)
+        await _audit(db, current_user.id, "server_api_key.clear", target_type="server_api_key", target_id=server_num)
+        await db.commit()
+        return ServerApiKeyOut(api_key="")
+
+    if row is None:
+        row = ServerApiKey(server_num=server_num, api_key=value)
+        db.add(row)
+    else:
+        row.api_key = value
+    await _audit(db, current_user.id, "server_api_key.update", target_type="server_api_key", target_id=server_num)
+    await db.commit()
+    return ServerApiKeyOut(api_key=value)
 
 
 # ─── Who's online ─────────────────────────────────────────────────────────────
@@ -3279,6 +3365,15 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         ).order_by(PlayerRecord.last_seen.desc()).limit(1)
     )
     last_duration = last_dur_result.scalar_one_or_none() or 0
+    # True once at least one PlayerRecord row for this player was claimed by a real
+    # /api/plugin/sessions report (steam_id set), vs. total_seconds being purely an
+    # older Steam-A2S-polling estimate never confirmed by the plugin.
+    verified_result = await db.execute(
+        select(PlayerRecord.id).where(
+            PlayerRecord.player_name == lookup_name, PlayerRecord.steam_id.isnot(None)
+        ).limit(1)
+    )
+    verified = verified_result.scalar_one_or_none() is not None
     # Clan membership now comes from the game-synced roster (matched via the verified
     # steam_id link), not the old web-managed Clan/User.clan_id system.
     clan = None
@@ -3305,6 +3400,7 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         "last_seen": _fmt_dt(last_seen),
         "session_count": session_count,
         "last_duration": last_duration,
+        "verified": verified,
         "clan": clan,
         "admin_title": user.admin_title,
         "last_active_at": _fmt_dt(user.last_active_at),
@@ -3414,6 +3510,7 @@ async def get_leaderboard(
     for i, r in enumerate(records):
         item = PlayerRecordOut.model_validate(r)
         item.avatar_url = avatar_map.get(r.player_name)
+        item.verified = r.steam_id is not None
         if period == "all" and r.player_name in hist_rank_map:
             current_rank = (page - 1) * per_page + i + 1
             item.rank_delta = hist_rank_map[r.player_name] - current_rank

@@ -53,6 +53,9 @@
     total_seconds: Math.max(600, 500000 - i * 38000), last_seen: iso(i * 3600 * 1000),
     last_duration: 3600 + i * 120, session_count: 40 - i, avatar_url: null,
     rank_delta: [3, -1, 0, 2, null, -4, 1, 0, null, 5, -2, 0][i],
+    // PlayerRecordOut.verified (backend/schemas.py) — True once a real /api/plugin/sessions
+    // report claimed this row; mixed here so the preview shows both badge states.
+    verified: i % 2 === 0,
   }));
 
   const monitorStatus = (name, players, ip, port) => ({
@@ -90,7 +93,7 @@
     username: 'Vortigern', avatar_url: null, cover_url: null, role: 'user',
     created_at: iso(180 * 24 * 3600 * 1000), game_nickname: 'Vortigern',
     total_seconds: 500000, last_seen: iso(3600 * 1000), session_count: 45,
-    last_duration: 5400, clan: { id: 1, name: 'Кровавые Клыки' },
+    last_duration: 5400, verified: true, clan: { id: 1, name: 'Кровавые Клыки' },
     admin_title: null, last_active_at: iso(600000), badge_icon_url: null,
     badge_style: 'default', comment_count: 23,
   };

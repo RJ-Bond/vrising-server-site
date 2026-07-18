@@ -1569,6 +1569,29 @@
         </div>
       </div>
 
+      <!-- Per-server API key override (optional — falls back to the global key above) -->
+      <div class="s-row" style="margin-top:1.25rem;">
+        <div class="s-card s-card-blue">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(0,60,140,.18);border:1px solid rgba(0,120,220,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.8"><path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.6 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.6a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+            </div>
+            <div>
+              <h2>API-ключ этого сервера</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Необязательный отдельный ключ только для этого сервера — изоляция на случай утечки конфига</p>
+            </div>
+          </div>
+          <div class="s-field" style="margin-bottom:0;">
+            <label>API-ключ</label>
+            <div class="s-field-row">
+              <input id="plugin-server-api-key" type="password" class="dark-input" placeholder="общий ключ выше">
+              <button class="s-save-btn" onclick="saveServerApiKey()">Сохранить</button>
+            </div>
+            <p class="s-desc">Если оставить пустым — используется общий ключ выше.</p>
+          </div>
+        </div>
+      </div>
+
       <!-- Scheduled announcements -->
       <div class="s-row" style="margin-top:1.25rem;">
         <div class="s-card s-card-blue">
@@ -2673,6 +2696,7 @@ async function loadPluginSection() {
   await loadPluginStatus();   // populates _pluginServers + _pluginActiveServer, renders tabs
   loadAnnouncements();
   loadMessageTemplates();
+  loadServerApiKey();
 }
 
 async function loadPluginStatus() {
@@ -2719,6 +2743,7 @@ function selectPluginServer(serverNum) {
   renderPluginStatusPill();
   loadAnnouncements();
   loadMessageTemplates();
+  loadServerApiKey();
 }
 
 function renderPluginStatusPill() {
@@ -3062,6 +3087,34 @@ async function saveMessageTemplate(kind) {
   try {
     const res = await fetch(`${API}/admin/message-templates?server_num=${_pluginActiveServer}`, {
       method: 'PUT', credentials: 'include', headers: authH(), body: JSON.stringify({ [kind]: value }),
+    });
+    if (res.ok) adminToast('Сохранено', 'success');
+    else showToast('Ошибка сохранения', 'error');
+  } catch { showToast('Ошибка сети', 'error'); }
+}
+
+// ─── Per-server plugin API key (GET/PUT /api/admin/server-api-key?server_num=N) ────
+// Optional override of the global Plugin API Key field above — falls back to it when
+// this server has no ServerApiKey row (see backend/main.py _require_plugin_key).
+
+async function loadServerApiKey() {
+  const el = document.getElementById('plugin-server-api-key');
+  if (!el) return;
+  if (_pluginActiveServer == null) { el.value = ''; return; }
+  try {
+    const res = await fetch(`${API}/admin/server-api-key?server_num=${_pluginActiveServer}`, { credentials: 'include', headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const d = await res.json();
+    el.value = d.api_key || '';
+  } catch { /* leave field as-is on network error */ }
+}
+
+async function saveServerApiKey() {
+  if (_pluginActiveServer == null) return;
+  const value = document.getElementById('plugin-server-api-key')?.value ?? '';
+  try {
+    const res = await fetch(`${API}/admin/server-api-key?server_num=${_pluginActiveServer}`, {
+      method: 'PUT', credentials: 'include', headers: authH(), body: JSON.stringify({ api_key: value }),
     });
     if (res.ok) adminToast('Сохранено', 'success');
     else showToast('Ошибка сохранения', 'error');
