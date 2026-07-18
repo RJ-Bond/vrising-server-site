@@ -113,6 +113,7 @@ from .schemas import (
     PollOut,
     PluginRegister,
     PluginLogin,
+    PluginAcceptRules,
     PluginHeartbeatIn,
     PluginHeartbeatOut,
     PluginSessionReport,
@@ -940,9 +941,61 @@ async def plugin_status(
     """Checked by the plugin on player connect to decide whether to show the
     "you're not registered yet" chat message (or, if already linked, a
     "logged in as {username}" welcome message)."""
-    result = await db.execute(select(User.username).where(User.steam_id == steam_id))
-    username = result.scalar_one_or_none()
-    return {"registered": username is not None, "username": username}
+    result = await db.execute(
+        select(User.username, User.rules_accepted_at).where(User.steam_id == steam_id)
+    )
+    row = result.first()
+    if row is None:
+        return {"registered": False, "username": None, "rules_accepted": None}
+    username, rules_accepted_at = row
+    return {
+        "registered": True,
+        "username": username,
+        "rules_accepted": rules_accepted_at is not None,
+    }
+
+
+@app.get("/api/plugin/rules")
+@limiter.limit("60/minute")
+async def plugin_get_rules(
+    request: Request,
+    server_num: int = Query(default=1),
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Returns the server rules (site admin-managed, Setting "rules") so the plugin can
+    show them to a freshly-registered player and prompt for in-game acceptance. Rules
+    aren't actually per-server, but server_num is still accepted/required like the other
+    plugin GET endpoints for consistent API-key resolution in _require_plugin_key."""
+    result = await db.execute(select(Setting).where(Setting.key == "rules"))
+    setting = result.scalar_one_or_none()
+    if not setting or not setting.value:
+        return {"rules": []}
+    try:
+        rules = json.loads(setting.value)
+    except (TypeError, ValueError):
+        rules = []
+    return {"rules": rules}
+
+
+@app.post("/api/plugin/accept-rules")
+@limiter.limit("30/minute")
+async def plugin_accept_rules(
+    request: Request,
+    body: PluginAcceptRules,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Backs the in-game rules-acceptance prompt — mirrors POST /api/auth/accept-rules
+    for website users, but keyed by steam_id since there's no JWT session in-game."""
+    result = await db.execute(select(User).where(User.steam_id == body.steam_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="not_registered")
+    if user.rules_accepted_at is None:
+        user.rules_accepted_at = datetime.now(timezone.utc)
+        await db.commit()
+    return {"success": True}
 
 
 @app.post("/api/plugin/register")

@@ -1,6 +1,7 @@
 """Regression tests for the BepInEx plugin integration endpoints (/api/plugin/*):
 in-game .register/.login account linking, gated by the shared plugin_api_key secret."""
 import pytest
+from sqlalchemy import select
 
 from backend.auth import get_password_hash
 from backend.models import Setting, User
@@ -258,3 +259,158 @@ async def test_login_is_idempotent_for_the_same_steam_id(client, db_session):
     )
     assert r.status_code == 200
     assert r.json()["success"] is True
+
+
+async def test_status_for_unlinked_steam_id_reports_null_rules_accepted(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.get("/api/plugin/status", params={"steam_id": "76561198999999998"}, headers=_hdr())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["registered"] is False
+    assert body["rules_accepted"] is None
+
+
+async def test_status_for_registered_user_who_has_not_accepted_rules(client, db_session):
+    await _set_plugin_key(db_session)
+    db_session.add(User(
+        username="RulesNotYet",
+        email="rulesnotyet@example.com",
+        hashed_password=get_password_hash("password1"),
+        role="user",
+        steam_id="76561198000000020",
+    ))
+    await db_session.commit()
+
+    r = await client.get("/api/plugin/status", params={"steam_id": "76561198000000020"}, headers=_hdr())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["registered"] is True
+    assert body["rules_accepted"] is False
+
+
+async def test_status_for_registered_user_who_accepted_rules(client, db_session):
+    await _set_plugin_key(db_session)
+    from datetime import datetime, timezone
+    db_session.add(User(
+        username="RulesAccepted",
+        email="rulesaccepted@example.com",
+        hashed_password=get_password_hash("password1"),
+        role="user",
+        steam_id="76561198000000021",
+        rules_accepted_at=datetime.now(timezone.utc),
+    ))
+    await db_session.commit()
+
+    r = await client.get("/api/plugin/status", params={"steam_id": "76561198000000021"}, headers=_hdr())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["registered"] is True
+    assert body["rules_accepted"] is True
+
+
+async def test_get_rules_returns_parsed_rules_array(client, db_session):
+    await _set_plugin_key(db_session)
+    db_session.add(Setting(
+        key="rules",
+        value='[{"icon":"🤝","text":"Be nice"},{"icon":"🚫","text":"No cheating"}]',
+    ))
+    await db_session.commit()
+
+    r = await client.get("/api/plugin/rules", params={"server_num": 1}, headers=_hdr())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["rules"] == [
+        {"icon": "🤝", "text": "Be nice"},
+        {"icon": "🚫", "text": "No cheating"},
+    ]
+
+
+async def test_get_rules_returns_empty_list_when_setting_missing(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.get("/api/plugin/rules", params={"server_num": 1}, headers=_hdr())
+    assert r.status_code == 200
+    assert r.json() == {"rules": []}
+
+
+async def test_get_rules_requires_plugin_key(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.get("/api/plugin/rules", params={"server_num": 1})
+    assert r.status_code == 401
+
+
+async def test_accept_rules_sets_timestamp_for_registered_user(client, db_session):
+    await _set_plugin_key(db_session)
+    db_session.add(User(
+        username="AcceptRulesUser",
+        email="acceptrulesuser@example.com",
+        hashed_password=get_password_hash("password1"),
+        role="user",
+        steam_id="76561198000000022",
+    ))
+    await db_session.commit()
+
+    r = await client.post(
+        "/api/plugin/accept-rules",
+        json={"steam_id": "76561198000000022", "server_num": 1},
+        headers=_hdr(),
+    )
+    assert r.status_code == 200
+    assert r.json() == {"success": True}
+
+    status_r = await client.get("/api/plugin/status", params={"steam_id": "76561198000000022"}, headers=_hdr())
+    assert status_r.json()["rules_accepted"] is True
+
+
+async def test_accept_rules_for_unknown_steam_id_returns_404(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.post(
+        "/api/plugin/accept-rules",
+        json={"steam_id": "76561198000000023", "server_num": 1},
+        headers=_hdr(),
+    )
+    assert r.status_code == 404
+    assert r.json()["detail"] == "not_registered"
+
+
+async def test_accept_rules_twice_does_not_move_timestamp_forward(client, db_session):
+    await _set_plugin_key(db_session)
+    db_session.add(User(
+        username="DoubleAccept",
+        email="doubleaccept@example.com",
+        hashed_password=get_password_hash("password1"),
+        role="user",
+        steam_id="76561198000000024",
+    ))
+    await db_session.commit()
+
+    r1 = await client.post(
+        "/api/plugin/accept-rules",
+        json={"steam_id": "76561198000000024", "server_num": 1},
+        headers=_hdr(),
+    )
+    assert r1.status_code == 200
+    assert r1.json()["success"] is True
+
+    result = await db_session.execute(
+        select(User).where(User.steam_id == "76561198000000024")
+    )
+    user = result.scalar_one()
+    await db_session.refresh(user)
+    first_accepted_at = user.rules_accepted_at
+    assert first_accepted_at is not None
+
+    r2 = await client.post(
+        "/api/plugin/accept-rules",
+        json={"steam_id": "76561198000000024", "server_num": 1},
+        headers=_hdr(),
+    )
+    assert r2.status_code == 200
+    assert r2.json()["success"] is True
+
+    result2 = await db_session.execute(
+        select(User).where(User.steam_id == "76561198000000024")
+    )
+    user2 = result2.scalar_one()
+    await db_session.refresh(user2)
+    assert user2.rules_accepted_at is not None
+    assert user2.rules_accepted_at == first_accepted_at

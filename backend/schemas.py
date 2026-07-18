@@ -90,6 +90,14 @@ class PluginLogin(BaseModel):
     server_num: int = 1
 
 
+class PluginAcceptRules(BaseModel):
+    """Body for POST /api/plugin/accept-rules — records in-game rules acceptance for a
+    steam_id-linked account (there's no JWT session in-game, unlike the website's
+    POST /api/auth/accept-rules)."""
+    steam_id: str
+    server_num: int = 1
+
+
 class PluginHeartbeatIn(BaseModel):
     """Body for POST /api/plugin/heartbeat — sent periodically (~every 60s) by the
     BepInEx plugin so the admin panel can show whether it's actually talking to the site."""
