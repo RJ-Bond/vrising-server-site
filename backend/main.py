@@ -61,7 +61,7 @@ from sqlalchemy import select, func, delete, text, or_, update, and_
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, Clan, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember
 from .auth import (
     verify_password,
     get_password_hash,
@@ -105,10 +105,6 @@ from .schemas import (
     ResetPasswordBody,
     ChangePasswordBody,
     ReactBody,
-    ClanCreate,
-    ClanUpdate,
-    ClanOut,
-    ClanDetailOut,
     ReportCreate,
     ReportReview,
     ReportOut,
@@ -118,6 +114,9 @@ from .schemas import (
     PluginLogin,
     PluginHeartbeatIn,
     PluginHeartbeatOut,
+    PluginClansSyncIn,
+    GameClanOut,
+    GameClanDetailOut,
     strip_html_tags,
 )
 
@@ -376,6 +375,9 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE users ADD COLUMN steam_id VARCHAR(32) DEFAULT NULL",
             "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_steam_id ON users(steam_id)",
             "CREATE TABLE IF NOT EXISTS plugin_heartbeats (server_num INTEGER PRIMARY KEY, server_name VARCHAR(128), plugin_version VARCHAR(32), player_count INTEGER NOT NULL DEFAULT 0, last_seen_at DATETIME NOT NULL)",
+            "CREATE TABLE IF NOT EXISTS game_clans (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, clan_guid VARCHAR(36) NOT NULL, name VARCHAR(64) NOT NULL, motto VARCHAR(64) DEFAULT '', updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(server_num, clan_guid))",
+            "CREATE TABLE IF NOT EXISTS game_clan_members (id INTEGER PRIMARY KEY, clan_id INTEGER NOT NULL REFERENCES game_clans(id) ON DELETE CASCADE, steam_id VARCHAR(32) NOT NULL, character_name VARCHAR(64) NOT NULL, role VARCHAR(16) NOT NULL DEFAULT 'member')",
+            "CREATE INDEX IF NOT EXISTS ix_game_clan_members_clan ON game_clan_members(clan_id)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -967,6 +969,41 @@ async def plugin_heartbeat(
     hb.last_seen_at = now
     await db.commit()
     return {"success": True}
+
+
+@app.post("/api/plugin/clans/sync")
+@limiter.limit("30/minute")
+async def plugin_clans_sync(
+    request: Request,
+    body: PluginClansSyncIn,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Sent periodically by the plugin with the FULL current in-game clan roster for one
+    server. This replaces (not merges) all game_clans rows for body.server_num — the
+    plugin always reports its complete current state, so a stale clan that no longer
+    exists in-game simply won't be in the next payload and gets dropped here."""
+    await db.execute(
+        delete(GameClan).where(GameClan.server_num == body.server_num)
+    )
+    for clan_in in body.clans:
+        clan = GameClan(
+            server_num=body.server_num,
+            clan_guid=clan_in.clan_guid,
+            name=clan_in.name,
+            motto=clan_in.motto or "",
+        )
+        db.add(clan)
+        await db.flush()
+        for member_in in clan_in.members:
+            db.add(GameClanMember(
+                clan_id=clan.id,
+                steam_id=member_in.steam_id,
+                character_name=member_in.character_name,
+                role=member_in.role,
+            ))
+    await db.commit()
+    return {"success": True, "clan_count": len(body.clans)}
 
 
 @app.get("/api/admin/plugin-status", response_model=list[PluginHeartbeatOut])
@@ -2863,12 +2900,17 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         ).order_by(PlayerRecord.last_seen.desc()).limit(1)
     )
     last_duration = last_dur_result.scalar_one_or_none() or 0
+    # Clan membership now comes from the game-synced roster (matched via the verified
+    # steam_id link), not the old web-managed Clan/User.clan_id system.
     clan = None
-    if user.clan_id:
-        clan_result = await db.execute(select(Clan).where(Clan.id == user.clan_id))
-        clan_row = clan_result.scalar_one_or_none()
+    if user.steam_id:
+        clan_result = await db.execute(
+            select(GameClan).join(GameClanMember, GameClanMember.clan_id == GameClan.id)
+            .where(GameClanMember.steam_id == user.steam_id)
+        )
+        clan_row = clan_result.scalars().first()
         if clan_row:
-            clan = {"id": clan_row.id, "name": clan_row.name, "tag": clan_row.tag}
+            clan = {"id": clan_row.id, "name": clan_row.name}
     comment_count_res = await db.execute(
         select(func.count(Comment.id)).where(Comment.author_id == user.id)
     )
@@ -3014,139 +3056,63 @@ async def delete_leaderboard_record(
     await db.commit()
 
 
-# ─── Clans ────────────────────────────────────────────────────────────────────
+# ─── Clans (game-synced, read-only) ───────────────────────────────────────────
+# Clan data is owned by the game itself — the plugin pushes the full current roster to
+# POST /api/plugin/clans/sync (see "Game Plugin Integration" above). The website only
+# ever displays it; there is no web-managed create/join/leave/delete anymore.
 
-async def _clan_out(db: AsyncSession, clan: Clan, with_members: bool = False):
-    leader_result = await db.execute(select(User).where(User.id == clan.leader_id))
-    leader = leader_result.scalar_one_or_none()
-    count_result = await db.execute(select(func.count(User.id)).where(User.clan_id == clan.id))
+async def _game_clan_out(db: AsyncSession, clan: GameClan, with_members: bool = False):
+    count_result = await db.execute(
+        select(func.count(GameClanMember.id)).where(GameClanMember.clan_id == clan.id)
+    )
     member_count = count_result.scalar_one()
     base = {
-        "id": clan.id, "name": clan.name, "tag": clan.tag, "description": clan.description or "",
-        "leader_id": clan.leader_id, "leader_username": leader.username if leader else "?",
-        "member_count": member_count, "created_at": clan.created_at,
+        "id": clan.id, "server_num": clan.server_num, "clan_guid": clan.clan_guid,
+        "name": clan.name, "motto": clan.motto or "", "updated_at": clan.updated_at,
+        "member_count": member_count,
     }
     if with_members:
-        members_result = await db.execute(select(User).where(User.clan_id == clan.id).order_by(User.username))
-        base["members"] = [{"id": m.id, "username": m.username, "avatar_url": m.avatar_url} for m in members_result.scalars().all()]
+        members_result = await db.execute(
+            select(GameClanMember).where(GameClanMember.clan_id == clan.id).order_by(GameClanMember.character_name)
+        )
+        members = members_result.scalars().all()
+        steam_ids = [m.steam_id for m in members]
+        users_by_steam = {}
+        if steam_ids:
+            users_result = await db.execute(select(User).where(User.steam_id.in_(steam_ids)))
+            users_by_steam = {u.steam_id: u for u in users_result.scalars().all()}
+        member_list = []
+        for m in members:
+            u = users_by_steam.get(m.steam_id)
+            member_list.append({
+                "steam_id": m.steam_id, "character_name": m.character_name, "role": m.role,
+                "username": u.username if u else None,
+                "avatar_url": u.avatar_url if u else None,
+            })
+        base["members"] = member_list
     return base
 
 
-@app.get("/api/clans", response_model=list[ClanOut])
-async def list_clans(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Clan).order_by(Clan.created_at.desc()))
+@app.get("/api/clans", response_model=list[GameClanOut])
+async def list_clans(search: Optional[str] = None, limit: Optional[int] = None, db: AsyncSession = Depends(get_db)):
+    query = select(GameClan)
+    if search:
+        query = query.where(GameClan.name.ilike(f"%{search}%"))
+    query = query.order_by(GameClan.name)
+    if limit:
+        query = query.limit(limit)
+    result = await db.execute(query)
     clans = result.scalars().all()
-    return [await _clan_out(db, c) for c in clans]
+    return [await _game_clan_out(db, c) for c in clans]
 
 
-@app.get("/api/clans/{clan_id}", response_model=ClanDetailOut)
+@app.get("/api/clans/{clan_id}", response_model=GameClanDetailOut)
 async def get_clan(clan_id: int, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Clan).where(Clan.id == clan_id))
+    result = await db.execute(select(GameClan).where(GameClan.id == clan_id))
     clan = result.scalar_one_or_none()
     if clan is None:
         raise HTTPException(status_code=404, detail="Клан не найден")
-    return await _clan_out(db, clan, with_members=True)
-
-
-@app.post("/api/clans", response_model=ClanDetailOut, status_code=201)
-async def create_clan(
-    body: ClanCreate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    if current_user.clan_id is not None:
-        raise HTTPException(status_code=400, detail="Вы уже состоите в клане — сначала покиньте его")
-    existing = await db.execute(
-        select(Clan).where(or_(Clan.name == body.name, Clan.tag == body.tag))
-    )
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Клан с таким названием или тегом уже существует")
-    clan = Clan(name=body.name, tag=body.tag, description=body.description, leader_id=current_user.id)
-    db.add(clan)
-    await db.flush()
-    current_user.clan_id = clan.id
-    await db.commit()
-    await db.refresh(clan)
-    return await _clan_out(db, clan, with_members=True)
-
-
-@app.put("/api/clans/{clan_id}", response_model=ClanDetailOut)
-async def update_clan(
-    clan_id: int,
-    body: ClanUpdate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(select(Clan).where(Clan.id == clan_id))
-    clan = result.scalar_one_or_none()
-    if clan is None:
-        raise HTTPException(status_code=404, detail="Клан не найден")
-    if clan.leader_id != current_user.id and not is_at_least(current_user, "admin"):
-        raise HTTPException(status_code=403, detail="Только лидер клана может его редактировать")
-    clan.description = body.description
-    await db.commit()
-    await db.refresh(clan)
-    return await _clan_out(db, clan, with_members=True)
-
-
-@app.post("/api/clans/{clan_id}/join", response_model=ClanDetailOut)
-async def join_clan(
-    clan_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    if current_user.clan_id is not None:
-        raise HTTPException(status_code=400, detail="Вы уже состоите в клане — сначала покиньте его")
-    result = await db.execute(select(Clan).where(Clan.id == clan_id))
-    clan = result.scalar_one_or_none()
-    if clan is None:
-        raise HTTPException(status_code=404, detail="Клан не найден")
-    current_user.clan_id = clan.id
-    await db.commit()
-    await db.refresh(clan)
-    return await _clan_out(db, clan, with_members=True)
-
-
-@app.post("/api/clans/leave")
-async def leave_clan(
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    if current_user.clan_id is None:
-        raise HTTPException(status_code=400, detail="Вы не состоите в клане")
-    clan_id = current_user.clan_id
-    result = await db.execute(select(Clan).where(Clan.id == clan_id))
-    clan = result.scalar_one_or_none()
-    current_user.clan_id = None
-    if clan and clan.leader_id == current_user.id:
-        new_leader_result = await db.execute(
-            select(User).where(User.clan_id == clan_id, User.id != current_user.id).order_by(User.created_at).limit(1)
-        )
-        new_leader = new_leader_result.scalar_one_or_none()
-        if new_leader:
-            clan.leader_id = new_leader.id
-        else:
-            await db.delete(clan)
-    await db.commit()
-    return {"ok": True}
-
-
-@app.delete("/api/admin/clans/{clan_id}", status_code=204)
-async def delete_clan(
-    clan_id: int,
-    current_user: User = Depends(get_admin_user),
-    db: AsyncSession = Depends(get_db),
-):
-    result = await db.execute(select(Clan).where(Clan.id == clan_id))
-    clan = result.scalar_one_or_none()
-    if clan is None:
-        raise HTTPException(status_code=404, detail="Клан не найден")
-    await db.execute(
-        text("UPDATE users SET clan_id = NULL WHERE clan_id = :cid"), {"cid": clan_id}
-    )
-    await db.delete(clan)
-    await log_audit(db, current_user, "clan.delete", clan.name)
-    await db.commit()
+    return await _game_clan_out(db, clan, with_members=True)
 
 
 # ─── System operations (admin) ────────────────────────────────────────────────

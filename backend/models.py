@@ -52,6 +52,41 @@ class Clan(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
+class GameClan(Base):
+    """In-game clan roster, synced wholesale from the BepInEx plugin via
+    POST /api/plugin/clans/sync. Read-only from the website's perspective — the game
+    is the source of truth, not the old manually-managed `Clan` model above (which is
+    kept in place as unused dead schema rather than risking a SQLite DROP COLUMN
+    migration on User.clan_id)."""
+
+    __tablename__ = "game_clans"
+
+    id = Column(Integer, primary_key=True, index=True)
+    server_num = Column(Integer, nullable=False, default=1)
+    clan_guid = Column(String(36), nullable=False, index=True)
+    name = Column(String(64), nullable=False)
+    motto = Column(String(64), nullable=True, default="")
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
+
+    members = relationship("GameClanMember", back_populates="clan", cascade="all, delete-orphan", lazy="selectin")
+
+    __table_args__ = (UniqueConstraint("server_num", "clan_guid", name="uq_game_clan_server_guid"),)
+
+
+class GameClanMember(Base):
+    __tablename__ = "game_clan_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clan_id = Column(Integer, ForeignKey("game_clans.id", ondelete="CASCADE"), nullable=False)
+    steam_id = Column(String(32), nullable=False)
+    character_name = Column(String(64), nullable=False)
+    role = Column(String(16), nullable=False, default="member")  # "member" | "officer" | "leader"
+
+    clan = relationship("GameClan", back_populates="members")
+
+    __table_args__ = (Index("ix_game_clan_members_clan", "clan_id"),)
+
+
 class News(Base):
     __tablename__ = "news"
 

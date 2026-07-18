@@ -22,10 +22,22 @@
   };
 
   const clans = [
-    { id: 1, name: 'Кровавые Клыки', tag: 'BLD', description: 'Старейший клан сервера. Ищем активных игроков для рейдов.', leader_id: 1, leader_username: 'Vortigern', member_count: 12, created_at: iso(90 * 24 * 3600 * 1000) },
-    { id: 2, name: 'Ночная Стража', tag: 'NGT', description: 'PvE-фокус, помогаем новичкам освоиться.', leader_id: 2, leader_username: 'Shadowfang', member_count: 7, created_at: iso(40 * 24 * 3600 * 1000) },
-    { id: 3, name: 'Алый Договор', tag: 'CRM', description: '', leader_id: 3, leader_username: 'Dracarys', member_count: 3, created_at: iso(5 * 24 * 3600 * 1000) },
+    { id: 1, server_num: 1, clan_guid: 'guid-1', name: 'Кровавые Клыки', motto: 'Старейший клан сервера. Ищем активных игроков для рейдов.', member_count: 12, updated_at: iso(2 * 3600 * 1000) },
+    { id: 2, server_num: 1, clan_guid: 'guid-2', name: 'Ночная Стража', motto: 'PvE-фокус, помогаем новичкам освоиться.', member_count: 7, updated_at: iso(5 * 3600 * 1000) },
+    { id: 3, server_num: 1, clan_guid: 'guid-3', name: 'Алый Договор', motto: '', member_count: 3, updated_at: iso(24 * 3600 * 1000) },
   ];
+
+  const clanDetail = (id) => {
+    const base = clans.find(c => c.id === Number(id)) || clans[0];
+    return {
+      ...base,
+      members: [
+        { steam_id: '1', character_name: 'Vortigern', role: 'leader', username: 'Vortigern', avatar_url: null },
+        { steam_id: '2', character_name: 'Shadowfang', role: 'officer', username: 'Shadowfang', avatar_url: null },
+        { steam_id: '999', character_name: 'UnlinkedWanderer', role: 'member', username: null, avatar_url: null },
+      ],
+    };
+  };
 
   const events = {
     items: [
@@ -78,7 +90,7 @@
     username: 'Vortigern', avatar_url: null, cover_url: null, role: 'user',
     created_at: iso(180 * 24 * 3600 * 1000), game_nickname: 'Vortigern',
     total_seconds: 500000, last_seen: iso(3600 * 1000), session_count: 45,
-    last_duration: 5400, clan: { id: 1, name: 'Кровавые Клыки', tag: 'BLD' },
+    last_duration: 5400, clan: { id: 1, name: 'Кровавые Клыки' },
     admin_title: null, last_active_at: iso(600000), badge_icon_url: null,
     badge_style: 'default', comment_count: 23,
   };
@@ -96,7 +108,8 @@
     [/\/api\/auth\/me$/, () => null], // anonymous visitor — handled as 401 below
     [/\/api\/users\/[^/]+\/activity/, () => userActivity],
     [/\/api\/users\/[^/]+$/, () => userProfile],
-    [/\/api\/clans$/, () => clans],
+    [/\/api\/clans\/\d+$/, (url) => clanDetail(url.match(/\/api\/clans\/(\d+)/)[1])],
+    [/\/api\/clans(\?|$)/, () => clans],
     [/\/api\/events/, () => events],
     [/\/api\/leaderboard/, (url) => leaderboardPage(url.includes('server=2') ? 2 : 1)],
     [/\/api\/monitor\/status2/, () => ({ enabled: true, ...monitorStatus('[RU] Just-Skill.Ru | Brutal PvE', 6, '127.0.0.1', 27017) })],

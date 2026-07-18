@@ -6,11 +6,11 @@
   <title>Кланы V Rising — Just-Skill.Ru</title>
   <link rel="canonical" href="https://v.just-skill.ru/clans.html" />
   <meta property="og:url" content="https://v.just-skill.ru/clans.html" />
-  <meta name="description" content="Кланы и гильдии серверов V Rising на Just-Skill.Ru. Вступай в клан или создай свой." />
+  <meta name="description" content="Кланы серверов V Rising на Just-Skill.Ru — состав, лидеры и статистика прямо из игры." />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Just-Skill.Ru" />
   <meta property="og:title" content="V Rising — Кланы" />
-  <meta property="og:description" content="Кланы и гильдии серверов V Rising на Just-Skill.Ru. Вступай в клан или создай свой." />
+  <meta property="og:description" content="Кланы серверов V Rising на Just-Skill.Ru — состав, лидеры и статистика прямо из игры." />
   <meta property="og:image" content="https://v.just-skill.ru/uploads/og-default.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -67,7 +67,6 @@
       transition:transform .18s, box-shadow .2s, border-left-color .2s;
     }
     .clan-card:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(130,0,22,0.2); }
-    .clan-card.is-mine { border-left:2px solid var(--gold); }
 
     /* ── Action button ── */
     .clan-btn {
@@ -75,22 +74,18 @@
       font-size:.75rem; font-weight:600; cursor:pointer; transition:all .2s;
       font-family:'Inter',sans-serif; letter-spacing:.03em;
     }
-    .clan-btn.join   { background:rgba(200,0,42,0.12); border-color:rgba(200,0,42,0.4); color:#f87171; }
-    .clan-btn.join:hover { background:rgba(200,0,42,0.22); border-color:rgba(200,0,42,0.65); }
-    .clan-btn.mine   { background:rgba(201,169,74,0.1); border-color:rgba(201,169,74,0.35); color:var(--gold); cursor:default; }
-    .clan-btn.leave  { background:rgba(80,0,130,0.12); border-color:rgba(110,0,150,0.35); color:#c4b5fd; }
-    .clan-btn.leave:hover { background:rgba(80,0,130,0.22); border-color:rgba(110,0,150,0.6); }
-    .clan-btn.guest  { background:rgba(50,50,70,0.12); border-color:rgba(100,100,130,0.25); color:var(--muted); cursor:default; }
-    @keyframes btn-flash { 0%,100%{opacity:1} 50%{opacity:.35} }
-    .clan-btn.flashing { animation:btn-flash .35s ease 2; }
+    .clan-btn.view   { background:rgba(80,0,130,0.12); border-color:rgba(110,0,150,0.35); color:#c4b5fd; }
+    .clan-btn.view:hover { background:rgba(80,0,130,0.22); border-color:rgba(110,0,150,0.6); }
 
-    /* ── My-clan badge ── */
-    .mine-badge {
+    /* ── Member role badge (detail modal) ── */
+    .role-badge {
       display:inline-flex; align-items:center; gap:.3rem;
       font-size:.58rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase;
-      background:rgba(201,169,74,0.14); border:1px solid rgba(201,169,74,0.35);
-      color:var(--gold); border-radius:.35rem; padding:.18rem .45rem;
+      border-radius:.35rem; padding:.18rem .45rem; flex-shrink:0;
     }
+    .role-badge.leader  { background:rgba(201,169,74,0.14); border:1px solid rgba(201,169,74,0.35); color:var(--gold); }
+    .role-badge.officer { background:rgba(80,0,130,0.14); border:1px solid rgba(110,0,150,0.35); color:#c4b5fd; }
+    .role-badge.member  { background:rgba(50,50,70,0.14); border:1px solid rgba(100,100,130,0.25); color:var(--muted); }
 
     /* ── Clan card description ── */
     .clan-card-desc {
@@ -105,7 +100,7 @@
       padding:.65rem .9rem; text-align:center; flex:1;
     }
 
-    /* ── Create-clan modal ── */
+    /* ── Clan-detail modal ── */
     .modal-backdrop {
       position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.72);
       backdrop-filter:blur(5px); display:flex; align-items:center; justify-content:center;
@@ -116,23 +111,18 @@
       background:rgba(10,4,20,0.98); border:1px solid rgba(110,0,150,0.35); border-radius:1rem;
       padding:2rem; width:100%; max-width:420px; box-shadow:0 16px 48px rgba(0,0,0,.7);
       transform:translateY(16px); transition:transform .25s; position:relative;
+      max-height:80vh; overflow-y:auto;
     }
     .modal-backdrop.open .modal-box { transform:translateY(0); }
-    .modal-input {
-      width:100%; background:rgba(6,0,14,0.7); border:1px solid rgba(110,0,150,0.25);
-      border-radius:.5rem; padding:.55rem .8rem; color:var(--text); font-size:.84rem;
-      outline:none; font-family:'Inter',sans-serif; transition:border-color .2s;
+    .member-row {
+      display:flex; align-items:center; gap:.6rem; padding:.5rem 0;
+      border-bottom:1px solid rgba(110,0,150,0.12);
     }
-    .modal-input:focus { border-color:rgba(200,0,40,0.5); }
-    .modal-input::placeholder { color:var(--muted); }
-    .modal-label { font-size:.72rem; color:var(--muted); margin-bottom:.35rem; font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
-    .modal-submit {
-      width:100%; padding:.65rem; border-radius:.55rem; border:1px solid rgba(200,0,42,0.45);
-      background:rgba(200,0,42,0.16); color:#f87171; font-size:.84rem; font-weight:700;
-      cursor:pointer; transition:all .2s; font-family:'Cinzel',serif; letter-spacing:.06em;
+    .member-row:last-child { border-bottom:none; }
+    .member-avatar {
+      width:2rem; height:2rem; border-radius:50%; object-fit:cover; flex-shrink:0;
+      display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:700; color:#fff;
     }
-    .modal-submit:hover { background:rgba(200,0,42,0.28); border-color:rgba(200,0,42,0.7); }
-    .modal-submit:disabled { opacity:.45; cursor:not-allowed; }
 
     /* ── Shimmer skeleton ── */
     @keyframes shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
@@ -193,12 +183,8 @@
   <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
     <div>
       <h1 class="gothic" style="font-size:1.25rem;font-weight:700;letter-spacing:.1em;color:var(--text);text-transform:uppercase;">Кланы</h1>
-      <p style="font-size:.76rem;color:var(--muted);margin-top:.25rem;">Вступай в клан или создай свой</p>
+      <p style="font-size:.76rem;color:var(--muted);margin-top:.25rem;">Состав кланов синхронизирован напрямую из игры</p>
     </div>
-    <button id="create-clan-btn" onclick="openCreateModal()" style="display:none;align-items:center;gap:.5rem;padding:.55rem 1.1rem;border-radius:.55rem;border:1px solid rgba(201,169,74,0.4);background:rgba(201,169,74,0.1);color:var(--gold);font-size:.8rem;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Cinzel',serif;letter-spacing:.06em;" onmouseover="this.style.background='rgba(201,169,74,0.2)'" onmouseout="this.style.background='rgba(201,169,74,0.1)'">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      Создать клан
-    </button>
   </div>
 
   <!-- Summary tiles -->
@@ -207,7 +193,7 @@
   <!-- Search -->
   <div class="clan-search-wrap" style="margin-bottom:1.25rem;">
     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input id="clan-search" class="clan-search-input" type="text" placeholder="Поиск по названию или тегу…" oninput="filterCards()">
+    <input id="clan-search" class="clan-search-input" type="text" placeholder="Поиск по названию клана…" oninput="filterCards()">
   </div>
 
   <!-- Loading skeletons -->
@@ -233,10 +219,7 @@
   <div id="clans-empty" class="clans-empty" style="display:none;">
     <div style="font-size:3.5rem;margin-bottom:1rem;filter:drop-shadow(0 0 18px rgba(180,0,30,0.5));">⚔</div>
     <p class="gothic" style="font-size:1rem;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:.5rem;">Кланов пока нет</p>
-    <p style="font-size:.82rem;color:var(--muted);margin-bottom:1.5rem;">Создайте первый клан и объединяйте игроков!</p>
-    <button id="empty-create-btn" onclick="openCreateModal()" style="display:none;padding:.65rem 1.5rem;border-radius:.55rem;border:1px solid rgba(201,169,74,0.45);background:rgba(201,169,74,0.12);color:var(--gold);font-size:.84rem;font-weight:700;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:.06em;transition:all .2s;" onmouseover="this.style.background='rgba(201,169,74,0.22)'" onmouseout="this.style.background='rgba(201,169,74,0.12)'">
-      + Создать клан
-    </button>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:1.5rem;">Кланы появятся здесь после первой синхронизации с игровым сервером</p>
   </div>
 
   <!-- Search-empty state -->
@@ -255,27 +238,11 @@
   </div>
 </div>
 
-<!-- Create-clan modal -->
-<div class="modal-backdrop" id="create-modal" onclick="onBackdropClick(event)">
+<!-- Clan-detail modal -->
+<div class="modal-backdrop" id="clan-detail-modal" onclick="onDetailBackdropClick(event)">
   <div class="modal-box">
-    <button onclick="closeCreateModal()" style="position:absolute;top:.9rem;right:.9rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;" title="Закрыть">✕</button>
-    <h2 class="gothic" style="font-size:.95rem;font-weight:700;letter-spacing:.1em;color:var(--text);text-transform:uppercase;margin-bottom:1.5rem;">Создать клан</h2>
-    <div style="display:flex;flex-direction:column;gap:1rem;">
-      <div>
-        <div class="modal-label">Название клана</div>
-        <input id="clan-name-input" class="modal-input" type="text" placeholder="Ночные вампиры" maxlength="40">
-      </div>
-      <div>
-        <div class="modal-label">Тег клана (2–6 символов)</div>
-        <input id="clan-tag-input" class="modal-input" type="text" placeholder="NV" maxlength="6" style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()">
-      </div>
-      <div>
-        <div class="modal-label">Описание <span style="color:rgba(148,136,168,0.5);font-size:.65rem;">(необязательно)</span></div>
-        <textarea id="clan-desc-input" class="modal-input" rows="3" placeholder="Коротко о вашем клане…" maxlength="200" style="resize:vertical;min-height:70px;"></textarea>
-      </div>
-      <p id="create-error" style="font-size:.76rem;color:#f87171;display:none;"></p>
-      <button id="create-submit-btn" class="modal-submit" onclick="submitCreateClan()">Основать клан</button>
-    </div>
+    <button onclick="closeClanDetail()" style="position:absolute;top:.9rem;right:.9rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;" title="Закрыть">✕</button>
+    <div id="clan-detail-body"><div class="skel" style="height:1rem;width:60%;margin-bottom:1rem;"></div><div class="skel" style="height:.7rem;width:100%;"></div></div>
   </div>
 </div>
 
@@ -285,7 +252,6 @@ const API = '/api';
 
 /* ── State ── */
 let _allClans = [];    // full list from API
-let _me = null;        // current user object (or null)
 
 /* ── Helpers ── */
 function applySiteBackground(bg) {
@@ -356,77 +322,38 @@ function renderStats(clans) {
       <div style="font-family:'Oswald',sans-serif;font-size:1.3rem;font-weight:600;color:var(--text);">${totalMembers}</div>
       <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.2rem;">Участников</div>
     </div>
-    ${_me ? `<div class="stat-tile">
-      <div style="font-family:'Oswald',sans-serif;font-size:1.3rem;font-weight:600;color:var(--gold);">${_me.clan_id ? '✓' : '—'}</div>
-      <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.2rem;">Вы в клане</div>
-    </div>` : ''}
   `;
-}
-
-/* ── Card button HTML ── */
-function cardButtonHtml(clan) {
-  if (!_me) {
-    return `<button class="clan-btn guest" disabled>Войдите, чтобы вступить</button>`;
-  }
-  if (_me.clan_id === clan.id) {
-    if (_me.id === clan.leader_id) {
-      return `<button class="clan-btn mine" disabled>Вы — лидер</button>`;
-    }
-    return `<button class="clan-btn leave" onclick="leaveClan(event,${clan.id},'${esc(clan.name)}')">Покинуть клан</button>`;
-  }
-  if (_me.clan_id != null) {
-    return `<button class="clan-btn guest" disabled>Уже в клане</button>`;
-  }
-  return `<button class="clan-btn join" onclick="joinClan(event,${clan.id},'${esc(clan.name)}')">Вступить</button>`;
 }
 
 /* ── Render single card HTML ── */
 function buildCard(clan, idx) {
-  const isMine = _me && _me.clan_id === clan.id;
-  const tag = esc(clan.tag || '?');
+  const initials = esc((clan.name || '?').trim().slice(0, 2).toUpperCase());
   const name = esc(clan.name);
-  const leader = esc(clan.leader_username || '?');
   const members = clan.member_count || 0;
   const delay = idx * 60;
-  const desc = (clan.description || '').trim();
-  const descHtml = desc
-    ? `<div class="clan-card-desc">${esc(desc)}</div>`
-    : `<div class="clan-card-desc clan-card-desc-empty">Без описания</div>`;
+  const motto = (clan.motto || '').trim();
+  const descHtml = motto
+    ? `<div class="clan-card-desc">${esc(motto)}</div>`
+    : `<div class="clan-card-desc clan-card-desc-empty">Без девиза</div>`;
 
   return `
-    <div class="clan-card g-card${isMine ? ' is-mine' : ''}"
+    <div class="clan-card g-card"
       data-clan-id="${clan.id}"
-      data-search="${(clan.name + ' ' + clan.tag).toLowerCase()}"
+      data-search="${(clan.name || '').toLowerCase()}"
+      onclick="openClanDetail(${clan.id})"
       style="animation:clan-in .35s ease both;animation-delay:${delay}ms;">
-      <!-- Header: tag badge + name -->
+      <!-- Header: initials badge + name -->
       <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;">
-        <div style="width:2.8rem;height:2.8rem;border-radius:.55rem;background:linear-gradient(135deg,rgba(80,0,150,0.4),rgba(120,0,20,0.3));border:1px solid rgba(110,0,150,0.3);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:var(--gold);flex-shrink:0;">${tag}</div>
+        <div style="width:2.8rem;height:2.8rem;border-radius:.55rem;background:linear-gradient(135deg,rgba(80,0,150,0.4),rgba(120,0,20,0.3));border:1px solid rgba(110,0,150,0.3);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:var(--gold);flex-shrink:0;">${initials}</div>
         <div style="min-width:0;">
-          <div style="display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;">
-            <div style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
-            ${isMine ? '<span class="mine-badge">Вы здесь</span>' : ''}
-          </div>
+          <div style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
           <div style="font-size:.62rem;color:var(--muted);margin-top:.1rem;">${members} участник${pluralMembers(members)}</div>
         </div>
       </div>
-      <!-- Description -->
+      <!-- Motto -->
       ${descHtml}
-      <!-- Stats row -->
-      <div style="display:flex;gap:1rem;margin-bottom:.9rem;">
-        <div style="text-align:center;">
-          <div style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--text);">${members}</div>
-          <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Участников</div>
-        </div>
-        <div style="width:1px;background:rgba(110,0,150,0.18);flex-shrink:0;"></div>
-        <div style="text-align:center;">
-          <div style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--muted);">${tag}</div>
-          <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Тег</div>
-        </div>
-      </div>
-      <!-- Leader -->
-      <div style="font-size:.72rem;color:var(--muted);margin-bottom:.85rem;">Лидер: <span style="color:var(--text);">${leader}</span></div>
-      <!-- Action button -->
-      <div class="card-btn-wrap">${cardButtonHtml(clan)}</div>
+      <!-- Action -->
+      <div class="card-btn-wrap"><button class="clan-btn view" onclick="event.stopPropagation();openClanDetail(${clan.id})">Подробнее</button></div>
     </div>
   `;
 }
@@ -448,9 +375,6 @@ function renderGrid(clans) {
     grid.style.display = 'none';
     empty.style.display = '';
     noresult.style.display = 'none';
-    if (_me) {
-      document.getElementById('empty-create-btn').style.display = 'inline-block';
-    }
     return;
   }
 
@@ -471,27 +395,15 @@ function renderGrid(clans) {
 function filterCards() {
   const q = (document.getElementById('clan-search').value || '').trim().toLowerCase();
   if (!q) { renderGrid(_allClans); return; }
-  renderGrid(_allClans.filter(c => (c.name + ' ' + c.tag).toLowerCase().includes(q)));
+  renderGrid(_allClans.filter(c => (c.name || '').toLowerCase().includes(q)));
 }
 
-/* ── Load clans + current user ── */
+/* ── Load clans ── */
 async function init() {
   document.getElementById('clans-error').style.display = 'none';
   document.getElementById('clans-loading').style.display = 'grid';
   try {
-    const [clans, meRes] = await Promise.all([
-      fetch(`${API}/clans`).then(r => r.json()),
-      fetch(`${API}/auth/me`, { credentials: 'include' }),
-    ]);
-
-    if (meRes.ok) {
-      _me = await meRes.json();
-      // Show create button for logged-in users without a clan
-      if (!_me.clan_id) {
-        document.getElementById('create-clan-btn').style.display = 'inline-flex';
-      }
-    }
-
+    const clans = await fetch(`${API}/clans`).then(r => r.json());
     _allClans = Array.isArray(clans) ? clans : [];
 
     // Hide skeleton, show grid
@@ -506,144 +418,62 @@ async function init() {
   }
 }
 
-/* ── Join clan ── */
-async function joinClan(e, clanId, clanName) {
-  e.stopPropagation();
-  const btn = e.currentTarget;
-  btn.disabled = true;
-  btn.textContent = 'Вступаем…';
+/* ── Role label (RU) ── */
+function roleLabel(role) {
+  if (role === 'leader') return 'Лидер';
+  if (role === 'officer') return 'Офицер';
+  return 'Участник';
+}
+
+/* ── Member row HTML ── */
+function memberRowHtml(m) {
+  const displayName = esc(m.username || m.character_name || '?');
+  const initial = esc((m.username || m.character_name || '?').charAt(0).toUpperCase());
+  const grad = (typeof nameGradient === 'function') ? nameGradient(m.username || m.character_name || '') : '#3a0060';
+  const avatarHtml = m.avatar_url
+    ? `<img class="member-avatar" src="${esc(m.avatar_url)}" alt="">`
+    : `<span class="member-avatar" style="background:${grad};">${initial}</span>`;
+  const linkOpen = m.username ? `<a href="/user.html?u=${encodeURIComponent(m.username)}" style="color:var(--text);text-decoration:none;">` : `<span style="color:var(--text);">`;
+  const linkClose = m.username ? '</a>' : '</span>';
+  return `
+    <div class="member-row">
+      ${avatarHtml}
+      <div style="flex:1;min-width:0;font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${linkOpen}${displayName}${linkClose}</div>
+      <span class="role-badge ${esc(m.role || 'member')}">${roleLabel(m.role)}</span>
+    </div>
+  `;
+}
+
+/* ── Clan-detail modal ── */
+async function openClanDetail(clanId) {
+  const modal = document.getElementById('clan-detail-modal');
+  const body = document.getElementById('clan-detail-body');
+  body.innerHTML = `<div class="skel" style="height:1rem;width:60%;margin-bottom:1rem;"></div><div class="skel" style="height:.7rem;width:100%;"></div>`;
+  modal.classList.add('open');
   try {
-    const res = await fetch(`${API}/clans/${clanId}/join`, {
-      method: 'POST', credentials: 'include',
+    const clan = await fetch(`${API}/clans/${clanId}`).then(r => {
+      if (!r.ok) throw new Error('not_found');
+      return r.json();
     });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      throw new Error(d.detail || 'Ошибка');
-    }
-    const updated = await res.json();
-    // Flash animation
-    btn.classList.add('flashing');
-    setTimeout(() => btn.classList.remove('flashing'), 700);
-    showToast(`Вы вступили в клан ${clanName}`, 'success');
-    // Update state
-    if (_me) _me.clan_id = clanId;
-    // Refresh the card's button state in-place
-    const card = document.querySelector(`[data-clan-id="${clanId}"]`);
-    if (card) {
-      card.classList.add('is-mine');
-      const nameEl = card.querySelector('[style*="Cinzel"]');
-      // Update member count from response
-      const clan = _allClans.find(c => c.id === clanId);
-      if (clan) { clan.member_count = updated.member_count; }
-      // Re-render all cards to update button states on other cards
-      renderGrid(_allClans);
-      // Update stats
-      renderStats(_allClans);
-      // Show leave / you are leader
-      if (!_me.clan_id) _me.clan_id = clanId;
-      if (_me && !_me.clan_id) document.getElementById('create-clan-btn').style.display = 'none';
-    }
+    const motto = (clan.motto || '').trim();
+    const members = Array.isArray(clan.members) ? clan.members : [];
+    body.innerHTML = `
+      <h2 class="gothic" style="font-size:.95rem;font-weight:700;letter-spacing:.06em;color:var(--text);margin-bottom:.35rem;padding-right:1.5rem;">${esc(clan.name)}</h2>
+      ${motto ? `<p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;">${esc(motto)}</p>` : '<div style="margin-bottom:1rem;"></div>'}
+      <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem;">Участники (${members.length})</div>
+      <div>${members.length ? members.map(memberRowHtml).join('') : '<p style="font-size:.78rem;color:var(--muted);">Нет участников</p>'}</div>
+    `;
   } catch (err) {
-    btn.disabled = false;
-    btn.textContent = 'Вступить';
-    showToast(err.message, 'error');
+    body.innerHTML = `<p style="font-size:.82rem;color:#f87171;">Не удалось загрузить данные клана</p>`;
   }
 }
-
-/* ── Leave clan ── */
-async function leaveClan(e, clanId, clanName) {
-  e.stopPropagation();
-  const btn = e.currentTarget;
-  btn.disabled = true;
-  btn.textContent = 'Выходим…';
-  try {
-    const res = await fetch(`${API}/clans/leave`, {
-      method: 'POST', credentials: 'include',
-    });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      throw new Error(d.detail || 'Ошибка');
-    }
-    btn.classList.add('flashing');
-    setTimeout(() => btn.classList.remove('flashing'), 700);
-    showToast(`Вы покинули клан ${clanName}`, 'info');
-    // Update state
-    if (_me) _me.clan_id = null;
-    // Update clan list (reload to get fresh member counts)
-    const fresh = await fetch(`${API}/clans`).then(r => r.json()).catch(() => _allClans);
-    _allClans = Array.isArray(fresh) ? fresh : _allClans;
-    renderStats(_allClans);
-    renderGrid(_allClans);
-    // Show create button again
-    document.getElementById('create-clan-btn').style.display = 'inline-flex';
-  } catch (err) {
-    btn.disabled = false;
-    btn.textContent = 'Покинуть клан';
-    showToast(err.message, 'error');
-  }
+function closeClanDetail() {
+  document.getElementById('clan-detail-modal').classList.remove('open');
 }
-
-/* ── Create clan modal ── */
-function openCreateModal() {
-  if (!_me) { showToast('Войдите, чтобы создать клан', 'warning'); return; }
-  document.getElementById('create-modal').classList.add('open');
-  document.getElementById('clan-name-input').focus();
+function onDetailBackdropClick(e) {
+  if (e.target === document.getElementById('clan-detail-modal')) closeClanDetail();
 }
-function closeCreateModal() {
-  document.getElementById('create-modal').classList.remove('open');
-  document.getElementById('create-error').style.display = 'none';
-}
-function onBackdropClick(e) {
-  if (e.target === document.getElementById('create-modal')) closeCreateModal();
-}
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCreateModal(); });
-
-async function submitCreateClan() {
-  const name = document.getElementById('clan-name-input').value.trim();
-  const tag  = document.getElementById('clan-tag-input').value.trim().toUpperCase();
-  const desc = document.getElementById('clan-desc-input').value.trim();
-  const errEl = document.getElementById('create-error');
-  const btn   = document.getElementById('create-submit-btn');
-
-  errEl.style.display = 'none';
-  if (!name) { errEl.textContent = 'Введите название клана'; errEl.style.display = ''; return; }
-  if (!tag || tag.length < 2) { errEl.textContent = 'Тег должен содержать минимум 2 символа'; errEl.style.display = ''; return; }
-
-  btn.disabled = true;
-  btn.textContent = 'Создаём…';
-  try {
-    const res = await fetch(`${API}/clans`, {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, tag, description: desc }),
-    });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      throw new Error(d.detail || 'Ошибка создания клана');
-    }
-    const newClan = await res.json();
-    showToast(`Клан «${name}» основан!`, 'success');
-    closeCreateModal();
-    // Reset form
-    document.getElementById('clan-name-input').value = '';
-    document.getElementById('clan-tag-input').value = '';
-    document.getElementById('clan-desc-input').value = '';
-    // Update state
-    if (_me) _me.clan_id = newClan.id;
-    // Hide create button
-    document.getElementById('create-clan-btn').style.display = 'none';
-    // Add to list and re-render
-    _allClans.unshift({ id: newClan.id, name: newClan.name, tag: newClan.tag, description: newClan.description || '', leader_id: newClan.leader_id, leader_username: newClan.leader_username || _me.username, member_count: newClan.member_count || 1 });
-    renderStats(_allClans);
-    renderGrid(_allClans);
-  } catch (err) {
-    errEl.textContent = err.message;
-    errEl.style.display = '';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Основать клан';
-  }
-}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeClanDetail(); });
 
 init();
 </script>

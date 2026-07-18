@@ -2809,7 +2809,7 @@ function showBanModal(username, onBan) {
   setTimeout(() => modal.querySelector('#ban-reason-input').focus(), 50);
 }
 
-// ─── Users ─────────────────────────────────────────────────────────────────
+// ─── Clans (read-only — synced from the game via the plugin) ────────────────
 async function loadAdminClans() {
   const el = document.getElementById('clans-table');
   const totalEl = document.getElementById('clans-total');
@@ -2817,21 +2817,23 @@ async function loadAdminClans() {
     const clans = await fetch(`${API}/clans`).then(r => r.json());
     if (totalEl) totalEl.textContent = `Всего: ${clans.length}`;
     if (!clans.length) {
-      el.innerHTML = '<p class="p-6" style="color:var(--muted);font-size:.85rem;">Кланов пока нет.</p>';
+      el.innerHTML = '<p class="p-6" style="color:var(--muted);font-size:.85rem;">Кланов пока нет — появятся после первой синхронизации с игровым сервером.</p>';
       return;
     }
     el.innerHTML = `
       <table>
-        <thead><tr><th>Тег</th><th>Название</th><th>Лидер</th><th>Участников</th><th>Создан</th><th>Действия</th></tr></thead>
+        <thead><tr><th>Название</th><th>Девиз</th><th>Сервер</th><th>Участников</th><th>Обновлено</th></tr></thead>
         <tbody>
-          ${clans.map(c => `<tr>
-            <td><code style="font-size:.75rem;background:rgba(40,0,60,.4);padding:.15rem .45rem;border-radius:.3rem;color:#c4b5fd;">${esc(c.tag)}</code></td>
+          ${clans.map(c => {
+            const updated = c.updated_at ? new Date(c.updated_at + (c.updated_at.endsWith('Z') ? '' : 'Z')).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' }) : '—';
+            return `<tr>
             <td style="font-weight:600;">${esc(c.name)}</td>
-            <td style="color:var(--muted);">${esc(c.leader_username)}</td>
+            <td style="color:var(--muted);">${esc(c.motto || '') || '—'}</td>
+            <td style="color:var(--muted);">${c.server_num}</td>
             <td style="color:var(--muted);">${c.member_count}</td>
-            <td style="color:var(--muted);">${new Date(c.created_at).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow'})}</td>
-            <td><button class="btn-danger" onclick="deleteAdminClan(${c.id},'${esc(c.name).replace(/'/g,"\\'")}')">Удалить</button></td>
-          </tr>`).join('')}
+            <td style="color:var(--muted);">${updated}</td>
+          </tr>`;
+          }).join('')}
         </tbody>
       </table>`;
   } catch {
@@ -2839,18 +2841,7 @@ async function loadAdminClans() {
   }
 }
 
-async function deleteAdminClan(id, name) {
-  showConfirm({
-    title: 'Удалить клан?',
-    text: `Клан «${name}» будет удалён, все участники потеряют членство.`,
-    onOk: async () => {
-      const res = await fetch(`${API}/admin/clans/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() });
-      if (res.ok || res.status === 204) loadAdminClans();
-      else showToast('Ошибка удаления клана', 'error');
-    },
-  });
-}
-
+// ─── Users ─────────────────────────────────────────────────────────────────
 let _allUsers = [];
 let _usersSort = { field: 'created_at', dir: -1 };
 let _onlinePlayers = new Set();

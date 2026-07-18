@@ -11,7 +11,7 @@ from sqlalchemy import select
 
 from backend.auth import create_access_token, get_password_hash, role_level, ROLE_LEVELS
 from backend.main import _migrate_admin_role_tiers
-from backend.models import User, News, Comment, Clan, Setting
+from backend.models import User, News, Comment, Setting
 
 pytestmark = pytest.mark.asyncio
 
@@ -249,14 +249,6 @@ async def test_superadmin_passes_every_formerly_admin_only_manual_check(client, 
     await db_session.refresh(comment)
     r_edit = await client.patch(f"/api/comments/{comment.id}", json={"content": "edited by superadmin"}, headers=headers)
     assert r_edit.status_code == 200
-
-    # Clan leader override
-    clan = Clan(name="TestClan", tag="TST", leader_id=author.id)
-    db_session.add(clan)
-    await db_session.commit()
-    await db_session.refresh(clan)
-    r_clan = await client.put(f"/api/clans/{clan.id}", json={"description": "overridden"}, headers=headers)
-    assert r_clan.status_code == 200
 
     # Maintenance status/extend
     r_maint = await client.post("/api/admin/maintenance/status", json={"text": "testing"}, headers=headers)

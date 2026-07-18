@@ -384,69 +384,53 @@ class SetupComplete(BaseModel):
         return v
 
 
-class ClanCreate(BaseModel):
+class PluginClanMemberIn(BaseModel):
+    steam_id: str
+    character_name: str
+    role: str = "member"  # member | officer | leader
+
+
+class PluginClanIn(BaseModel):
+    clan_guid: str
     name: str
-    tag: str
-    description: Optional[str] = ""
-
-    @field_validator("name")
-    @classmethod
-    def name_valid(cls, v: str) -> str:
-        v = v.strip()
-        if not re.match(r"^[a-zA-Z0-9_а-яёА-ЯЁ \-]{3,32}$", v):
-            raise ValueError("Название клана: 3–32 символа, буквы, цифры, пробел, _ и -")
-        return v
-
-    @field_validator("tag")
-    @classmethod
-    def tag_valid(cls, v: str) -> str:
-        v = v.strip().upper()
-        if not re.match(r"^[A-ZА-ЯЁ0-9]{2,6}$", v):
-            raise ValueError("Тег клана: 2–6 латинских/кириллических букв или цифр")
-        return v
-
-    @field_validator("description")
-    @classmethod
-    def desc_len(cls, v: Optional[str]) -> str:
-        v = (v or "").strip()
-        if len(v) > 256:
-            raise ValueError("Описание клана: максимум 256 символов")
-        return v
+    motto: Optional[str] = ""
+    members: list[PluginClanMemberIn] = []
 
 
-class ClanUpdate(BaseModel):
-    description: Optional[str] = ""
-
-    @field_validator("description")
-    @classmethod
-    def desc_len(cls, v: Optional[str]) -> str:
-        v = (v or "").strip()
-        if len(v) > 256:
-            raise ValueError("Описание клана: максимум 256 символов")
-        return v
+class PluginClansSyncIn(BaseModel):
+    """Body for POST /api/plugin/clans/sync — the plugin's FULL current clan roster for
+    one server. This replaces (not merges/diffs) all game_clans rows for that server_num,
+    since the plugin always sends its complete current state, not incremental deltas."""
+    server_num: int = 1
+    clans: list[PluginClanIn] = []
 
 
-class ClanMemberOut(BaseModel):
-    id: int
-    username: str
+class GameClanMemberOut(BaseModel):
+    steam_id: str
+    character_name: str
+    role: str
+    # populated at read time by joining User.steam_id — None if this player never linked
+    # a site account via .register/.login
+    username: Optional[str] = None
     avatar_url: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
 
-class ClanOut(BaseModel):
+class GameClanOut(BaseModel):
     id: int
+    server_num: int
+    clan_guid: str
     name: str
-    tag: str
-    description: Optional[str] = ""
-    leader_id: int
-    leader_username: str
-    member_count: int
-    created_at: datetime
+    motto: Optional[str] = ""
+    updated_at: datetime
+    member_count: int = 0
+
+    model_config = {"from_attributes": True}
 
 
-class ClanDetailOut(ClanOut):
-    members: list[ClanMemberOut] = []
+class GameClanDetailOut(GameClanOut):
+    members: list[GameClanMemberOut] = []
 
 
 class ReportCreate(BaseModel):
