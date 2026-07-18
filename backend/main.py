@@ -122,6 +122,7 @@ from .schemas import (
     AnnouncementUpdate,
     AnnouncementOut,
     AnnouncementTestSend,
+    LinkedAccountOut,
     strip_html_tags,
 )
 
@@ -306,6 +307,8 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="discord_webhook_url", value=""),
         Setting(key="plugin_api_key", value=""),
         Setting(key="server_announcement", value=""),
+        Setting(key="connect_message_template", value=""),
+        Setting(key="disconnect_message_template", value=""),
         Setting(key="maintenance_mode",    value="false"),
         Setting(key="maintenance_title",   value="Технические работы"),
         Setting(key="maintenance_message", value="Сайт временно недоступен. Скоро вернёмся."),
@@ -1134,6 +1137,29 @@ async def plugin_get_announcements(
         await db.commit()
 
     return {"announcements": [{"text": a.text, "target_steam_id": a.target_steam_id} for a in due]}
+
+
+@app.get("/api/plugin/message-templates")
+@limiter.limit("120/minute")
+async def plugin_get_message_templates(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Polled by the plugin (same cadence as its heartbeat) so the site can drive the
+    connect/disconnect in-game chat message text — Settings "connect_message_template" /
+    "disconnect_message_template" — without editing the plugin's local BepInEx .cfg and
+    restarting the game server. Empty string means "not set"; the plugin falls back to
+    its own local config default in that case. Response shape:
+    {"connect": str, "disconnect": str}."""
+    result = await db.execute(
+        select(Setting).where(Setting.key.in_(["connect_message_template", "disconnect_message_template"]))
+    )
+    values = {s.key: s.value for s in result.scalars().all()}
+    return {
+        "connect": values.get("connect_message_template") or "",
+        "disconnect": values.get("disconnect_message_template") or "",
+    }
 
 
 @app.get("/api/admin/plugin-status", response_model=list[PluginHeartbeatOut])
@@ -2946,6 +2972,7 @@ ALLOWED_SETTING_KEYS = {
     "rules", "https_domain", "https_email",
     "timezone", "time_format", "date_format",
     "rcon_port", "rcon_password", "rcon2_port", "rcon2_password", "discord_webhook_url", "plugin_api_key", "server_announcement",
+    "connect_message_template", "disconnect_message_template",
     "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time",
     "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates", "maintenance_history",
 }
@@ -3075,6 +3102,40 @@ async def revoke_user_sessions(
     await db.execute(text("UPDATE users SET revoke_before = :ts WHERE id = :uid"), {"ts": now_utc, "uid": user_id})
     await log_audit(db, current_user, "user.revoke_sessions", target.username)
     await db.commit()
+
+
+# ─── Linked game accounts (admin) ────────────────────────────────────────────
+# Site accounts linked to a SteamID via the in-game .register/.login flow (see
+# User.steam_id, set by /api/plugin/register and /api/plugin/login above).
+
+@app.get("/api/admin/linked-accounts", response_model=list[LinkedAccountOut])
+async def list_linked_accounts(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(
+        select(User).where(User.steam_id.isnot(None)).order_by(User.username.asc())
+    )
+    return [LinkedAccountOut.model_validate(u) for u in result.scalars().all()]
+
+
+@app.post("/api/admin/users/{user_id}/unlink-steam")
+async def unlink_steam_account(
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_admin_user),
+):
+    """Clears the SteamID link set via the in-game .register/.login flow, e.g. so the
+    player can re-link a different game account. Does not touch the site account itself
+    (username/password/etc.) — only the link."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.steam_id = None
+    await _audit(db, current_user.id, "user.unlink_steam", target_type="user", target_id=user.id, detail=user.username)
+    await db.commit()
+    return {"ok": True}
 
 
 # ─── Public bans list ────────────────────────────────────────────────────────

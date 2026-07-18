@@ -202,6 +202,19 @@ class UserOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class LinkedAccountOut(BaseModel):
+    """A site account linked to a SteamID via the in-game .register/.login flow
+    (see User.steam_id). Deliberately narrower than UserOut — this view is only ever
+    shown next to the SteamID/unlink action, so email/role/etc. would just be noise."""
+    id: int
+    username: str
+    steam_id: str
+    avatar_url: Optional[str] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"

@@ -1626,6 +1626,83 @@
           </table>
         </div>
       </div>
+
+      <!-- Connect/disconnect message templates -->
+      <div class="s-row" style="margin-top:1.25rem;">
+        <div class="s-card s-card-blue">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(0,60,140,.18);border:1px solid rgba(0,120,220,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.8"><path d="M4 4h16v12H7l-3 3V4z"/></svg>
+            </div>
+            <div>
+              <h2>Шаблоны сообщений</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Текст сообщений о подключении/отключении игрока в игровом чате</p>
+            </div>
+          </div>
+
+          <div class="s-field">
+            <label>Сообщение о подключении</label>
+            <div id="tmpl-connect-preview" style="background:#0a0a0f;border:1px solid rgba(255,255,255,.08);border-radius:.5rem;padding:.65rem .85rem;font-family:'Consolas','Courier New',monospace;font-size:.82rem;color:#d4d4d8;min-height:1.4em;white-space:pre-wrap;word-break:break-word;line-height:1.5;margin-bottom:.5rem;"><span style="color:var(--muted);">Предпросмотр появится здесь…</span></div>
+            <div style="display:flex;gap:.4rem;align-items:center;margin-bottom:.4rem;">
+              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#FFFF00')" title="Жёлтый" style="width:20px;height:20px;border-radius:50%;background:#FFFF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#00FF00')" title="Зелёный" style="width:20px;height:20px;border-radius:50%;background:#00FF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#FF3355')" title="Красный" style="width:20px;height:20px;border-radius:50%;background:#FF3355;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#60A5FA')" title="Синий" style="width:20px;height:20px;border-radius:50%;background:#60A5FA;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#FFFFFF')" title="Белый" style="width:20px;height:20px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <span style="font-size:.68rem;color:var(--muted);">— выделите текст и нажмите на цвет</span>
+            </div>
+            <textarea id="tmpl-connect" class="dark-input" rows="2" maxlength="200" oninput="updateTmplPreview('connect')" placeholder="&lt;color=#00FF00&gt;{name} присоединился к игре&lt;/color&gt;"></textarea>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;">
+              <p class="s-desc" style="flex:1;">Плейсхолдер <code>{name}</code> заменяется на имя персонажа. Поддерживается тег &lt;color=#RRGGBB&gt;…&lt;/color&gt;.</p>
+              <span id="tmpl-connect-char-count" style="font-size:.7rem;color:var(--muted);white-space:nowrap;margin-top:.35rem;">0 / 200</span>
+            </div>
+            <div class="s-field-row" style="margin-top:.4rem;">
+              <button class="s-save-btn" onclick="saveMessageTemplate('connect')">Сохранить</button>
+            </div>
+          </div>
+
+          <div class="s-field" style="margin-top:1rem;">
+            <label>Сообщение об отключении</label>
+            <div id="tmpl-disconnect-preview" style="background:#0a0a0f;border:1px solid rgba(255,255,255,.08);border-radius:.5rem;padding:.65rem .85rem;font-family:'Consolas','Courier New',monospace;font-size:.82rem;color:#d4d4d8;min-height:1.4em;white-space:pre-wrap;word-break:break-word;line-height:1.5;margin-bottom:.5rem;"><span style="color:var(--muted);">Предпросмотр появится здесь…</span></div>
+            <div style="display:flex;gap:.4rem;align-items:center;margin-bottom:.4rem;">
+              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#FFFF00')" title="Жёлтый" style="width:20px;height:20px;border-radius:50%;background:#FFFF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#00FF00')" title="Зелёный" style="width:20px;height:20px;border-radius:50%;background:#00FF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#FF3355')" title="Красный" style="width:20px;height:20px;border-radius:50%;background:#FF3355;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#60A5FA')" title="Синий" style="width:20px;height:20px;border-radius:50%;background:#60A5FA;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#FFFFFF')" title="Белый" style="width:20px;height:20px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <span style="font-size:.68rem;color:var(--muted);">— выделите текст и нажмите на цвет</span>
+            </div>
+            <textarea id="tmpl-disconnect" class="dark-input" rows="2" maxlength="200" oninput="updateTmplPreview('disconnect')" placeholder="&lt;color=#FF3355&gt;{name} покинул сервер&lt;/color&gt;"></textarea>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;">
+              <p class="s-desc" style="flex:1;">Плейсхолдер <code>{name}</code> заменяется на имя персонажа. Поддерживается тег &lt;color=#RRGGBB&gt;…&lt;/color&gt;.</p>
+              <span id="tmpl-disconnect-char-count" style="font-size:.7rem;color:var(--muted);white-space:nowrap;margin-top:.35rem;">0 / 200</span>
+            </div>
+            <div class="s-field-row" style="margin-top:.4rem;">
+              <button class="s-save-btn" onclick="saveMessageTemplate('disconnect')">Сохранить</button>
+            </div>
+          </div>
+
+          <p class="s-desc" style="margin-top:.75rem;">Если поле пустое, плагин использует свой локальный шаблон по умолчанию.</p>
+        </div>
+      </div>
+
+      <!-- Linked game accounts -->
+      <div class="flex items-center justify-between" style="margin-top:1.25rem;margin-bottom:.75rem;">
+        <h2 class="gothic" style="font-size:.8rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Привязанные игровые аккаунты</h2>
+        <span id="linked-accounts-total" style="font-size:.78rem;color:var(--muted);"></span>
+      </div>
+      <div class="glass-card rounded-xl overflow-hidden">
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Игрок</th><th>SteamID</th><th>Привязан</th><th>Действия</th>
+            </tr></thead>
+            <tbody id="linked-accounts-tbody">
+              <tr><td colspan="4" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- USERS -->
@@ -2162,7 +2239,7 @@ function showSection(name) {
   }
   if (name === 'editor')   document.getElementById('btn-news').className = 'sidebar-btn active';
   if (name === 'settings') { loadSettings(); loadRules(); loadMaintenanceStatuses(); loadMaintenanceHistory(); }
-  if (name === 'plugin')   { loadSettings(); loadPluginStatus(); loadAnnouncements(); }
+  if (name === 'plugin')   { loadSettings(); loadPluginStatus(); loadAnnouncements(); loadLinkedAccounts(); }
   if (name === 'users')    loadUsers();
   if (name === 'news')     loadAdminNews(adminNewsPage);
   if (name === 'dashboard')  loadDashboard();
@@ -2542,6 +2619,14 @@ async function loadSettings() {
     badge.textContent = 'HTTPS'; badge.className = 's-status-badge s-status-https';
   }
   updateEventPreview();
+  // Connect/disconnect message templates (#tmpl-connect/#tmpl-disconnect) — plain Setting
+  // values like the rest of this response, but with their own field ids (see TMPL_KEYS),
+  // so they're populated here explicitly rather than via the SETTINGS_FIELD_KEYS loop above.
+  Object.entries(TMPL_KEYS).forEach(([kind, key]) => {
+    const el = document.getElementById(`tmpl-${kind}`);
+    if (el && map[key] !== undefined) el.value = map[key];
+    updateTmplPreview(kind);
+  });
 }
 
 async function loadPluginStatus() {
@@ -2577,8 +2662,10 @@ let _annEditingId = null;
 
 // Parses the small `<color=#RRGGBB>...</color>` tag vocabulary the plugin understands
 // (nothing nested, so a single regex pass is enough) and escapes everything else so
-// the preview can never be used to inject markup via the announcement text.
-function renderAnnouncementPreview(raw) {
+// the preview can never be used to inject markup via the announcement/template text.
+// Generic — shared by the announcement field and the connect/disconnect message
+// template fields below (all three are "text the plugin echoes into game chat").
+function renderColorTagPreview(raw) {
   const re = /<color=(#[0-9a-fA-F]{6})>([\s\S]*?)<\/color>/g;
   let out = '', last = 0, m;
   while ((m = re.exec(raw))) {
@@ -2601,28 +2688,37 @@ function annChatPrefix() {
   return `[${hh}:${mm}] [СИСТЕМА] `;
 }
 
-function updateAnnPreview() {
-  const box = document.getElementById('ann-preview');
-  const raw = document.getElementById('ann-text').value;
+// Generic live chat-preview renderer shared by #ann-text and the #tmpl-connect/
+// #tmpl-disconnect message template fields — takes the textarea/preview/char-counter
+// element ids so the same logic isn't triplicated across three near-identical fields.
+function updateChatPreview(taId, previewId, counterId) {
+  const ta = document.getElementById(taId);
+  const box = document.getElementById(previewId);
+  if (!ta || !box) return;
+  const raw = ta.value;
   box.innerHTML = raw.trim()
-    ? `<span style="color:#d4d4d8;">${esc(annChatPrefix())}</span>${renderAnnouncementPreview(raw)}`
+    ? `<span style="color:#d4d4d8;">${esc(annChatPrefix())}</span>${renderColorTagPreview(raw)}`
     : '<span style="color:var(--muted);">Предпросмотр появится здесь…</span>';
-  updateAnnCharCount();
+  if (counterId) {
+    const counter = document.getElementById(counterId);
+    if (counter) {
+      const len = raw.length;
+      counter.textContent = `${len} / 200`;
+      counter.style.color = len >= 200 ? '#f87171' : 'var(--muted)';
+    }
+  }
 }
 
-function updateAnnCharCount() {
-  const counter = document.getElementById('ann-char-count');
-  if (!counter) return;
-  const len = document.getElementById('ann-text').value.length;
-  counter.textContent = `${len} / 200`;
-  counter.style.color = len >= 200 ? '#f87171' : 'var(--muted)';
+function updateAnnPreview() {
+  updateChatPreview('ann-text', 'ann-preview', 'ann-char-count');
 }
 
-// Wraps the currently selected text in #ann-text with a <color=#RRGGBB>...</color> tag
-// (or the placeholder word "текст" if nothing is selected), then refreshes the preview
-// and char counter. Used by the color swatch buttons above the textarea.
-function wrapAnnSelectionWithColor(hex) {
-  const ta = document.getElementById('ann-text');
+// Wraps the currently selected text in the given textarea with a <color=#RRGGBB>...</color>
+// tag (or the placeholder word "текст" if nothing is selected), then invokes onDone (usually
+// a preview refresh). Used by the color swatch buttons above each chat-message textarea.
+function wrapSelectionWithColor(taId, hex, onDone) {
+  const ta = document.getElementById(taId);
+  if (!ta) return;
   const start = ta.selectionStart, end = ta.selectionEnd;
   const before = ta.value.slice(0, start);
   const selected = ta.value.slice(start, end) || 'текст';
@@ -2633,7 +2729,11 @@ function wrapAnnSelectionWithColor(hex) {
   ta.focus();
   const selStart = before.length + openTag.length;
   ta.setSelectionRange(selStart, Math.min(selStart + selected.length, ta.value.length));
-  updateAnnPreview();
+  if (onDone) onDone();
+}
+
+function wrapAnnSelectionWithColor(hex) {
+  wrapSelectionWithColor('ann-text', hex, updateAnnPreview);
 }
 
 function onAnnRepeatModeChange() {
@@ -2649,8 +2749,11 @@ function annIntervalLabel(mins) {
 
 // Backend returns naive-ish ISO timestamps with no offset (SQLite drops tzinfo) — append
 // 'Z' before parsing, same workaround loadPluginStatus() uses for last_seen_at above.
-function annRelativeTime(iso) {
-  if (!iso) return 'ещё не отправлялось';
+// Generic — used for announcements' last_sent_at and the linked-accounts list below;
+// nullText customizes what shows when iso is falsy (each caller means something different
+// by "no timestamp").
+function relativeTimeFromIso(iso, nullText = '—') {
+  if (!iso) return nullText;
   const t = new Date(iso.endsWith('Z') ? iso : iso + 'Z').getTime();
   const secAgo = Math.floor((Date.now() - t) / 1000);
   if (!isFinite(secAgo) || secAgo < 10) return 'только что';
@@ -2682,7 +2785,7 @@ async function loadAnnouncements() {
         <td style="font-size:.78rem;">${annIntervalLabel(a.interval_minutes)}</td>
         <td>${a.enabled ? '<span style="color:#4ade80;">Да</span>' : '<span style="color:var(--muted);">Нет</span>'}</td>
         <td style="font-size:.75rem;color:var(--muted);">${expires}</td>
-        <td style="font-size:.75rem;color:var(--muted);">${annRelativeTime(a.last_sent_at)}</td>
+        <td style="font-size:.75rem;color:var(--muted);">${relativeTimeFromIso(a.last_sent_at, 'ещё не отправлялось')}</td>
         <td>
           <div style="display:flex;gap:.35rem;flex-wrap:wrap;">
             <button onclick="editAnnouncement(${a.id})" class="btn-ghost" style="font-size:.7rem;padding:.28rem .6rem;">Изменить</button>
@@ -2818,6 +2921,76 @@ function deleteAnnouncementRow(id) {
         if (_annEditingId === id) _resetAnnouncementForm();
         loadAnnouncements();
       } else showToast('Ошибка удаления', 'error');
+    },
+  });
+}
+
+// ─── Connect/disconnect message templates ──────────────────────────────────
+// Plain Setting keys ("connect_message_template" / "disconnect_message_template"),
+// same storage as plugin_api_key/server_announcement — populated by loadSettings()
+// below (piggybacking on the single GET /api/admin/settings call already made when
+// the Плагин tab opens) since they don't follow the setting-${key} input id
+// convention the rest of the settings form uses (textarea ids are #tmpl-connect/
+// #tmpl-disconnect per the field spec).
+const TMPL_KEYS = { connect: 'connect_message_template', disconnect: 'disconnect_message_template' };
+
+function updateTmplPreview(kind) {
+  updateChatPreview(`tmpl-${kind}`, `tmpl-${kind}-preview`, `tmpl-${kind}-char-count`);
+}
+
+function wrapTmplSelectionWithColor(kind, hex) {
+  wrapSelectionWithColor(`tmpl-${kind}`, hex, () => updateTmplPreview(kind));
+}
+
+async function saveMessageTemplate(kind) {
+  const key = TMPL_KEYS[kind];
+  const value = document.getElementById(`tmpl-${kind}`)?.value ?? '';
+  await _doSaveSetting(key, value);
+}
+
+// ─── Linked game accounts ───────────────────────────────────────────────────
+// Site accounts linked to a SteamID via the in-game .register/.login flow.
+async function loadLinkedAccounts() {
+  const tbody = document.getElementById('linked-accounts-tbody');
+  if (!tbody) return;
+  tableShowSkeleton('linked-accounts-tbody', 4);
+  try {
+    const res = await fetch(`${API}/admin/linked-accounts`, { credentials: 'include', headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const rows = await res.json();
+    const total = document.getElementById('linked-accounts-total');
+    if (total) total.textContent = rows.length ? `${rows.length} шт.` : '';
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Привязанных аккаунтов нет</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(u => `
+      <tr>
+        <td>
+          <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:.5rem;text-decoration:none;color:var(--text);">
+            ${u.avatar_url
+              ? `<img src="${esc(u.avatar_url)}" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
+              : `<span style="width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.08);display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--muted);flex-shrink:0;">${esc(u.username.slice(0,1).toUpperCase())}</span>`}
+            <span style="font-weight:600;font-size:.82rem;">${esc(u.username)}</span>
+          </a>
+        </td>
+        <td style="font-size:.78rem;color:var(--muted);font-family:'Consolas','Courier New',monospace;">${esc(u.steam_id)}</td>
+        <td style="font-size:.75rem;color:var(--muted);">${relativeTimeFromIso(u.created_at)}</td>
+        <td><button onclick="unlinkSteamAccount(${u.id},'${esc(u.username)}')" class="btn-danger" style="font-size:.7rem;padding:.28rem .6rem;">Отвязать</button></td>
+      </tr>`).join('');
+  } catch { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+}
+
+function unlinkSteamAccount(id, username) {
+  showConfirm({
+    title: 'Отвязать игровой аккаунт?',
+    text: `SteamID будет отвязан от «${username}» — игрок сможет привязать другой аккаунт командой .register/.login в игре.`,
+    icon: '🔗',
+    okLabel: 'Отвязать',
+    onOk: async () => {
+      const res = await fetch(`${API}/admin/users/${id}/unlink-steam`, { method: 'POST', credentials: 'include', headers: authH() });
+      if (res.ok) { adminToast('Аккаунт отвязан', 'success'); loadLinkedAccounts(); }
+      else showToast('Ошибка отвязки', 'error');
     },
   });
 }
