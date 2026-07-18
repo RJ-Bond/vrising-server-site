@@ -1,5 +1,6 @@
 """Regression tests for in-game moderation bans (.ban/.unban admin chat commands):
-- POST /api/plugin/ban, POST /api/plugin/unban, GET /api/plugin/due-unbans (plugin-key gated)
+- POST /api/plugin/ban, POST /api/plugin/unban, GET /api/plugin/due-unbans,
+  GET /api/plugin/ban-status (plugin-key gated)
 - GET /api/admin/bans, POST /api/admin/bans/{id}/unban (admin-JWT gated)
 
 See models.Ban's docstring for the full active/unban_at/unbanned_at lifecycle: a ban is
@@ -187,6 +188,69 @@ async def test_due_unbans_scoped_per_server(client, db_session):
 
     r2 = await client.get("/api/plugin/due-unbans", params={"server_num": 2}, headers=_hdr())
     assert [u["steam_id"] for u in r2.json()["unbans"]] == ["s2-expired"]
+
+
+# ─── GET /api/plugin/ban-status ─────────────────────────────────────────────
+
+async def test_ban_status_false_for_unbanned_steam_id(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.get(
+        "/api/plugin/ban-status", params={"steam_id": "no-such-steam-id", "server_num": 1}, headers=_hdr()
+    )
+    assert r.status_code == 200
+    assert r.json() == {"banned": False}
+
+
+async def test_ban_status_true_with_full_details_for_active_ban(client, db_session):
+    await _set_plugin_key(db_session)
+    future = datetime.utcnow() + timedelta(days=1)
+    db_session.add(Ban(
+        server_num=1, steam_id="status-active-1", character_name="Target",
+        admin_name="Overseer", reason="cheating", banned_at=datetime.utcnow(), unban_at=future,
+    ))
+    await db_session.commit()
+
+    r = await client.get(
+        "/api/plugin/ban-status", params={"steam_id": "status-active-1", "server_num": 1}, headers=_hdr()
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["banned"] is True
+    assert body["admin_name"] == "Overseer"
+    assert body["reason"] == "cheating"
+    assert body["unban_at"] is not None
+    assert body["unban_at"].endswith("Z")
+
+
+async def test_ban_status_false_for_already_unbanned(client, db_session):
+    await _set_plugin_key(db_session)
+    db_session.add(Ban(
+        server_num=1, steam_id="status-lifted-1", character_name="Target",
+        admin_name="A", reason="r", banned_at=datetime.utcnow(), unban_at=None,
+        unbanned_at=datetime.utcnow(),
+    ))
+    await db_session.commit()
+
+    r = await client.get(
+        "/api/plugin/ban-status", params={"steam_id": "status-lifted-1", "server_num": 1}, headers=_hdr()
+    )
+    assert r.status_code == 200
+    assert r.json() == {"banned": False}
+
+
+async def test_ban_status_scoped_per_server(client, db_session):
+    await _set_plugin_key(db_session)
+    db_session.add(Ban(
+        server_num=2, steam_id="status-other-server", character_name="Target",
+        admin_name="A", reason="r", banned_at=datetime.utcnow(), unban_at=None,
+    ))
+    await db_session.commit()
+
+    r = await client.get(
+        "/api/plugin/ban-status", params={"steam_id": "status-other-server", "server_num": 1}, headers=_hdr()
+    )
+    assert r.status_code == 200
+    assert r.json() == {"banned": False}
 
 
 # ─── GET /api/admin/bans ────────────────────────────────────────────────────

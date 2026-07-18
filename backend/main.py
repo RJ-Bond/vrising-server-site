@@ -1634,6 +1634,37 @@ async def plugin_due_unbans(
     return {"unbans": [{"steam_id": b.steam_id, "character_name": b.character_name} for b in due]}
 
 
+@app.get("/api/plugin/ban-status")
+@limiter.limit("60/minute")
+async def plugin_ban_status(
+    request: Request,
+    steam_id: str,
+    server_num: int = Query(default=1),
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Checked by the plugin on every player connect as a workaround for the game
+    engine's own native ban enforcement not reliably rejecting an already-banned player.
+    Looks up the currently-active Ban (unbanned_at IS NULL) for this steam_id scoped to
+    server_num; unban_at NULL in the response means a permanent ban."""
+    result = await db.execute(
+        select(Ban).where(
+            Ban.steam_id == steam_id,
+            Ban.server_num == server_num,
+            Ban.unbanned_at.is_(None),
+        )
+    )
+    ban = result.scalars().first()
+    if ban is None:
+        return {"banned": False}
+    return {
+        "banned": True,
+        "admin_name": ban.admin_name,
+        "reason": ban.reason,
+        "unban_at": _fmt_dt_z(ban.unban_at),
+    }
+
+
 _VALID_LOG_ACTIONS = {"kick", "mute", "unmute", "restart_scheduled", "restart_executed"}
 
 
