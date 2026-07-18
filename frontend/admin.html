@@ -1771,6 +1771,16 @@
             </div>
             <p class="s-desc">Игроки увидят обратный отсчёт в игровом чате каждую минуту.</p>
           </div>
+
+          <div class="s-field" style="margin-top:.9rem;padding-top:.9rem;border-top:1px solid rgba(255,255,255,.07);margin-bottom:0;">
+            <label>Ежедневный рестарт по расписанию</label>
+            <div class="s-field-row">
+              <input id="daily-restart-time" type="time" class="dark-input" style="max-width:120px;">
+              <button id="daily-restart-save-btn" class="s-save-btn" onclick="saveDailyRestart()">Сохранить</button>
+              <button id="daily-restart-clear-btn" class="btn-ghost" style="display:none;" onclick="clearDailyRestart()">Отключить</button>
+            </div>
+            <p class="s-desc" id="daily-restart-desc">Расписание не задано — рестарт только вручную.</p>
+          </div>
         </div>
       </div>
 
@@ -2728,6 +2738,7 @@ async function loadPluginSection() {
   loadMessageTemplates();
   loadServerApiKey();
   loadRestartStatus();
+  loadDailyRestart();
 }
 
 async function loadPluginStatus() {
@@ -2776,6 +2787,7 @@ function selectPluginServer(serverNum) {
   loadMessageTemplates();
   loadServerApiKey();
   loadRestartStatus();
+  loadDailyRestart();
 }
 
 function renderPluginStatusPill() {
@@ -3229,6 +3241,58 @@ async function cancelRestart() {
     _restartAt = null;
     renderRestartBox();
     adminToast('Рестарт отменён', 'success');
+  } catch { showToast('Ошибка сети', 'error'); }
+}
+
+// ─── Recurring daily restart (GET/POST/DELETE /api/admin/servers/{server_num}/daily-restart) ──
+// Independent of the one-off "через N минут" scheduler above — sets/clears
+// ScheduledRestart.daily_restart_time, which GET /api/plugin/restart-status self-arms into
+// a one-off restart_at on the plugin's next poll each time the previous occurrence has been
+// executed and cancelled. Loaded/saved alongside the one-off restart card on tab load/switch.
+async function loadDailyRestart() {
+  const input = document.getElementById('daily-restart-time');
+  const desc = document.getElementById('daily-restart-desc');
+  const clearBtn = document.getElementById('daily-restart-clear-btn');
+  if (!input) return;
+  input.value = '';
+  if (clearBtn) clearBtn.style.display = 'none';
+  if (desc) desc.textContent = 'Расписание не задано — рестарт только вручную.';
+  if (_pluginActiveServer == null) return;
+  try {
+    const res = await fetch(`${API}/admin/servers/${_pluginActiveServer}/daily-restart`, { credentials: 'include', headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const d = await res.json();
+    if (d.daily_restart_time) {
+      input.value = d.daily_restart_time;
+      if (clearBtn) clearBtn.style.display = '';
+      if (desc) desc.textContent = `Рестарт каждый день в ${d.daily_restart_time} (время сайта).`;
+    }
+  } catch { /* leave as unscheduled on network error */ }
+}
+
+async function saveDailyRestart() {
+  if (_pluginActiveServer == null) return;
+  const time = document.getElementById('daily-restart-time')?.value;
+  if (!time) { showToast('Укажите время рестарта', 'error'); return; }
+  try {
+    const res = await fetch(`${API}/admin/servers/${_pluginActiveServer}/daily-restart`, {
+      method: 'POST', credentials: 'include', headers: authH(), body: JSON.stringify({ time }),
+    });
+    if (!res.ok) { showToast('Ошибка сохранения расписания', 'error'); return; }
+    await loadDailyRestart();
+    adminToast('Ежедневный рестарт настроен', 'success');
+  } catch { showToast('Ошибка сети', 'error'); }
+}
+
+async function clearDailyRestart() {
+  if (_pluginActiveServer == null) return;
+  try {
+    const res = await fetch(`${API}/admin/servers/${_pluginActiveServer}/daily-restart`, {
+      method: 'DELETE', credentials: 'include', headers: authH(),
+    });
+    if (!res.ok) { showToast('Ошибка отключения расписания', 'error'); return; }
+    await loadDailyRestart();
+    adminToast('Ежедневный рестарт отключён', 'success');
   } catch { showToast('Ошибка сети', 'error'); }
 }
 

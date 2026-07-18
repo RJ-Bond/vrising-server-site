@@ -13,3 +13,4 @@ anthropic==0.40.0
 slowapi==0.1.9
 aiosmtplib>=3.0
 pyotp>=2.9.0
+tzdata>=2024.1

@@ -412,6 +412,7 @@ async def lifespan(app: FastAPI):
             "CREATE TABLE IF NOT EXISTS server_message_templates (server_num INTEGER PRIMARY KEY, connect_template TEXT, disconnect_template TEXT, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS server_api_keys (server_num INTEGER PRIMARY KEY, api_key VARCHAR(128) NOT NULL, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS scheduled_restarts (server_num INTEGER PRIMARY KEY, restart_at DATETIME)",
+            "ALTER TABLE scheduled_restarts ADD COLUMN daily_restart_time VARCHAR(8) DEFAULT NULL",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -944,6 +945,20 @@ async def _require_plugin_key(request: Request, db: AsyncSession = Depends(get_d
         raise HTTPException(status_code=401, detail="Invalid or missing plugin key")
 
 
+async def _site_timezone(db: AsyncSession) -> ZoneInfo:
+    """Site-configured display timezone (Setting "timezone", default Europe/Moscow) —
+    same lookup/fallback pattern as the hourly-heatmap timezone lookup elsewhere in this
+    file. Used to interpret wall-clock values (wipe_date/wipe_date2 Settings,
+    ScheduledRestart.daily_restart_time) that are stored/entered in local site time."""
+    tz_res = await db.execute(select(Setting).where(Setting.key == "timezone"))
+    tz_setting = tz_res.scalar_one_or_none()
+    tz_name = tz_setting.value if tz_setting else None
+    try:
+        return ZoneInfo(tz_name or "Europe/Moscow")
+    except Exception:
+        return ZoneInfo("Europe/Moscow")
+
+
 @app.get("/api/plugin/status")
 @limiter.limit("60/minute")
 async def plugin_status(
@@ -1284,6 +1299,79 @@ async def plugin_get_message_templates(
     )
 
 
+# ─── Wipe countdown (plugin) ────────────────────────────────────────────────────
+# Backed by the same wipe_date/wipe_type (server 1) and wipe_date2/wipe_type2 (server 2)
+# Settings the admin panel's "Вайп" card already writes via a raw <input
+# type="datetime-local"> — the stored value is local wall-clock time in the site's
+# configured timezone (Setting "timezone"), e.g. "2024-01-15T18:30", NOT UTC.
+
+@app.get("/api/plugin/wipe-info")
+@limiter.limit("60/minute")
+async def plugin_wipe_info(
+    request: Request,
+    server_num: int = Query(default=1),
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Upcoming-wipe countdown for the in-game plugin. Response shape:
+    {"wipe_date": "<ISO-8601 UTC, 'Z' suffix>" | null, "wipe_type": str | null}.
+    Never raises for a bad/missing value — an unrecognized server_num, an empty/unset
+    wipe_date, or an unparseable stored value all just come back as null/null, since this
+    is a best-effort in-game countdown display."""
+    if server_num == 1:
+        date_key, type_key = "wipe_date", "wipe_type"
+    elif server_num == 2:
+        date_key, type_key = "wipe_date2", "wipe_type2"
+    else:
+        return {"wipe_date": None, "wipe_type": None}
+
+    result = await db.execute(select(Setting).where(Setting.key.in_([date_key, type_key])))
+    settings = {s.key: s.value for s in result.scalars().all()}
+    raw_date = (settings.get(date_key) or "").strip()
+    if not raw_date:
+        return {"wipe_date": None, "wipe_type": None}
+
+    try:
+        local_dt = datetime.fromisoformat(raw_date)
+    except ValueError:
+        return {"wipe_date": None, "wipe_type": None}
+
+    tz = await _site_timezone(db)
+    if local_dt.tzinfo is None:
+        local_dt = local_dt.replace(tzinfo=tz)
+    utc_dt = local_dt.astimezone(timezone.utc).replace(tzinfo=None)
+    return {"wipe_date": _fmt_dt_z(utc_dt), "wipe_type": settings.get(type_key) or None}
+
+
+# ─── Player playtime (plugin) ───────────────────────────────────────────────────
+# Global (all-servers) total playtime for a linked SteamID, queried directly off
+# PlayerRecord.steam_id (set once the plugin reports a real session for that row — see
+# PlayerRecord.steam_id's comment in models.py) — no join through User needed since that
+# column is already populated by verified session reports. Mirrors the same
+# func.sum(PlayerRecord.total_seconds) aggregation used for a player's public profile
+# total (GET /api/users/{username}), which likewise sums across every server_num rather
+# than scoping to one — this endpoint does the same for consistency.
+
+@app.get("/api/plugin/playtime")
+@limiter.limit("60/minute")
+async def plugin_playtime(
+    request: Request,
+    steam_id: str,
+    server_num: int = Query(default=1),
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """server_num is accepted only for the usual plugin-key resolution in
+    _require_plugin_key — the returned total is always global across all servers.
+    Response: {"total_seconds": int}, 0 (never null) for an unknown/unregistered
+    steam_id."""
+    result = await db.execute(
+        select(func.sum(PlayerRecord.total_seconds)).where(PlayerRecord.steam_id == steam_id)
+    )
+    total_seconds = int(result.scalar_one() or 0)
+    return {"total_seconds": total_seconds}
+
+
 # ─── Scheduled server restart ──────────────────────────────────────────────────
 # An admin sets "restart in N minutes" either from the site admin panel (POST/DELETE
 # /api/admin/servers/{server_num}/restart, below in the admin section) or, separately,
@@ -1317,6 +1405,19 @@ async def _cancel_restart(db: AsyncSession, server_num: int) -> None:
         await db.commit()
 
 
+def _next_daily_restart_utc(daily_restart_time: str, tz: ZoneInfo) -> datetime:
+    """Next occurrence of "HH:MM" (interpreted in the site's configured timezone) as a
+    naive UTC datetime — today at that time if it's still in the future relative to "now"
+    in that timezone, otherwise tomorrow. Mirrors _schedule_restart's naive-UTC storage
+    convention for ScheduledRestart.restart_at."""
+    hour, minute = (int(p) for p in daily_restart_time.split(":"))
+    now_local = datetime.now(tz)
+    candidate_local = now_local.replace(hour=hour, minute=minute, second=0, microsecond=0)
+    if candidate_local <= now_local:
+        candidate_local += timedelta(days=1)
+    return candidate_local.astimezone(timezone.utc).replace(tzinfo=None)
+
+
 @app.get("/api/plugin/restart-status")
 @limiter.limit("120/minute")
 async def plugin_restart_status(
@@ -1326,9 +1427,23 @@ async def plugin_restart_status(
     _key: None = Depends(_require_plugin_key),
 ):
     """Polled by the plugin (same cadence as its heartbeat, ~every 60s). Response shape:
-    {"restart_at": "<ISO-8601 UTC, 'Z' suffix>" | null} — null means no restart pending."""
+    {"restart_at": "<ISO-8601 UTC, 'Z' suffix>" | null} — null means no restart pending.
+
+    Also self-arms a recurring daily_restart_time (see the "Recurring daily restart"
+    section below): if restart_at is currently null but daily_restart_time is set for
+    this server_num, computes the next occurrence and persists it into restart_at right
+    here — as if an admin had just scheduled a one-off restart for that moment — so this
+    poll (and every other reader of the row, including the admin panel) sees it
+    immediately. No separate cron/background scheduler needed: once the plugin executes
+    the restart and calls POST /api/plugin/cancel-restart (which clears restart_at but
+    deliberately leaves daily_restart_time untouched), the very next poll here re-arms
+    the following day's occurrence automatically."""
     result = await db.execute(select(ScheduledRestart).where(ScheduledRestart.server_num == server_num))
     row = result.scalar_one_or_none()
+    if row is not None and row.restart_at is None and row.daily_restart_time:
+        tz = await _site_timezone(db)
+        row.restart_at = _next_daily_restart_utc(row.daily_restart_time, tz)
+        await db.commit()
     return {"restart_at": _fmt_dt_z(row.restart_at if row else None)}
 
 
@@ -1635,6 +1750,75 @@ async def cancel_restart_admin(
     await _cancel_restart(db, server_num)
     await _audit(db, current_user.id, "restart.cancel", target_type="scheduled_restart", target_id=server_num)
     await db.commit()
+    return {"success": True}
+
+
+# ─── Recurring daily restart (admin) ───────────────────────────────────────────
+# An independent recurring schedule layered on top of the one-off restart above — see
+# ScheduledRestart.daily_restart_time's docstring in models.py and the self-arming logic
+# in GET /api/plugin/restart-status. Managed only from the admin panel (no plugin-facing
+# set/clear endpoint — an in-game admin command sets a one-off restart via the existing
+# schedule-restart/cancel-restart pair, not the recurring schedule).
+
+_DAILY_RESTART_TIME_RE = re.compile(r"^\d{2}:\d{2}$")
+
+
+class AdminDailyRestartBody(BaseModel):
+    time: str
+
+
+def _validate_daily_restart_time(value: str) -> None:
+    if not _DAILY_RESTART_TIME_RE.match(value):
+        raise HTTPException(status_code=400, detail="invalid_time")
+    hour, minute = (int(p) for p in value.split(":"))
+    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+        raise HTTPException(status_code=400, detail="invalid_time")
+
+
+@app.get("/api/admin/servers/{server_num}/daily-restart")
+async def get_daily_restart(
+    server_num: int,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(select(ScheduledRestart).where(ScheduledRestart.server_num == server_num))
+    row = result.scalar_one_or_none()
+    return {"daily_restart_time": row.daily_restart_time if row else None}
+
+
+@app.post("/api/admin/servers/{server_num}/daily-restart")
+async def set_daily_restart(
+    server_num: int,
+    body: AdminDailyRestartBody,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    _validate_daily_restart_time(body.time)
+    result = await db.execute(select(ScheduledRestart).where(ScheduledRestart.server_num == server_num))
+    row = result.scalar_one_or_none()
+    if row is None:
+        row = ScheduledRestart(server_num=server_num)
+        db.add(row)
+    row.daily_restart_time = body.time
+    await _audit(db, current_user.id, "daily_restart.set", target_type="scheduled_restart", target_id=server_num, detail=body.time)
+    await db.commit()
+    return {"daily_restart_time": body.time}
+
+
+@app.delete("/api/admin/servers/{server_num}/daily-restart")
+async def clear_daily_restart(
+    server_num: int,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Independent of the one-off restart cleared by DELETE .../restart above — this only
+    ever touches daily_restart_time, never restart_at."""
+    result = await db.execute(select(ScheduledRestart).where(ScheduledRestart.server_num == server_num))
+    row = result.scalar_one_or_none()
+    if row is not None and row.daily_restart_time is not None:
+        row.daily_restart_time = None
+        await _audit(db, current_user.id, "daily_restart.clear", target_type="scheduled_restart", target_id=server_num)
+        await db.commit()
     return {"success": True}
 
 

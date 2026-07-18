@@ -411,8 +411,19 @@ class ScheduledRestart(Base):
     when to start broadcasting a countdown and when to execute the actual restart;
     restart_at is naive UTC (this repo's usual DateTime convention) and is cleared back
     to None (row kept, not deleted) rather than deleted, both when an admin cancels a
-    pending restart and by the plugin itself right after it executes one."""
+    pending restart and by the plugin itself right after it executes one.
+
+    daily_restart_time is an independent, optional recurring schedule layered on top of
+    the one-off restart_at above — e.g. "06:00", interpreted in the site's configured
+    timezone (Setting "timezone"). Set/cleared via GET/POST/DELETE
+    /api/admin/servers/{server_num}/daily-restart. GET /api/plugin/restart-status
+    self-arms it: whenever restart_at is None but daily_restart_time is set, that
+    endpoint computes the next occurrence, persists it into restart_at (as if an admin
+    had just scheduled a one-off restart), and returns it — no separate cron/scheduler
+    needed. Cancelling a restart (admin or plugin cleanup) only ever clears restart_at,
+    never daily_restart_time, so the next poll re-arms the following day automatically."""
     __tablename__ = "scheduled_restarts"
 
     server_num = Column(Integer, primary_key=True)
     restart_at = Column(DateTime, nullable=True)
+    daily_restart_time = Column(String(8), nullable=True)
