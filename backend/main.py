@@ -72,7 +72,7 @@ from sqlalchemy import select, func, delete, text, or_, update, and_
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate, ServerApiKey, ScheduledRestart, Warning, Ban
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate, ServerApiKey, ScheduledRestart, Warning, Ban, BanAppeal, ModerationLogEntry
 from .auth import (
     verify_password,
     get_password_hash,
@@ -144,6 +144,9 @@ from .schemas import (
     PluginWarnIn,
     PluginBanIn,
     PluginUnbanIn,
+    BanAppealCreate,
+    AppealResolveIn,
+    PluginLogActionIn,
     LinkedAccountOut,
     strip_html_tags,
 )
@@ -420,6 +423,10 @@ async def lifespan(app: FastAPI):
             "CREATE INDEX IF NOT EXISTS ix_warnings_steam_id ON warnings(steam_id)",
             "CREATE TABLE IF NOT EXISTS bans (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, steam_id VARCHAR(32) NOT NULL, character_name VARCHAR(64) NOT NULL, admin_name VARCHAR(64) NOT NULL, reason VARCHAR(512) NOT NULL, banned_at DATETIME NOT NULL, unban_at DATETIME, unbanned_at DATETIME)",
             "CREATE INDEX IF NOT EXISTS ix_bans_steam_id ON bans(steam_id)",
+            "CREATE TABLE IF NOT EXISTS ban_appeals (id INTEGER PRIMARY KEY, ban_id INTEGER REFERENCES bans(id), steam_id VARCHAR(32) NOT NULL, character_name VARCHAR(64) NOT NULL, message VARCHAR(2000) NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'pending', admin_response VARCHAR(1024), admin_name VARCHAR(64), created_at DATETIME NOT NULL, resolved_at DATETIME)",
+            "CREATE INDEX IF NOT EXISTS ix_ban_appeals_steam_id ON ban_appeals(steam_id)",
+            "CREATE TABLE IF NOT EXISTS moderation_log (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, action VARCHAR(32) NOT NULL, admin_name VARCHAR(64), target_name VARCHAR(64), target_steam_id VARCHAR(32), details VARCHAR(512), created_at DATETIME NOT NULL)",
+            "CREATE INDEX IF NOT EXISTS ix_moderation_log_created ON moderation_log(created_at)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -1627,6 +1634,37 @@ async def plugin_due_unbans(
     return {"unbans": [{"steam_id": b.steam_id, "character_name": b.character_name} for b in due]}
 
 
+_VALID_LOG_ACTIONS = {"kick", "mute", "unmute", "restart_scheduled", "restart_executed"}
+
+
+@app.post("/api/plugin/log-action")
+@limiter.limit("60/minute")
+async def plugin_log_action(
+    request: Request,
+    body: PluginLogActionIn,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Records the moderation action types NOT already covered by their own dedicated
+    endpoints — ban/unban -> POST /api/plugin/ban /unban, warn -> POST /api/plugin/warn —
+    for the unified feed at GET /api/admin/moderation-log. Only the 5 values in
+    _VALID_LOG_ACTIONS are accepted (400 "invalid_action" otherwise) to avoid
+    double-counting ban/unban/warn once merged into that feed."""
+    if body.action not in _VALID_LOG_ACTIONS:
+        raise HTTPException(status_code=400, detail="invalid_action")
+    db.add(ModerationLogEntry(
+        server_num=body.server_num,
+        action=body.action,
+        admin_name=body.admin_name,
+        target_name=body.target_name,
+        target_steam_id=body.target_steam_id,
+        details=body.details,
+        created_at=datetime.utcnow(),
+    ))
+    await db.commit()
+    return {"success": True}
+
+
 @app.get("/api/admin/plugin-status", response_model=list[PluginHeartbeatOut])
 async def get_plugin_status(
     db: AsyncSession = Depends(get_db),
@@ -1975,6 +2013,16 @@ async def clear_daily_restart(
     return {"success": True}
 
 
+def _force_unban(ban: Ban) -> None:
+    """Brings unban_at forward to "now" (regardless of its previous value) rather than
+    setting unbanned_at directly — that only happens once the plugin actually confirms the
+    real in-game unban via POST /api/plugin/unban or the next GET /api/plugin/due-unbans
+    poll consumes this row (within ~60s). Shared by POST /api/admin/bans/{id}/unban and
+    the ban-appeal auto-lift in POST /api/admin/appeals/{id}/resolve (approve=true), so
+    both "Разбанить" paths behave identically."""
+    ban.unban_at = datetime.utcnow()
+
+
 # ─── Player bans (admin) ───────────────────────────────────────────────────────
 # Admin-panel counterpart to the POST /api/plugin/ban / unban / GET .../due-unbans trio
 # above — see models.Ban's docstring for the full active/unban_at/unbanned_at lifecycle.
@@ -2027,10 +2075,209 @@ async def unban_admin(
     ban = result.scalar_one_or_none()
     if ban is None:
         raise HTTPException(status_code=404, detail="Ban not found")
-    ban.unban_at = datetime.utcnow()
+    _force_unban(ban)
     await _audit(db, current_user.id, "ban.unban", target_type="ban", target_id=ban.id, detail=ban.steam_id)
     await db.commit()
     return {"success": True}
+
+
+# ─── Ban appeals ────────────────────────────────────────────────────────────────
+# A banned player is blocked from the GAME SERVER but their SITE account (if any) is
+# unaffected, so appealing must work WITHOUT a site login — just the SteamID they can find
+# via the Steam client or the ban announcement they saw in-game. See models.BanAppeal's
+# docstring for the full lifecycle.
+
+@app.post("/api/appeals")
+@limiter.limit("3/hour")
+async def submit_ban_appeal(request: Request, body: BanAppealCreate, db: AsyncSession = Depends(get_db)):
+    """Public, unauthenticated. Looks up the currently-active Ban for body.steam_id (any
+    server_num — most recent if somehow more than one) so random non-banned visitors can't
+    spam this; 400 "no_active_ban" if none found. 400 "already_appealed" if a pending
+    appeal already exists for that same ban — they wait for a response instead of stacking
+    appeals. character_name is taken from the Ban row itself (authoritative) rather than
+    the request body, once found."""
+    result = await db.execute(
+        select(Ban)
+        .where(Ban.steam_id == body.steam_id, Ban.unbanned_at.is_(None))
+        .order_by(Ban.banned_at.desc())
+    )
+    ban = result.scalars().first()
+    if ban is None:
+        raise HTTPException(status_code=400, detail="no_active_ban")
+
+    existing = await db.execute(
+        select(BanAppeal).where(BanAppeal.ban_id == ban.id, BanAppeal.status == "pending")
+    )
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=400, detail="already_appealed")
+
+    db.add(BanAppeal(
+        ban_id=ban.id,
+        steam_id=body.steam_id,
+        character_name=ban.character_name or body.character_name,
+        message=body.message,
+        status="pending",
+        created_at=datetime.utcnow(),
+    ))
+    await db.commit()
+    return {"success": True}
+
+
+@app.get("/api/admin/appeals")
+async def list_ban_appeals(
+    status: Optional[str] = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    """Most-recent-first; status query param optionally filters to "pending"/"approved"/
+    "rejected" (default: all). ban_reason/ban_admin_name are joined through ban_id for
+    admin context — null if the underlying Ban row is somehow gone."""
+    q = select(BanAppeal).order_by(BanAppeal.created_at.desc())
+    if status:
+        q = q.where(BanAppeal.status == status)
+    result = await db.execute(q)
+    appeals = result.scalars().all()
+
+    ban_ids = {a.ban_id for a in appeals if a.ban_id is not None}
+    bans_by_id: dict[int, Ban] = {}
+    if ban_ids:
+        ban_result = await db.execute(select(Ban).where(Ban.id.in_(ban_ids)))
+        bans_by_id = {b.id: b for b in ban_result.scalars().all()}
+
+    return {
+        "appeals": [
+            {
+                "id": a.id,
+                "steam_id": a.steam_id,
+                "character_name": a.character_name,
+                "message": a.message,
+                "status": a.status,
+                "admin_response": a.admin_response,
+                "admin_name": a.admin_name,
+                "created_at": _fmt_dt_z(a.created_at),
+                "resolved_at": _fmt_dt_z(a.resolved_at),
+                "ban_reason": bans_by_id[a.ban_id].reason if a.ban_id in bans_by_id else None,
+                "ban_admin_name": bans_by_id[a.ban_id].admin_name if a.ban_id in bans_by_id else None,
+            }
+            for a in appeals
+        ]
+    }
+
+
+@app.post("/api/admin/appeals/{appeal_id}/resolve")
+async def resolve_ban_appeal(
+    appeal_id: int,
+    body: AppealResolveIn,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Approving ALSO lifts the underlying ban the exact same way the existing bans.html
+    "Разбанить" button does (see _force_unban above) — sets Ban.unban_at to "now", never
+    unbanned_at directly. 404 if the appeal doesn't exist or was already resolved."""
+    result = await db.execute(
+        select(BanAppeal).where(BanAppeal.id == appeal_id, BanAppeal.status == "pending")
+    )
+    appeal = result.scalar_one_or_none()
+    if appeal is None:
+        raise HTTPException(status_code=404, detail="Appeal not found")
+
+    appeal.status = "approved" if body.approve else "rejected"
+    appeal.admin_response = body.admin_response
+    appeal.admin_name = current_user.username
+    appeal.resolved_at = datetime.utcnow()
+
+    if body.approve and appeal.ban_id is not None:
+        ban_result = await db.execute(select(Ban).where(Ban.id == appeal.ban_id, Ban.unbanned_at.is_(None)))
+        ban = ban_result.scalar_one_or_none()
+        if ban is not None:
+            _force_unban(ban)
+
+    await _audit(db, current_user.id, "appeal.resolve", target_type="ban_appeal", target_id=appeal.id, detail=appeal.status)
+    await db.commit()
+    return {"success": True}
+
+
+# ─── Unified moderation log ─────────────────────────────────────────────────────
+# One chronological feed of every moderation action. Ban/Warning already capture
+# ban/unban/warn with everything needed, so they're merged in here rather than
+# re-logged; ModerationLogEntry (below) only stores the action types those two tables
+# don't cover.
+
+@app.get("/api/admin/moderation-log")
+async def get_moderation_log(
+    limit: int = Query(default=100, le=500),
+    server_num: Optional[int] = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    """Merges three sources into one common shape, sorts by timestamp descending in
+    Python, then applies limit — result sets here are small and admin-only/infrequent, so
+    a UNION SQL query would save little. Ban rows become one "ban" entry each (using
+    banned_at) plus, if the ban has actually been lifted (unbanned_at IS NOT NULL), a
+    second "unban" entry (using unbanned_at) — there's no site-side tracking of WHO
+    unbanned distinctly from the ban's original admin, so admin_name is reused rather than
+    left null. Warning rows become "warn" entries (reason -> details). ModerationLogEntry
+    rows (kick/mute/unmute/restart_scheduled/restart_executed, written by
+    POST /api/plugin/log-action) pass through as-is."""
+    ban_q = select(Ban)
+    warn_q = select(Warning)
+    log_q = select(ModerationLogEntry)
+    if server_num is not None:
+        ban_q = ban_q.where(Ban.server_num == server_num)
+        warn_q = warn_q.where(Warning.server_num == server_num)
+        log_q = log_q.where(ModerationLogEntry.server_num == server_num)
+
+    bans = (await db.execute(ban_q)).scalars().all()
+    warnings = (await db.execute(warn_q)).scalars().all()
+    log_entries = (await db.execute(log_q)).scalars().all()
+
+    entries = []
+    for b in bans:
+        entries.append({
+            "action": "ban",
+            "server_num": b.server_num,
+            "admin_name": b.admin_name,
+            "target_name": b.character_name,
+            "target_steam_id": b.steam_id,
+            "details": b.reason,
+            "created_at": b.banned_at,
+        })
+        if b.unbanned_at is not None:
+            entries.append({
+                "action": "unban",
+                "server_num": b.server_num,
+                "admin_name": b.admin_name,
+                "target_name": b.character_name,
+                "target_steam_id": b.steam_id,
+                "details": None,
+                "created_at": b.unbanned_at,
+            })
+    for w in warnings:
+        entries.append({
+            "action": "warn",
+            "server_num": w.server_num,
+            "admin_name": w.admin_name,
+            "target_name": w.character_name,
+            "target_steam_id": w.steam_id,
+            "details": w.reason,
+            "created_at": w.created_at,
+        })
+    for e in log_entries:
+        entries.append({
+            "action": e.action,
+            "server_num": e.server_num,
+            "admin_name": e.admin_name,
+            "target_name": e.target_name,
+            "target_steam_id": e.target_steam_id,
+            "details": e.details,
+            "created_at": e.created_at,
+        })
+
+    entries.sort(key=lambda e: e["created_at"], reverse=True)
+    entries = entries[:limit]
+    return {
+        "log": [{**e, "created_at": _fmt_dt_z(e["created_at"])} for e in entries]
+    }
 
 
 # ─── Who's online ─────────────────────────────────────────────────────────────

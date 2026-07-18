@@ -474,3 +474,52 @@ class Ban(Base):
     banned_at = Column(DateTime, nullable=False)
     unban_at = Column(DateTime, nullable=True)  # NULL = permanent ban
     unbanned_at = Column(DateTime, nullable=True)  # set once actually lifted; ban is "active" while NULL
+
+
+class BanAppeal(Base):
+    """A banned player's appeal against their active game-server Ban, submitted publicly
+    via POST /api/appeals — no site login required, since a banned player has neither a
+    game connection nor necessarily a site account. ban_id is the active Ban row found at
+    submission time (see that route for the lookup/validation rules); steam_id is kept
+    directly on this row too so the appeal is still meaningful even if the Ban row is ever
+    purged. Resolved by an admin via POST /api/admin/appeals/{id}/resolve: approving also
+    lifts the underlying ban (Ban.unban_at set to "now", same as the existing "Разбанить"
+    button); admin_name is the resolving admin's site username (audit trail only, no FK —
+    same convention as Ban.admin_name/Warning.admin_name, just from a site User here
+    instead of an in-game admin). created_at/resolved_at are naive UTC (this repo's usual
+    DateTime convention)."""
+    __tablename__ = "ban_appeals"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ban_id = Column(Integer, ForeignKey("bans.id"), nullable=True)
+    steam_id = Column(String(32), nullable=False, index=True)
+    character_name = Column(String(64), nullable=False)
+    message = Column(String(2000), nullable=False)
+    status = Column(String(16), nullable=False, default="pending")  # "pending" | "approved" | "rejected"
+    admin_response = Column(String(1024), nullable=True)
+    admin_name = Column(String(64), nullable=True)  # which admin resolved it
+    created_at = Column(DateTime, nullable=False)
+    resolved_at = Column(DateTime, nullable=True)
+
+
+class ModerationLogEntry(Base):
+    """Catch-all moderation-action log for the action types NOT already fully captured by
+    their own dedicated table — Ban already covers ban/unban, Warning already covers warn,
+    so those are never written here (POST /api/plugin/log-action rejects them). Kicks and
+    mutes are handled entirely by the BepInEx game plugin (no site-side enforcement), so
+    this is purely a record for the unified admin feed at GET /api/admin/moderation-log,
+    which merges Ban/Warning/this table into one chronological view. admin_name is null
+    for system/automatic actions (e.g. an auto-executed restart with no admin present).
+    created_at is naive UTC (this repo's usual DateTime convention)."""
+    __tablename__ = "moderation_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    server_num = Column(Integer, nullable=False, default=1)
+    action = Column(String(32), nullable=False)  # "kick" | "mute" | "unmute" | "restart_scheduled" | "restart_executed"
+    admin_name = Column(String(64), nullable=True)
+    target_name = Column(String(64), nullable=True)
+    target_steam_id = Column(String(32), nullable=True)
+    details = Column(String(512), nullable=True)
+    created_at = Column(DateTime, nullable=False)
+
+    __table_args__ = (Index("ix_moderation_log_created", "created_at"),)

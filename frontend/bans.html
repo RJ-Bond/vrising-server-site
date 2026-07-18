@@ -192,6 +192,9 @@
     <p style="font-size:.82rem;color:var(--muted);line-height:1.5;padding-left:2.2rem;">
       Заблокированные аккаунты и активные баны в игре. Данные обновляются в реальном времени.
     </p>
+    <p style="font-size:.78rem;padding-left:2.2rem;margin-top:.5rem;">
+      <a href="/appeal.html" style="color:var(--gold);text-decoration:none;">📝 Считаете бан ошибкой? Подать апелляцию →</a>
+    </p>
   </div>
 
   <!-- Section 1: banned site accounts (public — GET /api/bans) -->
@@ -263,6 +266,49 @@
     </div>
   </div>
 
+  <!-- Section 3: ban appeals (admin-only — GET/POST /api/admin/appeals...). Same
+       admin-gating as game-bans-section above; initialised alongside it in the
+       nav-auth block below. Public submission form lives at /appeal.html. -->
+  <div id="appeals-section" style="display:none;margin-top:3rem;animation:fade-up .38s ease both;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.25rem;flex-wrap:wrap;">
+      <div class="gothic ban-section-title">
+        <span style="font-size:1.1rem;">📝</span> Апелляции на баны
+      </div>
+      <select id="appeals-status-filter" onchange="loadAppeals()" style="background:rgba(14,3,24,0.8);border:1px solid rgba(150,0,28,0.25);color:var(--text);border-radius:.4rem;padding:.3rem .6rem;font-size:.75rem;font-family:'Inter',sans-serif;">
+        <option value="pending" selected>На рассмотрении</option>
+        <option value="approved">Одобренные</option>
+        <option value="rejected">Отклонённые</option>
+        <option value="">Все</option>
+      </select>
+    </div>
+    <p class="ban-section-desc">Апелляции, поданные забаненными игроками через /appeal.html — видно только администрации.</p>
+
+    <div class="g-card" style="margin-top:1rem;">
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr>
+            <th>SteamID</th><th>Персонаж</th><th>Сообщение</th><th>Причина бана</th><th>Дата</th><th>Статус</th><th>Действия</th>
+          </tr></thead>
+          <tbody id="appeals-tbody">
+            <tr><td colspan="7" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="appeals-empty" class="game-bans-empty" style="display:none;">
+      <div style="font-size:3rem;margin-bottom:.8rem;filter:drop-shadow(0 0 18px rgba(180,0,30,0.5));">📭</div>
+      <p class="gothic" style="font-size:.92rem;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:.4rem;">Апелляций нет</p>
+      <p style="font-size:.8rem;color:var(--muted);">Апелляции забаненных игроков появятся здесь.</p>
+    </div>
+
+    <div id="appeals-error" style="display:none;text-align:center;padding:2.5rem 1rem;">
+      <div style="font-size:2.2rem;margin-bottom:.7rem;opacity:.6;filter:drop-shadow(0 0 12px rgba(180,0,30,0.45));">⚠</div>
+      <p style="font-size:.8rem;color:var(--muted);margin-bottom:.9rem;">Не удалось загрузить апелляции.</p>
+      <button onclick="loadAppeals()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
+    </div>
+  </div>
+
 </div>
 
 <script src="/common.js?v=9"></script>
@@ -300,10 +346,12 @@ function roleLevel(role) { return ROLE_LEVELS[role] ?? 0; }
 (function() {
   const cached = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
   const gameBansSection = document.getElementById('game-bans-section');
+  const appealsSection  = document.getElementById('appeals-section');
   if (cached) {
     document.getElementById('nav-profile-link') && (document.getElementById('nav-profile-link').style.display = '');
     document.getElementById('nav-login-link') && (document.getElementById('nav-login-link').style.display = 'none');
     if (gameBansSection && roleLevel(cached.role) >= ROLE_LEVELS.admin) gameBansSection.style.display = '';
+    if (appealsSection && roleLevel(cached.role) >= ROLE_LEVELS.admin) appealsSection.style.display = '';
   }
   fetch('/api/auth/me', { credentials:'include' }).then(r => {
     const profileLink = document.getElementById('nav-profile-link');
@@ -318,15 +366,28 @@ function roleLevel(role) { return ROLE_LEVELS[role] ?? 0; }
         } else if (gameBansSection) {
           gameBansSection.style.display = 'none';
         }
-      }).catch(() => { if (gameBansSection) gameBansSection.style.display = 'none'; });
+        if (appealsSection && roleLevel(u.role) >= ROLE_LEVELS.admin) {
+          appealsSection.style.display = '';
+          loadAppeals();
+        } else if (appealsSection) {
+          appealsSection.style.display = 'none';
+        }
+      }).catch(() => {
+        if (gameBansSection) gameBansSection.style.display = 'none';
+        if (appealsSection) appealsSection.style.display = 'none';
+      });
     } else {
       localStorage.removeItem('user'); sessionStorage.removeItem('user');
       localStorage.removeItem('token'); sessionStorage.removeItem('token');
       if (profileLink) profileLink.style.display = 'none';
       if (loginLink)   loginLink.style.display = '';
       if (gameBansSection) gameBansSection.style.display = 'none';
+      if (appealsSection) appealsSection.style.display = 'none';
     }
-  }).catch(() => { if (gameBansSection) gameBansSection.style.display = 'none'; });
+  }).catch(() => {
+    if (gameBansSection) gameBansSection.style.display = 'none';
+    if (appealsSection) appealsSection.style.display = 'none';
+  });
 })();
 
 /* ── Site settings ── */
@@ -687,6 +748,104 @@ function initGameBans() {
   loadGameBans();
   _gbTickTimer = setInterval(tickGameBanCountdowns, 1000);
   _gbRefreshTimer = setInterval(loadGameBans, 45000);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Section 3: ban appeals (admin-only)
+   Public submission form: /appeal.html -> POST /api/appeals. This section lists them
+   via GET /api/admin/appeals and resolves via POST /api/admin/appeals/{id}/resolve —
+   approving also lifts the underlying ban server-side (see backend/main.py).
+   ════════════════════════════════════════════════════════════════════════ */
+const APPEAL_STATUS_LABELS = { pending: 'На рассмотрении', approved: 'Одобрена', rejected: 'Отклонена' };
+const APPEAL_STATUS_COLORS = { pending: '#f0b74a', approved: '#6aad7a', rejected: '#ef4444' };
+
+function appealRowHtml(a) {
+  const statusColor = APPEAL_STATUS_COLORS[a.status] || 'var(--muted)';
+  const statusLabel = APPEAL_STATUS_LABELS[a.status] || a.status;
+  const banInfo = a.ban_reason
+    ? `${esc(a.ban_reason)}${a.ban_admin_name ? ` <span style="color:var(--muted);">(${esc(a.ban_admin_name)})</span>` : ''}`
+    : '<span style="color:var(--muted);">—</span>';
+  const actions = a.status === 'pending'
+    ? `<button class="btn-danger" style="background:rgba(0,120,60,0.2);border-color:rgba(0,180,90,0.4);color:#86efac;margin-right:.35rem;" onclick="resolveAppeal(${a.id}, true, this)">Одобрить</button>
+       <button class="btn-danger" onclick="resolveAppeal(${a.id}, false, this)">Отклонить</button>`
+    : `<span style="font-size:.72rem;color:var(--muted);" title="${esc(a.admin_response || '')}">${esc(a.admin_name || '—')}${a.admin_response ? ': ' + esc(a.admin_response) : ''}</span>`;
+  return `<tr data-appeal-id="${a.id}">
+    <td style="font-size:.78rem;">${esc(a.steam_id)}</td>
+    <td>${esc(a.character_name)}</td>
+    <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(a.message)}">${esc(a.message)}</td>
+    <td style="font-size:.78rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${banInfo}</td>
+    <td style="color:var(--muted);white-space:nowrap;">${fmtDate(a.created_at)}</td>
+    <td><span style="font-size:.68rem;font-weight:700;color:${statusColor};">${statusLabel}</span></td>
+    <td>${actions}</td>
+  </tr>`;
+}
+
+function renderAppeals(appeals) {
+  const tbody = document.getElementById('appeals-tbody');
+  const empty = document.getElementById('appeals-empty');
+  if (!appeals.length) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = appeals.map(appealRowHtml).join('');
+}
+
+async function loadAppeals() {
+  document.getElementById('appeals-error').style.display = 'none';
+  document.getElementById('appeals-empty').style.display = 'none';
+  tableShowSkeleton('appeals-tbody', 7, 4);
+  try {
+    const status = document.getElementById('appeals-status-filter').value;
+    const params = status ? `?status=${encodeURIComponent(status)}` : '';
+    const res = await fetch(`${API}/admin/appeals${params}`, { credentials: 'include' });
+    if (res.status === 401 || res.status === 403) {
+      const section = document.getElementById('appeals-section');
+      if (section) section.style.display = 'none';
+      return;
+    }
+    if (!res.ok) throw new Error('load failed');
+    const data = await res.json();
+    renderAppeals(data.appeals || []);
+  } catch (err) {
+    document.getElementById('appeals-tbody').innerHTML = '';
+    document.getElementById('appeals-error').style.display = 'block';
+    if (typeof showToast === 'function') showToast('Ошибка загрузки апелляций', 'error');
+  }
+}
+
+async function resolveAppeal(id, approve, btnEl) {
+  const promptMsg = approve
+    ? 'Комментарий администратора (необязательно) — игрок будет разбанен:'
+    : 'Причина отклонения (необязательно):';
+  const adminResponse = window.prompt(promptMsg, '') || '';
+  const row = btnEl ? btnEl.closest('tr') : null;
+  if (row) row.querySelectorAll('button').forEach(b => b.disabled = true);
+  try {
+    const res = await fetch(`${API}/admin/appeals/${id}/resolve`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ approve, admin_response: adminResponse }),
+    });
+    if (res.status === 401 || res.status === 403) {
+      const section = document.getElementById('appeals-section');
+      if (section) section.style.display = 'none';
+      return;
+    }
+    if (!res.ok) throw new Error('resolve failed');
+    if (typeof showToast === 'function') {
+      showToast(approve ? 'Апелляция одобрена, игрок разбанен' : 'Апелляция отклонена', 'success');
+    }
+    loadAppeals();
+    // The underlying ban may have just been lifted — refresh the game-bans table too
+    // (only meaningful if that section is currently visible/initialised).
+    if (approve && _gameBansInited) loadGameBans();
+  } catch (err) {
+    if (typeof showToast === 'function') showToast('Ошибка при обработке апелляции', 'error');
+    if (row) row.querySelectorAll('button').forEach(b => b.disabled = false);
+  }
 }
 </script>
 </body>

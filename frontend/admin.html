@@ -525,6 +525,8 @@
 
       <div class="sidebar-group-label">Модерация</div>
       <button id="btn-reports"   onclick="showSection('reports')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Жалобы</span><span id="badge-reports" class="sidebar-badge" style="display:none;"></span></button>
+      <button id="btn-modlog"    onclick="showSection('modlog')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> Журнал модерации</span></button>
+      <a href="/bans.html" class="sidebar-btn" style="text-decoration:none;display:flex;"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Баны и апелляции</span></a>
 
       <div class="sidebar-group-label">Аналитика</div>
       <button id="btn-analytics" onclick="showSection('analytics')" class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Аналитика</span></button>
@@ -2132,6 +2134,48 @@
       <div id="auditlog-pagination" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:1rem;justify-content:center;"></div>
     </div>
 
+    <!-- MODERATION LOG (Журнал модерации) — unified feed: ban/unban (Ban rows), warn
+         (Warning rows), and kick/mute/unmute/restart_scheduled/restart_executed
+         (ModerationLogEntry rows, written by the BepInEx plugin via
+         POST /api/plugin/log-action). Distinct from "Журнал действий" above, which is
+         the site's own admin-panel audit trail (news edits, settings changes, etc). -->
+    <div id="section-modlog" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
+        <h2 class="section-title">Журнал модерации</h2>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+          <select id="modlog-action-filter" class="dark-input" style="font-size:.78rem;padding:.35rem .6rem;width:auto;" onchange="renderModerationLog()">
+            <option value="">Все действия</option>
+            <option value="ban">Бан</option>
+            <option value="unban">Разбан</option>
+            <option value="warn">Предупреждение</option>
+            <option value="kick">Кик</option>
+            <option value="mute">Мут</option>
+            <option value="unmute">Снятие мута</option>
+            <option value="restart_scheduled">Рестарт запланирован</option>
+            <option value="restart_executed">Рестарт выполнен</option>
+          </select>
+          <select id="modlog-server-filter" class="dark-input" style="font-size:.78rem;padding:.35rem .6rem;width:auto;" onchange="loadModerationLog()">
+            <option value="">Все сервера</option>
+            <option value="1">Сервер 1</option>
+            <option value="2">Сервер 2</option>
+          </select>
+          <button onclick="loadModerationLog()" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
+        </div>
+      </div>
+      <div class="glass-card" style="border-radius:.75rem;overflow:hidden;">
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Время</th><th>Действие</th><th>Игрок</th><th>Админ</th><th>Детали</th>
+            </tr></thead>
+            <tbody id="modlog-body">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -2234,7 +2278,7 @@ const SECTION_MIN_ROLE = {
   events: 'admin', settings: 'admin', plugin: 'admin', files: 'admin', media: 'admin',
   users: 'moderator', clans: 'admin', players: 'moderator', resets: 'admin',
   reports: 'moderator', analytics: 'admin', backups: 'superadmin',
-  log: 'admin', auditlog: 'admin', errors: 'admin',
+  log: 'admin', auditlog: 'admin', errors: 'admin', modlog: 'admin',
 };
 
 (function() {
@@ -2321,10 +2365,10 @@ function showSection(name) {
     showToast('Недостаточно прав для этого раздела', 'error');
     return;
   }
-  ['dashboard','news','editor','settings','plugin','users','comments','players','files','log','resets','clans','reports','analytics','backups','errors','media','auditlog','events'].forEach(s => {
+  ['dashboard','news','editor','settings','plugin','users','comments','players','files','log','resets','clans','reports','analytics','backups','errors','media','auditlog','events','modlog'].forEach(s => {
     const el = document.getElementById(`section-${s}`);
     if (el) {
-      if (s === 'media' || s === 'auditlog' || s === 'events') el.style.display = (s === name ? '' : 'none');
+      if (s === 'media' || s === 'auditlog' || s === 'events' || s === 'modlog') el.style.display = (s === name ? '' : 'none');
       else el.classList.toggle('hidden', s !== name);
     }
     const btn = document.getElementById(`btn-${s}`);
@@ -2356,6 +2400,7 @@ function showSection(name) {
   if (name === 'media')      loadMedia();
   if (name === 'auditlog')   loadAuditLogSection(1);
   if (name === 'events')     loadEvents();
+  if (name === 'modlog')     loadModerationLog();
 }
 
 // ─── News list ────────────────────────────────────────────────────────────
@@ -5160,6 +5205,62 @@ async function loadAuditLogSection(page) {
   } catch {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>';
   }
+}
+
+// ─── Moderation log (Журнал модерации) ─────────────────────────────────────
+// Unified feed from GET /api/admin/moderation-log — merges Ban (ban/unban), Warning
+// (warn), and ModerationLogEntry (kick/mute/unmute/restart_scheduled/restart_executed,
+// written by the plugin via POST /api/plugin/log-action) rows server-side. The action
+// filter here is client-side (over the already-fetched page, same principle as the
+// bans.html countdown ticking client-side) since the backend endpoint doesn't take one;
+// the server filter is re-fetched from the API since it changes what rows exist at all.
+let _modlogCache = [];
+const MODLOG_ACTION_LABELS = {
+  ban: 'Бан', unban: 'Разбан', warn: 'Предупреждение', kick: 'Кик', mute: 'Мут',
+  unmute: 'Снятие мута', restart_scheduled: 'Рестарт запланирован', restart_executed: 'Рестарт выполнен',
+};
+const MODLOG_ACTION_COLORS = {
+  ban: 'rgba(220,38,38,.18)', unban: 'rgba(0,150,100,.18)', warn: 'rgba(245,158,11,.18)',
+  kick: 'rgba(249,115,22,.18)', mute: 'rgba(100,100,100,.2)', unmute: 'rgba(0,150,100,.15)',
+  restart_scheduled: 'rgba(90,130,240,.18)', restart_executed: 'rgba(90,130,240,.28)',
+};
+
+async function loadModerationLog() {
+  const tbody = document.getElementById('modlog-body');
+  if (!tbody) return;
+  tableShowSkeleton('modlog-body', 5);
+  const serverNum = document.getElementById('modlog-server-filter')?.value || '';
+  const params = new URLSearchParams({ limit: 200, ...(serverNum ? { server_num: serverNum } : {}) });
+  try {
+    const d = await fetch(`${API}/admin/moderation-log?${params}`, { credentials: 'include', headers: authH() }).then(r => r.json());
+    _modlogCache = d.log || [];
+    renderModerationLog();
+  } catch {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>';
+  }
+}
+
+function renderModerationLog() {
+  const tbody = document.getElementById('modlog-body');
+  if (!tbody) return;
+  const actionFilter = document.getElementById('modlog-action-filter')?.value || '';
+  const items = actionFilter ? _modlogCache.filter(e => e.action === actionFilter) : _modlogCache;
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Записей нет</td></tr>';
+    return;
+  }
+  tbody.innerHTML = items.map(e => {
+    const label = MODLOG_ACTION_LABELS[e.action] || e.action;
+    const color = MODLOG_ACTION_COLORS[e.action] || 'rgba(150,150,150,.15)';
+    const player = e.target_name || e.target_steam_id || '—';
+    return `<tr>
+      <td style="white-space:nowrap;font-size:.75rem;color:var(--muted);">${fmtDateTime(e.created_at)}</td>
+      <td><span style="font-size:.72rem;padding:.15rem .5rem;border-radius:.3rem;background:${color};">${esc(label)}</span></td>
+      <td style="font-size:.78rem;">${esc(player)}</td>
+      <td style="font-size:.78rem;color:var(--muted);">${esc(e.admin_name || '—')}</td>
+      <td style="font-size:.72rem;color:var(--muted);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(e.details || '')}">${esc(e.details || '—')}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ─── Reports ──────────────────────────────────────────────────────────────

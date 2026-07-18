@@ -157,6 +157,70 @@ class PluginUnbanIn(BaseModel):
     server_num: int = 1
 
 
+class BanAppealCreate(BaseModel):
+    """Body for POST /api/appeals — public, unauthenticated (a banned player has neither
+    a game connection nor necessarily a site login). steam_id/character_name are what the
+    player supplies (found via Steam client or the in-game ban message); character_name
+    here is only a fallback, the route prefers the authoritative Ban.character_name on
+    file once the active ban is resolved."""
+    steam_id: str
+    character_name: str
+    message: str
+
+    @field_validator("steam_id")
+    @classmethod
+    def steam_id_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("SteamID cannot be empty")
+        return v[:32]
+
+    @field_validator("character_name")
+    @classmethod
+    def character_name_not_empty(cls, v: str) -> str:
+        v = strip_html_tags(v).strip()
+        if not v:
+            raise ValueError("Character name cannot be empty")
+        return v[:64]
+
+    @field_validator("message")
+    @classmethod
+    def message_not_empty(cls, v: str) -> str:
+        v = strip_html_tags(v).strip()
+        if not v:
+            raise ValueError("Message cannot be empty")
+        if len(v) > 2000:
+            raise ValueError("Message too long (max 2000 chars)")
+        return v
+
+
+class AppealResolveIn(BaseModel):
+    """Body for POST /api/admin/appeals/{id}/resolve."""
+    approve: bool
+    admin_response: str
+
+    @field_validator("admin_response")
+    @classmethod
+    def response_not_too_long(cls, v: str) -> str:
+        v = strip_html_tags(v).strip()
+        return v[:1024]
+
+
+class PluginLogActionIn(BaseModel):
+    """Body for POST /api/plugin/log-action — records the moderation action types NOT
+    already tracked by their own dedicated endpoints (ban/unban/warn have theirs). Only
+    the 5 values in {"kick","mute","unmute","restart_scheduled","restart_executed"} are
+    accepted, to avoid double-counting ban/unban/warn once merged into the unified
+    GET /api/admin/moderation-log feed. admin_name is null for system/automatic actions
+    (e.g. an auto-executed restart with no admin present)."""
+    server_num: int = 1
+    action: str
+    admin_name: Optional[str] = None
+    target_name: Optional[str] = None
+    target_steam_id: Optional[str] = None
+    details: Optional[str] = None
+
+
 class PluginHeartbeatOut(BaseModel):
     server_num: int
     server_name: Optional[str] = None

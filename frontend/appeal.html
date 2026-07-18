@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Апелляция на бан — Just-Skill.Ru</title>
+  <link rel="canonical" href="https://v.just-skill.ru/appeal.html" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta property="og:url" content="https://v.just-skill.ru/appeal.html" />
+  <meta name="description" content="Подать апелляцию на бан на серверах V Rising на Just-Skill.Ru." />
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Just-Skill.Ru" />
+  <meta property="og:title" content="V Rising — Апелляция на бан" />
+  <meta property="og:description" content="Подать апелляцию на бан на серверах V Rising на Just-Skill.Ru." />
+  <meta property="og:image" content="https://v.just-skill.ru/uploads/og-default.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/tailwind.min.css" />
+  <link rel="stylesheet" href="/theme.css?v=1" />
+  <link rel="stylesheet" href="/components.css?v=2" />
+  <style>
+    /* Design tokens in /theme.css — this page uses them unchanged. */
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; }
+    body {
+      background:var(--bg);
+      background-image:
+        radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
+      background-attachment:fixed;
+      font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh;
+    }
+    /* nav + tooltips + base: /components.css */
+
+    @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+
+    .appeal-card {
+      background:var(--card); border:1px solid var(--border); border-radius:.9rem;
+      padding:1.75rem; backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 4px 24px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.04);
+      animation:fade-up .38s ease both;
+    }
+    .form-group { margin-bottom:1.1rem; }
+    .form-label { display:block; font-size:.72rem; color:var(--muted); letter-spacing:.05em; text-transform:uppercase; margin-bottom:.4rem; }
+    .dark-input, textarea.dark-input {
+      width:100%; background:rgba(6,0,15,0.75); border:1px solid rgba(130,0,30,0.3);
+      border-radius:.55rem; padding:.62rem .85rem; color:var(--text);
+      font-size:.88rem; font-family:'Inter',sans-serif; outline:none; transition:border-color .2s, box-shadow .2s;
+      resize:vertical;
+    }
+    .dark-input:focus { border-color:var(--crimson); box-shadow:0 0 14px rgba(181,0,42,.2); }
+    .form-hint { font-size:.7rem; color:var(--muted); margin-top:.35rem; line-height:1.4; }
+    .alert { display:none; align-items:flex-start; gap:.5rem; padding:.65rem .8rem; border-radius:.55rem; font-size:.8rem; margin-bottom:1rem; line-height:1.4; }
+    .alert.show { display:flex; }
+    .alert-error   { background:rgba(140,0,20,.25); border:1px solid rgba(180,0,30,.5); color:#fca5a5; }
+    .alert-success { background:rgba(0,80,20,.25);  border:1px solid rgba(0,180,40,.4); color:#86efac; }
+    .btn-primary {
+      width:100%; margin-top:.25rem; padding:.75rem 1rem; border:none; border-radius:.55rem;
+      background:linear-gradient(135deg,#6a0018,var(--crimson)); color:#fff;
+      font-size:.88rem; font-weight:700; letter-spacing:.05em; cursor:pointer;
+      box-shadow:0 0 22px rgba(181,0,42,.35); transition:box-shadow .2s, transform .15s;
+      font-family:'Inter',sans-serif;
+    }
+    .btn-primary:hover:not(:disabled) { box-shadow:0 0 38px rgba(181,0,42,.5); transform:translateY(-1px); }
+    .btn-primary:disabled { opacity:.55; cursor:not-allowed; transform:none; }
+    .success-wrap { text-align:center; padding:1.5rem 0; }
+    .success-wrap svg { display:block; margin:0 auto .8rem; color:#86efac; }
+
+    @media (max-width:640px) {
+      body { overflow-x:hidden; }
+      .glass-nav > div { padding:.6rem 1rem !important; }
+      input, textarea, select { font-size:16px !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="mobile-overlay" id="mob-overlay" onclick="toggleMobileNav()"></div>
+<div class="mobile-drawer" id="mob-drawer">
+  <a href="/">Главная</a>
+  <a href="/servers.html">Сервера</a>
+  <a href="/leaderboard.html">Игроки</a>
+  <a href="/clans.html">Кланы</a>
+  <a href="/map.html">Карта</a>
+  <a href="/bans.html">Баны</a>
+  <a href="/faq.html">FAQ</a>
+  <a href="/profile.html">Профиль</a>
+</div>
+<nav class="glass-nav">
+  <div style="max-width:900px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
+    <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);"></a>
+    <div class="nav-links">
+      <a href="/" class="topnav-link">Главная</a>
+      <a href="/servers.html" class="topnav-link">Сервера</a>
+      <a href="/leaderboard.html" class="topnav-link">Игроки</a>
+      <a href="/clans.html" class="topnav-link">Кланы</a>
+      <a href="/map.html" class="topnav-link">Карта</a>
+      <a href="/bans.html" class="topnav-link">Баны</a>
+      <a href="/faq.html" class="topnav-link">FAQ</a>
+      <a id="nav-profile-link" href="/profile.html" class="topnav-link" style="display:none;">Профиль</a>
+      <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
+    </div>
+    <button class="nav-burger" onclick="toggleMobileNav()" aria-label="Меню">☰</button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div style="max-width:560px;margin:2.5rem auto;padding:0 1rem;position:relative;z-index:1;">
+
+  <!-- Page header -->
+  <div style="margin-bottom:1.75rem;animation:fade-up .38s ease both;">
+    <div style="display:flex;align-items:center;gap:.65rem;margin-bottom:.4rem;">
+      <span style="font-size:1.55rem;line-height:1;">📝</span>
+      <h1 class="gothic" style="font-size:1.25rem;font-weight:700;letter-spacing:.09em;color:var(--gold);text-transform:uppercase;">Апелляция на бан</h1>
+    </div>
+    <p style="font-size:.82rem;color:var(--muted);line-height:1.5;padding-left:2.2rem;">
+      Считаете бан несправедливым? Опишите ситуацию — администрация рассмотрит апелляцию.
+      Вход на сайт не требуется, достаточно вашего SteamID.
+    </p>
+  </div>
+
+  <div class="appeal-card">
+
+    <div id="appeal-success" class="success-wrap" style="display:none;">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      <p class="gothic" style="font-size:.95rem;color:var(--gold);letter-spacing:.06em;margin-bottom:.5rem;">Апелляция отправлена</p>
+      <p style="font-size:.82rem;color:var(--muted);line-height:1.5;">Администрация рассмотрит вашу апелляцию в ближайшее время. Ответ появится здесь при повторном обращении по тому же SteamID через страницу банов.</p>
+    </div>
+
+    <form id="appeal-form" onsubmit="submitAppeal(event)">
+      <div id="appeal-error" class="alert alert-error">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:.1rem;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="appeal-error-text"></span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">SteamID</label>
+        <input id="appeal-steamid" class="dark-input" type="text" required placeholder="76561198000000000" autocomplete="off" />
+        <p class="form-hint">Найти можно в клиенте Steam (свойства профиля → SteamID) или в сообщении о бане, которое вы увидели в игре.</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Имя персонажа</label>
+        <input id="appeal-character" class="dark-input" type="text" required maxlength="64" placeholder="Ваше имя в игре" autocomplete="off" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Сообщение</label>
+        <textarea id="appeal-message" class="dark-input" rows="5" required maxlength="2000" placeholder="Опишите, почему вы считаете бан ошибочным…"></textarea>
+      </div>
+
+      <button type="submit" id="appeal-submit-btn" class="btn-primary">Отправить апелляцию</button>
+    </form>
+  </div>
+
+  <p style="text-align:center;font-size:.78rem;margin-top:1.25rem;">
+    <a href="/bans.html" style="color:var(--muted);text-decoration:none;">← Вернуться к списку банов</a>
+  </p>
+</div>
+
+<script src="/common.js?v=9"></script>
+<script>
+const API = '/api';
+
+/* ── Nav auth (same optimistic-cache-then-server-verify pattern as bans.html) ── */
+(function() {
+  const cached = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
+  if (cached) {
+    document.getElementById('nav-profile-link') && (document.getElementById('nav-profile-link').style.display = '');
+    document.getElementById('nav-login-link') && (document.getElementById('nav-login-link').style.display = 'none');
+  }
+  fetch('/api/auth/me', { credentials:'include' }).then(r => {
+    const profileLink = document.getElementById('nav-profile-link');
+    const loginLink   = document.getElementById('nav-login-link');
+    if (r.ok) {
+      if (profileLink) profileLink.style.display = '';
+      if (loginLink)   loginLink.style.display = 'none';
+    } else {
+      if (profileLink) profileLink.style.display = 'none';
+      if (loginLink)   loginLink.style.display = '';
+    }
+  }).catch(() => {});
+})();
+
+/* ── Site settings ── */
+function applySiteBackground(bg) {
+  bg = (bg || '').trim();
+  if (!bg) return;
+  document.body.style.backgroundImage = [
+    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
+    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
+    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
+    `url('${bg}')`,
+  ].join(',');
+  document.body.style.backgroundSize = 'auto,auto,auto,cover';
+  document.body.style.backgroundPosition = 'center,center,center,center';
+  document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
+}
+(async function() {
+  try {
+    const d = await (window.getSettings?.() ?? fetch(`${API}/settings/public`).then(r => r.json()));
+    const title = (d.site_title || 'V Rising').trim();
+    document.title = `Апелляция на бан — ${title}`;
+    applySiteBackground(d.bg_image_url);
+  } catch {}
+})();
+
+/* ── Mobile nav ── */
+function toggleMobileNav() {
+  const overlay = document.getElementById('mob-overlay');
+  const drawer  = document.getElementById('mob-drawer');
+  const isOpen  = drawer.classList.contains('open');
+  drawer.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('open', !isOpen);
+  document.body.style.overflow = isOpen ? '' : 'hidden';
+}
+
+/* ── Friendly translations for the backend's error codes ── */
+const APPEAL_ERROR_MESSAGES = {
+  no_active_ban: 'Активный бан для этого SteamID не найден. Апелляцию можно подать только если вы сейчас забанены.',
+  already_appealed: 'По этому бану уже есть апелляция на рассмотрении. Дождитесь ответа администрации.',
+};
+
+async function submitAppeal(e) {
+  e.preventDefault();
+  const errEl = document.getElementById('appeal-error');
+  const errTxt = document.getElementById('appeal-error-text');
+  errEl.classList.remove('show');
+
+  const steamId = document.getElementById('appeal-steamid').value.trim();
+  const characterName = document.getElementById('appeal-character').value.trim();
+  const message = document.getElementById('appeal-message').value.trim();
+  if (!steamId || !characterName || !message) {
+    errTxt.textContent = 'Заполните все поля.';
+    errEl.classList.add('show');
+    return;
+  }
+
+  const btn = document.getElementById('appeal-submit-btn');
+  btn.disabled = true; btn.textContent = 'Отправка…';
+  try {
+    const res = await fetch(`${API}/appeals`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ steam_id: steamId, character_name: characterName, message }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      errTxt.textContent = APPEAL_ERROR_MESSAGES[data.detail] || 'Не удалось отправить апелляцию. Попробуйте позже.';
+      errEl.classList.add('show');
+      btn.disabled = false; btn.textContent = 'Отправить апелляцию';
+      return;
+    }
+    document.getElementById('appeal-form').style.display = 'none';
+    document.getElementById('appeal-success').style.display = '';
+  } catch (err) {
+    errTxt.textContent = 'Нет связи с сервером. Попробуйте позже.';
+    errEl.classList.add('show');
+    btn.disabled = false; btn.textContent = 'Отправить апелляцию';
+  }
+}
+</script>
+</body>
+</html>
