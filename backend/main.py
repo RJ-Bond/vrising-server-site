@@ -938,9 +938,11 @@ async def plugin_status(
     _key: None = Depends(_require_plugin_key),
 ):
     """Checked by the plugin on player connect to decide whether to show the
-    "you're not registered yet" chat message."""
-    result = await db.execute(select(User.id).where(User.steam_id == steam_id))
-    return {"registered": result.scalar_one_or_none() is not None}
+    "you're not registered yet" chat message (or, if already linked, a
+    "logged in as {username}" welcome message)."""
+    result = await db.execute(select(User.username).where(User.steam_id == steam_id))
+    username = result.scalar_one_or_none()
+    return {"registered": username is not None, "username": username}
 
 
 @app.post("/api/plugin/register")

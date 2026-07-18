@@ -60,6 +60,33 @@ async def test_register_creates_account_linked_by_steam_id(client, db_session):
     assert status_r.json()["registered"] is True
 
 
+async def test_status_for_unlinked_steam_id_reports_not_registered_with_null_username(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.get("/api/plugin/status", params={"steam_id": "76561198999999999"}, headers=_hdr())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["registered"] is False
+    assert body["username"] is None
+
+
+async def test_status_for_linked_steam_id_reports_registered_with_username(client, db_session):
+    await _set_plugin_key(db_session)
+    db_session.add(User(
+        username="StatusCheckUser",
+        email="statuscheckuser@example.com",
+        hashed_password=get_password_hash("password1"),
+        role="user",
+        steam_id="76561198000000012",
+    ))
+    await db_session.commit()
+
+    r = await client.get("/api/plugin/status", params={"steam_id": "76561198000000012"}, headers=_hdr())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["registered"] is True
+    assert body["username"] == "StatusCheckUser"
+
+
 async def test_register_rejects_duplicate_steam_id(client, db_session):
     await _set_plugin_key(db_session)
     payload = {"steam_id": "76561198000000002", "character_name": "First Name", "password": "password1"}
