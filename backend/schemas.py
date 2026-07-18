@@ -103,6 +103,68 @@ class PluginHeartbeatOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AnnouncementCreate(BaseModel):
+    """Body for POST /api/admin/announcements. interval_minutes=None means the
+    announcement is sent once (on the plugin's next poll) and never repeats."""
+    text: str
+    interval_minutes: Optional[int] = None
+    expires_at: Optional[datetime] = None
+    enabled: bool = True
+
+    @field_validator("text")
+    @classmethod
+    def text_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Announcement text cannot be empty")
+        return v[:200]
+
+    @field_validator("interval_minutes")
+    @classmethod
+    def interval_positive(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v <= 0:
+            raise ValueError("interval_minutes must be greater than 0")
+        return v
+
+
+class AnnouncementUpdate(BaseModel):
+    """Body for PUT /api/admin/announcements/{id} — every field optional (partial update)."""
+    text: Optional[str] = None
+    interval_minutes: Optional[int] = None
+    expires_at: Optional[datetime] = None
+    enabled: Optional[bool] = None
+
+    @field_validator("text")
+    @classmethod
+    def text_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            raise ValueError("Announcement text cannot be empty")
+        return v[:200]
+
+    @field_validator("interval_minutes")
+    @classmethod
+    def interval_positive(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v <= 0:
+            raise ValueError("interval_minutes must be greater than 0")
+        return v
+
+
+class AnnouncementOut(BaseModel):
+    id: int
+    text: str
+    interval_minutes: Optional[int] = None
+    enabled: bool
+    expires_at: Optional[datetime] = None
+    last_sent_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class UserOut(BaseModel):
     id: int
     username: str

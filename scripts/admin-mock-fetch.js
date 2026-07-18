@@ -85,6 +85,15 @@
       { id: 1, server_num: 1, wipe_type: 'full', wipe_date: iso(-56 * 24 * 3600 * 1000), note: null, created_at: iso(30 * 24 * 3600 * 1000) },
       { id: 2, server_num: 2, wipe_type: 'map', wipe_date: iso(-56 * 24 * 3600 * 1000), note: null, created_at: iso(30 * 24 * 3600 * 1000) },
     ])],
+    // PluginHeartbeatOut shape (backend/schemas.py) — GET /api/admin/plugin-status.
+    [/\/api\/admin\/plugin-status$/, () => ([
+      { server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', plugin_version: '1.2.0', player_count: 7, last_seen_at: iso(15000) },
+    ])],
+    // AnnouncementOut shape (backend/schemas.py) — GET /api/admin/announcements.
+    [/\/api\/admin\/announcements$/, () => ([
+      { id: 2, text: 'Раз в час сервер синхронизирует кланы с сайтом <color=#ffcc00>автоматически</color>', interval_minutes: 60, enabled: true, expires_at: null, last_sent_at: iso(20 * 60 * 1000), created_at: iso(2 * 24 * 3600 * 1000), updated_at: iso(2 * 24 * 3600 * 1000) },
+      { id: 1, text: 'Добро пожаловать на сервер!', interval_minutes: null, enabled: true, expires_at: null, last_sent_at: iso(3 * 24 * 3600 * 1000), created_at: iso(5 * 24 * 3600 * 1000), updated_at: iso(5 * 24 * 3600 * 1000) },
+    ])],
   ];
 
   const realFetch = window.fetch.bind(window);

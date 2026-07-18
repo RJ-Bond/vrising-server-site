@@ -503,6 +503,7 @@
 
       <div class="sidebar-group-label">Сайт</div>
       <button id="btn-settings"  onclick="showSection('settings')"  class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Настройки</span></button>
+      <button id="btn-plugin"    onclick="showSection('plugin')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h.01M15 9h.01M9.5 15a3.5 3.5 0 0 0 5 0"/></svg> Плагин</span></button>
       <button id="btn-files"     onclick="showSection('files')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg> Файлы</span></button>
       <button id="btn-media"     onclick="showSection('media')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> Медиатека</span></button>
 
@@ -1426,43 +1427,6 @@
         </div>
       </div>
 
-      <!-- Game Plugin Integration -->
-      <div class="s-row" style="margin-top:1.25rem;">
-        <div class="s-card s-card-blue">
-          <div class="s-card-head">
-            <div class="s-icon" style="background:rgba(0,60,140,.18);border:1px solid rgba(0,120,220,.3);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h.01M15 9h.01M9.5 15a3.5 3.5 0 0 0 5 0"/></svg>
-            </div>
-            <div>
-              <h2>Игровой плагин</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Ключ для .register/.login из игры (vrising-bepinex-plugin)</p>
-            </div>
-          </div>
-          <div class="s-field">
-            <label>Plugin API Key</label>
-            <div class="s-field-row">
-              <input id="setting-plugin_api_key" type="password" class="dark-input" placeholder="общий секрет с плагином">
-              <button class="s-save-btn" onclick="saveSetting('plugin_api_key')">Сохранить</button>
-            </div>
-            <p class="s-desc">Должен совпадать со значением ApiKey в BepInEx/config/rjbond.vrising.bepinexplugin.cfg на игровом сервере.</p>
-          </div>
-          <div class="s-field">
-            <label>Статус подключения</label>
-            <div id="plugin-status-container" style="display:flex;flex-direction:column;gap:.4rem;">
-              <div style="font-size:.72rem;color:var(--muted);">Загрузка…</div>
-            </div>
-          </div>
-          <div class="s-field">
-            <label>Объявление в игровой чат</label>
-            <div class="s-field-row" style="align-items:flex-start;">
-              <textarea id="setting-server_announcement" class="dark-input" rows="2" maxlength="200" style="resize:vertical;" placeholder="На сервере разрешены грабежи сундуков…"></textarea>
-              <button class="s-save-btn" onclick="saveSetting('server_announcement')">Отправить</button>
-            </div>
-            <p class="s-desc">Плагин опрашивает это поле вместе с heartbeat (раз в минуту) и рассылает текст всем игрокам в чат при изменении — без перезапуска сервера. Оставьте пустым, чтобы ничего не транслировать.</p>
-          </div>
-        </div>
-      </div>
-
       <!-- Rules editor -->
       <div class="s-row" style="margin-top:1.25rem;">
         <div class="s-card s-card-gold">
@@ -1533,6 +1497,123 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- PLUGIN -->
+    <div id="section-plugin" class="hidden">
+      <div class="flex items-center justify-between mb-5">
+        <h1 class="section-title" style="margin-bottom:.3rem;">Игровой плагин</h1>
+      </div>
+
+      <!-- Connection status (moved from Настройки) -->
+      <div class="s-row">
+        <div class="s-card s-card-blue">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(0,60,140,.18);border:1px solid rgba(0,120,220,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h.01M15 9h.01M9.5 15a3.5 3.5 0 0 0 5 0"/></svg>
+            </div>
+            <div>
+              <h2>Подключение плагина</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Ключ для .register/.login из игры (vrising-bepinex-plugin)</p>
+            </div>
+          </div>
+          <div class="s-field">
+            <label>Plugin API Key</label>
+            <div class="s-field-row">
+              <input id="setting-plugin_api_key" type="password" class="dark-input" placeholder="общий секрет с плагином">
+              <button class="s-save-btn" onclick="saveSetting('plugin_api_key')">Сохранить</button>
+            </div>
+            <p class="s-desc">Должен совпадать со значением ApiKey в BepInEx/config/rjbond.vrising.bepinexplugin.cfg на игровом сервере.</p>
+          </div>
+          <div class="s-field">
+            <label>Статус подключения</label>
+            <div id="plugin-status-container" style="display:flex;flex-direction:column;gap:.4rem;">
+              <div style="font-size:.72rem;color:var(--muted);">Загрузка…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scheduled announcements -->
+      <div class="s-row" style="margin-top:1.25rem;">
+        <div class="s-card s-card-blue">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(0,60,140,.18);border:1px solid rgba(0,120,220,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+            </div>
+            <div>
+              <h2>Объявления в игровой чат</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Разовые и повторяющиеся сообщения — плагин опрашивает их вместе с heartbeat (раз в минуту)</p>
+            </div>
+          </div>
+
+          <div class="s-field">
+            <label>Предпросмотр в чате</label>
+            <div id="ann-preview" style="background:#0a0a0f;border:1px solid rgba(255,255,255,.08);border-radius:.5rem;padding:.65rem .85rem;font-family:'Consolas','Courier New',monospace;font-size:.82rem;color:#d4d4d8;min-height:1.4em;white-space:pre-wrap;word-break:break-word;line-height:1.5;"><span style="color:var(--muted);">Предпросмотр появится здесь…</span></div>
+          </div>
+
+          <div class="s-field">
+            <label>Текст объявления</label>
+            <textarea id="ann-text" class="dark-input" rows="2" maxlength="200" oninput="updateAnnPreview()" placeholder="На сервере разрешены грабежи сундуков… &lt;color=#ff3355&gt;важно&lt;/color&gt;"></textarea>
+            <p class="s-desc">Поддерживается тег &lt;color=#RRGGBB&gt;…&lt;/color&gt; для цветного текста в игровом чате.</p>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+            <div class="s-field">
+              <label>Повтор</label>
+              <select id="ann-repeat-mode" class="dark-input" onchange="onAnnRepeatModeChange()">
+                <option value="once">Один раз</option>
+                <option value="interval">Периодически</option>
+              </select>
+            </div>
+            <div class="s-field" id="ann-interval-row" style="display:none;">
+              <label>Интервал</label>
+              <div style="display:flex;gap:.4rem;">
+                <input id="ann-interval-value" type="number" min="1" class="dark-input" value="30" style="width:90px;">
+                <select id="ann-interval-unit" class="dark-input" style="width:auto;">
+                  <option value="minutes">мин.</option>
+                  <option value="hours">ч.</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr auto;gap:.75rem;align-items:end;">
+            <div class="s-field" style="margin-bottom:0;">
+              <label>Истекает (необязательно)</label>
+              <input id="ann-expires" type="datetime-local" class="dark-input" style="color-scheme:dark;">
+            </div>
+            <div class="s-field" style="margin-bottom:0;">
+              <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;white-space:nowrap;">
+                <input id="ann-enabled" type="checkbox" checked> Включено
+              </label>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:.6rem;margin-top:.85rem;flex-wrap:wrap;align-items:center;">
+            <button id="ann-save-btn" class="s-save-btn" onclick="saveAnnouncement()">Создать</button>
+            <button id="ann-cancel-btn" class="btn-ghost" style="display:none;" onclick="cancelEditAnnouncement()">Отмена</button>
+            <span id="ann-save-msg" style="font-size:.78rem;display:none;"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between" style="margin-top:1.25rem;margin-bottom:.75rem;">
+        <h2 class="gothic" style="font-size:.8rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Список объявлений</h2>
+        <span id="announcements-total" style="font-size:.78rem;color:var(--muted);"></span>
+      </div>
+      <div class="glass-card rounded-xl overflow-hidden">
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Текст</th><th>Повтор</th><th>Вкл.</th><th>Истекает</th><th>Отправлено</th><th>Действия</th>
+            </tr></thead>
+            <tbody id="announcements-tbody">
+              <tr><td colspan="6" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- USERS -->
@@ -1961,7 +2042,7 @@ window.__MY_ROLE = 'user';
 // screenshot, not by reading the diff.
 const SECTION_MIN_ROLE = {
   dashboard: 'admin', news: 'admin', editor: 'admin', comments: 'moderator',
-  events: 'admin', settings: 'admin', files: 'admin', media: 'admin',
+  events: 'admin', settings: 'admin', plugin: 'admin', files: 'admin', media: 'admin',
   users: 'moderator', clans: 'admin', players: 'moderator', resets: 'admin',
   reports: 'moderator', analytics: 'admin', backups: 'superadmin',
   log: 'admin', auditlog: 'admin', errors: 'admin',
@@ -2051,7 +2132,7 @@ function showSection(name) {
     showToast('Недостаточно прав для этого раздела', 'error');
     return;
   }
-  ['dashboard','news','editor','settings','users','comments','players','files','log','resets','clans','reports','analytics','backups','errors','media','auditlog','events'].forEach(s => {
+  ['dashboard','news','editor','settings','plugin','users','comments','players','files','log','resets','clans','reports','analytics','backups','errors','media','auditlog','events'].forEach(s => {
     const el = document.getElementById(`section-${s}`);
     if (el) {
       if (s === 'media' || s === 'auditlog' || s === 'events') el.style.display = (s === name ? '' : 'none');
@@ -2068,7 +2149,8 @@ function showSection(name) {
     _target.style.animation = '';
   }
   if (name === 'editor')   document.getElementById('btn-news').className = 'sidebar-btn active';
-  if (name === 'settings') { loadSettings(); loadRules(); loadMaintenanceStatuses(); loadMaintenanceHistory(); loadPluginStatus(); }
+  if (name === 'settings') { loadSettings(); loadRules(); loadMaintenanceStatuses(); loadMaintenanceHistory(); }
+  if (name === 'plugin')   { loadSettings(); loadPluginStatus(); loadAnnouncements(); }
   if (name === 'users')    loadUsers();
   if (name === 'news')     loadAdminNews(adminNewsPage);
   if (name === 'dashboard')  loadDashboard();
@@ -2475,6 +2557,195 @@ async function loadPluginStatus() {
       return `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(0,150,50,.15);color:#86efac;border:1px solid rgba(0,180,60,.3);width:fit-content;">🟢 Подключён — ${name}, ${ver}${hb.player_count} игроков онлайн, обновлено ${rel} назад</span>`;
     }).join('');
   } catch { container.innerHTML = '<span style="font-size:.65rem;color:var(--muted);">Ошибка загрузки статуса</span>'; }
+}
+
+// ─── Scheduled announcements ───────────────────────────────────────────────
+let _annCache = [];
+let _annEditingId = null;
+
+// Parses the small `<color=#RRGGBB>...</color>` tag vocabulary the plugin understands
+// (nothing nested, so a single regex pass is enough) and escapes everything else so
+// the preview can never be used to inject markup via the announcement text.
+function renderAnnouncementPreview(raw) {
+  const re = /<color=(#[0-9a-fA-F]{6})>([\s\S]*?)<\/color>/g;
+  let out = '', last = 0, m;
+  while ((m = re.exec(raw))) {
+    out += esc(raw.slice(last, m.index));
+    out += `<span style="color:${m[1]}">${esc(m[2])}</span>`;
+    last = re.lastIndex;
+  }
+  out += esc(raw.slice(last));
+  return out;
+}
+
+function updateAnnPreview() {
+  const box = document.getElementById('ann-preview');
+  const raw = document.getElementById('ann-text').value;
+  box.innerHTML = raw.trim()
+    ? renderAnnouncementPreview(raw)
+    : '<span style="color:var(--muted);">Предпросмотр появится здесь…</span>';
+}
+
+function onAnnRepeatModeChange() {
+  const row = document.getElementById('ann-interval-row');
+  row.style.display = document.getElementById('ann-repeat-mode').value === 'interval' ? '' : 'none';
+}
+
+function annIntervalLabel(mins) {
+  if (mins == null) return 'Один раз';
+  if (mins % 60 === 0) return `Раз в ${mins / 60} ч.`;
+  return `Раз в ${mins} мин.`;
+}
+
+// Backend returns naive-ish ISO timestamps with no offset (SQLite drops tzinfo) — append
+// 'Z' before parsing, same workaround loadPluginStatus() uses for last_seen_at above.
+function annRelativeTime(iso) {
+  if (!iso) return 'ещё не отправлялось';
+  const t = new Date(iso.endsWith('Z') ? iso : iso + 'Z').getTime();
+  const secAgo = Math.floor((Date.now() - t) / 1000);
+  if (!isFinite(secAgo) || secAgo < 10) return 'только что';
+  if (secAgo < 60) return `${secAgo} сек. назад`;
+  if (secAgo < 3600) return `${Math.floor(secAgo / 60)} мин. назад`;
+  if (secAgo < 86400) return `${Math.floor(secAgo / 3600)} ч. назад`;
+  return `${Math.floor(secAgo / 86400)} дн. назад`;
+}
+
+async function loadAnnouncements() {
+  const tbody = document.getElementById('announcements-tbody');
+  if (!tbody) return;
+  tableShowSkeleton('announcements-tbody', 6);
+  try {
+    const res = await fetch(`${API}/admin/announcements`, { credentials: 'include', headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    _annCache = await res.json();
+    const total = document.getElementById('announcements-total');
+    if (total) total.textContent = _annCache.length ? `${_annCache.length} шт.` : '';
+    if (!_annCache.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Объявлений нет</td></tr>';
+      return;
+    }
+    tbody.innerHTML = _annCache.map(a => {
+      const textShort = a.text.length > 60 ? esc(a.text.slice(0, 60)) + '…' : esc(a.text);
+      const expires = a.expires_at ? fmtDateTime(a.expires_at) : '—';
+      return `<tr>
+        <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(a.text)}">${textShort}</td>
+        <td style="font-size:.78rem;">${annIntervalLabel(a.interval_minutes)}</td>
+        <td>${a.enabled ? '<span style="color:#4ade80;">Да</span>' : '<span style="color:var(--muted);">Нет</span>'}</td>
+        <td style="font-size:.75rem;color:var(--muted);">${expires}</td>
+        <td style="font-size:.75rem;color:var(--muted);">${annRelativeTime(a.last_sent_at)}</td>
+        <td>
+          <div style="display:flex;gap:.35rem;flex-wrap:wrap;">
+            <button onclick="editAnnouncement(${a.id})" class="btn-ghost" style="font-size:.7rem;padding:.28rem .6rem;">Изменить</button>
+            <button onclick="sendAnnouncementNow(${a.id})" class="btn-ghost" style="font-size:.7rem;padding:.28rem .6rem;">Отправить сейчас</button>
+            <button onclick="deleteAnnouncementRow(${a.id})" class="btn-danger" style="font-size:.7rem;padding:.28rem .6rem;">Удалить</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+  } catch { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+}
+
+function _resetAnnouncementForm() {
+  _annEditingId = null;
+  document.getElementById('ann-text').value = '';
+  document.getElementById('ann-repeat-mode').value = 'once';
+  document.getElementById('ann-interval-value').value = 30;
+  document.getElementById('ann-interval-unit').value = 'minutes';
+  document.getElementById('ann-expires').value = '';
+  document.getElementById('ann-enabled').checked = true;
+  onAnnRepeatModeChange();
+  updateAnnPreview();
+  document.getElementById('ann-save-btn').textContent = 'Создать';
+  document.getElementById('ann-cancel-btn').style.display = 'none';
+  const msg = document.getElementById('ann-save-msg');
+  if (msg) msg.style.display = 'none';
+}
+
+function editAnnouncement(id) {
+  const a = _annCache.find(x => x.id === id);
+  if (!a) return;
+  _annEditingId = id;
+  document.getElementById('ann-text').value = a.text;
+  if (a.interval_minutes == null) {
+    document.getElementById('ann-repeat-mode').value = 'once';
+  } else {
+    document.getElementById('ann-repeat-mode').value = 'interval';
+    if (a.interval_minutes % 60 === 0) {
+      document.getElementById('ann-interval-value').value = a.interval_minutes / 60;
+      document.getElementById('ann-interval-unit').value = 'hours';
+    } else {
+      document.getElementById('ann-interval-value').value = a.interval_minutes;
+      document.getElementById('ann-interval-unit').value = 'minutes';
+    }
+  }
+  document.getElementById('ann-expires').value = a.expires_at ? a.expires_at.slice(0, 16) : '';
+  document.getElementById('ann-enabled').checked = !!a.enabled;
+  onAnnRepeatModeChange();
+  updateAnnPreview();
+  document.getElementById('ann-save-btn').textContent = 'Сохранить';
+  document.getElementById('ann-cancel-btn').style.display = '';
+  document.getElementById('ann-text').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function cancelEditAnnouncement() {
+  _resetAnnouncementForm();
+}
+
+async function saveAnnouncement() {
+  const msg = document.getElementById('ann-save-msg');
+  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = 'inline'; };
+  const text = document.getElementById('ann-text').value.trim();
+  if (!text) return show('Введите текст объявления', false);
+
+  const repeatMode = document.getElementById('ann-repeat-mode').value;
+  let interval_minutes = null;
+  if (repeatMode === 'interval') {
+    const val = parseInt(document.getElementById('ann-interval-value').value, 10);
+    if (!val || val <= 0) return show('Укажите интервал больше 0', false);
+    const unit = document.getElementById('ann-interval-unit').value;
+    interval_minutes = unit === 'hours' ? val * 60 : val;
+  }
+  const expiresRaw = document.getElementById('ann-expires').value;
+  const body = {
+    text,
+    interval_minutes,
+    expires_at: expiresRaw ? new Date(expiresRaw).toISOString() : null,
+    enabled: document.getElementById('ann-enabled').checked,
+  };
+
+  try {
+    const url = _annEditingId ? `${API}/admin/announcements/${_annEditingId}` : `${API}/admin/announcements`;
+    const method = _annEditingId ? 'PUT' : 'POST';
+    const res = await fetch(url, { method, credentials: 'include', headers: authH(), body: JSON.stringify(body) });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) return show(d.detail || 'Ошибка сохранения', false);
+    show('Сохранено!', true);
+    _resetAnnouncementForm();
+    loadAnnouncements();
+  } catch { show('Ошибка сети', false); }
+}
+
+async function sendAnnouncementNow(id) {
+  try {
+    const res = await fetch(`${API}/admin/announcements/${id}/send-now`, { method: 'POST', credentials: 'include', headers: authH() });
+    if (!res.ok) { showToast('Ошибка', 'error'); return; }
+    adminToast('Объявление будет отправлено при следующем опросе плагина', 'success');
+    loadAnnouncements();
+  } catch { showToast('Ошибка сети', 'error'); }
+}
+
+function deleteAnnouncementRow(id) {
+  showConfirm({
+    title: 'Удалить объявление?',
+    text: 'Объявление будет удалено безвозвратно.',
+    onOk: async () => {
+      const res = await fetch(`${API}/admin/announcements/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() });
+      if (res.ok || res.status === 204) {
+        if (_annEditingId === id) _resetAnnouncementForm();
+        loadAnnouncements();
+      } else showToast('Ошибка удаления', 'error');
+    },
+  });
 }
 
 async function loadMaintenanceStatuses() {

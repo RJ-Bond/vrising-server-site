@@ -361,3 +361,16 @@ class PluginHeartbeat(Base):
     plugin_version = Column(String(32), nullable=True)
     player_count = Column(Integer, nullable=False, default=0)
     last_seen_at = Column(DateTime, nullable=False)
+
+
+class Announcement(Base):
+    __tablename__ = "announcements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    text = Column(Text, nullable=False)
+    interval_minutes = Column(Integer, nullable=True)  # NULL = send once, never repeat
+    enabled = Column(Boolean, default=True, nullable=False)
+    expires_at = Column(DateTime, nullable=True)  # optional; NULL = never expires
+    last_sent_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)

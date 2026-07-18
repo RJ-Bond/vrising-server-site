@@ -61,7 +61,7 @@ from sqlalchemy import select, func, delete, text, or_, update, and_
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement
 from .auth import (
     verify_password,
     get_password_hash,
@@ -117,6 +117,9 @@ from .schemas import (
     PluginClansSyncIn,
     GameClanOut,
     GameClanDetailOut,
+    AnnouncementCreate,
+    AnnouncementUpdate,
+    AnnouncementOut,
     strip_html_tags,
 )
 
@@ -379,6 +382,7 @@ async def lifespan(app: FastAPI):
             "CREATE TABLE IF NOT EXISTS game_clans (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, clan_guid VARCHAR(36) NOT NULL, name VARCHAR(64) NOT NULL, motto VARCHAR(64) DEFAULT '', updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(server_num, clan_guid))",
             "CREATE TABLE IF NOT EXISTS game_clan_members (id INTEGER PRIMARY KEY, clan_id INTEGER NOT NULL REFERENCES game_clans(id) ON DELETE CASCADE, steam_id VARCHAR(32) NOT NULL, character_name VARCHAR(64) NOT NULL, role VARCHAR(16) NOT NULL DEFAULT 'member')",
             "CREATE INDEX IF NOT EXISTS ix_game_clan_members_clan ON game_clan_members(clan_id)",
+            "CREATE TABLE IF NOT EXISTS announcements (id INTEGER PRIMARY KEY, text TEXT NOT NULL, interval_minutes INTEGER, enabled BOOLEAN NOT NULL DEFAULT 1, expires_at DATETIME, last_sent_at DATETIME, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -1007,22 +1011,52 @@ async def plugin_clans_sync(
     return {"success": True, "clan_count": len(body.clans)}
 
 
-@app.get("/api/plugin/announcement")
+@app.get("/api/plugin/announcements")
 @limiter.limit("120/minute")
-async def plugin_get_announcement(
+async def plugin_get_announcements(
     request: Request,
     db: AsyncSession = Depends(get_db),
     _key: None = Depends(_require_plugin_key),
 ):
-    """Polled by the plugin (piggybacking on its heartbeat interval) so the admin can push a
-    short in-game chat announcement from the site without restarting the server/plugin. The
-    plugin broadcasts once per change (tracks updated_at), not on every poll."""
-    result = await db.execute(select(Setting).where(Setting.key == "server_announcement"))
-    setting = result.scalar_one_or_none()
-    return {
-        "text": setting.value if setting else "",
-        "updated_at": setting.updated_at.isoformat() if setting else None,
-    }
+    """Polled by the plugin (piggybacking on its heartbeat interval, ~every 60s) so the
+    admin can push scheduled/recurring in-game chat announcements from the site without
+    restarting the server/plugin. Replaces the old single-text server_announcement Setting
+    with a proper Announcement table (see the "Scheduled Announcements" admin section
+    below) supporting one-off and recurring messages. A row is "due" if it's never been
+    sent, or (for recurring rows) if interval_minutes have elapsed since last_sent_at —
+    once a due row is returned here, last_sent_at is stamped immediately, since the plugin
+    is trusted to broadcast on receipt (same resilience level as the rest of this
+    integration — no separate delivery-ack round-trip)."""
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(Announcement)
+        .where(
+            Announcement.enabled == True,  # noqa: E712
+            or_(Announcement.expires_at.is_(None), Announcement.expires_at > now),
+        )
+        .order_by(Announcement.created_at.asc())
+    )
+    rows = result.scalars().all()
+
+    due: list[Announcement] = []
+    for a in rows:
+        if a.last_sent_at is None:
+            due.append(a)
+            continue
+        if a.interval_minutes is None:
+            continue  # one-off announcement already sent — never due again
+        last_sent = a.last_sent_at
+        if last_sent.tzinfo is None:
+            last_sent = last_sent.replace(tzinfo=timezone.utc)
+        if (now - last_sent).total_seconds() >= a.interval_minutes * 60:
+            due.append(a)
+
+    for a in due:
+        a.last_sent_at = now
+    if due:
+        await db.commit()
+
+    return {"announcements": [a.text for a in due]}
 
 
 @app.get("/api/admin/plugin-status", response_model=list[PluginHeartbeatOut])
@@ -1032,6 +1066,91 @@ async def get_plugin_status(
 ):
     result = await db.execute(select(PluginHeartbeat).order_by(PluginHeartbeat.server_num))
     return [PluginHeartbeatOut.model_validate(h) for h in result.scalars().all()]
+
+
+# ─── Scheduled Announcements ───────────────────────────────────────────────────
+# Admin-managed in-game chat announcements, polled by the plugin via
+# GET /api/plugin/announcements above. Replaces the old single-text
+# "server_announcement" Setting (kept in ALLOWED_SETTING_KEYS/seed defaults as unused
+# dead schema, same call as GameClan's note about Clan — not worth a migration to purge).
+
+@app.get("/api/admin/announcements", response_model=list[AnnouncementOut])
+async def list_announcements(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    result = await db.execute(select(Announcement).order_by(Announcement.created_at.desc()))
+    return [AnnouncementOut.model_validate(a) for a in result.scalars().all()]
+
+
+@app.post("/api/admin/announcements", response_model=AnnouncementOut, status_code=201)
+async def create_announcement(
+    body: AnnouncementCreate,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    a = Announcement(
+        text=body.text,
+        interval_minutes=body.interval_minutes,
+        enabled=body.enabled,
+        expires_at=body.expires_at,
+    )
+    db.add(a)
+    await db.commit()
+    await db.refresh(a)
+    await _audit(db, current_user.id, "announcement.create", target_type="announcement", target_id=a.id, detail=a.text)
+    await db.commit()
+    return AnnouncementOut.model_validate(a)
+
+
+@app.put("/api/admin/announcements/{announcement_id}", response_model=AnnouncementOut)
+async def update_announcement(
+    announcement_id: int,
+    body: AnnouncementUpdate,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    a = (await db.execute(select(Announcement).where(Announcement.id == announcement_id))).scalar_one_or_none()
+    if a is None:
+        raise HTTPException(404, "Announcement not found")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(a, field, value)
+    await _audit(db, current_user.id, "announcement.update", target_type="announcement", target_id=a.id, detail=a.text)
+    await db.commit()
+    await db.refresh(a)
+    return AnnouncementOut.model_validate(a)
+
+
+@app.delete("/api/admin/announcements/{announcement_id}", status_code=204)
+async def delete_announcement(
+    announcement_id: int,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    a = (await db.execute(select(Announcement).where(Announcement.id == announcement_id))).scalar_one_or_none()
+    if a is None:
+        raise HTTPException(404, "Announcement not found")
+    await _audit(db, current_user.id, "announcement.delete", target_type="announcement", target_id=a.id, detail=a.text)
+    await db.delete(a)
+    await db.commit()
+
+
+@app.post("/api/admin/announcements/{announcement_id}/send-now", response_model=AnnouncementOut)
+async def send_announcement_now(
+    announcement_id: int,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Resets last_sent_at to NULL so the row is immediately "due" on the plugin's next
+    poll, without waiting for its interval — a manual "push now" action."""
+    a = (await db.execute(select(Announcement).where(Announcement.id == announcement_id))).scalar_one_or_none()
+    if a is None:
+        raise HTTPException(404, "Announcement not found")
+    a.last_sent_at = None
+    await _audit(db, current_user.id, "announcement.send_now", target_type="announcement", target_id=a.id, detail=a.text)
+    await db.commit()
+    await db.refresh(a)
+    return AnnouncementOut.model_validate(a)
 
 
 # ─── Who's online ─────────────────────────────────────────────────────────────
