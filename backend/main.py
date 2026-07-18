@@ -72,7 +72,7 @@ from sqlalchemy import select, func, delete, text, or_, update, and_
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate, ServerApiKey, ScheduledRestart, Warning, Ban, BanAppeal, ModerationLogEntry
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate, ServerApiKey, ScheduledRestart, Warning, Ban, BanAppeal, ModerationLogEntry, PlayerDailyActivity
 from .auth import (
     verify_password,
     get_password_hash,
@@ -128,6 +128,7 @@ from .schemas import (
     PluginHeartbeatIn,
     PluginHeartbeatOut,
     PluginSessionReport,
+    PluginConnectStreakIn,
     PluginClansSyncIn,
     GameClanOut,
     GameClanDetailOut,
@@ -427,6 +428,8 @@ async def lifespan(app: FastAPI):
             "CREATE INDEX IF NOT EXISTS ix_ban_appeals_steam_id ON ban_appeals(steam_id)",
             "CREATE TABLE IF NOT EXISTS moderation_log (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, action VARCHAR(32) NOT NULL, admin_name VARCHAR(64), target_name VARCHAR(64), target_steam_id VARCHAR(32), details VARCHAR(512), created_at DATETIME NOT NULL)",
             "CREATE INDEX IF NOT EXISTS ix_moderation_log_created ON moderation_log(created_at)",
+            "CREATE TABLE IF NOT EXISTS player_daily_activity (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, steam_id VARCHAR(32) NOT NULL, activity_date VARCHAR(10) NOT NULL, UNIQUE(server_num, steam_id, activity_date))",
+            "CREATE INDEX IF NOT EXISTS ix_player_daily_activity_steam_id ON player_daily_activity(steam_id)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -1384,6 +1387,62 @@ async def plugin_playtime(
     )
     total_seconds = int(result.scalar_one() or 0)
     return {"total_seconds": total_seconds}
+
+
+# ─── Connect streak (plugin) ────────────────────────────────────────────────────
+# Tracks, per player per server, which CALENDAR DAYS (in the site's configured timezone —
+# Setting "timezone", same _site_timezone helper as wipe-info/daily-restart above) a
+# player connected at least once, so the plugin can show a "you've played N days in a
+# row!" message on connect. See PlayerDailyActivity in models.py.
+
+@app.post("/api/plugin/connect-streak")
+@limiter.limit("60/minute")
+async def plugin_connect_streak(
+    request: Request,
+    body: PluginConnectStreakIn,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Records today (site-local calendar date) as active for this steam_id+server_num if
+    not already recorded — idempotent, a player connecting more than once in the same day
+    doesn't double-insert (PlayerDailyActivity's unique constraint) or inflate the streak —
+    then computes the current consecutive-day streak by walking backward one day at a time
+    from today until the first day with no activity row. Response: {"streak_days": N},
+    N >= 1 since today was just recorded."""
+    tz = await _site_timezone(db)
+    today = datetime.now(tz).date()
+    today_str = today.isoformat()
+
+    existing = await db.execute(
+        select(PlayerDailyActivity).where(
+            PlayerDailyActivity.server_num == body.server_num,
+            PlayerDailyActivity.steam_id == body.steam_id,
+            PlayerDailyActivity.activity_date == today_str,
+        )
+    )
+    if existing.scalar_one_or_none() is None:
+        db.add(PlayerDailyActivity(
+            server_num=body.server_num,
+            steam_id=body.steam_id,
+            activity_date=today_str,
+        ))
+        await db.commit()
+
+    dates_result = await db.execute(
+        select(PlayerDailyActivity.activity_date).where(
+            PlayerDailyActivity.server_num == body.server_num,
+            PlayerDailyActivity.steam_id == body.steam_id,
+        )
+    )
+    active_dates = {row[0] for row in dates_result.all()}
+
+    streak_days = 0
+    cursor = today
+    while cursor.isoformat() in active_dates:
+        streak_days += 1
+        cursor -= timedelta(days=1)
+
+    return {"streak_days": streak_days}
 
 
 # ─── Scheduled server restart ──────────────────────────────────────────────────

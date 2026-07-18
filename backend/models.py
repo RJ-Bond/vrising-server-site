@@ -523,3 +523,25 @@ class ModerationLogEntry(Base):
     created_at = Column(DateTime, nullable=False)
 
     __table_args__ = (Index("ix_moderation_log_created", "created_at"),)
+
+
+class PlayerDailyActivity(Base):
+    """One row per (server_num, steam_id, calendar day) a player connected at least once
+    in-game, recorded by POST /api/plugin/connect-streak so the BepInEx plugin can show a
+    "you've played N days in a row!" message on connect. activity_date is a plain
+    "YYYY-MM-DD" string in the site's configured timezone (Setting "timezone", the same
+    _site_timezone helper used by wipe-info/daily-restart in main.py) rather than a
+    DateTime — a session at 23:00 and one at 01:00 the next day must count as two
+    different local calendar days, and a plain date string is simplest to compare/uniquify
+    on. The unique constraint below makes recording the same day twice (e.g. a player
+    connecting more than once in one day) a safe no-op."""
+    __tablename__ = "player_daily_activity"
+
+    id = Column(Integer, primary_key=True, index=True)
+    server_num = Column(Integer, nullable=False, default=1)
+    steam_id = Column(String(32), nullable=False, index=True)
+    activity_date = Column(String(10), nullable=False)  # "YYYY-MM-DD", site-local
+
+    __table_args__ = (
+        UniqueConstraint("server_num", "steam_id", "activity_date", name="uq_player_daily_activity"),
+    )

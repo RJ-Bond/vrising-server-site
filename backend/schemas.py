@@ -660,6 +660,14 @@ class PluginSessionReport(BaseModel):
     ended_at: Optional[datetime] = None
 
 
+class PluginConnectStreakIn(BaseModel):
+    """Body for POST /api/plugin/connect-streak — sent by the plugin on player connect to
+    record today (site-local calendar date) as active and get back the player's current
+    consecutive-day connect streak. See PlayerDailyActivity in models.py."""
+    steam_id: str
+    server_num: int = 1
+
+
 class PluginClanMemberIn(BaseModel):
     steam_id: str
     character_name: str
