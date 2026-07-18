@@ -69,9 +69,15 @@ class PluginRegister(BaseModel):
 
     @field_validator("password")
     @classmethod
-    def password_length(cls, v: str) -> str:
-        if len(v) < 6:
-            raise ValueError("Password must be at least 6 characters")
+    def password_complexity(cls, v: str) -> str:
+        if (
+            len(v) < 8
+            or not re.search(r"[a-zA-Zа-яА-ЯёЁ]", v)
+            or not re.search(r"\d", v)
+        ):
+            raise ValueError(
+                "Password must be at least 8 characters and contain both letters and digits"
+            )
         return v
 
 

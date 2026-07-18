@@ -132,10 +132,41 @@ async def test_register_rejects_short_password(client, db_session):
     await _set_plugin_key(db_session)
     r = await client.post(
         "/api/plugin/register",
-        json={"steam_id": "76561198000000006", "character_name": "ShortPwd", "password": "123"},
+        json={"steam_id": "76561198000000006", "character_name": "ShortPwd", "password": "abc123"},  # < 8 chars
         headers=_hdr(),
     )
     assert r.status_code == 422  # pydantic validation error
+
+
+async def test_register_rejects_letters_only_password(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.post(
+        "/api/plugin/register",
+        json={"steam_id": "76561198000000012", "character_name": "LettersOnly", "password": "onlyletters"},
+        headers=_hdr(),
+    )
+    assert r.status_code == 422  # pydantic validation error
+
+
+async def test_register_rejects_digits_only_password(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.post(
+        "/api/plugin/register",
+        json={"steam_id": "76561198000000013", "character_name": "DigitsOnly", "password": "12345678"},
+        headers=_hdr(),
+    )
+    assert r.status_code == 422  # pydantic validation error
+
+
+async def test_register_accepts_complex_password(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.post(
+        "/api/plugin/register",
+        json={"steam_id": "76561198000000014", "character_name": "ComplexPwd", "password": "correctH0rse"},
+        headers=_hdr(),
+    )
+    assert r.status_code == 200
+    assert r.json()["success"] is True
 
 
 async def test_login_links_existing_web_account_by_username_and_password(client, db_session):
