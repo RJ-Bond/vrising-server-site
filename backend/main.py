@@ -4239,48 +4239,21 @@ async def unlink_steam_account(
     return {"ok": True}
 
 
-# ─── Public bans list ────────────────────────────────────────────────────────
+# ─── Public ban count ────────────────────────────────────────────────────────
 
 @app.get("/api/bans")
-async def get_bans(
-    db: AsyncSession = Depends(get_db),
-    page: int = Query(1, ge=1),
-    per_page: int = Query(50, ge=1, le=100),
-):
-    total = (await db.execute(
-        select(func.count(User.id)).where(User.is_active == False)
+async def get_bans_count(db: AsyncSession = Depends(get_db)):
+    """Public, privacy-safe summary for bans.html's anonymous visitors — a plain count
+    of currently-active in-game bans (Ban.unbanned_at IS NULL, same "active" semantics
+    as GET /api/admin/bans's default), no character names or reasons. This used to
+    paginate+list banned SITE accounts instead; that section was removed from bans.html
+    (frontend/bans.html no longer has any public content), leaving this endpoint
+    orphaned. Repurposed rather than left dead, since the page needs *some* public value
+    to justify staying in the main nav for non-admin visitors."""
+    active_bans = (await db.execute(
+        select(func.count(Ban.id)).where(Ban.unbanned_at.is_(None))
     )).scalar_one()
-
-    users = (await db.execute(
-        select(User)
-        .where(User.is_active == False)
-        .order_by(User.created_at.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-    )).scalars().all()
-
-    results = []
-    for u in users:
-        ban_log = (await db.execute(
-            select(AuditLog)
-            .where(AuditLog.action == "user.ban", AuditLog.target_id == u.id)
-            .order_by(AuditLog.created_at.desc())
-            .limit(1)
-        )).scalar_one_or_none()
-
-        results.append({
-            "id": u.id,
-            "username": u.username,
-            "ban_type": "ban",
-            "reason": None,
-            "admin": ban_log.admin_username if ban_log else None,
-            "created_at": (
-                ban_log.created_at.isoformat() if ban_log else u.created_at.isoformat()
-            ),
-            "expires_at": None,
-        })
-
-    return {"total": total, "items": results}
+    return {"active_bans": active_bans}
 
 
 # ─── Public profile ──────────────────────────────────────────────────────────

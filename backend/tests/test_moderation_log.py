@@ -186,3 +186,56 @@ async def test_moderation_log_server_num_filter(client, db_session):
     log = r.json()["log"]
     assert len(log) == 1
     assert log[0]["target_steam_id"] == "s2"
+
+
+async def test_moderation_log_steam_id_filter_narrows_across_all_three_sources(client, db_session):
+    await _set_plugin_key(db_session)
+    now = datetime.utcnow()
+    db_session.add_all([
+        Ban(server_num=1, steam_id="target-steam", character_name="Target",
+            admin_name="A", reason="r", banned_at=now - timedelta(minutes=30), unban_at=None),
+        Ban(server_num=1, steam_id="other-steam", character_name="Other",
+            admin_name="A", reason="r", banned_at=now - timedelta(minutes=25), unban_at=None),
+        Warning(server_num=1, steam_id="target-steam", character_name="Target",
+            reason="spam", admin_name="A", created_at=now - timedelta(minutes=20)),
+        Warning(server_num=1, steam_id="other-steam", character_name="Other",
+            reason="spam", admin_name="A", created_at=now - timedelta(minutes=15)),
+    ])
+    await db_session.commit()
+    await client.post(
+        "/api/plugin/log-action",
+        json={"server_num": 1, "action": "kick", "admin_name": "A", "target_name": "Target", "target_steam_id": "target-steam", "details": "afk"},
+        headers=_hdr(),
+    )
+    await client.post(
+        "/api/plugin/log-action",
+        json={"server_num": 1, "action": "kick", "admin_name": "A", "target_name": "Other", "target_steam_id": "other-steam", "details": "afk"},
+        headers=_hdr(),
+    )
+
+    admin = await _make_admin(db_session)
+    r = await client.get("/api/admin/moderation-log", params={"steam_id": "target-steam"}, headers=_bearer(admin))
+    assert r.status_code == 200
+    log = r.json()["log"]
+    assert len(log) == 3
+    assert all(e["target_steam_id"] == "target-steam" for e in log)
+    assert [e["action"] for e in log] == ["kick", "warn", "ban"]
+
+
+async def test_moderation_log_steam_id_filter_combines_with_server_num(client, db_session):
+    now = datetime.utcnow()
+    db_session.add_all([
+        Warning(server_num=1, steam_id="dual-steam", character_name="P1", reason="r", admin_name="A", created_at=now),
+        Warning(server_num=2, steam_id="dual-steam", character_name="P1", reason="r", admin_name="A", created_at=now),
+    ])
+    await db_session.commit()
+
+    admin = await _make_admin(db_session)
+    r = await client.get(
+        "/api/admin/moderation-log",
+        params={"steam_id": "dual-steam", "server_num": 2},
+        headers=_bearer(admin),
+    )
+    log = r.json()["log"]
+    assert len(log) == 1
+    assert log[0]["server_num"] == 2

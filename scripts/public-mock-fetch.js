@@ -81,17 +81,11 @@
     { id: 2, server_num: 2, wipe_type: 'map', wipe_date: iso(-56 * 24 * 3600 * 1000), note: null, created_at: iso(60 * 24 * 3600 * 1000) },
   ];
 
-  // GET /api/bans (backend/main.py) always returns this exact shape for every row —
-  // ban_type hardcoded to "ban", reason always null, expires_at always null (site-account
-  // bans are a plain is_active boolean flip with no recorded reason/severity/expiry).
-  // Keep this mock aligned with that reality rather than inventing varying values.
-  const bans = {
-    total: 2,
-    items: [
-      { id: 1, username: 'Xx_Griefer_xX', ban_type: 'ban', reason: null, admin: 'RJ Bond', created_at: iso(5 * 24 * 3600 * 1000), expires_at: null },
-      { id: 2, username: 'CheatUser42', ban_type: 'ban', reason: null, admin: 'RJ Bond', created_at: iso(20 * 24 * 3600 * 1000), expires_at: null },
-    ],
-  };
+  // GET /api/bans (backend/main.py) is now a public, unauthenticated, count-only
+  // summary of currently-active in-game bans — no character names/reasons — used by
+  // bans.html's public stat tile. Used to return a paginated site-account ban listing;
+  // that section was removed from the frontend and this endpoint repurposed.
+  const bans = { active_bans: 4 };
 
   const userProfile = {
     username: 'Vortigern', avatar_url: null, cover_url: null, role: 'user',

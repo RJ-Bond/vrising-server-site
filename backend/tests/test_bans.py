@@ -275,6 +275,56 @@ async def test_admin_bans_excludes_already_resolved(client, db_session):
     assert r.status_code == 200
     steam_ids = [b["steam_id"] for b in r.json()["bans"]]
     assert steam_ids == ["active-1"]
+    # Default (no status param) matches status=active explicitly.
+    assert r.json() == (await client.get("/api/admin/bans", params={"status": "active"}, headers=_bearer(admin))).json()
+
+
+async def test_admin_bans_status_resolved_returns_only_lifted(client, db_session):
+    now = datetime.utcnow()
+    db_session.add_all([
+        Ban(server_num=1, steam_id="active-2", character_name="Active",
+            admin_name="A", reason="r", banned_at=now, unban_at=None),
+        Ban(server_num=1, steam_id="resolved-2", character_name="Resolved",
+            admin_name="A", reason="r", banned_at=now, unban_at=None, unbanned_at=now),
+    ])
+    await db_session.commit()
+
+    admin = await _make_admin(db_session)
+    r = await client.get("/api/admin/bans", params={"status": "resolved"}, headers=_bearer(admin))
+    assert r.status_code == 200
+    bans = r.json()["bans"]
+    assert [b["steam_id"] for b in bans] == ["resolved-2"]
+    assert bans[0]["unbanned_at"] is not None
+    assert bans[0]["unbanned_at"].endswith("Z")
+
+
+async def test_admin_bans_status_all_returns_both(client, db_session):
+    now = datetime.utcnow()
+    db_session.add_all([
+        Ban(server_num=1, steam_id="active-3", character_name="Active",
+            admin_name="A", reason="r", banned_at=now, unban_at=None),
+        Ban(server_num=1, steam_id="resolved-3", character_name="Resolved",
+            admin_name="A", reason="r", banned_at=now, unban_at=None, unbanned_at=now),
+    ])
+    await db_session.commit()
+
+    admin = await _make_admin(db_session)
+    r = await client.get("/api/admin/bans", params={"status": "all"}, headers=_bearer(admin))
+    assert r.status_code == 200
+    steam_ids = {b["steam_id"] for b in r.json()["bans"]}
+    assert steam_ids == {"active-3", "resolved-3"}
+
+
+async def test_admin_bans_active_includes_null_unbanned_at_field(client, db_session):
+    db_session.add(Ban(
+        server_num=1, steam_id="active-4", character_name="Active",
+        admin_name="A", reason="r", banned_at=datetime.utcnow(), unban_at=None,
+    ))
+    await db_session.commit()
+
+    admin = await _make_admin(db_session)
+    r = await client.get("/api/admin/bans", headers=_bearer(admin))
+    assert r.json()["bans"][0]["unbanned_at"] is None
 
 
 # ─── POST /api/admin/bans/{id}/unban ────────────────────────────────────────

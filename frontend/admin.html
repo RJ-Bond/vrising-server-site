@@ -2140,8 +2140,17 @@
          POST /api/plugin/log-action). Distinct from "Журнал действий" above, which is
          the site's own admin-panel audit trail (news edits, settings changes, etc). -->
     <div id="section-modlog" style="display:none;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.75rem;">
         <h2 class="section-title">Журнал модерации</h2>
+        <!-- Player filter, set via ?tab=moderation-log&steam_id=... deep link (e.g. from
+             bans.html's "История" link on a ban row) — layered on top of the action/server
+             dropdowns below, which keep working standalone when this is absent. -->
+        <div id="modlog-steamid-badge" style="display:none;align-items:center;gap:.4rem;font-size:.75rem;color:var(--gold);background:rgba(201,169,74,.12);border:1px solid rgba(201,169,74,.3);border-radius:.4rem;padding:.3rem .6rem;">
+          Фильтр по игроку: <span id="modlog-steamid-value" style="font-family:'Courier New',monospace;"></span>
+          <button onclick="clearModLogSteamIdFilter()" title="Сбросить фильтр по игроку" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;line-height:1;padding:0;">×</button>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
           <select id="modlog-action-filter" class="dark-input" style="font-size:.78rem;padding:.35rem .6rem;width:auto;" onchange="renderModerationLog()">
             <option value="">Все действия</option>
@@ -4982,9 +4991,27 @@ function copyResetLink(btn, url) {
   }).catch(() => { btn.textContent = 'Ошибка'; });
 }
 
+// ── Deep-link: /admin.html?tab=<name>&steam_id=<id> ─────────────────────────
+// Lets other pages (bans.html's "История" link on each ban row) land directly on a
+// specific admin.html tab, pre-filtered to one player. _modlogSteamIdFilter is declared
+// here (rather than down by the rest of the moderation-log code below) so it already
+// exists by the time showSection('modlog') -> loadModerationLog() reads it, a few lines
+// down in this same top-to-bottom script.
+let _modlogSteamIdFilter = null;
+const TAB_SECTION_MAP = { 'moderation-log': 'modlog' };
+const _deepLinkParams = new URLSearchParams(window.location.search);
+const _deepLinkSteamId = _deepLinkParams.get('steam_id');
+if (_deepLinkSteamId) _modlogSteamIdFilter = _deepLinkSteamId;
+const _deepLinkTab = TAB_SECTION_MAP[_deepLinkParams.get('tab')];
+// Only honor the deep-linked tab if this role can actually reach it — otherwise
+// showSection() would toast-and-abort, leaving every section hidden. Falls through to
+// the normal default landing section instead.
+const _deepLinkTabAllowed = _deepLinkTab && (!SECTION_MIN_ROLE[_deepLinkTab] || meetsRole(SECTION_MIN_ROLE[_deepLinkTab]));
+
 // Moderators can't reach "dashboard" (GET /api/admin/stats stays admin-tier) — land
-// them on a section their tier can actually see instead of a blocked one.
-showSection(meetsRole('admin') ? 'dashboard' : 'comments');
+// them on a section their tier can actually see instead of a blocked one, unless a
+// ?tab= deep link says otherwise.
+showSection(_deepLinkTabAllowed ? _deepLinkTab : (meetsRole('admin') ? 'dashboard' : 'comments'));
 loadWipeHistory().then(() => {
   // update server select labels after names are known
   fetch(`${API}/admin/settings`, { credentials: 'include', headers: authH() }).then(r => r.json()).then(settings => {
@@ -5225,12 +5252,41 @@ const MODLOG_ACTION_COLORS = {
   restart_scheduled: 'rgba(90,130,240,.18)', restart_executed: 'rgba(90,130,240,.28)',
 };
 
+// Reflects _modlogSteamIdFilter (set from the ?steam_id= deep-link param, or cleared via
+// the badge's × button) in the header badge above the action/server dropdowns.
+function updateModLogSteamIdBadge() {
+  const badge = document.getElementById('modlog-steamid-badge');
+  const valueEl = document.getElementById('modlog-steamid-value');
+  if (!badge) return;
+  if (_modlogSteamIdFilter) {
+    badge.style.display = 'inline-flex';
+    if (valueEl) valueEl.textContent = _modlogSteamIdFilter;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+function clearModLogSteamIdFilter() {
+  _modlogSteamIdFilter = null;
+  updateModLogSteamIdBadge();
+  loadModerationLog();
+  // Clean the URL so a refresh doesn't silently reapply the filter.
+  const url = new URL(window.location.href);
+  url.searchParams.delete('steam_id');
+  history.replaceState(null, '', url.pathname + url.search + url.hash);
+}
+
 async function loadModerationLog() {
   const tbody = document.getElementById('modlog-body');
   if (!tbody) return;
   tableShowSkeleton('modlog-body', 5);
+  updateModLogSteamIdBadge();
   const serverNum = document.getElementById('modlog-server-filter')?.value || '';
-  const params = new URLSearchParams({ limit: 200, ...(serverNum ? { server_num: serverNum } : {}) });
+  const params = new URLSearchParams({
+    limit: 200,
+    ...(serverNum ? { server_num: serverNum } : {}),
+    ...(_modlogSteamIdFilter ? { steam_id: _modlogSteamIdFilter } : {}),
+  });
   try {
     const d = await fetch(`${API}/admin/moderation-log?${params}`, { credentials: 'include', headers: authH() }).then(r => r.json());
     _modlogCache = d.log || [];

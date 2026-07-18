@@ -52,6 +52,12 @@
     .search-input::placeholder { color:var(--muted); }
     .search-input:focus { border-color:rgba(140,0,180,0.55); box-shadow:0 0 0 3px rgba(110,0,150,0.12); }
 
+    /* ── Public stat tile (same look as clans.html's summary tiles) ── */
+    .stat-tile {
+      background:var(--card); border:1px solid var(--border); border-radius:.65rem;
+      padding:.65rem 1.4rem; text-align:center; flex:0 0 auto;
+    }
+
     /* ── Section icon chips (visual hierarchy between the sections below) ── */
     .section-icon-chip {
       display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
@@ -179,6 +185,12 @@
     </p>
   </div>
 
+  <!-- Public stat — GET /api/bans (unauthenticated, count-only, no character names or
+       reasons) so non-admin visitors get some real content here: the two sections below
+       are admin-only, and this page previously had a public site-account ban list that
+       was removed, leaving nothing for a regular visitor to see. -->
+  <div id="public-ban-stat-row" style="display:flex;justify-content:center;margin-bottom:1.75rem;animation:fade-up .4s ease .05s both;"></div>
+
   <!-- Section: in-game moderation bans (admin-only — GET/POST /api/admin/bans...).
        Hidden until an authenticated admin/superadmin is confirmed via /api/auth/me;
        see the nav-auth check below (same optimistic-cache-then-server-verify pattern
@@ -226,6 +238,35 @@
       <div style="font-size:2.2rem;margin-bottom:.7rem;opacity:.6;filter:drop-shadow(0 0 12px rgba(180,0,30,0.45));">⚠</div>
       <p style="font-size:.8rem;color:var(--muted);margin-bottom:.9rem;">Не удалось загрузить список игровых банов.</p>
       <button onclick="loadGameBans()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
+    </div>
+
+    <!-- History (resolved bans) toggle — fetched on demand via GET /api/admin/bans?status=resolved,
+         never eager-loaded alongside the active table above. -->
+    <div style="margin-top:1.5rem;">
+      <button id="game-bans-history-toggle" onclick="toggleGameBansHistory()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.45rem 1rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">Показать историю банов</button>
+    </div>
+
+    <div id="game-bans-history-section" style="display:none;margin-top:1rem;">
+      <div class="g-card">
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Имя</th><th>Сервер</th><th>Снят</th><th>Кто забанил</th><th>Причина</th><th>Действия</th>
+            </tr></thead>
+            <tbody id="game-bans-history-tbody">
+              <tr><td colspan="6" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div id="game-bans-history-empty" class="game-bans-empty" style="display:none;">
+        <p style="font-size:.8rem;color:var(--muted);">Снятых банов пока нет.</p>
+      </div>
+      <div id="game-bans-history-error" style="display:none;text-align:center;padding:2.5rem 1rem;">
+        <div style="font-size:2.2rem;margin-bottom:.7rem;opacity:.6;filter:drop-shadow(0 0 12px rgba(180,0,30,0.45));">⚠</div>
+        <p style="font-size:.8rem;color:var(--muted);margin-bottom:.9rem;">Не удалось загрузить историю банов.</p>
+        <button onclick="loadGameBansHistory()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
+      </div>
     </div>
   </div>
 
@@ -361,6 +402,20 @@ function applySiteBackground(bg) {
   } catch {}
 })();
 
+/* ── Public ban-count stat (unauthenticated, runs for every visitor) ── */
+(async function loadPublicBanStat() {
+  const row = document.getElementById('public-ban-stat-row');
+  if (!row) return;
+  try {
+    const d = await fetch(`${API}/bans`).then(r => r.json());
+    row.innerHTML = `
+      <div class="stat-tile">
+        <div style="font-family:'Oswald',sans-serif;font-size:1.3rem;font-weight:600;color:var(--text);">${d.active_bans ?? 0}</div>
+        <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.2rem;">Активных банов на сервере</div>
+      </div>`;
+  } catch { row.innerHTML = ''; }
+})();
+
 /* ── Mobile nav ── */
 function toggleMobileNav() {
   const overlay = document.getElementById('mob-overlay');
@@ -425,6 +480,13 @@ function tickGameBanCountdowns() {
   });
 }
 
+/* Links a ban row to that player's filtered feed on admin.html's "Журнал модерации"
+   tab (GET /api/admin/moderation-log?steam_id=...) — see admin.html's own deep-link
+   handling of ?tab=moderation-log&steam_id=... near its "Deep-link" comment block. */
+function modLogHistoryLinkHtml(steamId) {
+  return `<a href="/admin.html?tab=moderation-log&steam_id=${encodeURIComponent(steamId)}" style="font-size:.72rem;color:var(--muted);text-decoration:none;border:1px solid rgba(150,0,28,0.25);border-radius:.4rem;padding:.32rem .6rem;white-space:nowrap;" title="История модерации этого игрока">История</a>`;
+}
+
 function gameBanRowHtml(b) {
   const remainingHtml = b.unban_at
     ? `<span class="remaining" id="game-ban-remaining-${b.id}">…</span>`
@@ -435,7 +497,7 @@ function gameBanRowHtml(b) {
     <td>${remainingHtml}</td>
     <td style="color:var(--muted);">${esc(b.admin_name)}</td>
     <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(b.reason)}">${esc(b.reason)}</td>
-    <td><button class="btn-danger" onclick="unbanGameBan(${b.id}, this)">Разбанить</button></td>
+    <td style="display:flex;gap:.4rem;flex-wrap:wrap;"><button class="btn-danger" onclick="unbanGameBan(${b.id}, this)">Разбанить</button>${modLogHistoryLinkHtml(b.steam_id)}</td>
   </tr>`;
 }
 
@@ -520,6 +582,65 @@ function initGameBans() {
   loadGameBans();
   _gbTickTimer = setInterval(tickGameBanCountdowns, 1000);
   _gbRefreshTimer = setInterval(loadGameBans, 45000);
+}
+
+/* ── Ban history (resolved bans) ──
+   Fetched on demand only — GET /api/admin/bans?status=resolved is never called until
+   the admin actually opens this section, unlike the active table above which loads
+   immediately with initGameBans(). Read-only: no "Разбанить" button, since there's
+   nothing left to unban. */
+let _gameBansHistoryLoaded = false;
+
+function gameBanHistoryRowHtml(b) {
+  return `<tr data-ban-id="${b.id}">
+    <td>${esc(b.character_name)}</td>
+    <td style="color:var(--muted);">${esc(b.server_name || `Сервер ${b.server_num}`)}</td>
+    <td style="color:var(--muted);white-space:nowrap;">${fmtDate(b.unbanned_at)}</td>
+    <td style="color:var(--muted);">${esc(b.admin_name)}</td>
+    <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(b.reason)}">${esc(b.reason)}</td>
+    <td>${modLogHistoryLinkHtml(b.steam_id)}</td>
+  </tr>`;
+}
+
+async function loadGameBansHistory() {
+  const tbody = document.getElementById('game-bans-history-tbody');
+  const empty = document.getElementById('game-bans-history-empty');
+  const error = document.getElementById('game-bans-history-error');
+  error.style.display = 'none';
+  empty.style.display = 'none';
+  tableShowSkeleton('game-bans-history-tbody', 6, 4);
+  try {
+    const res = await fetch(`${API}/admin/bans?status=resolved`, { credentials: 'include' });
+    if (res.status === 401 || res.status === 403) {
+      document.getElementById('game-bans-history-section').style.display = 'none';
+      return;
+    }
+    if (!res.ok) throw new Error('load failed');
+    const data = await res.json();
+    const bans = data.bans || [];
+    if (!bans.length) {
+      tbody.innerHTML = '';
+      empty.style.display = '';
+      return;
+    }
+    tbody.innerHTML = bans.map(gameBanHistoryRowHtml).join('');
+  } catch (err) {
+    tbody.innerHTML = '';
+    error.style.display = 'block';
+    if (typeof showToast === 'function') showToast('Ошибка загрузки истории банов', 'error');
+  }
+}
+
+function toggleGameBansHistory() {
+  const section = document.getElementById('game-bans-history-section');
+  const btn = document.getElementById('game-bans-history-toggle');
+  const show = section.style.display === 'none';
+  section.style.display = show ? '' : 'none';
+  if (btn) btn.textContent = show ? 'Скрыть историю банов' : 'Показать историю банов';
+  if (show && !_gameBansHistoryLoaded) {
+    _gameBansHistoryLoaded = true;
+    loadGameBansHistory();
+  }
 }
 
 /* ════════════════════════════════════════════════════════════════════════
