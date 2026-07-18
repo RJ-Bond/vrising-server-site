@@ -162,16 +162,19 @@
 <!-- MAIN -->
 <div style="max-width:1000px;margin:2.5rem auto;padding:0 1rem;position:relative;z-index:1;">
 
-  <!-- Page header -->
-  <div style="margin-bottom:1.75rem;animation:fade-up .38s ease both;">
-    <div style="display:flex;align-items:center;gap:.65rem;margin-bottom:.4rem;">
-      <span style="font-size:1.55rem;line-height:1;">🚫</span>
+  <!-- Page header — centered gothic title with gold flourish lines, matching the
+       leaderboard.html/servers.html/faq.html convention (this page previously used a
+       left-aligned emoji-prefixed heading, the odd one out among the content pages). -->
+  <div style="text-align:center;margin-bottom:1.75rem;animation:fade-up .38s ease both;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:.5rem;">
+      <span style="height:1px;width:36px;background:linear-gradient(90deg,transparent,var(--gold));"></span>
       <h1 class="gothic" style="font-size:1.25rem;font-weight:700;letter-spacing:.09em;color:var(--gold);text-transform:uppercase;">Баны на сервере</h1>
+      <span style="height:1px;width:36px;background:linear-gradient(90deg,var(--gold),transparent);"></span>
     </div>
-    <p style="font-size:.82rem;color:var(--muted);line-height:1.5;padding-left:2.2rem;">
+    <p style="font-size:.82rem;color:var(--muted);line-height:1.5;">
       Активные баны на игровых серверах и апелляции. Данные обновляются в реальном времени.
     </p>
-    <p style="font-size:.78rem;padding-left:2.2rem;margin-top:.5rem;">
+    <p style="font-size:.78rem;margin-top:.5rem;">
       <a href="/appeal.html" style="color:var(--gold);text-decoration:none;">📝 Считаете бан ошибкой? Подать апелляцию →</a>
     </p>
   </div>
