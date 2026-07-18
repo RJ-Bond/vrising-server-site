@@ -120,6 +120,7 @@ from .schemas import (
     AnnouncementCreate,
     AnnouncementUpdate,
     AnnouncementOut,
+    AnnouncementTestSend,
     strip_html_tags,
 )
 
@@ -383,6 +384,7 @@ async def lifespan(app: FastAPI):
             "CREATE TABLE IF NOT EXISTS game_clan_members (id INTEGER PRIMARY KEY, clan_id INTEGER NOT NULL REFERENCES game_clans(id) ON DELETE CASCADE, steam_id VARCHAR(32) NOT NULL, character_name VARCHAR(64) NOT NULL, role VARCHAR(16) NOT NULL DEFAULT 'member')",
             "CREATE INDEX IF NOT EXISTS ix_game_clan_members_clan ON game_clan_members(clan_id)",
             "CREATE TABLE IF NOT EXISTS announcements (id INTEGER PRIMARY KEY, text TEXT NOT NULL, interval_minutes INTEGER, enabled BOOLEAN NOT NULL DEFAULT 1, expires_at DATETIME, last_sent_at DATETIME, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
+            "ALTER TABLE announcements ADD COLUMN target_steam_id VARCHAR(32) DEFAULT NULL",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -1026,7 +1028,11 @@ async def plugin_get_announcements(
     sent, or (for recurring rows) if interval_minutes have elapsed since last_sent_at —
     once a due row is returned here, last_sent_at is stamped immediately, since the plugin
     is trusted to broadcast on receipt (same resilience level as the rest of this
-    integration — no separate delivery-ack round-trip)."""
+    integration — no separate delivery-ack round-trip). Response shape:
+    {"announcements": [{"text": str, "target_steam_id": str|null}, ...]} — target_steam_id
+    is null for normal (broadcast-to-everyone) rows and a SteamID for one-off test-sends
+    created via POST /api/admin/announcements/test-send, which the plugin should deliver
+    only to that player instead of broadcasting."""
     now = datetime.now(timezone.utc)
     result = await db.execute(
         select(Announcement)
@@ -1056,7 +1062,7 @@ async def plugin_get_announcements(
     if due:
         await db.commit()
 
-    return {"announcements": [a.text for a in due]}
+    return {"announcements": [{"text": a.text, "target_steam_id": a.target_steam_id} for a in due]}
 
 
 @app.get("/api/admin/plugin-status", response_model=list[PluginHeartbeatOut])
@@ -1079,7 +1085,13 @@ async def list_announcements(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
-    result = await db.execute(select(Announcement).order_by(Announcement.created_at.desc()))
+    # Exclude one-off test-sends (target_steam_id set) — they're single-use, self-expiring
+    # (see /test-send below) and would just clutter the management table.
+    result = await db.execute(
+        select(Announcement)
+        .where(Announcement.target_steam_id.is_(None))
+        .order_by(Announcement.created_at.desc())
+    )
     return [AnnouncementOut.model_validate(a) for a in result.scalars().all()]
 
 
@@ -1150,6 +1162,35 @@ async def send_announcement_now(
     await _audit(db, current_user.id, "announcement.send_now", target_type="announcement", target_id=a.id, detail=a.text)
     await db.commit()
     await db.refresh(a)
+    return AnnouncementOut.model_validate(a)
+
+
+@app.post("/api/admin/announcements/test-send", response_model=AnnouncementOut, status_code=201)
+async def test_send_announcement(
+    body: AnnouncementTestSend,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """"Проверить в игре" — creates a one-off Announcement targeted only at the
+    requesting admin's own linked SteamID (current_user.steam_id, set via the in-game
+    .register/.login flow), so it broadcasts to nobody else. Auto-expires after 5 minutes
+    so it doesn't linger as a stale row, and is excluded from the main
+    GET /api/admin/announcements list (see the target_steam_id filter there)."""
+    if not current_user.steam_id:
+        raise HTTPException(400, "steam_id_not_linked")
+    a = Announcement(
+        text=body.text,
+        interval_minutes=None,
+        enabled=True,
+        target_steam_id=current_user.steam_id,
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+        last_sent_at=None,
+    )
+    db.add(a)
+    await db.commit()
+    await db.refresh(a)
+    await _audit(db, current_user.id, "announcement.test_send", target_type="announcement", target_id=a.id, detail=a.text)
+    await db.commit()
     return AnnouncementOut.model_validate(a)
 
 

@@ -372,5 +372,6 @@ class Announcement(Base):
     enabled = Column(Boolean, default=True, nullable=False)
     expires_at = Column(DateTime, nullable=True)  # optional; NULL = never expires
     last_sent_at = Column(DateTime, nullable=True)
+    target_steam_id = Column(String(32), nullable=True)  # NULL = broadcast to everyone (normal case); set = a one-off test send to a single player's SteamID
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)

@@ -144,7 +144,7 @@ async def test_fresh_once_announcement_is_due_then_not_due_again(client, db_sess
 
     r1 = await client.get("/api/plugin/announcements", headers=_hdr())
     assert r1.status_code == 200
-    assert r1.json()["announcements"] == ["Разовое объявление"]
+    assert r1.json()["announcements"] == [{"text": "Разовое объявление", "target_steam_id": None}]
 
     r2 = await client.get("/api/plugin/announcements", headers=_hdr())
     assert r2.status_code == 200
@@ -163,7 +163,7 @@ async def test_recurring_announcement_due_after_interval_elapses(client, db_sess
 
     r = await client.get("/api/plugin/announcements", headers=_hdr())
     assert r.status_code == 200
-    assert r.json()["announcements"] == ["Повторяющееся"]
+    assert r.json()["announcements"] == [{"text": "Повторяющееся", "target_steam_id": None}]
 
 
 async def test_recurring_announcement_not_due_before_interval_elapses(client, db_session):
@@ -214,4 +214,66 @@ async def test_multiple_due_announcements_returned_in_created_order(client, db_s
 
     r = await client.get("/api/plugin/announcements", headers=_hdr())
     assert r.status_code == 200
-    assert r.json()["announcements"] == ["Первое", "Второе"]
+    assert r.json()["announcements"] == [
+        {"text": "Первое", "target_steam_id": None},
+        {"text": "Второе", "target_steam_id": None},
+    ]
+
+
+# ─── Test-send (self-only "Проверить в игре") ──────────────────────────────
+
+async def test_test_send_requires_admin_auth(client, db_session):
+    r = await client.post("/api/admin/announcements/test-send", json={"text": "hi"})
+    assert r.status_code == 401
+
+
+async def test_test_send_requires_steam_id_linked(client, db_session):
+    admin = await _make_admin(db_session)
+    r = await client.post(
+        "/api/admin/announcements/test-send",
+        json={"text": "Проверка"},
+        headers=_bearer(admin),
+    )
+    assert r.status_code == 400
+    assert r.json()["detail"] == "steam_id_not_linked"
+
+
+async def test_test_send_creates_targeted_row_due_on_next_poll(client, db_session):
+    admin = await _make_admin(db_session)
+    admin.steam_id = "76561198000000000"
+    await db_session.commit()
+    await _set_plugin_key(db_session)
+
+    r = await client.post(
+        "/api/admin/announcements/test-send",
+        json={"text": "Проверка в игре"},
+        headers=_bearer(admin),
+    )
+    assert r.status_code == 201
+    created = r.json()
+    assert created["text"] == "Проверка в игре"
+    assert created["target_steam_id"] == "76561198000000000"
+    assert created["last_sent_at"] is None
+
+    poll_r = await client.get("/api/plugin/announcements", headers=_hdr())
+    assert poll_r.status_code == 200
+    assert poll_r.json()["announcements"] == [
+        {"text": "Проверка в игре", "target_steam_id": "76561198000000000"}
+    ]
+
+
+async def test_test_send_row_excluded_from_admin_list(client, db_session):
+    admin = await _make_admin(db_session)
+    admin.steam_id = "76561198000000001"
+    await db_session.commit()
+
+    r = await client.post(
+        "/api/admin/announcements/test-send",
+        json={"text": "Скрытое тестовое"},
+        headers=_bearer(admin),
+    )
+    assert r.status_code == 201
+
+    list_r = await client.get("/api/admin/announcements", headers=_bearer(admin))
+    assert list_r.status_code == 200
+    assert list_r.json() == []

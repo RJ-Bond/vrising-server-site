@@ -1554,8 +1554,19 @@
 
           <div class="s-field">
             <label>Текст объявления</label>
+            <div style="display:flex;gap:.4rem;align-items:center;margin-bottom:.4rem;">
+              <button type="button" onclick="wrapAnnSelectionWithColor('#FFFF00')" title="Жёлтый" style="width:20px;height:20px;border-radius:50%;background:#FFFF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapAnnSelectionWithColor('#00FF00')" title="Зелёный" style="width:20px;height:20px;border-radius:50%;background:#00FF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapAnnSelectionWithColor('#FF3355')" title="Красный" style="width:20px;height:20px;border-radius:50%;background:#FF3355;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapAnnSelectionWithColor('#60A5FA')" title="Синий" style="width:20px;height:20px;border-radius:50%;background:#60A5FA;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapAnnSelectionWithColor('#FFFFFF')" title="Белый" style="width:20px;height:20px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <span style="font-size:.68rem;color:var(--muted);">— выделите текст и нажмите на цвет</span>
+            </div>
             <textarea id="ann-text" class="dark-input" rows="2" maxlength="200" oninput="updateAnnPreview()" placeholder="На сервере разрешены грабежи сундуков… &lt;color=#ff3355&gt;важно&lt;/color&gt;"></textarea>
-            <p class="s-desc">Поддерживается тег &lt;color=#RRGGBB&gt;…&lt;/color&gt; для цветного текста в игровом чате.</p>
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;">
+              <p class="s-desc" style="flex:1;">Поддерживается тег &lt;color=#RRGGBB&gt;…&lt;/color&gt; для цветного текста в игровом чате.</p>
+              <span id="ann-char-count" style="font-size:.7rem;color:var(--muted);white-space:nowrap;margin-top:.35rem;">0 / 200</span>
+            </div>
           </div>
 
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
@@ -1593,6 +1604,7 @@
           <div style="display:flex;gap:.6rem;margin-top:.85rem;flex-wrap:wrap;align-items:center;">
             <button id="ann-save-btn" class="s-save-btn" onclick="saveAnnouncement()">Создать</button>
             <button id="ann-cancel-btn" class="btn-ghost" style="display:none;" onclick="cancelEditAnnouncement()">Отмена</button>
+            <button id="ann-test-btn" class="btn-ghost" onclick="testSendAnnouncement()">Проверить в игре</button>
             <span id="ann-save-msg" style="font-size:.78rem;display:none;"></span>
           </div>
         </div>
@@ -2578,12 +2590,50 @@ function renderAnnouncementPreview(raw) {
   return out;
 }
 
+// The V Rising client prefixes every system chat message with "[HH:MM] [СИСТЕМА] " in a
+// plain white/light-gray tone before the message body — the game adds this client-side,
+// the plugin never sends it. Simulated here (regenerated live on every preview update)
+// purely so the admin preview matches what actually shows up in-game.
+function annChatPrefix() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  return `[${hh}:${mm}] [СИСТЕМА] `;
+}
+
 function updateAnnPreview() {
   const box = document.getElementById('ann-preview');
   const raw = document.getElementById('ann-text').value;
   box.innerHTML = raw.trim()
-    ? renderAnnouncementPreview(raw)
+    ? `<span style="color:#d4d4d8;">${esc(annChatPrefix())}</span>${renderAnnouncementPreview(raw)}`
     : '<span style="color:var(--muted);">Предпросмотр появится здесь…</span>';
+  updateAnnCharCount();
+}
+
+function updateAnnCharCount() {
+  const counter = document.getElementById('ann-char-count');
+  if (!counter) return;
+  const len = document.getElementById('ann-text').value.length;
+  counter.textContent = `${len} / 200`;
+  counter.style.color = len >= 200 ? '#f87171' : 'var(--muted)';
+}
+
+// Wraps the currently selected text in #ann-text with a <color=#RRGGBB>...</color> tag
+// (or the placeholder word "текст" if nothing is selected), then refreshes the preview
+// and char counter. Used by the color swatch buttons above the textarea.
+function wrapAnnSelectionWithColor(hex) {
+  const ta = document.getElementById('ann-text');
+  const start = ta.selectionStart, end = ta.selectionEnd;
+  const before = ta.value.slice(0, start);
+  const selected = ta.value.slice(start, end) || 'текст';
+  const after = ta.value.slice(end);
+  const openTag = `<color=${hex}>`;
+  const wrapped = openTag + selected + '</color>';
+  ta.value = (before + wrapped + after).slice(0, 200);
+  ta.focus();
+  const selStart = before.length + openTag.length;
+  ta.setSelectionRange(selStart, Math.min(selStart + selected.length, ta.value.length));
+  updateAnnPreview();
 }
 
 function onAnnRepeatModeChange() {
@@ -2723,6 +2773,30 @@ async function saveAnnouncement() {
     _resetAnnouncementForm();
     loadAnnouncements();
   } catch { show('Ошибка сети', false); }
+}
+
+async function testSendAnnouncement() {
+  const msg = document.getElementById('ann-save-msg');
+  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = 'inline'; };
+  const text = document.getElementById('ann-text').value.trim();
+  if (!text) return show('Введите текст объявления', false);
+
+  const btn = document.getElementById('ann-test-btn');
+  btn.disabled = true; btn.textContent = 'Отправка...';
+  try {
+    const res = await fetch(`${API}/admin/announcements/test-send`, {
+      method: 'POST', credentials: 'include', headers: authH(), body: JSON.stringify({ text }),
+    });
+    const d = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (d.detail === 'steam_id_not_linked') {
+        return show('Сначала привяжите игровой аккаунт командой .register или .login в игре', false);
+      }
+      return show(d.detail || 'Ошибка отправки', false);
+    }
+    show('Отправлено — придёт в игру в течение минуты, если ваш персонаж сейчас в сети', true);
+  } catch { show('Ошибка сети', false); }
+  finally { btn.disabled = false; btn.textContent = 'Проверить в игре'; }
 }
 
 async function sendAnnouncementNow(id) {

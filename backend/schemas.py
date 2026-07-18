@@ -159,10 +159,26 @@ class AnnouncementOut(BaseModel):
     enabled: bool
     expires_at: Optional[datetime] = None
     last_sent_at: Optional[datetime] = None
+    target_steam_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class AnnouncementTestSend(BaseModel):
+    """Body for POST /api/admin/announcements/test-send — a one-off announcement sent
+    only to the requesting admin's own linked SteamID (see current_user.steam_id), not
+    broadcast to everyone."""
+    text: str
+
+    @field_validator("text")
+    @classmethod
+    def text_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Announcement text cannot be empty")
+        return v[:200]
 
 
 class UserOut(BaseModel):
