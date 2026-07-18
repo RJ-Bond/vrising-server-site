@@ -300,6 +300,7 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="rcon2_password", value=""),
         Setting(key="discord_webhook_url", value=""),
         Setting(key="plugin_api_key", value=""),
+        Setting(key="server_announcement", value=""),
         Setting(key="maintenance_mode",    value="false"),
         Setting(key="maintenance_title",   value="Технические работы"),
         Setting(key="maintenance_message", value="Сайт временно недоступен. Скоро вернёмся."),
@@ -1004,6 +1005,24 @@ async def plugin_clans_sync(
             ))
     await db.commit()
     return {"success": True, "clan_count": len(body.clans)}
+
+
+@app.get("/api/plugin/announcement")
+@limiter.limit("120/minute")
+async def plugin_get_announcement(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Polled by the plugin (piggybacking on its heartbeat interval) so the admin can push a
+    short in-game chat announcement from the site without restarting the server/plugin. The
+    plugin broadcasts once per change (tracks updated_at), not on every poll."""
+    result = await db.execute(select(Setting).where(Setting.key == "server_announcement"))
+    setting = result.scalar_one_or_none()
+    return {
+        "text": setting.value if setting else "",
+        "updated_at": setting.updated_at.isoformat() if setting else None,
+    }
 
 
 @app.get("/api/admin/plugin-status", response_model=list[PluginHeartbeatOut])
@@ -2695,7 +2714,7 @@ ALLOWED_SETTING_KEYS = {
     "event_active", "event_title", "event_text", "event_color",
     "rules", "https_domain", "https_email",
     "timezone", "time_format", "date_format",
-    "rcon_port", "rcon_password", "rcon2_port", "rcon2_password", "discord_webhook_url", "plugin_api_key",
+    "rcon_port", "rcon_password", "rcon2_port", "rcon2_password", "discord_webhook_url", "plugin_api_key", "server_announcement",
     "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time",
     "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates", "maintenance_history",
 }

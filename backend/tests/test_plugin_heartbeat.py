@@ -124,3 +124,30 @@ async def test_plugin_status_returns_stored_data_per_server(client, db_session):
     assert row["plugin_version"] == "2.3.1"
     assert row["player_count"] == 12
     assert row["last_seen_at"] is not None
+
+
+async def test_announcement_without_plugin_key_is_rejected(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.get("/api/plugin/announcement")
+    assert r.status_code == 401
+
+
+async def test_announcement_defaults_to_empty_when_unset(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.get("/api/plugin/announcement", headers=_hdr())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["text"] == ""
+    assert body["updated_at"] is None
+
+
+async def test_announcement_reflects_the_saved_setting(client, db_session):
+    await _set_plugin_key(db_session)
+    db_session.add(Setting(key="server_announcement", value="На сервере разрешены грабежи сундуков"))
+    await db_session.commit()
+
+    r = await client.get("/api/plugin/announcement", headers=_hdr())
+    assert r.status_code == 200
+    body = r.json()
+    assert body["text"] == "На сервере разрешены грабежи сундуков"
+    assert body["updated_at"] is not None

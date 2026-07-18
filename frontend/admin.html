@@ -1452,6 +1452,14 @@
               <div style="font-size:.72rem;color:var(--muted);">Загрузка…</div>
             </div>
           </div>
+          <div class="s-field">
+            <label>Объявление в игровой чат</label>
+            <div class="s-field-row" style="align-items:flex-start;">
+              <textarea id="setting-server_announcement" class="dark-input" rows="2" maxlength="200" style="resize:vertical;" placeholder="На сервере разрешены грабежи сундуков…"></textarea>
+              <button class="s-save-btn" onclick="saveSetting('server_announcement')">Отправить</button>
+            </div>
+            <p class="s-desc">Плагин опрашивает это поле вместе с heartbeat (раз в минуту) и рассылает текст всем игрокам в чат при изменении — без перезапуска сервера. Оставьте пустым, чтобы ничего не транслировать.</p>
+          </div>
         </div>
       </div>
 
