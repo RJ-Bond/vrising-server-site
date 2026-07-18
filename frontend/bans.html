@@ -40,7 +40,8 @@
       from { opacity:0; transform:translateX(-6px); }
       to   { opacity:1; transform:translateX(0); }
     }
-    @keyframes fade-up { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+    /* fade-up keyframe is shared: /components.css already defines it (used across
+       servers/leaderboard/clans/bans/faq/map/events) — no need to redeclare it here. */
 
     /* ── Search input ── */
     .search-input {
@@ -51,24 +52,45 @@
     .search-input::placeholder { color:var(--muted); }
     .search-input:focus { border-color:rgba(140,0,180,0.55); box-shadow:0 0 0 3px rgba(110,0,150,0.12); }
 
-    /* ── Filter pills ── */
-    .pill {
-      font-size:.72rem; font-weight:600; padding:.3rem .75rem; border-radius:9999px;
-      border:1px solid rgba(110,0,150,0.25); background:rgba(14,5,22,0.6);
-      color:var(--muted); cursor:pointer; transition:all .18s; font-family:'Inter',sans-serif;
-    }
-    .pill:hover { border-color:rgba(140,0,180,0.45); color:var(--text); }
-    .pill.active { background:rgba(110,0,150,0.22); border-color:rgba(140,0,180,0.55); color:var(--text); }
-
-    /* ── Ban card ── */
+    /* ── Ban card ──
+       Section 1 shows site-account blocks: permanent, single-severity, no recorded
+       reason (see toggle-active in backend/main.py — a plain boolean flip, nothing
+       else is ever tracked). The card below is intentionally simple to match: no
+       severity badge, no duration/expiry metadata, just who/when/blocked-by. */
     .ban-card {
       background:var(--card); border:1px solid var(--border); border-radius:.75rem;
-      padding:1rem 1.1rem; margin-bottom:.7rem; position:relative;
+      padding:1rem 1.1rem; margin-bottom:.7rem; position:relative; overflow:hidden;
       backdrop-filter:blur(14px) saturate(1.2);
       box-shadow:0 2px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.03);
       transition:border-color .2s, box-shadow .2s;
     }
+    .ban-card::before {
+      content:''; position:absolute; top:0; left:12%; right:12%; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(140,0,180,0.35),transparent);
+    }
     .ban-card:hover { border-color:rgba(140,0,180,0.38); box-shadow:0 4px 22px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); }
+
+    /* Static "blocked" indicator — there is only ever one severity for a site-account
+       ban, so this is a plain marker, not a variant-driven badge system. */
+    .ban-static-badge {
+      display:inline-flex; align-items:center; gap:.3rem; font-size:.66rem; font-weight:700;
+      letter-spacing:.02em; padding:.2rem .6rem; border-radius:9999px; white-space:nowrap;
+      background:rgba(150,0,28,0.16); border:1px solid rgba(200,0,42,0.4); color:#f87171;
+    }
+
+    /* ── Section icon chips (visual hierarchy between the 3 sections below) ── */
+    .section-icon-chip {
+      display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+      width:1.85rem; height:1.85rem; border-radius:.5rem; font-size:.95rem; line-height:1;
+    }
+    .chip-purple { background:rgba(124,58,237,0.14); border:1px solid rgba(124,58,237,0.38); }
+    .chip-crimson { background:rgba(200,0,42,0.14); border:1px solid rgba(200,0,42,0.38); }
+    .chip-gold { background:rgba(201,169,74,0.14); border:1px solid rgba(201,169,74,0.4); }
+
+    .section-divider {
+      border:none; height:1px; margin:0 0 2rem;
+      background:linear-gradient(90deg,transparent,rgba(150,0,28,0.28),transparent);
+    }
 
     /* ── Skeleton shimmer ── */
     @keyframes shimmer {
@@ -81,7 +103,7 @@
       background-size:800px 100%;
     }
 
-    /* ── Section headings (distinguishes the two ban tables below) ── */
+    /* ── Section headings (distinguishes the 3 sections below) ── */
     .ban-section-title {
       display:flex; align-items:center; gap:.55rem; font-size:1.02rem; font-weight:700;
       letter-spacing:.07em; color:var(--gold); text-transform:uppercase;
@@ -199,22 +221,17 @@
 
   <!-- Section 1: banned site accounts (public — GET /api/bans) -->
   <div class="gothic ban-section-title" style="margin-bottom:.25rem;">
-    <span style="font-size:1.1rem;">👤</span> Заблокированные аккаунты
+    <span class="section-icon-chip chip-purple">👤</span> Заблокированные аккаунты
   </div>
   <p class="ban-section-desc" style="margin-bottom:1.1rem;">Пользователи сайта, чьи аккаунты заблокированы администрацией.</p>
 
-  <!-- Search + filter -->
-  <div style="margin-bottom:1.1rem;display:flex;flex-direction:column;gap:.6rem;animation:fade-up .4s ease .05s both;">
+  <!-- Search — this is a permanent, single-severity, reason-less block (a plain
+       boolean flip server-side, see toggle-active in backend/main.py), so there is
+       nothing left to filter by beyond username. -->
+  <div style="margin-bottom:1.1rem;animation:fade-up .4s ease .05s both;">
     <div style="position:relative;">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input id="search-input" class="search-input" type="text" placeholder="Поиск по нику..." style="padding-left:2.4rem;" oninput="applyFilters()" />
-    </div>
-    <div id="filter-pills" style="display:flex;gap:.4rem;flex-wrap:wrap;">
-      <button class="pill active" data-type="all"    onclick="setFilter(this,'all')">Все</button>
-      <button class="pill"        data-type="warn"   onclick="setFilter(this,'warn')">⚠ Предупреждение</button>
-      <button class="pill"        data-type="kick"   onclick="setFilter(this,'kick')">👢 Кик</button>
-      <button class="pill"        data-type="ban"    onclick="setFilter(this,'ban')">🚫 Бан</button>
-      <button class="pill"        data-type="permban" onclick="setFilter(this,'permban')">☠ Перма</button>
+      <input id="search-input" class="search-input" type="text" placeholder="Поиск по нику..." style="padding-left:2.4rem;" oninput="applySearch()" />
     </div>
   </div>
 
@@ -230,9 +247,10 @@
        used for the "Админка" link on index.html/profile.html, just applied to a whole
        section instead of a single nav link). Never fetched/rendered for non-admins. -->
   <div id="game-bans-section" style="display:none;margin-top:3rem;animation:fade-up .38s ease both;">
+    <hr class="section-divider">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.25rem;flex-wrap:wrap;">
       <div class="gothic ban-section-title">
-        <span style="font-size:1.1rem;">⛓</span> Забаненные игроки на сервере
+        <span class="section-icon-chip chip-crimson">⛓</span> Забаненные игроки на сервере
       </div>
       <span id="game-bans-total" style="font-size:.78rem;color:var(--muted);"></span>
     </div>
@@ -270,9 +288,10 @@
        admin-gating as game-bans-section above; initialised alongside it in the
        nav-auth block below. Public submission form lives at /appeal.html. -->
   <div id="appeals-section" style="display:none;margin-top:3rem;animation:fade-up .38s ease both;">
+    <hr class="section-divider">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.25rem;flex-wrap:wrap;">
       <div class="gothic ban-section-title">
-        <span style="font-size:1.1rem;">📝</span> Апелляции на баны
+        <span class="section-icon-chip chip-gold">📝</span> Апелляции на баны
       </div>
       <select id="appeals-status-filter" onchange="loadAppeals()" style="background:rgba(14,3,24,0.8);border:1px solid rgba(150,0,28,0.25);color:var(--text);border-radius:.4rem;padding:.3rem .6rem;font-size:.75rem;font-family:'Inter',sans-serif;">
         <option value="pending" selected>На рассмотрении</option>
@@ -315,20 +334,8 @@
 <script>
 const API = '/api';
 
-/* ── Severity config ── */
-const BAN_SEVERITY = {
-  warn:    { label:'Предупреждение', color:'#f59e0b', bg:'rgba(245,158,11,0.12)', border:'rgba(245,158,11,0.38)', icon:'⚠' },
-  kick:    { label:'Кик',            color:'#f97316', bg:'rgba(249,115,22,0.12)', border:'rgba(249,115,22,0.38)', icon:'👢' },
-  ban:     { label:'Бан',            color:'#ef4444', bg:'rgba(239,68,68,0.12)',  border:'rgba(239,68,68,0.4)',   icon:'🚫' },
-  permban: { label:'Перма-бан',      color:'#7f1d1d', bg:'rgba(127,29,29,0.18)', border:'rgba(220,38,38,0.5)',   icon:'☠' },
-};
-function getSeverity(type) {
-  return BAN_SEVERITY[String(type || '').toLowerCase()] || BAN_SEVERITY.ban;
-}
-
 /* ── State ── */
 let allBans = [];
-let currentFilter = 'all';
 let currentMe = null;
 
 /* ── Nav auth ──
@@ -423,85 +430,40 @@ function toggleMobileNav() {
   document.body.style.overflow = isOpen ? '' : 'hidden';
 }
 
-/* ── Date helpers ── */
-function fmtDate(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(iso) ? iso : iso + 'Z');
-  if (isNaN(d)) return '—';
-  return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric', timeZone:'Europe/Moscow' });
-}
-
-function calcDuration(createdIso, expiresIso) {
-  if (!expiresIso) return 'Навсегда';
-  const created = new Date(createdIso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(createdIso) ? createdIso : createdIso + 'Z');
-  const expires = new Date(expiresIso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(expiresIso) ? expiresIso : expiresIso + 'Z');
-  const diffMs = expires - created;
-  if (diffMs <= 0) return '—';
-  const days = Math.round(diffMs / 86400000);
-  if (days === 1) return '1 день';
-  if (days < 5)  return `${days} дня`;
-  if (days < 30) return `${days} дней`;
-  const months = Math.round(days / 30);
-  if (months < 12) return `${months} мес.`;
-  return `${Math.round(months / 12)} г.`;
-}
-
-function isExpired(expiresIso) {
-  if (!expiresIso) return false; // permanent = still active
-  const exp = new Date(expiresIso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(expiresIso) ? expiresIso : expiresIso + 'Z');
-  return exp < new Date();
-}
-
-/* ── Render ── */
-function renderBadge(sev) {
-  return `<span style="display:inline-flex;align-items:center;gap:.28rem;font-size:.62rem;font-weight:700;padding:.18rem .58rem;border-radius:9999px;background:${sev.bg};border:1px solid ${sev.border};color:${sev.color};">${sev.icon} ${sev.label}</span>`;
-}
+/* ── Render ──
+   Note: fmtDate() is intentionally NOT redefined here — common.js (loaded above)
+   already provides a global fmtDate() that respects the admin-configurable
+   date/time-format + timezone settings (_dateOpts()); this page used to shadow it
+   with a hardcoded dd.mm.yyyy/Europe-Moscow copy left over from before common.js
+   carried that logic. Deleted rather than kept, since there's no remaining reason
+   for this page's dates to behave differently from the rest of the site. */
 
 function renderCard(ban, idx, isMe) {
-  const sev      = getSeverity(ban.ban_type);
-  const expired  = isExpired(ban.expires_at);
-  const duration = calcDuration(ban.created_at, ban.expires_at);
-
-  const leftBorder = isMe
-    ? '2px solid var(--crimson)'
-    : `2px solid ${sev.color}`;
-  const cardBg = isMe
-    ? 'background:rgba(200,0,42,0.08);'
-    : '';
-
-  const statusLabel = expired
-    ? `<span style="font-size:.65rem;font-weight:700;color:#6aad7a;background:rgba(106,173,122,0.12);border:1px solid rgba(106,173,122,0.28);padding:.12rem .45rem;border-radius:9999px;">Истёк</span>`
-    : `<span style="font-size:.65rem;font-weight:700;color:#ef4444;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.28);padding:.12rem .45rem;border-radius:9999px;">Активен</span>`;
-
-  const durationBadge = `<span style="font-family:'Oswald',sans-serif;font-size:.8rem;color:var(--muted);margin-left:.2rem;">${esc(duration)}</span>`;
+  const leftBorder = isMe ? '2px solid var(--crimson)' : '2px solid rgba(200,0,42,0.4)';
+  const cardBg = isMe ? 'background:rgba(200,0,42,0.08);' : '';
 
   const meTag = isMe
     ? `<span style="font-size:.62rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;background:rgba(200,0,42,0.18);border:1px solid rgba(200,0,42,0.45);color:var(--crimson);">Вы</span>`
     : '';
 
-  const reason = ban.reason
-    ? `<div style="font-size:.8rem;color:var(--muted);margin-top:.45rem;">Причина: <span style="color:var(--text);">${esc(ban.reason)}</span></div>`
-    : '';
-
+  // Site-account bans are permanent, single-severity, and never carry a recorded
+  // reason (toggle-active is a plain boolean flip — see backend/main.py) — so the
+  // card only ever shows what's real: who, blocked by whom, since when.
   return `
-<div class="ban-card" data-username="${esc(ban.username)}" data-type="${esc(ban.ban_type || 'ban')}"
+<div class="ban-card" data-username="${esc(ban.username)}"
      style="border-left:${leftBorder};${cardBg}animation:ban-in .35s ease both;animation-delay:${idx * 30}ms;">
-  <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.35rem;">
-    ${renderBadge(sev)}
+  <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+    <span class="ban-static-badge">🚫 Заблокирован</span>
     <a href="/user.html?u=${encodeURIComponent(ban.username)}"
        style="font-size:.92rem;font-weight:600;color:var(--text);text-decoration:none;transition:color .2s;"
        onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'">
       ${esc(ban.username)}
     </a>
     ${meTag}
-    ${durationBadge}
-    <span style="margin-left:auto;">${statusLabel}</span>
   </div>
-  ${reason}
-  <div class="ban-meta-row" style="display:flex;gap:1rem;margin-top:.42rem;font-size:.74rem;color:var(--muted);">
+  <div class="ban-meta-row" style="display:flex;gap:1rem;margin-top:.5rem;font-size:.74rem;color:var(--muted);">
     <span>Администратор: <b style="color:var(--text);font-weight:500;">${esc(ban.admin || '—')}</b></span>
     <span>Дата: <b style="color:var(--text);font-weight:500;">${fmtDate(ban.created_at)}</b></span>
-    <span>Истекает: <b style="color:var(--text);font-weight:500;">${ban.expires_at ? fmtDate(ban.expires_at) : 'Никогда'}</b></span>
   </div>
 </div>`;
 }
@@ -540,26 +502,15 @@ function renderNoResults() {
 </div>`;
 }
 
-/* ── Filter logic ── */
-function setFilter(btn, type) {
-  currentFilter = type;
-  document.querySelectorAll('#filter-pills .pill').forEach(p => p.classList.remove('active'));
-  btn.classList.add('active');
-  applyFilters();
-}
-
-function applyFilters() {
+/* ── Search ── */
+function applySearch() {
   const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
   const list = document.getElementById('ban-list');
 
-  let visible = allBans.filter(ban => {
-    const nameMatch = !q || ban.username.toLowerCase().includes(q);
-    const typeMatch = currentFilter === 'all' || (ban.ban_type || 'ban').toLowerCase() === currentFilter;
-    return nameMatch && typeMatch;
-  });
+  let visible = allBans.filter(ban => !q || ban.username.toLowerCase().includes(q));
 
   const info = document.getElementById('ban-info');
-  if (q || currentFilter !== 'all') {
+  if (q) {
     info.textContent = `Показано: ${visible.length} из ${allBans.length}`;
   } else {
     info.textContent = allBans.length > 0
@@ -600,11 +551,11 @@ function applyFilters() {
     // Small delay so skeleton is visible briefly if load was instant
     await new Promise(r => setTimeout(r, 180));
 
-    applyFilters();
+    applySearch();
 
     // Re-render after me is known (if it loaded in that window)
     if (!currentMe) {
-      setTimeout(() => applyFilters(), 600);
+      setTimeout(() => applySearch(), 600);
     }
 
   } catch (err) {
