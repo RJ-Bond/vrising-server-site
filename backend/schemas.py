@@ -462,6 +462,18 @@ class SetupComplete(BaseModel):
         return v
 
 
+class PluginSessionReport(BaseModel):
+    """Body for POST /api/plugin/sessions — sent by the BepInEx plugin's SessionTracker
+    when a player disconnects, reporting the session that just ended. steam_id is the
+    authoritative identity used to upsert/claim the matching PlayerRecord row (see the
+    endpoint docstring for the claim logic)."""
+    server_num: int = 1
+    steam_id: str
+    character_name: str
+    session_seconds: int
+    ended_at: Optional[datetime] = None
+
+
 class PluginClanMemberIn(BaseModel):
     steam_id: str
     character_name: str

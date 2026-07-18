@@ -114,6 +114,7 @@ from .schemas import (
     PluginLogin,
     PluginHeartbeatIn,
     PluginHeartbeatOut,
+    PluginSessionReport,
     PluginClansSyncIn,
     GameClanOut,
     GameClanDetailOut,
@@ -385,6 +386,8 @@ async def lifespan(app: FastAPI):
             "CREATE INDEX IF NOT EXISTS ix_game_clan_members_clan ON game_clan_members(clan_id)",
             "CREATE TABLE IF NOT EXISTS announcements (id INTEGER PRIMARY KEY, text TEXT NOT NULL, interval_minutes INTEGER, enabled BOOLEAN NOT NULL DEFAULT 1, expires_at DATETIME, last_sent_at DATETIME, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
             "ALTER TABLE announcements ADD COLUMN target_steam_id VARCHAR(32) DEFAULT NULL",
+            "ALTER TABLE player_records ADD COLUMN steam_id VARCHAR(32) DEFAULT NULL",
+            "CREATE INDEX IF NOT EXISTS ix_player_records_steam_id ON player_records(steam_id)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -974,6 +977,74 @@ async def plugin_heartbeat(
     hb.plugin_version = body.plugin_version
     hb.player_count = body.player_count
     hb.last_seen_at = now
+    await db.commit()
+    return {"success": True}
+
+
+@app.post("/api/plugin/sessions")
+@limiter.limit("60/minute")
+async def plugin_report_session(
+    request: Request,
+    body: PluginSessionReport,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Sent by the plugin's SessionTracker on player disconnect, reporting the session
+    that just ended. This is the accuracy source for playtime, replacing A2S polling
+    wherever the plugin is running (monitor.py's polling keeps running as a fallback
+    for servers without the plugin). Upsert/merge logic, in order:
+      1. Match an existing PlayerRecord by (server_num, steam_id) — the stable identity
+         once a row has been claimed by a previous report.
+      2. Else match an existing A2S-only PlayerRecord by (server_num, player_name,
+         steam_id IS NULL) — a row accumulated purely from passive polling that has
+         never been claimed by a verified session report yet. Claim it (set steam_id)
+         instead of creating a duplicate, preserving its prior total_seconds.
+      3. Else create a brand new PlayerRecord for this steam_id.
+    In all cases, player_name is refreshed (character rename), and the session's
+    seconds/last_seen/session_count are applied on top."""
+    result = await db.execute(
+        select(PlayerRecord).where(
+            PlayerRecord.server_num == body.server_num,
+            PlayerRecord.steam_id == body.steam_id,
+        )
+    )
+    record = result.scalar_one_or_none()
+
+    if record is None:
+        claim_result = await db.execute(
+            select(PlayerRecord).where(
+                PlayerRecord.server_num == body.server_num,
+                PlayerRecord.player_name == body.character_name,
+                PlayerRecord.steam_id.is_(None),
+            )
+        )
+        record = claim_result.scalar_one_or_none()
+        if record is not None:
+            record.steam_id = body.steam_id
+
+    if record is None:
+        record = PlayerRecord(
+            server_num=body.server_num,
+            player_name=body.character_name,
+            steam_id=body.steam_id,
+            total_seconds=0,
+            session_count=0,
+        )
+        db.add(record)
+
+    if body.ended_at is not None:
+        ended_at = body.ended_at
+        if ended_at.tzinfo is not None:
+            ended_at = ended_at.astimezone(timezone.utc).replace(tzinfo=None)
+    else:
+        ended_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    record.player_name = body.character_name
+    record.total_seconds += body.session_seconds
+    record.last_duration = body.session_seconds
+    record.last_seen = ended_at
+    record.session_count += 1
+
     await db.commit()
     return {"success": True}
 

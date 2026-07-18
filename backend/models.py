@@ -135,6 +135,7 @@ class PlayerRecord(Base):
     last_seen = Column(DateTime, nullable=True)
     last_duration = Column(Integer, nullable=False, default=0)
     session_count = Column(Integer, nullable=False, default=0)
+    steam_id = Column(String(32), nullable=True, index=True)  # set once the plugin reports a session for this row; NULL for A2S-only rows never claimed by a real session report
 
     __table_args__ = (UniqueConstraint("server_num", "player_name", name="uq_player_server"),)
 
