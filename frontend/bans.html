@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Баны — Just-Skill.Ru</title>
+  <title>Баны на сервере — Just-Skill.Ru</title>
   <link rel="canonical" href="https://v.just-skill.ru/bans.html" />
   <meta property="og:url" content="https://v.just-skill.ru/bans.html" />
   <meta name="description" content="Список заблокированных игроков серверов V Rising на Just-Skill.Ru." />
   <!-- Open Graph -->
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Just-Skill.Ru" />
-  <meta property="og:title" content="V Rising — Баны" />
+  <meta property="og:title" content="V Rising — Баны на сервере" />
   <meta property="og:description" content="Список заблокированных игроков серверов V Rising на Just-Skill.Ru." />
   <meta property="og:image" content="https://v.just-skill.ru/uploads/og-default.png" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -43,7 +43,7 @@
     /* fade-up keyframe is shared: /components.css already defines it (used across
        servers/leaderboard/clans/bans/faq/map/events) — no need to redeclare it here. */
 
-    /* ── Search input ── */
+    /* ── Search input (used to filter the active game-bans table by character name) ── */
     .search-input {
       width:100%; background:rgba(14,5,22,0.7); border:1px solid rgba(110,0,150,0.28);
       border-radius:.6rem; color:var(--text); font-family:'Inter',sans-serif;
@@ -52,33 +52,7 @@
     .search-input::placeholder { color:var(--muted); }
     .search-input:focus { border-color:rgba(140,0,180,0.55); box-shadow:0 0 0 3px rgba(110,0,150,0.12); }
 
-    /* ── Ban card ──
-       Section 1 shows site-account blocks: permanent, single-severity, no recorded
-       reason (see toggle-active in backend/main.py — a plain boolean flip, nothing
-       else is ever tracked). The card below is intentionally simple to match: no
-       severity badge, no duration/expiry metadata, just who/when/blocked-by. */
-    .ban-card {
-      background:var(--card); border:1px solid var(--border); border-radius:.75rem;
-      padding:1rem 1.1rem; margin-bottom:.7rem; position:relative; overflow:hidden;
-      backdrop-filter:blur(14px) saturate(1.2);
-      box-shadow:0 2px 14px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.03);
-      transition:border-color .2s, box-shadow .2s;
-    }
-    .ban-card::before {
-      content:''; position:absolute; top:0; left:12%; right:12%; height:1px;
-      background:linear-gradient(90deg,transparent,rgba(140,0,180,0.35),transparent);
-    }
-    .ban-card:hover { border-color:rgba(140,0,180,0.38); box-shadow:0 4px 22px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04); }
-
-    /* Static "blocked" indicator — there is only ever one severity for a site-account
-       ban, so this is a plain marker, not a variant-driven badge system. */
-    .ban-static-badge {
-      display:inline-flex; align-items:center; gap:.3rem; font-size:.66rem; font-weight:700;
-      letter-spacing:.02em; padding:.2rem .6rem; border-radius:9999px; white-space:nowrap;
-      background:rgba(150,0,28,0.16); border:1px solid rgba(200,0,42,0.4); color:#f87171;
-    }
-
-    /* ── Section icon chips (visual hierarchy between the 3 sections below) ── */
+    /* ── Section icon chips (visual hierarchy between the sections below) ── */
     .section-icon-chip {
       display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
       width:1.85rem; height:1.85rem; border-radius:.5rem; font-size:.95rem; line-height:1;
@@ -92,18 +66,7 @@
       background:linear-gradient(90deg,transparent,rgba(150,0,28,0.28),transparent);
     }
 
-    /* ── Skeleton shimmer ── */
-    @keyframes shimmer {
-      0%   { background-position: -400px 0; }
-      100% { background-position:  400px 0; }
-    }
-    .skeleton {
-      border-radius:.5rem; animation:shimmer 1.4s ease infinite;
-      background: linear-gradient(90deg, rgba(80,20,110,0.12) 25%, rgba(110,40,150,0.22) 50%, rgba(80,20,110,0.12) 75%);
-      background-size:800px 100%;
-    }
-
-    /* ── Section headings (distinguishes the 3 sections below) ── */
+    /* ── Section headings (distinguishes the sections below) ── */
     .ban-section-title {
       display:flex; align-items:center; gap:.55rem; font-size:1.02rem; font-weight:700;
       letter-spacing:.07em; color:var(--gold); text-transform:uppercase;
@@ -144,8 +107,6 @@
     }
     .remaining { font-family:'Consolas','Courier New',monospace; font-size:.82rem; color:#f0b74a; }
 
-    /* Renamed from game-bans.html's own `shimmer` to avoid clashing with the
-       background-position keyframes the site-accounts `.skeleton` above already uses. */
     @keyframes skel-shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
     .skel {
       display:inline-block; border-radius:.35rem; height:.7rem; width:70%;
@@ -159,14 +120,10 @@
     @media (max-width:640px) {
       body { overflow-x:hidden; }
       .glass-nav > div { padding:.6rem 1rem !important; }
-      .ban-meta-row { flex-wrap:wrap; gap:.3rem; }
       /* Prevent iOS Safari zoom-on-focus for the search input. */
       input, textarea, select { font-size:16px !important; }
       #game-bans-section table { font-size:.74rem; }
       #game-bans-section th, #game-bans-section td { padding:.5rem .6rem; }
-    }
-    @media (max-width:480px) {
-      .ban-card { padding:.8rem .9rem; }
     }
   </style>
 </head>
@@ -209,45 +166,22 @@
   <div style="margin-bottom:1.75rem;animation:fade-up .38s ease both;">
     <div style="display:flex;align-items:center;gap:.65rem;margin-bottom:.4rem;">
       <span style="font-size:1.55rem;line-height:1;">🚫</span>
-      <h1 class="gothic" style="font-size:1.25rem;font-weight:700;letter-spacing:.09em;color:var(--gold);text-transform:uppercase;">Список банов</h1>
+      <h1 class="gothic" style="font-size:1.25rem;font-weight:700;letter-spacing:.09em;color:var(--gold);text-transform:uppercase;">Баны на сервере</h1>
     </div>
     <p style="font-size:.82rem;color:var(--muted);line-height:1.5;padding-left:2.2rem;">
-      Заблокированные аккаунты и активные баны в игре. Данные обновляются в реальном времени.
+      Активные баны на игровых серверах и апелляции. Данные обновляются в реальном времени.
     </p>
     <p style="font-size:.78rem;padding-left:2.2rem;margin-top:.5rem;">
       <a href="/appeal.html" style="color:var(--gold);text-decoration:none;">📝 Считаете бан ошибкой? Подать апелляцию →</a>
     </p>
   </div>
 
-  <!-- Section 1: banned site accounts (public — GET /api/bans) -->
-  <div class="gothic ban-section-title" style="margin-bottom:.25rem;">
-    <span class="section-icon-chip chip-purple">👤</span> Заблокированные аккаунты
-  </div>
-  <p class="ban-section-desc" style="margin-bottom:1.1rem;">Пользователи сайта, чьи аккаунты заблокированы администрацией.</p>
-
-  <!-- Search — this is a permanent, single-severity, reason-less block (a plain
-       boolean flip server-side, see toggle-active in backend/main.py), so there is
-       nothing left to filter by beyond username. -->
-  <div style="margin-bottom:1.1rem;animation:fade-up .4s ease .05s both;">
-    <div style="position:relative;">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input id="search-input" class="search-input" type="text" placeholder="Поиск по нику..." style="padding-left:2.4rem;" oninput="applySearch()" />
-    </div>
-  </div>
-
-  <!-- Info bar -->
-  <div id="ban-info" style="font-size:.75rem;color:var(--muted);margin-bottom:.75rem;min-height:1.1rem;"></div>
-
-  <!-- Ban list -->
-  <div id="ban-list"></div>
-
-  <!-- Section 2: in-game moderation bans (admin-only — GET/POST /api/admin/bans...).
+  <!-- Section: in-game moderation bans (admin-only — GET/POST /api/admin/bans...).
        Hidden until an authenticated admin/superadmin is confirmed via /api/auth/me;
        see the nav-auth check below (same optimistic-cache-then-server-verify pattern
        used for the "Админка" link on index.html/profile.html, just applied to a whole
        section instead of a single nav link). Never fetched/rendered for non-admins. -->
-  <div id="game-bans-section" style="display:none;margin-top:3rem;animation:fade-up .38s ease both;">
-    <hr class="section-divider">
+  <div id="game-bans-section" style="display:none;margin-top:1rem;animation:fade-up .38s ease both;">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.25rem;flex-wrap:wrap;">
       <div class="gothic ban-section-title">
         <span class="section-icon-chip chip-crimson">⛓</span> Забаненные игроки на сервере
@@ -255,6 +189,14 @@
       <span id="game-bans-total" style="font-size:.78rem;color:var(--muted);"></span>
     </div>
     <p class="ban-section-desc">Активные игровые баны, выданные через .ban — видно только администрации, список обновляется автоматически.</p>
+
+    <!-- Client-side filter by character name -->
+    <div style="margin:.9rem 0 1rem;max-width:340px;">
+      <div style="position:relative;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="game-bans-search" class="search-input" type="text" placeholder="Поиск по нику..." style="padding-left:2.4rem;" oninput="renderGameBans()" />
+      </div>
+    </div>
 
     <div class="g-card" style="margin-top:1rem;">
       <div style="overflow-x:auto;">
@@ -284,7 +226,7 @@
     </div>
   </div>
 
-  <!-- Section 3: ban appeals (admin-only — GET/POST /api/admin/appeals...). Same
+  <!-- Section: ban appeals (admin-only — GET/POST /api/admin/appeals...). Same
        admin-gating as game-bans-section above; initialised alongside it in the
        nav-auth block below. Public submission form lives at /appeal.html. -->
   <div id="appeals-section" style="display:none;margin-top:3rem;animation:fade-up .38s ease both;">
@@ -333,10 +275,6 @@
 <script src="/common.js?v=9"></script>
 <script>
 const API = '/api';
-
-/* ── State ── */
-let allBans = [];
-let currentMe = null;
 
 /* ── Nav auth ──
    Also gates the admin-only "Забаненные игроки на сервере" section: cached-role check
@@ -415,7 +353,7 @@ function applySiteBackground(bg) {
   try {
     const d = await (window.getSettings?.() ?? fetch(`${API}/settings/public`).then(r => r.json()));
     const title = (d.site_title || 'V Rising').trim();
-    document.title = `${title} — Баны`;
+    document.title = `${title} — Баны на сервере`;
     applySiteBackground(d.bg_image_url);
   } catch {}
 })();
@@ -438,141 +376,10 @@ function toggleMobileNav() {
    carried that logic. Deleted rather than kept, since there's no remaining reason
    for this page's dates to behave differently from the rest of the site. */
 
-function renderCard(ban, idx, isMe) {
-  const leftBorder = isMe ? '2px solid var(--crimson)' : '2px solid rgba(200,0,42,0.4)';
-  const cardBg = isMe ? 'background:rgba(200,0,42,0.08);' : '';
-
-  const meTag = isMe
-    ? `<span style="font-size:.62rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;background:rgba(200,0,42,0.18);border:1px solid rgba(200,0,42,0.45);color:var(--crimson);">Вы</span>`
-    : '';
-
-  // Site-account bans are permanent, single-severity, and never carry a recorded
-  // reason (toggle-active is a plain boolean flip — see backend/main.py) — so the
-  // card only ever shows what's real: who, blocked by whom, since when.
-  return `
-<div class="ban-card" data-username="${esc(ban.username)}"
-     style="border-left:${leftBorder};${cardBg}animation:ban-in .35s ease both;animation-delay:${idx * 30}ms;">
-  <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
-    <span class="ban-static-badge">🚫 Заблокирован</span>
-    <a href="/user.html?u=${encodeURIComponent(ban.username)}"
-       style="font-size:.92rem;font-weight:600;color:var(--text);text-decoration:none;transition:color .2s;"
-       onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'">
-      ${esc(ban.username)}
-    </a>
-    ${meTag}
-  </div>
-  <div class="ban-meta-row" style="display:flex;gap:1rem;margin-top:.5rem;font-size:.74rem;color:var(--muted);">
-    <span>Администратор: <b style="color:var(--text);font-weight:500;">${esc(ban.admin || '—')}</b></span>
-    <span>Дата: <b style="color:var(--text);font-weight:500;">${fmtDate(ban.created_at)}</b></span>
-  </div>
-</div>`;
-}
-
-function renderSkeleton() {
-  return Array.from({length:4}, (_, i) => `
-<div class="ban-card" style="border-left:2px solid rgba(110,0,150,0.25);animation:fade-up .3s ease ${i * 60}ms both;">
-  <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;">
-    <div class="skeleton" style="width:90px;height:20px;"></div>
-    <div class="skeleton" style="width:120px;height:18px;"></div>
-    <div class="skeleton" style="width:60px;height:18px;margin-left:auto;"></div>
-  </div>
-  <div class="skeleton" style="width:70%;height:14px;margin-bottom:.4rem;"></div>
-  <div style="display:flex;gap:1rem;">
-    <div class="skeleton" style="width:100px;height:12px;"></div>
-    <div class="skeleton" style="width:80px;height:12px;"></div>
-    <div class="skeleton" style="width:90px;height:12px;"></div>
-  </div>
-</div>`).join('');
-}
-
-function renderEmpty() {
-  return `
-<div style="text-align:center;padding:3.5rem 1rem;animation:fade-up .35s ease both;">
-  <div style="font-size:3rem;margin-bottom:.8rem;">✅</div>
-  <p class="gothic" style="font-size:1rem;color:var(--gold);letter-spacing:.07em;margin-bottom:.4rem;">Банов нет</p>
-  <p style="font-size:.84rem;color:var(--muted);">Сервер чист!</p>
-</div>`;
-}
-
-function renderNoResults() {
-  return `
-<div style="text-align:center;padding:2.5rem 1rem;animation:fade-up .28s ease both;">
-  <div style="font-size:2.2rem;margin-bottom:.6rem;">🔍</div>
-  <p style="font-size:.84rem;color:var(--muted);">Ничего не найдено по вашему запросу.</p>
-</div>`;
-}
-
-/* ── Search ── */
-function applySearch() {
-  const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
-  const list = document.getElementById('ban-list');
-
-  let visible = allBans.filter(ban => !q || ban.username.toLowerCase().includes(q));
-
-  const info = document.getElementById('ban-info');
-  if (q) {
-    info.textContent = `Показано: ${visible.length} из ${allBans.length}`;
-  } else {
-    info.textContent = allBans.length > 0
-      ? `Всего банов: ${allBans.length}`
-      : '';
-  }
-
-  if (!visible.length) {
-    list.innerHTML = allBans.length === 0 ? renderEmpty() : renderNoResults();
-    return;
-  }
-
-  list.innerHTML = visible.map((ban, i) => {
-    const isMe = currentMe && ban.username === currentMe.username;
-    return renderCard(ban, i, isMe);
-  }).join('');
-}
-
-/* ── Load data ── */
-(async function init() {
-  const list = document.getElementById('ban-list');
-  list.innerHTML = renderSkeleton();
-
-  // Fetch current user (for "Your ban" highlight) — non-blocking
-  fetch(`${API}/auth/me`, { credentials:'include' })
-    .then(r => r.ok ? r.json() : null)
-    .then(me => { currentMe = me; })
-    .catch(() => {});
-
-  try {
-    const data = await fetch(`${API}/bans?per_page=100`).then(r => {
-      if (!r.ok) throw new Error('API error ' + r.status);
-      return r.json();
-    });
-
-    allBans = data.items || [];
-
-    // Small delay so skeleton is visible briefly if load was instant
-    await new Promise(r => setTimeout(r, 180));
-
-    applySearch();
-
-    // Re-render after me is known (if it loaded in that window)
-    if (!currentMe) {
-      setTimeout(() => applySearch(), 600);
-    }
-
-  } catch (err) {
-    list.innerHTML = `
-<div style="text-align:center;padding:3rem 1rem;animation:fade-up .3s ease both;">
-  <div style="font-size:2rem;margin-bottom:.6rem;">⚠</div>
-  <p style="font-size:.85rem;color:var(--muted);">Не удалось загрузить список банов.</p>
-  <button onclick="location.reload()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;margin-top:.75rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
-</div>`;
-    if (typeof showToast === 'function') showToast('Ошибка загрузки банов', 'error');
-  }
-})();
-
 /* ════════════════════════════════════════════════════════════════════════
-   Section 2: in-game moderation bans (admin-only)
+   In-game moderation bans (admin-only)
    Ported from the former standalone frontend/game-bans.html, now merged in
-   as a second section on this page instead of its own route. Only ever
+   as a section on this page instead of its own route. Only ever
    initialised (initGameBans) once /api/auth/me confirms an admin/superadmin
    — see the nav-auth block above.
    ════════════════════════════════════════════════════════════════════════ */
@@ -633,14 +440,25 @@ function renderGameBans() {
   const tbody = document.getElementById('game-bans-tbody');
   const empty = document.getElementById('game-bans-empty');
   const total = document.getElementById('game-bans-total');
-  if (total) total.textContent = _gameBansCache.length ? `${_gameBansCache.length} шт.` : '';
+  if (total) total.textContent = _gameBansCache.length ? `Активные баны (${_gameBansCache.length})` : '';
   if (!_gameBansCache.length) {
     tbody.innerHTML = '';
     empty.style.display = '';
     return;
   }
   empty.style.display = 'none';
-  tbody.innerHTML = _gameBansCache.map(gameBanRowHtml).join('');
+
+  const q = (document.getElementById('game-bans-search')?.value || '').toLowerCase().trim();
+  const filtered = q
+    ? _gameBansCache.filter(b => (b.character_name || '').toLowerCase().includes(q))
+    : _gameBansCache;
+
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);">Ничего не найдено по вашему запросу.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(gameBanRowHtml).join('');
   tickGameBanCountdowns();
 }
 
@@ -702,7 +520,7 @@ function initGameBans() {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   Section 3: ban appeals (admin-only)
+   Ban appeals (admin-only)
    Public submission form: /appeal.html -> POST /api/appeals. This section lists them
    via GET /api/admin/appeals and resolves via POST /api/admin/appeals/{id}/resolve —
    approving also lifts the underlying ban server-side (see backend/main.py).
