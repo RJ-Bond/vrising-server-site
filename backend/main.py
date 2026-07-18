@@ -72,7 +72,7 @@ from sqlalchemy import select, func, delete, text, or_, update, and_
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate, ServerApiKey, ScheduledRestart, Warning
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate, ServerApiKey, ScheduledRestart, Warning, Ban
 from .auth import (
     verify_password,
     get_password_hash,
@@ -142,6 +142,8 @@ from .schemas import (
     PluginScheduleRestartIn,
     PluginCancelRestartIn,
     PluginWarnIn,
+    PluginBanIn,
+    PluginUnbanIn,
     LinkedAccountOut,
     strip_html_tags,
 )
@@ -416,6 +418,8 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE scheduled_restarts ADD COLUMN daily_restart_time VARCHAR(8) DEFAULT NULL",
             "CREATE TABLE IF NOT EXISTS warnings (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, steam_id VARCHAR(32) NOT NULL, character_name VARCHAR(64) NOT NULL, reason VARCHAR(512) NOT NULL, admin_name VARCHAR(64) NOT NULL, created_at DATETIME NOT NULL)",
             "CREATE INDEX IF NOT EXISTS ix_warnings_steam_id ON warnings(steam_id)",
+            "CREATE TABLE IF NOT EXISTS bans (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, steam_id VARCHAR(32) NOT NULL, character_name VARCHAR(64) NOT NULL, admin_name VARCHAR(64) NOT NULL, reason VARCHAR(512) NOT NULL, banned_at DATETIME NOT NULL, unban_at DATETIME, unbanned_at DATETIME)",
+            "CREATE INDEX IF NOT EXISTS ix_bans_steam_id ON bans(steam_id)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -1532,6 +1536,97 @@ async def plugin_warnings(
     }
 
 
+# ─── Player bans (plugin) ──────────────────────────────────────────────────────
+# Backs the in-game .ban/.unban admin chat commands. The game engine itself performs the
+# real ban/unban (native ban events) — these routes are only site-side record-keeping plus
+# auto-expiry scheduling for temp bans. See models.Ban's docstring for the full lifecycle.
+
+@app.post("/api/plugin/ban")
+@limiter.limit("30/minute")
+async def plugin_ban(
+    request: Request,
+    body: PluginBanIn,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Logs a new ban (permanent if body.unban_at is null, temp otherwise) issued via the
+    in-game .ban admin chat command. unban_at is normalized to naive UTC before storing
+    (this repo's usual DateTime convention) regardless of what offset/format it arrived in."""
+    unban_at = body.unban_at
+    if unban_at is not None and unban_at.tzinfo is not None:
+        unban_at = unban_at.astimezone(timezone.utc).replace(tzinfo=None)
+    db.add(Ban(
+        server_num=body.server_num,
+        steam_id=body.steam_id,
+        character_name=body.character_name,
+        admin_name=body.admin_name,
+        reason=body.reason,
+        banned_at=datetime.utcnow(),
+        unban_at=unban_at,
+    ))
+    await db.commit()
+    return {"success": True}
+
+
+@app.post("/api/plugin/unban")
+@limiter.limit("30/minute")
+async def plugin_unban(
+    request: Request,
+    body: PluginUnbanIn,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Called by the plugin right after it manually executes a .unban in-game. Resolves
+    whatever active ban(s) exist for this steam_id+server_num (normally at most one, but
+    handled gracefully either way); idempotent — 200 even if nothing was active."""
+    result = await db.execute(
+        select(Ban).where(
+            Ban.steam_id == body.steam_id,
+            Ban.server_num == body.server_num,
+            Ban.unbanned_at.is_(None),
+        )
+    )
+    active = result.scalars().all()
+    if active:
+        now = datetime.utcnow()
+        for b in active:
+            b.unbanned_at = now
+        await db.commit()
+    return {"success": True}
+
+
+@app.get("/api/plugin/due-unbans")
+@limiter.limit("60/minute")
+async def plugin_due_unbans(
+    request: Request,
+    server_num: int = Query(default=1),
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Polled by the plugin (same cadence as its heartbeat) so it knows which players to
+    actually unban in-game. Returns active bans (unbanned_at IS NULL) for server_num whose
+    unban_at has passed — covers BOTH a temp ban's timer naturally expiring AND an admin
+    force-unbanning from the site's bans admin page (which just sets unban_at to "now").
+    Same "returning due items also consumes them" pattern as GET /api/plugin/announcements
+    above: each due row is stamped unbanned_at immediately, since the plugin is trusted to
+    actually execute the unban on receipt. Never returns permanent bans (unban_at NULL)."""
+    now = datetime.utcnow()
+    result = await db.execute(
+        select(Ban).where(
+            Ban.server_num == server_num,
+            Ban.unbanned_at.is_(None),
+            Ban.unban_at.isnot(None),
+            Ban.unban_at <= now,
+        )
+    )
+    due = result.scalars().all()
+    for b in due:
+        b.unbanned_at = now
+    if due:
+        await db.commit()
+    return {"unbans": [{"steam_id": b.steam_id, "character_name": b.character_name} for b in due]}
+
+
 @app.get("/api/admin/plugin-status", response_model=list[PluginHeartbeatOut])
 async def get_plugin_status(
     db: AsyncSession = Depends(get_db),
@@ -1877,6 +1972,64 @@ async def clear_daily_restart(
         row.daily_restart_time = None
         await _audit(db, current_user.id, "daily_restart.clear", target_type="scheduled_restart", target_id=server_num)
         await db.commit()
+    return {"success": True}
+
+
+# ─── Player bans (admin) ───────────────────────────────────────────────────────
+# Admin-panel counterpart to the POST /api/plugin/ban / unban / GET .../due-unbans trio
+# above — see models.Ban's docstring for the full active/unban_at/unbanned_at lifecycle.
+
+@app.get("/api/admin/bans")
+async def list_bans(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    """All currently-active bans (unbanned_at IS NULL) across every server, most recent
+    first. unban_at null means permanent; a timestamp is the scheduled expiry, for the
+    admin UI to compute/display a "time remaining" countdown. server_name is included as a
+    convenience (same server_num -> real-name lookup used by GET /api/clans) so the admin
+    page doesn't need a second round-trip just to label the server column."""
+    server_names = await _get_server_names(db)
+    result = await db.execute(
+        select(Ban).where(Ban.unbanned_at.is_(None)).order_by(Ban.banned_at.desc())
+    )
+    bans = result.scalars().all()
+    return {
+        "bans": [
+            {
+                "id": b.id,
+                "server_num": b.server_num,
+                "server_name": server_names.get(b.server_num) or f"Сервер {b.server_num}",
+                "steam_id": b.steam_id,
+                "character_name": b.character_name,
+                "admin_name": b.admin_name,
+                "reason": b.reason,
+                "banned_at": _fmt_dt_z(b.banned_at),
+                "unban_at": _fmt_dt_z(b.unban_at),
+            }
+            for b in bans
+        ]
+    }
+
+
+@app.post("/api/admin/bans/{ban_id}/unban")
+async def unban_admin(
+    ban_id: int,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Brings unban_at forward to "now" (regardless of its previous value) rather than
+    setting unbanned_at directly — that only happens once the plugin actually confirms the
+    real in-game unban via POST /api/plugin/unban or the next GET /api/plugin/due-unbans
+    poll consumes this row (within ~60s). 404 if ban_id doesn't exist or is already
+    resolved (unbanned_at set)."""
+    result = await db.execute(select(Ban).where(Ban.id == ban_id, Ban.unbanned_at.is_(None)))
+    ban = result.scalar_one_or_none()
+    if ban is None:
+        raise HTTPException(status_code=404, detail="Ban not found")
+    ban.unban_at = datetime.utcnow()
+    await _audit(db, current_user.id, "ban.unban", target_type="ban", target_id=ban.id, detail=ban.steam_id)
+    await db.commit()
     return {"success": True}
 
 

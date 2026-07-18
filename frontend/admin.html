@@ -2941,7 +2941,13 @@ async function loadAnnouncements() {
       return;
     }
     tbody.innerHTML = _annCache.map(a => {
-      const textShort = a.text.length > 60 ? esc(a.text.slice(0, 60)) + '…' : esc(a.text);
+      // Same <color=#RRGGBB>...</color> tag rendering used by the announcement composer's
+      // live chat preview (renderColorTagPreview, defined above) — reused here instead of
+      // a parallel implementation, so the table shows genuinely colored text instead of
+      // raw tag markup. It escapes everything outside a matched tag itself, so this is
+      // just as XSS-safe as the plain esc() call it replaces.
+      const textRaw = a.text.length > 60 ? a.text.slice(0, 60) + '…' : a.text;
+      const textShort = renderColorTagPreview(textRaw);
       const expires = a.expires_at ? fmtDateTime(a.expires_at) : '—';
       return `<tr>
         <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(a.text)}">${textShort}</td>

@@ -447,3 +447,30 @@ class Warning(Base):
     reason = Column(String(512), nullable=False)
     admin_name = Column(String(64), nullable=False)
     created_at = Column(DateTime, nullable=False)
+
+
+class Ban(Base):
+    """An in-game moderation ban issued via the .ban admin chat command
+    (POST /api/plugin/ban), lifted either by the temp-ban timer expiring or an admin
+    manually running .unban in-game (POST /api/plugin/unban) or clicking "Разбанить" on
+    the site's bans admin page (POST /api/admin/bans/{id}/unban, which just brings
+    unban_at forward to "now" so the plugin's next GET /api/plugin/due-unbans poll picks
+    it up and executes the real in-game unban). steam_id is the authoritative identity;
+    admin_name is just the issuing admin's in-game character name for an audit trail, same
+    convention as Warning.admin_name above — no admin user_id FK. unban_at is naive UTC
+    (this repo's usual DateTime convention): NULL means a permanent ban; a timestamp is the
+    scheduled expiry (or, once an admin force-unbans from the site, "now"). unbanned_at is
+    set only once the ban is actually confirmed lifted (by the plugin, either via expiry or
+    a manual in-game .unban) — a ban is considered "active" for as long as this stays NULL,
+    regardless of what unban_at currently says."""
+    __tablename__ = "bans"
+
+    id = Column(Integer, primary_key=True, index=True)
+    server_num = Column(Integer, nullable=False, default=1)
+    steam_id = Column(String(32), nullable=False, index=True)
+    character_name = Column(String(64), nullable=False)
+    admin_name = Column(String(64), nullable=False)
+    reason = Column(String(512), nullable=False)
+    banned_at = Column(DateTime, nullable=False)
+    unban_at = Column(DateTime, nullable=True)  # NULL = permanent ban
+    unbanned_at = Column(DateTime, nullable=True)  # set once actually lifted; ban is "active" while NULL

@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Баны (модерация) — Админ</title>
+  <meta name="robots" content="noindex,nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/tailwind.min.css" />
+  <link rel="stylesheet" href="/theme.css?v=1" />
+  <link rel="stylesheet" href="/components.css?v=2" />
+  <style>
+    /* Base tokens in /theme.css; nav/mobile-drawer/toasts in /components.css — same as
+       clans.html/leaderboard.html. This page adds only the admin data-table styling,
+       mirrored from admin.html's <table>/<th>/<td> rules for a consistent admin look. */
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; }
+    body {
+      background:var(--bg);
+      background-image:
+        radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
+      background-attachment:fixed;
+      font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh;
+    }
+    /* nav + tooltips + base: /components.css */
+
+    .g-card {
+      background:var(--card); border:1px solid var(--border);
+      border-radius:.875rem; backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+      position:relative; overflow:hidden;
+    }
+    .g-card::before {
+      content:''; position:absolute; top:0; left:20%; right:20%; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(200,0,45,0.35),transparent);
+    }
+
+    table { width:100%; border-collapse:collapse; font-size:.82rem; }
+    th {
+      background:rgba(14,3,24,0.8); color:var(--muted); text-transform:uppercase;
+      font-size:.65rem; letter-spacing:.1em; padding:.75rem 1rem; text-align:left;
+      border-bottom:1px solid rgba(150,0,28,0.2); white-space:nowrap;
+    }
+    td { padding:.65rem 1rem; border-bottom:1px solid rgba(150,0,28,0.1); color:var(--text); vertical-align:middle; }
+    tbody tr:hover td { background:rgba(150,0,28,0.06); }
+
+    .btn-danger {
+      background:rgba(150,0,20,0.22); border:1px solid rgba(220,40,60,0.4); color:#fca5a5;
+      font-size:.72rem; padding:.32rem .7rem; border-radius:.4rem; cursor:pointer;
+      font-family:'Inter',sans-serif; font-weight:600; transition:background .15s;
+    }
+    .btn-danger:hover { background:rgba(150,0,20,0.4); }
+    .btn-danger:disabled { opacity:.5; cursor:default; }
+
+    .badge-permanent {
+      background:rgba(150,0,20,0.18); border:1px solid rgba(220,40,60,0.35); color:#fca5a5;
+      font-size:.68rem; font-weight:700; padding:.18rem .55rem; border-radius:9999px; letter-spacing:.03em;
+    }
+    .remaining { font-family:'Consolas','Courier New',monospace; font-size:.82rem; color:#f0b74a; }
+
+    @keyframes shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
+    .skel {
+      display:inline-block; border-radius:.35rem; height:.7rem; width:70%;
+      background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.04) 75%);
+      background-size:200% 100%; animation:shimmer 1.5s infinite;
+    }
+
+    .bans-empty { text-align:center; padding:4rem 1rem; }
+
+    @media (max-width:640px) {
+      body { overflow-x:hidden; }
+      .glass-nav > div { padding:.6rem 1rem !important; }
+      table { font-size:.74rem; }
+      th, td { padding:.5rem .6rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="mobile-overlay" id="mob-overlay" onclick="toggleMobileNav()"></div>
+<div class="mobile-drawer" id="mob-drawer">
+  <a href="/">Главная</a>
+  <a href="/servers.html">Сервера</a>
+  <a href="/leaderboard.html">Игроки</a>
+  <a href="/clans.html">Кланы</a>
+  <a href="/map.html">Карта</a>
+  <a href="/bans.html">Баны</a>
+  <a href="/faq.html">FAQ</a>
+  <a href="/admin.html">Админка</a>
+</div>
+<nav class="glass-nav">
+  <div style="max-width:1080px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
+    <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);"></a>
+    <div class="nav-links">
+      <a href="/admin.html" class="topnav-link">← Админка</a>
+      <a href="/game-bans.html" class="topnav-link active">Баны (модерация)</a>
+    </div>
+    <button class="nav-burger" onclick="toggleMobileNav()" aria-label="Меню">☰</button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div style="max-width:1080px;margin:0 auto;padding:2rem 1rem 4rem;position:relative;z-index:1;">
+
+  <!-- Page header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+    <div>
+      <h1 class="gothic" style="font-size:1.25rem;font-weight:700;letter-spacing:.1em;color:var(--text);text-transform:uppercase;">Баны (модерация)</h1>
+      <p style="font-size:.76rem;color:var(--muted);margin-top:.25rem;">Активные игровые баны, выданные через .ban — список обновляется автоматически</p>
+    </div>
+    <span id="bans-total" style="font-size:.78rem;color:var(--muted);"></span>
+  </div>
+
+  <div class="g-card">
+    <div style="overflow-x:auto;">
+      <table>
+        <thead><tr>
+          <th>Имя</th><th>Сервер</th><th>Осталось</th><th>Кто забанил</th><th>Причина</th><th>Действия</th>
+        </tr></thead>
+        <tbody id="bans-tbody">
+          <tr><td colspan="6" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Empty state -->
+  <div id="bans-empty" class="bans-empty" style="display:none;">
+    <div style="font-size:3.5rem;margin-bottom:1rem;filter:drop-shadow(0 0 18px rgba(180,0,30,0.5));">⛓</div>
+    <p class="gothic" style="font-size:1rem;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:.5rem;">Активных банов нет</p>
+    <p style="font-size:.82rem;color:var(--muted);">Баны, выданные через .ban в игре, появятся здесь</p>
+  </div>
+
+  <!-- Load-error state -->
+  <div id="bans-error" style="display:none;text-align:center;padding:3rem 1rem;">
+    <div style="font-size:2.5rem;margin-bottom:.75rem;opacity:.6;filter:drop-shadow(0 0 12px rgba(180,0,30,0.45));">⚠</div>
+    <p class="gothic" style="font-size:.9rem;font-weight:600;color:var(--gold);margin-bottom:.4rem;">Ошибка загрузки</p>
+    <p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;">Не удалось загрузить список банов — проверьте связь и попробуйте снова.</p>
+    <button onclick="loadBans()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
+  </div>
+</div>
+
+<script src="/common.js?v=9"></script>
+<script>
+const API = '/api';
+const ROLE_LEVELS = { user: 0, moderator: 1, admin: 2, superadmin: 3 };
+function roleLevel(role) { return ROLE_LEVELS[role] ?? 0; }
+
+function toggleMobileNav() {
+  const overlay = document.getElementById('mob-overlay');
+  const drawer = document.getElementById('mob-drawer');
+  const isOpen = drawer.classList.contains('open');
+  drawer.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('open', !isOpen);
+  document.body.style.overflow = isOpen ? '' : 'hidden';
+}
+
+function applySiteBackground(bg) {
+  bg = (bg || '').trim();
+  if (!bg) return;
+  document.body.style.backgroundImage = [
+    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
+    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
+    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
+    `url('${bg}')`,
+  ].join(',');
+  document.body.style.backgroundSize = 'auto,auto,auto,cover';
+  document.body.style.backgroundPosition = 'center,center,center,center';
+  document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
+}
+
+/* ── Site settings ── */
+(async function() {
+  try {
+    const d = await (window.getSettings?.() ?? fetch(`${API}/settings/public`).then(r => r.json()));
+    applySiteBackground(d.bg_image_url);
+  } catch {}
+})();
+
+/* ── Admin-only auth gate — same pattern as admin.html's IIFE: cached-role check first
+   (avoids a content flash), then a server-verified re-check. Bans are moderation-tier
+   tooling gated to "admin" (same tier as the Кланы/Настройки sections in admin.html),
+   not "moderator" (which only covers comments/reports/warnings there). ── */
+(function() {
+  const cached = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
+  if (!cached || roleLevel(cached.role) < ROLE_LEVELS.admin) { window.location.href = '/login.html'; return; }
+  fetch(`${API}/auth/me`, { credentials: 'include' }).then(r => {
+    if (!r.ok) { window.location.href = '/login.html'; return; }
+    r.json().then(u => {
+      if (roleLevel(u.role) < ROLE_LEVELS.admin) { window.location.href = '/'; }
+    });
+  }).catch(() => {});
+})();
+
+/* ── State ── */
+let _bansCache = [];       // [{...row, _unbanAtDate: Date|null}]
+let _tickTimer = null;
+let _refreshTimer = null;
+
+function tableShowSkeleton(tbodyId, cols, rows) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  tbody.innerHTML = Array(rows).fill(0).map(() =>
+    `<tr>${Array(cols).fill('<td><span class="skel"></span></td>').join('')}</tr>`
+  ).join('');
+}
+
+/* ── Human-readable remaining time, recomputed client-side every second from the
+   already-fetched unban_at timestamp — no per-second re-polling, same principle as
+   admin.html's scheduled-restart countdown (tickRestartCountdown). ── */
+function formatRemaining(ms) {
+  if (ms <= 0) return 'истекает…';
+  const totalSec = Math.floor(ms / 1000);
+  const d = Math.floor(totalSec / 86400);
+  const h = Math.floor((totalSec % 86400) / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (d > 0) return `${d}д ${h}ч`;
+  if (h > 0) return `${h}ч ${m}м`;
+  if (m > 0) return `${m}м ${s}с`;
+  return `${s}с`;
+}
+
+function tickCountdowns() {
+  const now = Date.now();
+  _bansCache.forEach(b => {
+    if (!b._unbanAtDate) return;
+    const el = document.getElementById(`remaining-${b.id}`);
+    if (!el) return;
+    el.textContent = formatRemaining(b._unbanAtDate.getTime() - now);
+  });
+}
+
+function rowHtml(b) {
+  const remainingHtml = b.unban_at
+    ? `<span class="remaining" id="remaining-${b.id}">…</span>`
+    : `<span class="badge-permanent">Навсегда</span>`;
+  return `<tr data-ban-id="${b.id}">
+    <td>${esc(b.character_name)}</td>
+    <td style="color:var(--muted);">${esc(b.server_name || `Сервер ${b.server_num}`)}</td>
+    <td>${remainingHtml}</td>
+    <td style="color:var(--muted);">${esc(b.admin_name)}</td>
+    <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(b.reason)}">${esc(b.reason)}</td>
+    <td><button class="btn-danger" onclick="unbanRow(${b.id}, this)">Разбанить</button></td>
+  </tr>`;
+}
+
+function renderBans() {
+  const tbody = document.getElementById('bans-tbody');
+  const empty = document.getElementById('bans-empty');
+  const total = document.getElementById('bans-total');
+  if (total) total.textContent = _bansCache.length ? `${_bansCache.length} шт.` : '';
+  if (!_bansCache.length) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = _bansCache.map(rowHtml).join('');
+  tickCountdowns();
+}
+
+async function loadBans() {
+  document.getElementById('bans-error').style.display = 'none';
+  document.getElementById('bans-empty').style.display = 'none';
+  if (!_bansCache.length) tableShowSkeleton('bans-tbody', 6, 5);
+  try {
+    const res = await fetch(`${API}/admin/bans`, { credentials: 'include' });
+    if (res.status === 401 || res.status === 403) { window.location.href = '/login.html'; return; }
+    if (!res.ok) throw new Error('load failed');
+    const data = await res.json();
+    _bansCache = (data.bans || []).map(b => ({
+      ...b,
+      _unbanAtDate: b.unban_at ? new Date(b.unban_at) : null,
+    }));
+    renderBans();
+  } catch (err) {
+    document.getElementById('bans-tbody').innerHTML = '';
+    document.getElementById('bans-error').style.display = 'block';
+    showToast('Ошибка загрузки списка банов', 'error');
+  }
+}
+
+async function unbanRow(id, btnEl) {
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '…'; }
+  try {
+    const res = await fetch(`${API}/admin/bans/${id}/unban`, { method: 'POST', credentials: 'include' });
+    if (res.status === 401 || res.status === 403) { window.location.href = '/login.html'; return; }
+    if (!res.ok) throw new Error('unban failed');
+    // Optimistic removal — the plugin will actually execute the in-game unban within
+    // ~60s of its next GET /api/plugin/due-unbans poll; the periodic refresh below keeps
+    // the list honest even if this specific row somehow reappeared.
+    _bansCache = _bansCache.filter(b => b.id !== id);
+    renderBans();
+    showToast('Разбанен, ожидание синхронизации с игрой…', 'success');
+  } catch (err) {
+    showToast('Ошибка при снятии бана', 'error');
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Разбанить'; }
+  }
+}
+
+/* ── Init ── */
+loadBans();
+_tickTimer = setInterval(tickCountdowns, 1000);
+_refreshTimer = setInterval(loadBans, 45000);
+</script>
+</body>
+</html>

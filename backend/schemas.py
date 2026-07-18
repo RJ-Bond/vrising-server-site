@@ -133,6 +133,30 @@ class PluginWarnIn(BaseModel):
     server_num: int = 1
 
 
+class PluginBanIn(BaseModel):
+    """Body for POST /api/plugin/ban — backs the in-game .ban admin chat command. The
+    game engine itself is what actually bans the player (native ban event); this just
+    records it site-side and, for temp bans, schedules the auto-expiry check via
+    GET /api/plugin/due-unbans. unban_at is null for a permanent ban, or an ISO-8601
+    timestamp (any offset, including a "Z" suffix) for a temp ban's scheduled expiry —
+    pydantic parses it directly, same as AnnouncementCreate.expires_at above; the route
+    normalizes it to naive UTC before storing (this repo's usual DateTime convention)."""
+    steam_id: str
+    character_name: str
+    server_num: int = 1
+    admin_name: str
+    reason: str
+    unban_at: Optional[datetime] = None
+
+
+class PluginUnbanIn(BaseModel):
+    """Body for POST /api/plugin/unban — sent by the plugin right after it manually
+    executes a .unban in-game. Idempotent: resolves whatever active ban(s) exist for
+    this steam_id+server_num, or does nothing (still 200) if none are active."""
+    steam_id: str
+    server_num: int = 1
+
+
 class PluginHeartbeatOut(BaseModel):
     server_num: int
     server_name: Optional[str] = None
