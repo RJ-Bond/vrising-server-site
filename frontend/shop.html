@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Магазин — Just-Skill.Ru</title>
+  <link rel="canonical" href="https://v.just-skill.ru/shop.html" />
+  <meta property="og:url" content="https://v.just-skill.ru/shop.html" />
+  <meta name="description" content="Обменивайте очки, накопленные за игру, на предметы V Rising на серверах Just-Skill.Ru." />
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Just-Skill.Ru" />
+  <meta property="og:title" content="V Rising — Магазин" />
+  <meta property="og:description" content="Обменивайте очки, накопленные за игру, на предметы V Rising на серверах Just-Skill.Ru." />
+  <meta property="og:image" content="https://v.just-skill.ru/uploads/og-default.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/tailwind.min.css" />
+  <link rel="stylesheet" href="/theme.css?v=1" />
+  <link rel="stylesheet" href="/components.css?v=2" />
+  <style>
+    /* Design tokens in /theme.css — this page uses them unchanged. */
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; }
+    body {
+      background:var(--bg);
+      background-image:
+        radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
+      background-attachment:fixed;
+      font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh;
+    }
+    /* nav + tooltips + base: /components.css */
+
+    .section-icon-chip {
+      display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+      width:1.85rem; height:1.85rem; border-radius:.5rem; font-size:.95rem; line-height:1;
+    }
+    .chip-gold { background:rgba(201,169,74,0.14); border:1px solid rgba(201,169,74,0.4); }
+    .chip-purple { background:rgba(124,58,237,0.14); border:1px solid rgba(124,58,237,0.38); }
+
+    .section-divider {
+      border:none; height:1px; margin:0 0 2rem;
+      background:linear-gradient(90deg,transparent,rgba(150,0,28,0.28),transparent);
+    }
+    .shop-section-title {
+      display:flex; align-items:center; gap:.55rem; font-size:1.02rem; font-weight:700;
+      letter-spacing:.07em; color:var(--gold); text-transform:uppercase;
+    }
+    .shop-section-desc { font-size:.78rem; color:var(--muted); margin-top:.3rem; padding-left:1.75rem; }
+
+    .g-card {
+      background:var(--card); border:1px solid var(--border);
+      border-radius:.875rem; backdrop-filter:blur(16px) saturate(1.2);
+      box-shadow:0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
+      position:relative; overflow:hidden;
+    }
+    .g-card::before {
+      content:''; position:absolute; top:0; left:20%; right:20%; height:1px;
+      background:linear-gradient(90deg,transparent,rgba(200,0,45,0.35),transparent);
+    }
+
+    /* ── Balance header ── */
+    .balance-card {
+      display:flex; align-items:center; justify-content:space-between; gap:1rem;
+      padding:1.4rem 1.6rem; margin-bottom:1.75rem; flex-wrap:wrap;
+    }
+    .balance-label { font-size:.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:.1em; margin-bottom:.3rem; }
+    .balance-value { font-family:'Cinzel',serif; font-weight:900; font-size:2.1rem; color:var(--gold); line-height:1; }
+
+    /* ── Item grid ── */
+    .shop-grid {
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:1rem;
+    }
+    .shop-item-card {
+      display:flex; flex-direction:column; padding:1.1rem; transition:border-color .2s, transform .2s;
+    }
+    .shop-item-card:hover { border-color:rgba(201,169,74,0.35); }
+    .shop-item-card.disabled { opacity:.5; }
+    .shop-item-image {
+      width:100%; height:110px; border-radius:.6rem; object-fit:cover; margin-bottom:.75rem;
+      background:rgba(14,3,24,0.6); border:1px solid rgba(150,0,28,0.15);
+    }
+    .shop-item-name { font-weight:700; font-size:.92rem; color:var(--text); margin-bottom:.3rem; }
+    .shop-item-desc { font-size:.76rem; color:var(--muted); line-height:1.45; margin-bottom:.75rem; flex:1; }
+    .shop-item-cost {
+      display:inline-flex; align-items:center; gap:.3rem; font-family:'Cinzel',serif; font-weight:700;
+      font-size:.95rem; color:var(--gold); margin-bottom:.75rem;
+    }
+    .shop-item-stock { font-size:.68rem; color:var(--muted); margin-bottom:.5rem; }
+    .btn-redeem {
+      background:rgba(150,0,28,0.22); border:1px solid rgba(200,0,42,0.4); color:var(--text);
+      font-size:.8rem; font-weight:700; padding:.55rem 1rem; border-radius:.5rem; cursor:pointer;
+      font-family:'Inter',sans-serif; transition:background .15s;
+    }
+    .btn-redeem:hover:not(:disabled) { background:rgba(150,0,28,0.4); }
+    .btn-redeem:disabled { opacity:.5; cursor:default; }
+
+    .shop-empty { text-align:center; padding:3rem 1rem; }
+
+    /* ── Pending redemptions strip ── */
+    #my-redemptions-list { display:flex; flex-direction:column; gap:.5rem; }
+    .redemption-row {
+      display:flex; align-items:center; justify-content:space-between; gap:.75rem;
+      padding:.55rem .8rem; background:rgba(8,0,14,0.4); border:1px solid rgba(110,0,150,0.15); border-radius:.5rem;
+    }
+
+    @keyframes skel-shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
+    .skel-card { height:220px; border-radius:.875rem; background:linear-gradient(90deg,rgba(255,255,255,.03) 25%,rgba(255,255,255,.06) 50%,rgba(255,255,255,.03) 75%); background-size:200% 100%; animation:skel-shimmer 1.5s infinite; }
+
+    @media (max-width:640px) {
+      body { overflow-x:hidden; }
+      .glass-nav > div { padding:.6rem 1rem !important; }
+      input, textarea, select { font-size:16px !important; }
+      .balance-value { font-size:1.7rem; }
+      .redemption-row { flex-direction:column; align-items:flex-start; gap:.3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="mobile-overlay" id="mob-overlay" onclick="toggleMobileNav()"></div>
+<div class="mobile-drawer" id="mob-drawer">
+  <a href="/">Главная</a>
+  <a href="/servers.html">Сервера</a>
+  <a href="/leaderboard.html">Игроки</a>
+  <a href="/clans.html">Кланы</a>
+  <a href="/map.html">Карта</a>
+  <a href="/bans.html">Баны</a>
+  <a href="/shop.html" class="active">Магазин</a>
+  <a href="/faq.html">FAQ</a>
+  <a href="/profile.html">Профиль</a>
+</div>
+<nav class="glass-nav">
+  <div style="max-width:900px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
+    <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);"></a>
+    <div class="nav-links">
+      <a href="/" class="topnav-link">Главная</a>
+      <a href="/servers.html" class="topnav-link">Сервера</a>
+      <a href="/leaderboard.html" class="topnav-link">Игроки</a>
+      <a href="/clans.html" class="topnav-link">Кланы</a>
+      <a href="/map.html" class="topnav-link">Карта</a>
+      <a href="/bans.html" class="topnav-link">Баны</a>
+      <a href="/shop.html" class="topnav-link active">Магазин</a>
+      <a href="/faq.html" class="topnav-link">FAQ</a>
+      <a id="nav-profile-link" href="/profile.html" class="topnav-link" style="display:none;">Профиль</a>
+      <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
+    </div>
+    <button class="nav-burger" onclick="toggleMobileNav()" aria-label="Меню">☰</button>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div style="max-width:1000px;margin:2.5rem auto;padding:0 1rem;position:relative;z-index:1;">
+
+  <!-- Page header -->
+  <div style="text-align:center;margin-bottom:1.75rem;animation:fade-up .38s ease both;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:.5rem;">
+      <span style="height:1px;width:36px;background:linear-gradient(90deg,transparent,var(--gold));"></span>
+      <h1 class="gothic" style="font-size:1.25rem;font-weight:700;letter-spacing:.09em;color:var(--gold);text-transform:uppercase;">Магазин</h1>
+      <span style="height:1px;width:36px;background:linear-gradient(90deg,var(--gold),transparent);"></span>
+    </div>
+    <p style="font-size:.82rem;color:var(--muted);line-height:1.5;">
+      Обменивайте очки, накопленные за игру и стрики захода, на предметы. Заявки выдаются администрацией вручную в игре.
+    </p>
+  </div>
+
+  <!-- Logged-out gate -->
+  <div id="shop-login-gate" style="display:none;text-align:center;padding:3rem 1rem;animation:fade-up .38s ease both;">
+    <div style="font-size:2.4rem;margin-bottom:.8rem;opacity:.7;">🔒</div>
+    <p class="gothic" style="font-size:.92rem;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:.6rem;">Нужно войти в аккаунт</p>
+    <p style="font-size:.8rem;color:var(--muted);margin-bottom:1.2rem;">Магазин доступен только авторизованным игрокам — очки привязаны к вашему аккаунту на сайте.</p>
+    <a href="/login.html" style="display:inline-block;background:rgba(150,0,28,0.22);border:1px solid rgba(200,0,42,0.4);color:var(--text);font-size:.82rem;font-weight:700;padding:.6rem 1.4rem;border-radius:.5rem;text-decoration:none;">Войти</a>
+  </div>
+
+  <!-- Main content (shown once login confirmed) -->
+  <div id="shop-main" style="display:none;">
+
+    <!-- Balance header -->
+    <div class="g-card balance-card" style="animation:fade-up .38s ease .02s both;">
+      <div>
+        <div class="balance-label">Ваш баланс</div>
+        <div class="balance-value" id="shop-balance-val">—</div>
+      </div>
+      <a href="/profile.html" style="font-size:.78rem;color:var(--muted);text-decoration:none;border:1px solid rgba(150,0,28,0.25);border-radius:.5rem;padding:.45rem .9rem;white-space:nowrap;">История очков →</a>
+    </div>
+
+    <!-- Item grid -->
+    <div style="margin-bottom:.25rem;">
+      <div class="gothic shop-section-title">
+        <span class="section-icon-chip chip-gold">🛒</span> Доступные товары
+      </div>
+      <p class="shop-section-desc">Стоимость списывается сразу; выдача — вручную администрацией после подтверждения заявки.</p>
+    </div>
+    <div id="shop-items-grid" class="shop-grid" style="margin:1rem 0 2rem;">
+      <div class="skel-card"></div><div class="skel-card"></div><div class="skel-card"></div>
+    </div>
+    <div id="shop-items-empty" class="shop-empty" style="display:none;">
+      <div style="font-size:3rem;margin-bottom:.8rem;filter:drop-shadow(0 0 18px rgba(180,0,30,0.5));">🛒</div>
+      <p class="gothic" style="font-size:.92rem;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:.4rem;">Товаров пока нет</p>
+      <p style="font-size:.8rem;color:var(--muted);">Загляните позже — администрация ещё наполняет каталог.</p>
+    </div>
+    <div id="shop-items-error" style="display:none;text-align:center;padding:2.5rem 1rem;">
+      <div style="font-size:2.2rem;margin-bottom:.7rem;opacity:.6;">⚠</div>
+      <p style="font-size:.8rem;color:var(--muted);margin-bottom:.9rem;">Не удалось загрузить каталог.</p>
+      <button onclick="loadShopItems()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
+    </div>
+
+    <!-- Pending redemptions strip -->
+    <hr class="section-divider">
+    <div style="margin-bottom:.25rem;">
+      <div class="gothic shop-section-title">
+        <span class="section-icon-chip chip-purple">📦</span> Мои заявки
+      </div>
+      <p class="shop-section-desc">Статус ваших последних заявок на выдачу.</p>
+    </div>
+    <div class="g-card" style="padding:1.2rem 1.4rem;margin-top:1rem;">
+      <div id="my-redemptions-list">
+        <p style="color:var(--muted);font-size:.82rem;">Загрузка…</p>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script src="/common.js?v=9"></script>
+<script>
+const API = '/api';
+let _shopBalance = 0;
+let _shopItemsCache = [];
+
+/* ── Auth gate — this page has no value for anonymous visitors (balance/redeem are
+   account-bound), so unlike bans.html/profile.html's "upgrade in place" pattern, a
+   logged-out visitor is redirected straight to the login gate, same principle
+   profile.html uses for its own #profile-error state. Cached-role check first for an
+   instant reveal, then /api/auth/me is the server-verified source of truth. */
+(function() {
+  const cached = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
+  if (cached) {
+    document.getElementById('nav-profile-link') && (document.getElementById('nav-profile-link').style.display = '');
+    document.getElementById('nav-login-link') && (document.getElementById('nav-login-link').style.display = 'none');
+  }
+  fetch(`${API}/auth/me`, { credentials: 'include' }).then(r => {
+    if (!r.ok) {
+      localStorage.removeItem('user'); sessionStorage.removeItem('user');
+      localStorage.removeItem('token'); sessionStorage.removeItem('token');
+      document.getElementById('nav-profile-link').style.display = 'none';
+      document.getElementById('nav-login-link').style.display = '';
+      document.getElementById('shop-login-gate').style.display = '';
+      return;
+    }
+    document.getElementById('nav-profile-link').style.display = '';
+    document.getElementById('nav-login-link').style.display = 'none';
+    r.json().then(u => {
+      _shopBalance = u.points_balance || 0;
+      document.getElementById('shop-main').style.display = '';
+      document.getElementById('shop-balance-val').textContent = _shopBalance.toLocaleString('ru-RU');
+      loadShopItems();
+      loadMyRedemptions();
+    });
+  }).catch(() => {
+    document.getElementById('shop-login-gate').style.display = '';
+  });
+})();
+
+/* ── Site settings ── */
+function applySiteBackground(bg) {
+  bg = (bg || '').trim();
+  if (!bg) return;
+  document.body.style.backgroundImage = [
+    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
+    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
+    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
+    `url('${bg}')`,
+  ].join(',');
+  document.body.style.backgroundSize = 'auto,auto,auto,cover';
+  document.body.style.backgroundPosition = 'center,center,center,center';
+  document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
+}
+(async function() {
+  try {
+    const d = await (window.getSettings?.() ?? fetch(`${API}/settings/public`).then(r => r.json()));
+    const title = (d.site_title || 'V Rising').trim();
+    document.title = `${title} — Магазин`;
+    applySiteBackground(d.bg_image_url);
+  } catch {}
+})();
+
+/* ── Mobile nav ── */
+function toggleMobileNav() {
+  const overlay = document.getElementById('mob-overlay');
+  const drawer  = document.getElementById('mob-drawer');
+  const isOpen  = drawer.classList.contains('open');
+  drawer.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('open', !isOpen);
+  document.body.style.overflow = isOpen ? '' : 'hidden';
+}
+
+/* ── Item grid ── */
+function shopItemCardHtml(it) {
+  const disabled = it.cost > _shopBalance || it.stock === 0;
+  const img = it.image_url
+    ? `<img class="shop-item-image" src="${esc(it.image_url)}" alt="">`
+    : `<div class="shop-item-image" style="display:flex;align-items:center;justify-content:center;font-size:1.8rem;opacity:.35;">🎁</div>`;
+  const stockLabel = it.stock == null ? '' : `<div class="shop-item-stock">Осталось: ${it.stock}</div>`;
+  return `<div class="g-card shop-item-card${disabled ? ' disabled' : ''}">
+    ${img}
+    <div class="shop-item-name">${esc(it.name)}</div>
+    ${it.description ? `<div class="shop-item-desc">${esc(it.description)}</div>` : '<div class="shop-item-desc"></div>'}
+    ${stockLabel}
+    <div class="shop-item-cost">⚡ ${it.cost}</div>
+    <button class="btn-redeem" ${disabled ? 'disabled' : ''} onclick="redeemItem(${it.id}, this)">${it.stock === 0 ? 'Нет в наличии' : 'Обменять'}</button>
+  </div>`;
+}
+
+async function loadShopItems() {
+  const grid = document.getElementById('shop-items-grid');
+  const empty = document.getElementById('shop-items-empty');
+  const error = document.getElementById('shop-items-error');
+  error.style.display = 'none';
+  empty.style.display = 'none';
+  try {
+    const items = await fetch(`${API}/shop/items`, { credentials: 'include' }).then(r => { if (!r.ok) throw new Error(); return r.json(); });
+    _shopItemsCache = items;
+    if (!items.length) { grid.innerHTML = ''; empty.style.display = ''; return; }
+    grid.innerHTML = items.map(shopItemCardHtml).join('');
+  } catch {
+    grid.innerHTML = '';
+    error.style.display = 'block';
+  }
+}
+
+async function redeemItem(id, btnEl) {
+  const item = _shopItemsCache.find(i => i.id === id);
+  if (!item) return;
+  if (!confirm(`Обменять ${item.cost} очков на «${item.name}»?`)) return;
+  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '…'; }
+  try {
+    const res = await fetch(`${API}/shop/redeem`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shop_item_id: id }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      if (typeof showToast === 'function') showToast(data.detail || 'Не удалось выполнить обмен', 'error');
+      if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Обменять'; }
+      return;
+    }
+    // Optimistic balance decrement — matches this site's convention elsewhere
+    // (bans.html's unbanActiveBan()) rather than a full re-fetch of /api/auth/me.
+    _shopBalance -= item.cost;
+    document.getElementById('shop-balance-val').textContent = _shopBalance.toLocaleString('ru-RU');
+    if (typeof showToast === 'function') showToast('Заявка отправлена! Ожидайте выдачи в игре.', 'success');
+    loadShopItems();
+    loadMyRedemptions();
+  } catch {
+    if (typeof showToast === 'function') showToast('Ошибка соединения', 'error');
+    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Обменять'; }
+  }
+}
+
+/* ── My redemptions strip ── */
+const SHOP_REDEMPTION_STATUS_LABELS = { pending: 'Ожидает', fulfilled: 'Выдано', cancelled: 'Отменено' };
+const SHOP_REDEMPTION_STATUS_COLORS = { pending: '#f0b74a', fulfilled: '#6aad7a', cancelled: 'var(--muted)' };
+
+async function loadMyRedemptions() {
+  const list = document.getElementById('my-redemptions-list');
+  try {
+    const d = await fetch(`${API}/shop/redemptions/me?per_page=10`, { credentials: 'include' }).then(r => r.json());
+    const items = d.items || [];
+    if (!items.length) { list.innerHTML = '<p style="color:var(--muted);font-size:.82rem;">Заявок пока нет.</p>'; return; }
+    list.innerHTML = items.map(r => `
+      <div class="redemption-row">
+        <div>
+          <div style="font-size:.85rem;color:var(--text);">${esc(r.item_name_snapshot)}</div>
+          <div style="font-size:.68rem;color:var(--muted);margin-top:.1rem;">${fmtDate(r.created_at)} · ${r.cost_snapshot} очков</div>
+        </div>
+        <span style="font-size:.72rem;font-weight:700;color:${SHOP_REDEMPTION_STATUS_COLORS[r.status] || 'var(--muted)'};">${SHOP_REDEMPTION_STATUS_LABELS[r.status] || r.status}</span>
+      </div>`).join('');
+  } catch {
+    list.innerHTML = '<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки заявок.</p>';
+  }
+}
+</script>
+</body>
+</html>

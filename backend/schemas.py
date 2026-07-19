@@ -363,6 +363,7 @@ class UserOut(BaseModel):
     badge_style: Optional[str] = 'default'
     totp_enabled: bool = False
     bio: Optional[str] = None
+    points_balance: int = 0
 
     model_config = {"from_attributes": True}
 
@@ -815,6 +816,169 @@ class PollOut(BaseModel):
     options: list[PollOptionOut] = []
     total_votes: int = 0
     user_voted: list[int] = []
+    model_config = {"from_attributes": True}
+
+
+# ─── Points economy ─────────────────────────────────────────────────────────
+
+class ShopItemCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+    cost: int
+    image_url: Optional[str] = None
+    is_active: bool = True
+    stock: Optional[int] = None
+    sort_order: int = 0
+
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("Item name cannot be empty")
+        return v[:128]
+
+    @field_validator("cost")
+    @classmethod
+    def cost_positive(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("cost must be greater than 0")
+        return v
+
+    @field_validator("stock")
+    @classmethod
+    def stock_non_negative(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("stock cannot be negative")
+        return v
+
+
+class ShopItemUpdate(BaseModel):
+    """Body for PUT /api/admin/shop/items/{id} — every field optional (partial update),
+    same exclude_unset convention as AnnouncementUpdate."""
+    name: Optional[str] = None
+    description: Optional[str] = None
+    cost: Optional[int] = None
+    image_url: Optional[str] = None
+    is_active: Optional[bool] = None
+    stock: Optional[int] = None
+    sort_order: Optional[int] = None
+
+    @field_validator("name")
+    @classmethod
+    def name_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            raise ValueError("Item name cannot be empty")
+        return v[:128]
+
+    @field_validator("cost")
+    @classmethod
+    def cost_positive(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v <= 0:
+            raise ValueError("cost must be greater than 0")
+        return v
+
+    @field_validator("stock")
+    @classmethod
+    def stock_non_negative(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError("stock cannot be negative")
+        return v
+
+
+class ShopItemOut(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    cost: int
+    image_url: Optional[str] = None
+    is_active: bool
+    stock: Optional[int] = None
+    sort_order: int = 0
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ShopRedeemIn(BaseModel):
+    shop_item_id: int
+    note: Optional[str] = None
+
+    @field_validator("note")
+    @classmethod
+    def note_len(cls, v: Optional[str]) -> Optional[str]:
+        return v[:500] if v else v
+
+
+class ShopRedemptionResolveIn(BaseModel):
+    """Body for POST /api/admin/shop/redemptions/{id}/fulfill and .../cancel — an optional
+    admin note explaining the resolution (e.g. why a request was cancelled)."""
+    admin_note: Optional[str] = None
+
+    @field_validator("admin_note")
+    @classmethod
+    def note_len(cls, v: Optional[str]) -> Optional[str]:
+        return v[:500] if v else v
+
+
+class ShopRedemptionOut(BaseModel):
+    id: int
+    user_id: int
+    shop_item_id: Optional[int] = None
+    item_name_snapshot: str
+    cost_snapshot: int
+    status: str
+    delivery_mode: str = "manual"
+    player_note: Optional[str] = None
+    admin_note: Optional[str] = None
+    created_at: datetime
+    resolved_at: Optional[datetime] = None
+    resolved_by: Optional[str] = None
+    # Populated only on the admin queue view (joined in), not the player's own history.
+    username: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class PointsGrantIn(BaseModel):
+    """Body for POST /api/admin/points/grant — a manual balance adjustment, primarily for
+    donations (no payment integration exists in this repo yet). delta may be negative for
+    corrections."""
+    user_id: int
+    delta: int
+    reason: str = "donation"
+    note: Optional[str] = None
+
+    @field_validator("delta")
+    @classmethod
+    def delta_not_zero(cls, v: int) -> int:
+        if v == 0:
+            raise ValueError("delta cannot be 0")
+        return v
+
+    @field_validator("note")
+    @classmethod
+    def note_len(cls, v: Optional[str]) -> Optional[str]:
+        return v[:256] if v else v
+
+
+class PointsTransactionOut(BaseModel):
+    id: int
+    user_id: int
+    delta: int
+    balance_after: int
+    reason: str
+    detail: Optional[str] = None
+    ref_type: Optional[str] = None
+    ref_id: Optional[int] = None
+    created_at: datetime
+    # Populated only on the admin ledger view (joined in), not the player's own history.
+    username: Optional[str] = None
+
     model_config = {"from_attributes": True}
 
 

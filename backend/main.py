@@ -72,7 +72,7 @@ from sqlalchemy import select, func, delete, text, or_, update, and_
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate, ServerApiKey, ScheduledRestart, Warning, Ban, BanAppeal, ModerationLogEntry, PlayerDailyActivity
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate, ServerApiKey, ScheduledRestart, Warning, Ban, BanAppeal, ModerationLogEntry, PlayerDailyActivity, PointsTransaction, ShopItem, ShopRedemption
 from .auth import (
     verify_password,
     get_password_hash,
@@ -149,6 +149,14 @@ from .schemas import (
     AppealResolveIn,
     PluginLogActionIn,
     LinkedAccountOut,
+    ShopItemCreate,
+    ShopItemUpdate,
+    ShopItemOut,
+    ShopRedeemIn,
+    ShopRedemptionResolveIn,
+    ShopRedemptionOut,
+    PointsGrantIn,
+    PointsTransactionOut,
     strip_html_tags,
 )
 
@@ -203,6 +211,44 @@ async def _audit(db: AsyncSession, admin_id: int, action: str, target_type: str 
         target_id=target_id,
         detail=(detail or "")[:500],
     ))
+
+
+async def _award_points(db: AsyncSession, user: User, delta: int, reason: str, detail: str = None) -> None:
+    """Adjusts a user's balance and appends the matching ledger row in one step. Callers
+    still need to `await db.commit()` themselves afterward (this repo's usual pattern —
+    see the Announcements CRUD endpoints). NOT safe for the redeem/spend path under
+    concurrency: this reads/writes `user.points_balance` in Python, so two overlapping
+    calls for the same user can race. Only used for earn/grant/refund paths (playtime,
+    streak, admin grant, redemption cancel-refund) where a single admin/plugin caller is
+    the only writer at a time; the actual spend path (POST /api/shop/redeem) uses a
+    separate atomic conditional UPDATE instead — see that endpoint."""
+    user.points_balance += delta
+    db.add(PointsTransaction(
+        user_id=user.id, delta=delta, balance_after=user.points_balance,
+        reason=reason, detail=(detail or "")[:256], created_at=datetime.utcnow(),
+    ))
+
+
+async def _get_points_config(db: AsyncSession) -> dict:
+    """Reads the three points-economy earning-rate Settings, parsed to int with a sane
+    fallback if a row is somehow missing (e.g. a DB that predates this feature and hasn't
+    gone through _seed_defaults yet)."""
+    res = await db.execute(select(Setting).where(Setting.key.in_(
+        ["points_per_minute_playtime", "points_streak_bonus", "points_streak_min_days"]
+    )))
+    vals = {s.key: s.value for s in res.scalars().all()}
+
+    def _to_int(v, default):
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return default
+
+    return {
+        "per_minute": _to_int(vals.get("points_per_minute_playtime"), 1),
+        "streak_bonus": _to_int(vals.get("points_streak_bonus"), 10),
+        "streak_min_days": _to_int(vals.get("points_streak_min_days"), 2),
+    }
 
 
 async def _send_reset_email(to_email: str, reset_url: str) -> bool:
@@ -342,6 +388,11 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="maintenance_fallback_image", value=""),
         Setting(key="maintenance_status_updates", value="[]"),
         Setting(key="maintenance_history", value="[]"),
+        # Points economy — earning rates, tunable by an admin on the Economy tab
+        # (not exposed on /api/settings/public: admin-only tuning, no anonymous use).
+        Setting(key="points_per_minute_playtime", value="1"),
+        Setting(key="points_streak_bonus", value="10"),
+        Setting(key="points_streak_min_days", value="2"),
     ]
     for s in default_settings:
         existing = await db.execute(select(Setting).where(Setting.key == s.key))
@@ -430,6 +481,13 @@ async def lifespan(app: FastAPI):
             "CREATE INDEX IF NOT EXISTS ix_moderation_log_created ON moderation_log(created_at)",
             "CREATE TABLE IF NOT EXISTS player_daily_activity (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, steam_id VARCHAR(32) NOT NULL, activity_date VARCHAR(10) NOT NULL, UNIQUE(server_num, steam_id, activity_date))",
             "CREATE INDEX IF NOT EXISTS ix_player_daily_activity_steam_id ON player_daily_activity(steam_id)",
+            # ─── Points economy ─────────────────────────────────────────────
+            "ALTER TABLE users ADD COLUMN points_balance INTEGER NOT NULL DEFAULT 0",
+            "CREATE TABLE IF NOT EXISTS points_transactions (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, delta INTEGER NOT NULL, balance_after INTEGER NOT NULL, reason VARCHAR(32) NOT NULL, detail VARCHAR(256), ref_type VARCHAR(32), ref_id INTEGER, created_at DATETIME NOT NULL)",
+            "CREATE INDEX IF NOT EXISTS ix_points_transactions_user ON points_transactions(user_id, created_at)",
+            "CREATE TABLE IF NOT EXISTS shop_items (id INTEGER PRIMARY KEY, name VARCHAR(128) NOT NULL, description TEXT, cost INTEGER NOT NULL, image_url VARCHAR(512), is_active BOOLEAN NOT NULL DEFAULT 1, stock INTEGER, sort_order INTEGER NOT NULL DEFAULT 0, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL)",
+            "CREATE TABLE IF NOT EXISTS shop_redemptions (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, shop_item_id INTEGER REFERENCES shop_items(id) ON DELETE SET NULL, item_name_snapshot VARCHAR(128) NOT NULL, cost_snapshot INTEGER NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'pending', delivery_mode VARCHAR(16) NOT NULL DEFAULT 'manual', player_note VARCHAR(500), admin_note VARCHAR(500), created_at DATETIME NOT NULL, resolved_at DATETIME, resolved_by VARCHAR(64))",
+            "CREATE INDEX IF NOT EXISTS ix_shop_redemptions_status_created ON shop_redemptions(status, created_at)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -1194,6 +1252,17 @@ async def plugin_report_session(
     record.last_seen = ended_at
     record.session_count += 1
 
+    # Playtime-earning hook — awards points to the linked site account, if any. An A2S-only
+    # session (no site account has claimed this steam_id) is a no-op; PlayerRecord update
+    # above proceeds unchanged either way.
+    points_cfg = await _get_points_config(db)
+    earned = (body.session_seconds // 60) * points_cfg["per_minute"]
+    if earned > 0:
+        user_res = await db.execute(select(User).where(User.steam_id == body.steam_id))
+        earning_user = user_res.scalar_one_or_none()
+        if earning_user is not None:
+            await _award_points(db, earning_user, earned, "playtime", f"{body.session_seconds}s session on server {body.server_num}")
+
     await db.commit()
     return {"success": True}
 
@@ -1439,7 +1508,8 @@ async def plugin_connect_streak(
             PlayerDailyActivity.activity_date == today_str,
         )
     )
-    if existing.scalar_one_or_none() is None:
+    was_new_today = existing.scalar_one_or_none() is None
+    if was_new_today:
         db.add(PlayerDailyActivity(
             server_num=body.server_num,
             steam_id=body.steam_id,
@@ -1460,6 +1530,18 @@ async def plugin_connect_streak(
     while cursor.isoformat() in active_dates:
         streak_days += 1
         cursor -= timedelta(days=1)
+
+    # Streak-bonus earning hook — only on the first connect of the day (was_new_today),
+    # never on a same-day idempotent re-poll, and only once the streak reaches the
+    # configured minimum. Second, separate commit (streak_days isn't known until after
+    # the first commit above already ran).
+    points_cfg = await _get_points_config(db)
+    if was_new_today and streak_days >= points_cfg["streak_min_days"]:
+        user_res = await db.execute(select(User).where(User.steam_id == body.steam_id))
+        earning_user = user_res.scalar_one_or_none()
+        if earning_user is not None:
+            await _award_points(db, earning_user, points_cfg["streak_bonus"], "streak", f"streak day {streak_days}")
+            await db.commit()
 
     return {"streak_days": streak_days}
 
@@ -1913,6 +1995,322 @@ async def test_send_announcement(
     await _audit(db, current_user.id, "announcement.test_send", target_type="announcement", target_id=a.id, detail=a.text)
     await db.commit()
     return AnnouncementOut.model_validate(a)
+
+
+# ─── Points economy — shop catalog (admin) ─────────────────────────────────────
+# Mirrors the Announcements CRUD pattern immediately above: XCreate/XUpdate all-Optional
+# + exclude_unset/setattr, XOut with from_attributes, _audit() on every mutation.
+
+@app.get("/api/admin/shop/items", response_model=list[ShopItemOut])
+async def list_shop_items_admin(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    """Unlike GET /api/shop/items (public), this returns every item including inactive
+    ones — the admin catalog table needs to show/toggle them."""
+    result = await db.execute(select(ShopItem).order_by(ShopItem.sort_order, ShopItem.id))
+    return [ShopItemOut.model_validate(i) for i in result.scalars().all()]
+
+
+@app.post("/api/admin/shop/items", response_model=ShopItemOut, status_code=201)
+async def create_shop_item(
+    body: ShopItemCreate,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    item = ShopItem(
+        name=body.name, description=body.description, cost=body.cost,
+        image_url=body.image_url, is_active=body.is_active, stock=body.stock,
+        sort_order=body.sort_order,
+    )
+    db.add(item)
+    await db.commit()
+    await db.refresh(item)
+    await _audit(db, current_user.id, "shop.item.create", target_type="shop_item", target_id=item.id, detail=item.name)
+    await db.commit()
+    return ShopItemOut.model_validate(item)
+
+
+@app.put("/api/admin/shop/items/{item_id}", response_model=ShopItemOut)
+async def update_shop_item(
+    item_id: int,
+    body: ShopItemUpdate,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    item = (await db.execute(select(ShopItem).where(ShopItem.id == item_id))).scalar_one_or_none()
+    if item is None:
+        raise HTTPException(404, "Item not found")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(item, field, value)
+    await _audit(db, current_user.id, "shop.item.update", target_type="shop_item", target_id=item.id, detail=item.name)
+    await db.commit()
+    await db.refresh(item)
+    return ShopItemOut.model_validate(item)
+
+
+@app.delete("/api/admin/shop/items/{item_id}", status_code=204)
+async def delete_shop_item(
+    item_id: int,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """shop_item_id is ON DELETE SET NULL on ShopRedemption — past redemption history
+    (item_name_snapshot/cost_snapshot) survives a catalog item being removed."""
+    item = (await db.execute(select(ShopItem).where(ShopItem.id == item_id))).scalar_one_or_none()
+    if item is None:
+        raise HTTPException(404, "Item not found")
+    await _audit(db, current_user.id, "shop.item.delete", target_type="shop_item", target_id=item.id, detail=item.name)
+    await db.delete(item)
+    await db.commit()
+
+
+# ─── Points economy — redemption queue (admin) ─────────────────────────────────
+# Purchase requests fulfilled MANUALLY in-game by an admin (v1 — see delivery_mode on
+# ShopRedemption / the module docstring at the top of models.py's ShopRedemption class).
+
+@app.get("/api/admin/shop/redemptions")
+async def list_shop_redemptions_admin(
+    status: str = Query(default="pending"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    q: str = Query(""),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    """Default filter is "pending" (the actionable queue); pass status="" for every
+    status. Same page/per_page pagination convention as GET /api/admin/audit-log."""
+    filters = []
+    if status.strip():
+        filters.append(ShopRedemption.status == status.strip())
+    if q.strip():
+        like = f"%{q.strip()}%"
+        filters.append(or_(User.username.ilike(like), ShopRedemption.item_name_snapshot.ilike(like)))
+    base_query = select(ShopRedemption, User.username).join(User, User.id == ShopRedemption.user_id).where(*filters)
+    count_query = select(func.count(ShopRedemption.id)).join(User, User.id == ShopRedemption.user_id).where(*filters)
+    total = (await db.execute(count_query)).scalar_one()
+    rows = (await db.execute(
+        base_query.order_by(ShopRedemption.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
+    )).all()
+    items = []
+    for r, username in rows:
+        out = ShopRedemptionOut.model_validate(r)
+        out.username = username
+        items.append(out)
+    return {"total": total, "page": page, "per_page": per_page, "items": items}
+
+
+@app.post("/api/admin/shop/redemptions/{redemption_id}/fulfill", response_model=ShopRedemptionOut)
+async def fulfill_shop_redemption(
+    redemption_id: int,
+    body: ShopRedemptionResolveIn = ShopRedemptionResolveIn(),
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    r = (await db.execute(select(ShopRedemption).where(ShopRedemption.id == redemption_id))).scalar_one_or_none()
+    if r is None:
+        raise HTTPException(404, "Redemption not found")
+    if r.status != "pending":
+        raise HTTPException(409, "Redemption is not pending")
+    r.status = "fulfilled"
+    r.resolved_at = datetime.utcnow()
+    r.resolved_by = current_user.username
+    if body.admin_note:
+        r.admin_note = body.admin_note
+    await _audit(db, current_user.id, "shop.redemption.fulfill", target_type="shop_redemption", target_id=r.id, detail=r.item_name_snapshot)
+    await db.commit()
+    await db.refresh(r)
+    return ShopRedemptionOut.model_validate(r)
+
+
+@app.post("/api/admin/shop/redemptions/{redemption_id}/cancel", response_model=ShopRedemptionOut)
+async def cancel_shop_redemption(
+    redemption_id: int,
+    body: ShopRedemptionResolveIn = ShopRedemptionResolveIn(),
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Refunds the points spent, and 409s if the redemption isn't currently pending — this
+    is what prevents a double-refund from two admins (or one admin double-clicking)
+    cancelling the same already-cancelled/fulfilled request."""
+    r = (await db.execute(select(ShopRedemption).where(ShopRedemption.id == redemption_id))).scalar_one_or_none()
+    if r is None:
+        raise HTTPException(404, "Redemption not found")
+    if r.status != "pending":
+        raise HTTPException(409, "Redemption is not pending")
+    user_res = await db.execute(select(User).where(User.id == r.user_id))
+    user = user_res.scalar_one_or_none()
+    if user is not None:
+        await _award_points(db, user, r.cost_snapshot, "refund", f"cancelled redemption #{r.id}: {r.item_name_snapshot}")
+    r.status = "cancelled"
+    r.resolved_at = datetime.utcnow()
+    r.resolved_by = current_user.username
+    if body.admin_note:
+        r.admin_note = body.admin_note
+    await _audit(db, current_user.id, "shop.redemption.cancel", target_type="shop_redemption", target_id=r.id, detail=r.item_name_snapshot)
+    await db.commit()
+    await db.refresh(r)
+    return ShopRedemptionOut.model_validate(r)
+
+
+# ─── Points economy — manual grants & ledger (admin) ───────────────────────────
+
+@app.post("/api/admin/points/grant", response_model=PointsTransactionOut, status_code=201)
+async def grant_points(
+    body: PointsGrantIn,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Manual balance adjustment — primarily for donations, since no payment integration
+    exists in this repo yet (see the module note at the top of models.py's
+    PointsTransaction class). delta may be negative for corrections."""
+    user_res = await db.execute(select(User).where(User.id == body.user_id))
+    user = user_res.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(404, "User not found")
+    reason = (body.reason or "").strip()[:32] or "admin_adjust"
+    await _award_points(db, user, body.delta, reason, body.note)
+    await _audit(db, current_user.id, "points.grant", target_type="user", target_id=user.id, detail=f"{body.delta:+d} ({reason}): {body.note or ''}")
+    await db.commit()
+    tx_res = await db.execute(
+        select(PointsTransaction).where(PointsTransaction.user_id == user.id).order_by(PointsTransaction.id.desc()).limit(1)
+    )
+    tx = tx_res.scalar_one()
+    out = PointsTransactionOut.model_validate(tx)
+    out.username = user.username
+    return out
+
+
+@app.get("/api/admin/points/transactions")
+async def list_points_transactions_admin(
+    user_id: Optional[int] = Query(default=None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    """Full ledger, optionally filtered to one player — the site-wide audit trail behind
+    every balance change (earn, spend, grant, refund)."""
+    filters = []
+    if user_id is not None:
+        filters.append(PointsTransaction.user_id == user_id)
+    total = (await db.execute(select(func.count(PointsTransaction.id)).where(*filters))).scalar_one()
+    rows = (await db.execute(
+        select(PointsTransaction, User.username).join(User, User.id == PointsTransaction.user_id)
+        .where(*filters).order_by(PointsTransaction.created_at.desc())
+        .offset((page - 1) * per_page).limit(per_page)
+    )).all()
+    items = []
+    for tx, username in rows:
+        out = PointsTransactionOut.model_validate(tx)
+        out.username = username
+        items.append(out)
+    return {"total": total, "page": page, "per_page": per_page, "items": items}
+
+
+# ─── Points economy — shop (player-facing) ─────────────────────────────────────
+
+@app.get("/api/shop/items", response_model=list[ShopItemOut])
+async def list_shop_items_public(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Active items only. stock is included but NOT filtered out at stock=0 — the
+    front-end greys those out instead of hiding them, so a player can still see what
+    exists even when temporarily out of stock."""
+    result = await db.execute(select(ShopItem).where(ShopItem.is_active == True).order_by(ShopItem.sort_order, ShopItem.id))
+    return [ShopItemOut.model_validate(i) for i in result.scalars().all()]
+
+
+@app.post("/api/shop/redeem", response_model=ShopRedemptionOut, status_code=201)
+async def redeem_shop_item(
+    body: ShopRedeemIn,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """SQLite-specific correctness note (this repo's engine has no row-locking —
+    backend/database.py's plain create_async_engine, no with_for_update() anywhere in the
+    codebase): a naive "read balance in Python, check, then UPDATE" has a race window
+    between two concurrent requests for the same user. A single conditional UPDATE is used
+    instead — the WHERE clause re-checks the balance as one indivisible SQL statement, so
+    at most one of two concurrent double-redeem attempts can ever succeed. Same pattern for
+    stock. See backend/tests/test_points_shop.py's asyncio.gather concurrency test."""
+    item_res = await db.execute(select(ShopItem).where(ShopItem.id == body.shop_item_id))
+    item = item_res.scalar_one_or_none()
+    if item is None or not item.is_active:
+        raise HTTPException(404, "Item not found")
+
+    result = await db.execute(
+        update(User).where(User.id == current_user.id, User.points_balance >= item.cost)
+        .values(points_balance=User.points_balance - item.cost)
+    )
+    if result.rowcount == 0:
+        await db.rollback()
+        raise HTTPException(400, "Insufficient points balance")
+
+    if item.stock is not None:
+        stock_result = await db.execute(
+            update(ShopItem).where(ShopItem.id == item.id, ShopItem.stock > 0)
+            .values(stock=ShopItem.stock - 1)
+        )
+        if stock_result.rowcount == 0:
+            await db.rollback()
+            raise HTTPException(409, "Item out of stock")
+
+    # Re-fetch the fresh balance for the ledger snapshot — current_user.points_balance in
+    # memory reflects the pre-request state, not what the conditional UPDATE above (or any
+    # concurrent request that also just succeeded) actually left it at.
+    fresh_res = await db.execute(select(User.points_balance).where(User.id == current_user.id))
+    fresh_balance = fresh_res.scalar_one()
+
+    redemption = ShopRedemption(
+        user_id=current_user.id, shop_item_id=item.id,
+        item_name_snapshot=item.name, cost_snapshot=item.cost,
+        status="pending", delivery_mode="manual", player_note=body.note,
+    )
+    db.add(redemption)
+    await db.flush()  # assign redemption.id for the ledger row's ref_id, before commit
+
+    db.add(PointsTransaction(
+        user_id=current_user.id, delta=-item.cost, balance_after=fresh_balance,
+        reason="redeem", detail=item.name[:256], ref_type="shop_redemption", ref_id=redemption.id,
+    ))
+    await db.commit()
+    await db.refresh(redemption)
+    return ShopRedemptionOut.model_validate(redemption)
+
+
+@app.get("/api/shop/redemptions/me")
+async def my_shop_redemptions(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    filters = [ShopRedemption.user_id == current_user.id]
+    total = (await db.execute(select(func.count(ShopRedemption.id)).where(*filters))).scalar_one()
+    rows = (await db.execute(
+        select(ShopRedemption).where(*filters).order_by(ShopRedemption.created_at.desc())
+        .offset((page - 1) * per_page).limit(per_page)
+    )).scalars().all()
+    return {"total": total, "page": page, "per_page": per_page, "items": [ShopRedemptionOut.model_validate(r) for r in rows]}
+
+
+@app.get("/api/points/transactions/me")
+async def my_points_transactions(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Caller's own full ledger — earn rows (playtime/streak) as well as spend/refund."""
+    filters = [PointsTransaction.user_id == current_user.id]
+    total = (await db.execute(select(func.count(PointsTransaction.id)).where(*filters))).scalar_one()
+    rows = (await db.execute(
+        select(PointsTransaction).where(*filters).order_by(PointsTransaction.created_at.desc())
+        .offset((page - 1) * per_page).limit(per_page)
+    )).scalars().all()
+    return {"total": total, "page": page, "per_page": per_page, "items": [PointsTransactionOut.model_validate(t) for t in rows]}
 
 
 # ─── Per-server message templates (admin) ──────────────────────────────────────
@@ -4120,6 +4518,7 @@ ALLOWED_SETTING_KEYS = {
     "rcon_port", "rcon_password", "rcon2_port", "rcon2_password", "discord_webhook_url", "plugin_api_key", "server_announcement",
     "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time",
     "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates", "maintenance_history",
+    "points_per_minute_playtime", "points_streak_bonus", "points_streak_min_days",
 }
 
 @app.get("/api/admin/settings", response_model=list[SettingOut])

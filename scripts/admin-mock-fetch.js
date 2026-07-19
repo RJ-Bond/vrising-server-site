@@ -37,7 +37,24 @@
     ...settingsPublic,
     server_ip: '127.0.0.1', server_port: '27016',
     server2_ip: '127.0.0.1', server2_port: '27017',
+    // Points-economy earning rates (admin-only, not in settingsPublic — see main.py's
+    // /api/settings/public keys list). Read by admin.html's loadEconomyConfig().
+    points_per_minute_playtime: '1', points_streak_bonus: '10', points_streak_min_days: '2',
   }).map(([key, value]) => ({ key, value: String(value) }));
+
+  // ShopItemOut shape (backend/schemas.py) — GET /api/admin/shop/items.
+  const fakeShopItems = [
+    { id: 1, name: 'Waypoint Shard', description: 'Телепорт-камень для быстрого перемещения.', cost: 50, image_url: null, is_active: true, stock: null, sort_order: 0, created_at: iso(10 * 24 * 3600 * 1000), updated_at: iso(2 * 24 * 3600 * 1000) },
+    { id: 2, name: 'Blood Rose Seeds', description: 'Редкие семена для фермы крови.', cost: 120, image_url: null, is_active: true, stock: 4, sort_order: 1, created_at: iso(8 * 24 * 3600 * 1000), updated_at: iso(8 * 24 * 3600 * 1000) },
+    { id: 3, name: 'Legendary Weapon Skin', description: 'Косметический скин оружия.', cost: 800, image_url: null, is_active: false, stock: 0, sort_order: 2, created_at: iso(5 * 24 * 3600 * 1000), updated_at: iso(1 * 24 * 3600 * 1000) },
+  ];
+
+  // ShopRedemptionOut shape (backend/schemas.py) — GET /api/admin/shop/redemptions.
+  const fakeShopRedemptions = [
+    { id: 1, user_id: 2, shop_item_id: 1, item_name_snapshot: 'Waypoint Shard', cost_snapshot: 50, status: 'pending', delivery_mode: 'manual', player_note: 'Заранее спасибо!', admin_note: null, created_at: iso(3600000), resolved_at: null, resolved_by: null, username: 'buhalovna' },
+    { id: 2, user_id: 3, shop_item_id: 2, item_name_snapshot: 'Blood Rose Seeds', cost_snapshot: 120, status: 'pending', delivery_mode: 'manual', player_note: null, admin_note: null, created_at: iso(7200000), resolved_at: null, resolved_by: null, username: 'Shadowfang' },
+    { id: 3, user_id: 4, shop_item_id: null, item_name_snapshot: 'Legendary Weapon Skin', cost_snapshot: 800, status: 'fulfilled', delivery_mode: 'manual', player_note: null, admin_note: 'Выдано в игре', created_at: iso(2 * 24 * 3600 * 1000), resolved_at: iso(23 * 3600 * 1000), resolved_by: 'RJ Bond', username: 'Dracarys' },
+  ];
 
   // UserOut shape (backend/schemas.py) — auth/me and admin/users both return this.
   const userOut = (i, username, role) => ({
@@ -78,6 +95,12 @@
     [/\/api\/admin\/password-resets$/, () => []],
     [/\/api\/admin\/users$/, () => fakeUsers],
     [/\/api\/admin\/settings$/, () => adminSettingsList.map(s => ({ ...s, updated_at: iso(0) }))],
+    [/\/api\/admin\/shop\/items$/, () => fakeShopItems],
+    [/\/api\/admin\/shop\/redemptions(\?.*)?$/, (url) => {
+      const status = new URLSearchParams(url.split('?')[1] || '').get('status');
+      const items = status ? fakeShopRedemptions.filter(r => r.status === status) : fakeShopRedemptions;
+      return { total: items.length, page: 1, per_page: 50, items };
+    }],
     [/\/api\/monitor\/status2/, () => ({ enabled: true, ...monitorStatus('[RU] Just-Skill.Ru | Brutal PvE', 0, '127.0.0.1', 27017) })],
     [/\/api\/monitor\/status$/, () => monitorStatus('[RU] Just-Skill.Ru | Standart PvE', 10, '127.0.0.1', 27016)],
     [/\/api\/monitor\/snapshots/, (url) => snapshots(url.includes('server=2') ? 3 : 10)],

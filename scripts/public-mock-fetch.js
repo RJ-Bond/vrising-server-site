@@ -110,6 +110,23 @@
     ],
   };
 
+  // ShopItemOut shape (backend/schemas.py) — GET /api/shop/items. shop.html is
+  // login-gated (redirects to the login gate on a 401 /api/auth/me, which this mock
+  // always returns for the anonymous-visitor case below), so these routes aren't
+  // exercised by the default anonymous preview — kept here so a future authenticated
+  // mock mode (or a page that browses items while logged out) has canned data ready,
+  // matching this file's existing convention of covering every new-endpoint shape.
+  const shopItems = [
+    { id: 1, name: 'Waypoint Shard', description: 'Телепорт-камень для быстрого перемещения.', cost: 50, image_url: null, is_active: true, stock: null, sort_order: 0, created_at: iso(10 * 24 * 3600 * 1000), updated_at: iso(2 * 24 * 3600 * 1000) },
+    { id: 2, name: 'Blood Rose Seeds', description: 'Редкие семена для фермы крови.', cost: 120, image_url: null, is_active: true, stock: 4, sort_order: 1, created_at: iso(8 * 24 * 3600 * 1000), updated_at: iso(8 * 24 * 3600 * 1000) },
+  ];
+  const myShopRedemptions = {
+    total: 1, page: 1, per_page: 20,
+    items: [
+      { id: 1, user_id: 1, shop_item_id: 1, item_name_snapshot: 'Waypoint Shard', cost_snapshot: 50, status: 'pending', delivery_mode: 'manual', player_note: null, admin_note: null, created_at: iso(3600000), resolved_at: null, resolved_by: null },
+    ],
+  };
+
   const routes = [
     [/\/api\/settings\/public$/, () => settingsPublic],
     [/\/api\/auth\/me$/, () => null], // anonymous visitor — handled as 401 below
@@ -125,6 +142,8 @@
     [/\/api\/monitor\/snapshots/, (url) => snapshots(url.includes('server=2') ? 5 : 12)],
     [/\/api\/wipes$/, () => wipes],
     [/\/api\/bans/, () => bans],
+    [/\/api\/shop\/items$/, () => shopItems],
+    [/\/api\/shop\/redemptions\/me/, () => myShopRedemptions],
   ];
 
   const realFetch = window.fetch.bind(window);

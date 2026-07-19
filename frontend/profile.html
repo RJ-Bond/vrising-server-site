@@ -272,6 +272,7 @@
         <a href="/" class="mob-link">🏠 Главная</a>
         <a href="/servers.html" class="mob-link">⚔️ Серверы</a>
         <a href="/leaderboard.html" class="mob-link">🏆 Игроки</a>
+        <a href="/shop.html" class="mob-link">🛒 Магазин</a>
         <a href="/profile.html" class="mob-link" style="color:var(--text);">👤 Профиль</a>
         <div style="margin-top:auto;padding-top:1rem;border-top:1px solid rgba(110,0,20,0.2);">
           <button onclick="doLogout();closeMobMenu();" style="width:100%;padding:.6rem;background:rgba(200,0,42,.15);border:1px solid rgba(200,0,42,.3);border-radius:.4rem;color:#f87171;cursor:pointer;font-size:.82rem;">Выйти</button>
@@ -361,6 +362,10 @@
             <div id="stat-tile-rank-val" style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--text);">—</div>
             <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:.15rem;">Ранг</div>
           </div>
+          <div id="stat-tile-points" style="background:rgba(8,0,14,0.45);border:1px solid rgba(110,0,150,0.2);border-radius:.55rem;padding:.5rem .9rem;text-align:center;flex:1;min-width:80px;">
+            <div id="stat-tile-points-val" style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--gold);">—</div>
+            <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:.15rem;">Очки</div>
+          </div>
         </div>
       </div>
     </div>
@@ -370,6 +375,7 @@
   <div class="profile-tab-bar">
     <button class="profile-tab-btn active" id="tab-btn-profile" onclick="switchProfileTab('profile')">Профиль</button>
     <button class="profile-tab-btn" id="tab-btn-security" onclick="switchProfileTab('security')">Безопасность</button>
+    <button class="profile-tab-btn" id="tab-btn-points" onclick="switchProfileTab('points')">Очки</button>
     <button class="profile-tab-btn" id="tab-btn-admin" onclick="switchProfileTab('admin')" style="display:none;">Администратор</button>
   </div>
 
@@ -512,6 +518,35 @@
 
   </div><!-- /tab-panel-security -->
 
+  <!-- TAB: Очки — points ledger + own redemption history, see
+       GET /api/points/transactions/me and GET /api/shop/redemptions/me. -->
+  <div id="tab-panel-points" class="profile-tab-panel">
+
+    <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Мои заявки в магазине —</h2>
+      <div id="points-redemptions-list" style="display:flex;flex-direction:column;gap:.5rem;">
+        <p style="color:var(--muted);font-size:.82rem;">Загрузка…</p>
+      </div>
+    </div>
+
+    <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— История очков —</h2>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:.8rem;">
+          <thead>
+            <tr style="text-align:left;color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;">
+              <th style="padding:.4rem .5rem;">Дата</th><th style="padding:.4rem .5rem;">Причина</th><th style="padding:.4rem .5rem;">Изменение</th><th style="padding:.4rem .5rem;">Баланс</th>
+            </tr>
+          </thead>
+          <tbody id="points-history-tbody">
+            <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:.75rem;">Загрузка…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- /tab-panel-points -->
+
   <!-- TAB: Администратор -->
   <div id="tab-panel-admin" class="profile-tab-panel">
 
@@ -652,12 +687,13 @@ function fmtSec(s) {
 
 // #2 Tab switching
 function switchProfileTab(tab) {
-  ['profile','security','admin'].forEach(t => {
+  ['profile','security','points','admin'].forEach(t => {
     const btn = document.getElementById('tab-btn-' + t);
     const panel = document.getElementById('tab-panel-' + t);
     if (btn) btn.classList.toggle('active', t === tab);
     if (panel) panel.classList.toggle('active', t === tab);
   });
+  if (tab === 'points') loadPointsHistory();
 }
 
 // #3 Bio save
@@ -989,6 +1025,10 @@ async function loadProfile() {
     document.getElementById('profile-name').textContent  = u.username;
     document.getElementById('profile-email').textContent = u.email;
 
+    // #1 Points-balance tile — rides along on this same /api/auth/me call, no extra fetch.
+    const pointsVal = document.getElementById('stat-tile-points-val');
+    if (pointsVal) pointsVal.textContent = (u.points_balance ?? 0).toLocaleString('ru-RU');
+
     // #3 Fill bio field
     if (bioInput && u.bio) {
       bioInput.value = u.bio;
@@ -1279,6 +1319,48 @@ function applyCoverUrl(url) {
 }
 
 // ── Activity timeline ─────────────────────────────────────────────────────────
+// ─── Points economy: own ledger + redemption history (tab-panel-points) ────
+const POINTS_REASON_LABELS = { playtime: 'Игра', streak: 'Стрик захода', donation: 'Донат', redeem: 'Покупка', refund: 'Возврат', admin_adjust: 'Коррекция' };
+const SHOP_REDEMPTION_STATUS_LABELS_PROFILE = { pending: 'Ожидает', fulfilled: 'Выдано', cancelled: 'Отменено' };
+let _pointsHistoryLoaded = false;
+
+async function loadPointsHistory() {
+  if (_pointsHistoryLoaded) return;
+  _pointsHistoryLoaded = true;
+
+  const redList = document.getElementById('points-redemptions-list');
+  const histBody = document.getElementById('points-history-tbody');
+
+  try {
+    const d = await fetch(`${API}/shop/redemptions/me?per_page=20`, { credentials: 'include' }).then(r => r.json());
+    const items = d.items || [];
+    if (redList) {
+      redList.innerHTML = items.length ? items.map(r => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.5rem .65rem;background:rgba(8,0,14,0.4);border:1px solid rgba(110,0,150,0.15);border-radius:.5rem;">
+          <div>
+            <div style="font-size:.82rem;color:var(--text);">${esc(r.item_name_snapshot)}</div>
+            <div style="font-size:.68rem;color:var(--muted);margin-top:.1rem;">${fmtDate(r.created_at)} · ${r.cost_snapshot} очков</div>
+          </div>
+          <span style="font-size:.7rem;font-weight:600;color:${r.status==='fulfilled'?'#4ade80':r.status==='cancelled'?'var(--muted)':'#facc15'};">${SHOP_REDEMPTION_STATUS_LABELS_PROFILE[r.status]||r.status}</span>
+        </div>`).join('') : '<p style="color:var(--muted);font-size:.82rem;">Заявок пока нет.</p>';
+    }
+  } catch { if (redList) redList.innerHTML = '<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки.</p>'; }
+
+  try {
+    const d = await fetch(`${API}/points/transactions/me?per_page=30`, { credentials: 'include' }).then(r => r.json());
+    const items = d.items || [];
+    if (histBody) {
+      histBody.innerHTML = items.length ? items.map(t => `
+        <tr style="border-top:1px solid rgba(110,0,150,0.12);">
+          <td style="padding:.4rem .5rem;color:var(--muted);font-size:.75rem;white-space:nowrap;">${fmtDate(t.created_at)}</td>
+          <td style="padding:.4rem .5rem;">${POINTS_REASON_LABELS[t.reason]||t.reason}</td>
+          <td style="padding:.4rem .5rem;font-weight:600;color:${t.delta>=0?'#4ade80':'#f87171'};">${t.delta>=0?'+':''}${t.delta}</td>
+          <td style="padding:.4rem .5rem;color:var(--gold);">${t.balance_after}</td>
+        </tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:.75rem;">Истории пока нет</td></tr>';
+    }
+  } catch { if (histBody) histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;padding:.75rem;">Ошибка загрузки</td></tr>'; }
+}
+
 async function loadActivity(username) {
   const card = document.getElementById('activity-card');
   const list = document.getElementById('activity-list');

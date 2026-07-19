@@ -39,6 +39,11 @@ class User(Base):
     # it on a from-scratch test DB. auth.py/main.py still read/write it via raw text()
     # SQL rather than this attribute — left that way to avoid touching working code.
     revoke_before = Column(DateTime, nullable=True)
+    # Points-economy balance (see PointsTransaction/ShopItem/ShopRedemption below).
+    # Never written directly outside _award_points()/the atomic-redeem UPDATE in
+    # main.py — those are the only call sites that keep this in sync with the
+    # PointsTransaction ledger.
+    points_balance = Column(Integer, nullable=False, default=0, server_default="0")
 
 
 class Clan(Base):
@@ -554,3 +559,73 @@ class PlayerDailyActivity(Base):
     __table_args__ = (
         UniqueConstraint("server_num", "steam_id", "activity_date", name="uq_player_daily_activity"),
     )
+
+
+class PointsTransaction(Base):
+    """Append-only ledger — the source of truth for a player's points history/audit trail.
+    User.points_balance is a denormalized running total kept in sync by _award_points()
+    (earn paths) and the atomic conditional-UPDATE in POST /api/shop/redeem (spend path);
+    every write to that column has a matching row here. balance_after is a snapshot taken
+    right after the balance change (never recomputed later), so historical rows stay
+    correct even if the ledger is later filtered/paginated. created_at is naive UTC (this
+    repo's usual DateTime convention), set explicitly like Warning/Ban/etc rather than via
+    a column default."""
+    __tablename__ = "points_transactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    delta = Column(Integer, nullable=False)  # positive = earn/grant, negative = spend/adjust
+    balance_after = Column(Integer, nullable=False)
+    reason = Column(String(32), nullable=False)  # "playtime" | "streak" | "donation" | "redeem" | "refund" | "admin_adjust"
+    detail = Column(String(256), nullable=True)
+    ref_type = Column(String(32), nullable=True)  # e.g. "shop_redemption"
+    ref_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (Index("ix_points_transactions_user", "user_id", "created_at"),)
+
+
+class ShopItem(Base):
+    """Points-shop catalog entry — an in-game item players can redeem points for. Purely
+    a catalog row; the actual purchase request is a ShopRedemption below. stock=NULL means
+    unlimited; a numeric stock is decremented via the same atomic conditional-UPDATE
+    pattern used for the balance check in POST /api/shop/redeem."""
+    __tablename__ = "shop_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(128), nullable=False)
+    description = Column(Text, nullable=True)
+    cost = Column(Integer, nullable=False)
+    image_url = Column(String(512), nullable=True)
+    is_active = Column(Boolean, nullable=False, default=True)
+    stock = Column(Integer, nullable=True)  # NULL = unlimited
+    sort_order = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class ShopRedemption(Base):
+    """A player's purchase request against the ShopItem catalog, fulfilled manually
+    in-game by an admin for v1 (see delivery_mode below — always "manual" today, the
+    column exists only so a future v2 automated-delivery path doesn't need a migration).
+    item_name_snapshot/cost_snapshot are copied at purchase time so later catalog
+    edits/deletes never corrupt this row's history (shop_item_id is SET NULL on delete
+    for the same reason). resolved_by mirrors AuditLog.admin_username/Ban.admin_name's
+    convention: an admin username string, no FK. created_at/resolved_at are naive UTC
+    (this repo's usual DateTime convention)."""
+    __tablename__ = "shop_redemptions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    shop_item_id = Column(Integer, ForeignKey("shop_items.id", ondelete="SET NULL"), nullable=True)
+    item_name_snapshot = Column(String(128), nullable=False)
+    cost_snapshot = Column(Integer, nullable=False)
+    status = Column(String(16), nullable=False, default="pending")  # "pending" | "fulfilled" | "cancelled"
+    delivery_mode = Column(String(16), nullable=False, default="manual")  # always "manual" in v1
+    player_note = Column(String(500), nullable=True)
+    admin_note = Column(String(500), nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+    resolved_by = Column(String(64), nullable=True)
+
+    __table_args__ = (Index("ix_shop_redemptions_status_created", "status", "created_at"),)

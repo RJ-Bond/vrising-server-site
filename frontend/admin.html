@@ -523,6 +523,10 @@
       <button id="btn-players"   onclick="showSection('players')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Игроки</span></button>
       <button id="btn-resets"    onclick="showSection('resets')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6"/><path d="M15.5 7.5l3 3L22 7l-3-3"/></svg> Сброс паролей</span><span id="badge-resets" class="sidebar-badge" style="display:none;"></span></button>
 
+      <div class="sidebar-group-label">Экономика</div>
+      <button id="btn-shop-catalog" onclick="showSection('shop-catalog')" class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg> Магазин</span></button>
+      <button id="btn-shop-queue"   onclick="showSection('shop-queue')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg> Очередь наград</span><span id="badge-shop-queue" class="sidebar-badge" style="display:none;"></span></button>
+
       <div class="sidebar-group-label">Модерация</div>
       <button id="btn-reports"   onclick="showSection('reports')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Жалобы</span><span id="badge-reports" class="sidebar-badge" style="display:none;"></span></button>
       <button id="btn-modlog"    onclick="showSection('modlog')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> Журнал модерации</span></button>
@@ -2185,6 +2189,175 @@
       </div>
     </div>
 
+    <!-- ECONOMY: SHOP CATALOG (Экономика → Магазин) — catalog CRUD + earning-rate
+         config + manual points grant, folded into one tab per the "Магазин" nav entry
+         rather than spawning three separate sidebar entries. See POST /api/shop/redeem
+         and the /api/admin/shop/items* endpoints in main.py. -->
+    <div id="section-shop-catalog" class="hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
+        <h2 class="section-title">Экономика — Магазин</h2>
+        <button onclick="openShopItemEditor(null)" class="btn-primary" style="font-size:.82rem;">+ Добавить товар</button>
+      </div>
+
+      <!-- Item catalog -->
+      <div class="glass-card" style="border-radius:.75rem;overflow:hidden;margin-bottom:1.5rem;">
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Название</th><th>Стоимость</th><th>Остаток</th><th>Активен</th><th>Действия</th>
+            </tr></thead>
+            <tbody id="shop-items-tbody">
+              <tr><td colspan="5" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Earning-rate config + manual grant -->
+      <div class="s-row">
+        <div class="s-card">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(150,0,28,.18);border:1px solid rgba(180,0,40,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e05575" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+            </div>
+            <div>
+              <h2>Начисление очков</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Ставки автоматического начисления за игру и стрик</p>
+            </div>
+          </div>
+          <div class="s-field">
+            <label>Очков за минуту игры</label>
+            <div class="s-field-row">
+              <input id="setting-points_per_minute_playtime" type="number" min="0" class="dark-input" placeholder="1">
+              <button class="s-save-btn" onclick="saveSetting('points_per_minute_playtime')">Сохранить</button>
+            </div>
+            <p class="s-desc">Начисляется по факту игровой сессии (POST /api/plugin/sessions)</p>
+          </div>
+          <div class="s-field">
+            <label>Бонус за стрик захода</label>
+            <div class="s-field-row">
+              <input id="setting-points_streak_bonus" type="number" min="0" class="dark-input" placeholder="10">
+              <button class="s-save-btn" onclick="saveSetting('points_streak_bonus')">Сохранить</button>
+            </div>
+            <p class="s-desc">Начисляется один раз в день, когда стрик достигает минимума ниже</p>
+          </div>
+          <div class="s-field">
+            <label>Мин. дней стрика для бонуса</label>
+            <div class="s-field-row">
+              <input id="setting-points_streak_min_days" type="number" min="1" class="dark-input" placeholder="2">
+              <button class="s-save-btn" onclick="saveSetting('points_streak_min_days')">Сохранить</button>
+            </div>
+            <p class="s-desc">Например, «2» — бонус придёт на второй день подряд захода</p>
+          </div>
+        </div>
+
+        <div class="s-card">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(150,0,28,.18);border:1px solid rgba(180,0,40,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e05575" stroke-width="1.8"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            </div>
+            <div>
+              <h2>Ручное начисление</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Например, за донат — платёжной интеграции пока нет</p>
+            </div>
+          </div>
+          <div class="s-field">
+            <label>Игрок</label>
+            <div class="s-field-row">
+              <input id="grant-username" class="dark-input" list="grant-user-list" placeholder="Имя пользователя">
+              <datalist id="grant-user-list"></datalist>
+            </div>
+          </div>
+          <div class="s-field">
+            <label>Кол-во очков (может быть отрицательным)</label>
+            <div class="s-field-row">
+              <input id="grant-delta" type="number" class="dark-input" placeholder="500">
+            </div>
+          </div>
+          <div class="s-field">
+            <label>Причина</label>
+            <div class="s-field-row">
+              <select id="grant-reason" class="dark-input">
+                <option value="donation">Донат</option>
+                <option value="admin_adjust">Коррекция</option>
+              </select>
+            </div>
+          </div>
+          <div class="s-field">
+            <label>Заметка (необязательно)</label>
+            <div class="s-field-row">
+              <input id="grant-note" class="dark-input" maxlength="256" placeholder="Комментарий">
+            </div>
+          </div>
+          <div class="s-field">
+            <div class="s-field-row">
+              <button class="s-save-btn" onclick="grantPoints()">Начислить</button>
+              <span id="grant-msg" style="font-size:.78rem;display:none;align-self:center;"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Item editor modal -->
+      <div id="shop-item-editor-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
+        <div style="max-width:560px;margin:3rem auto;background:var(--card);border:1px solid var(--border);border-radius:1rem;padding:2rem;box-shadow:0 16px 64px rgba(0,0,0,0.7);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
+            <h3 class="section-title" id="shop-item-editor-title">Новый товар</h3>
+            <button onclick="closeShopItemEditor()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">✕</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:.85rem;">
+            <div><label>Название</label><input id="si-name" class="dark-input" type="text" maxlength="128" placeholder="Название товара"></div>
+            <div><label>Описание</label><textarea id="si-desc" class="dark-input" rows="3" placeholder="Описание товара"></textarea></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+              <div><label>Стоимость (очков)</label><input id="si-cost" class="dark-input" type="number" min="1" placeholder="50"></div>
+              <div><label>Остаток (пусто — без ограничений)</label><input id="si-stock" class="dark-input" type="number" min="0" placeholder="Без ограничений"></div>
+            </div>
+            <div><label>URL изображения (необязательно)</label><input id="si-image" class="dark-input" type="url" placeholder="https://..."></div>
+            <div style="display:flex;align-items:center;gap:.5rem;">
+              <input id="si-active" type="checkbox" style="width:auto;">
+              <label style="margin:0;">Активен (виден игрокам)</label>
+            </div>
+          </div>
+          <div style="display:flex;gap:.75rem;margin-top:1.5rem;flex-wrap:wrap;">
+            <button onclick="saveShopItem()" class="btn-primary">Сохранить</button>
+            <button onclick="closeShopItemEditor()" class="btn-ghost">Отмена</button>
+            <span id="si-save-msg" style="font-size:.78rem;display:none;align-self:center;"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ECONOMY: REDEMPTION QUEUE (Экономика → Очередь наград) — purchase requests
+         fulfilled MANUALLY in-game by an admin (v1, see ShopRedemption.delivery_mode). -->
+    <div id="section-shop-queue" class="hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
+        <h2 class="section-title">Очередь наград</h2>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+          <input id="shop-queue-search" class="dark-input" style="font-size:.78rem;padding:.35rem .6rem;width:auto;" placeholder="Поиск по игроку/товару" onkeydown="if(event.key==='Enter')loadShopQueue(1)">
+          <select id="shop-queue-status" class="dark-input" style="font-size:.78rem;padding:.35rem .6rem;width:auto;" onchange="loadShopQueue(1)">
+            <option value="pending">Ожидают</option>
+            <option value="fulfilled">Выданы</option>
+            <option value="cancelled">Отменены</option>
+            <option value="">Все</option>
+          </select>
+          <button onclick="loadShopQueue(1)" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
+        </div>
+      </div>
+      <div class="glass-card" style="border-radius:.75rem;overflow:hidden;">
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr>
+              <th>Игрок</th><th>Товар</th><th>Стоимость</th><th>Статус</th><th>Дата</th><th>Действия</th>
+            </tr></thead>
+            <tbody id="shop-queue-tbody">
+              <tr><td colspan="6" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div id="shop-queue-pagination" style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:1rem;justify-content:center;"></div>
+    </div>
+
   </main>
 </div>
 
@@ -2288,6 +2461,7 @@ const SECTION_MIN_ROLE = {
   users: 'moderator', clans: 'admin', players: 'moderator', resets: 'admin',
   reports: 'moderator', analytics: 'admin', backups: 'superadmin',
   log: 'admin', auditlog: 'admin', errors: 'admin', modlog: 'admin',
+  'shop-catalog': 'admin', 'shop-queue': 'admin',
 };
 
 (function() {
@@ -2348,6 +2522,10 @@ async function loadSidebarBadges() {
     const resets = await fetch(`${API}/admin/password-resets`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : []);
     setBadge('badge-resets', resets.length);
   } catch {}
+  try {
+    const queue = await fetch(`${API}/admin/shop/redemptions?status=pending&per_page=1`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : null);
+    if (queue) setBadge('badge-shop-queue', queue.total);
+  } catch {}
 }
 loadSidebarBadges();
 
@@ -2374,7 +2552,7 @@ function showSection(name) {
     showToast('Недостаточно прав для этого раздела', 'error');
     return;
   }
-  ['dashboard','news','editor','settings','plugin','users','comments','players','files','log','resets','clans','reports','analytics','backups','errors','media','auditlog','events','modlog'].forEach(s => {
+  ['dashboard','news','editor','settings','plugin','users','comments','players','files','log','resets','clans','reports','analytics','backups','errors','media','auditlog','events','modlog','shop-catalog','shop-queue'].forEach(s => {
     const el = document.getElementById(`section-${s}`);
     if (el) {
       if (s === 'media' || s === 'auditlog' || s === 'events' || s === 'modlog') el.style.display = (s === name ? '' : 'none');
@@ -2410,6 +2588,8 @@ function showSection(name) {
   if (name === 'auditlog')   loadAuditLogSection(1);
   if (name === 'events')     loadEvents();
   if (name === 'modlog')     loadModerationLog();
+  if (name === 'shop-catalog') loadShopCatalog();
+  if (name === 'shop-queue')   loadShopQueue(1);
 }
 
 // ─── News list ────────────────────────────────────────────────────────────
@@ -5450,6 +5630,208 @@ async function deleteEvent(id) {
   if (!confirm('Удалить событие?')) return;
   await fetch(`${API}/admin/events/${id}`, {method:'DELETE', credentials:'include'});
   loadEvents();
+}
+
+// ─── Points economy: shop catalog (admin) ──────────────────────────────────
+// Mirrors the Events CRUD pattern immediately above. loadShopCatalog() also refreshes
+// the earning-rate config cards and the grant-form user datalist, since all three live
+// on the same "Магазин" tab (see showSection's shop-catalog dispatch).
+let _editingShopItemId = null;
+
+async function loadShopCatalog() {
+  const tbody = document.getElementById('shop-items-tbody');
+  if (!tbody) return;
+  tableShowSkeleton('shop-items-tbody', 5);
+  try {
+    const items = await fetch(`${API}/admin/shop/items`, {credentials:'include', headers:authH()}).then(r => { if (!r.ok) { handleAuth(r); throw new Error(); } return r.json(); });
+    if (!items.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Товаров нет</td></tr>'; return; }
+    tbody.innerHTML = items.map(it => `<tr>
+      <td><span style="font-weight:600;">${esc(it.name)}</span></td>
+      <td style="font-size:.78rem;color:var(--gold);">${it.cost}</td>
+      <td style="font-size:.78rem;">${it.stock == null ? '∞' : it.stock}</td>
+      <td>${it.is_active ? '<span style="color:#4ade80;font-size:.75rem;">Да</span>' : '<span style="color:var(--muted);font-size:.75rem;">Нет</span>'}</td>
+      <td>
+        <div style="display:flex;gap:.35rem;">
+          <button onclick="openShopItemEditor(${it.id})" class="btn-ghost" style="font-size:.7rem;padding:.28rem .6rem;">Изменить</button>
+          <button onclick="deleteShopItem(${it.id})" class="btn-danger" style="font-size:.7rem;padding:.28rem .6rem;">Удалить</button>
+        </div>
+      </td>
+    </tr>`).join('');
+  } catch { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+
+  loadEconomyConfig();
+  loadGrantUserList();
+}
+
+async function loadEconomyConfig() {
+  try {
+    const settings = await fetch(`${API}/admin/settings`, {credentials:'include', headers:authH()}).then(r => r.json());
+    const map = {};
+    settings.forEach(s => { map[s.key] = s.value; });
+    ['points_per_minute_playtime', 'points_streak_bonus', 'points_streak_min_days'].forEach(key => {
+      const el = document.getElementById(`setting-${key}`);
+      if (el && map[key] !== undefined) el.value = map[key];
+    });
+  } catch {}
+}
+
+async function loadGrantUserList() {
+  try {
+    const users = await fetch(`${API}/admin/users`, {credentials:'include', headers:authH()}).then(r => r.json());
+    const dl = document.getElementById('grant-user-list');
+    if (dl) dl.innerHTML = users.map(u => `<option value="${esc(u.username)}"></option>`).join('');
+    window.__ADMIN_USERS_BY_NAME = Object.fromEntries(users.map(u => [u.username, u.id]));
+  } catch {}
+}
+
+async function openShopItemEditor(id) {
+  _editingShopItemId = id;
+  document.getElementById('shop-item-editor-title').textContent = id ? 'Редактировать товар' : 'Новый товар';
+  ['si-name', 'si-desc', 'si-image'].forEach(i => { const el = document.getElementById(i); if (el) el.value = ''; });
+  document.getElementById('si-cost').value = '';
+  document.getElementById('si-stock').value = '';
+  document.getElementById('si-active').checked = true;
+  const msg = document.getElementById('si-save-msg');
+  if (msg) msg.style.display = 'none';
+  if (id) {
+    try {
+      const items = await fetch(`${API}/admin/shop/items`, {credentials:'include', headers:authH()}).then(r => r.json());
+      const it = items.find(x => x.id === id);
+      if (it) {
+        document.getElementById('si-name').value = it.name || '';
+        document.getElementById('si-desc').value = it.description || '';
+        document.getElementById('si-cost').value = it.cost;
+        document.getElementById('si-stock').value = it.stock == null ? '' : it.stock;
+        document.getElementById('si-image').value = it.image_url || '';
+        document.getElementById('si-active').checked = !!it.is_active;
+      }
+    } catch {}
+  }
+  document.getElementById('shop-item-editor-modal').style.display = '';
+}
+
+function closeShopItemEditor() {
+  document.getElementById('shop-item-editor-modal').style.display = 'none';
+  _editingShopItemId = null;
+}
+
+async function saveShopItem() {
+  const msg = document.getElementById('si-save-msg');
+  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = 'inline'; };
+  const stockVal = document.getElementById('si-stock').value;
+  const body = {
+    name: document.getElementById('si-name').value.trim(),
+    description: document.getElementById('si-desc').value.trim() || null,
+    cost: parseInt(document.getElementById('si-cost').value) || 0,
+    stock: stockVal === '' ? null : parseInt(stockVal),
+    image_url: document.getElementById('si-image').value.trim() || null,
+    is_active: document.getElementById('si-active').checked,
+  };
+  if (!body.name) return show('Введите название', false);
+  if (!body.cost || body.cost <= 0) return show('Укажите стоимость больше 0', false);
+  try {
+    const url = _editingShopItemId ? `${API}/admin/shop/items/${_editingShopItemId}` : `${API}/admin/shop/items`;
+    const method = _editingShopItemId ? 'PUT' : 'POST';
+    const r = await fetch(url, {method, credentials:'include', headers:authH(), body:JSON.stringify(body)});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return show(d.detail || 'Ошибка', false);
+    show('Сохранено!', true);
+    setTimeout(() => { closeShopItemEditor(); loadShopCatalog(); }, 800);
+  } catch { show('Ошибка соединения', false); }
+}
+
+async function deleteShopItem(id) {
+  if (!confirm('Удалить товар из каталога?')) return;
+  await fetch(`${API}/admin/shop/items/${id}`, {method:'DELETE', credentials:'include', headers:authH()});
+  loadShopCatalog();
+}
+
+async function grantPoints() {
+  const msg = document.getElementById('grant-msg');
+  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = 'inline'; };
+  const username = document.getElementById('grant-username').value.trim();
+  const userId = (window.__ADMIN_USERS_BY_NAME || {})[username];
+  const delta = parseInt(document.getElementById('grant-delta').value);
+  if (!userId) return show('Выберите игрока из списка', false);
+  if (!delta) return show('Укажите ненулевое количество очков', false);
+  const body = {
+    user_id: userId, delta,
+    reason: document.getElementById('grant-reason').value,
+    note: document.getElementById('grant-note').value.trim() || null,
+  };
+  try {
+    const r = await fetch(`${API}/admin/points/grant`, {method:'POST', credentials:'include', headers:authH(), body:JSON.stringify(body)});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return show(d.detail || 'Ошибка', false);
+    show(`Начислено. Баланс: ${d.balance_after}`, true);
+    document.getElementById('grant-username').value = '';
+    document.getElementById('grant-delta').value = '';
+    document.getElementById('grant-note').value = '';
+  } catch { show('Ошибка соединения', false); }
+}
+
+// ─── Points economy: redemption queue (admin) ──────────────────────────────
+let _shopQueuePage = 1;
+const SHOP_REDEMPTION_STATUS_LABELS = { pending: 'Ожидает', fulfilled: 'Выдано', cancelled: 'Отменено' };
+const SHOP_REDEMPTION_STATUS_COLORS = { pending: '#facc15', fulfilled: '#4ade80', cancelled: 'var(--muted)' };
+
+async function loadShopQueue(page) {
+  _shopQueuePage = page || 1;
+  const tbody = document.getElementById('shop-queue-tbody');
+  if (!tbody) return;
+  tableShowSkeleton('shop-queue-tbody', 6);
+  try {
+    const status = document.getElementById('shop-queue-status')?.value ?? 'pending';
+    const q = document.getElementById('shop-queue-search')?.value.trim() ?? '';
+    const params = new URLSearchParams({ status, page: _shopQueuePage, per_page: 50 });
+    if (q) params.set('q', q);
+    const d = await fetch(`${API}/admin/shop/redemptions?${params}`, {credentials:'include', headers:authH()}).then(r => { if (!r.ok) { handleAuth(r); throw new Error(); } return r.json(); });
+    const items = d.items || [];
+    if (!items.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Заявок нет</td></tr>'; return; }
+    tbody.innerHTML = items.map(r => {
+      const dt = fmtDateTime ? fmtDateTime(r.created_at) : new Date(r.created_at).toLocaleString('ru-RU');
+      const color = SHOP_REDEMPTION_STATUS_COLORS[r.status] || 'var(--muted)';
+      const actions = r.status === 'pending'
+        ? `<div style="display:flex;gap:.35rem;">
+             <button onclick="fulfillRedemption(${r.id})" class="btn-ghost" style="font-size:.7rem;padding:.28rem .6rem;color:#4ade80;">Выдать</button>
+             <button onclick="cancelRedemption(${r.id})" class="btn-danger" style="font-size:.7rem;padding:.28rem .6rem;">Отменить</button>
+           </div>`
+        : `<span style="font-size:.72rem;color:var(--muted);">${esc(r.resolved_by || '')}</span>`;
+      return `<tr>
+        <td style="font-size:.78rem;">${esc(r.username || '')}</td>
+        <td style="font-size:.78rem;">${esc(r.item_name_snapshot)}</td>
+        <td style="font-size:.78rem;color:var(--gold);">${r.cost_snapshot}</td>
+        <td><span style="font-size:.72rem;color:${color};font-weight:600;">${SHOP_REDEMPTION_STATUS_LABELS[r.status] || r.status}</span></td>
+        <td style="font-size:.75rem;color:var(--muted);white-space:nowrap;">${dt}</td>
+        <td>${actions}</td>
+      </tr>`;
+    }).join('');
+
+    const total = d.total || 0;
+    const pages = Math.ceil(total / (d.per_page || 50));
+    const pgEl = document.getElementById('shop-queue-pagination');
+    if (pgEl) {
+      pgEl.innerHTML = pages > 1
+        ? Array.from({ length: Math.min(pages, 10) }, (_, i) => i + 1).map(p =>
+            `<button class="pagination-btn${p === _shopQueuePage ? ' active' : ''}" onclick="loadShopQueue(${p})">${p}</button>`
+          ).join('')
+        : '';
+    }
+  } catch { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+}
+
+async function fulfillRedemption(id) {
+  if (!confirm('Отметить заявку выданной?')) return;
+  const r = await fetch(`${API}/admin/shop/redemptions/${id}/fulfill`, {method:'POST', credentials:'include', headers:authH(), body:JSON.stringify({})});
+  if (r.ok) showToast('Заявка выдана', 'success'); else showToast('Ошибка', 'error');
+  loadShopQueue(_shopQueuePage);
+}
+
+async function cancelRedemption(id) {
+  if (!confirm('Отменить заявку и вернуть очки игроку?')) return;
+  const r = await fetch(`${API}/admin/shop/redemptions/${id}/cancel`, {method:'POST', credentials:'include', headers:authH(), body:JSON.stringify({})});
+  if (r.ok) showToast('Заявка отменена, очки возвращены', 'success'); else showToast('Ошибка', 'error');
+  loadShopQueue(_shopQueuePage);
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────────
