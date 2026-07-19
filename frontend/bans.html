@@ -43,7 +43,8 @@
     /* fade-up keyframe is shared: /components.css already defines it (used across
        servers/leaderboard/clans/bans/faq/map/events) — no need to redeclare it here. */
 
-    /* ── Search input (used to filter the active game-bans table by character name) ── */
+    /* ── Search input (used to filter the active-bans table by character name; also
+       reused for the server-filter <select> next to it) ── */
     .search-input {
       width:100%; background:rgba(14,5,22,0.7); border:1px solid rgba(110,0,150,0.28);
       border-radius:.6rem; color:var(--text); font-family:'Inter',sans-serif;
@@ -51,6 +52,7 @@
     }
     .search-input::placeholder { color:var(--muted); }
     .search-input:focus { border-color:rgba(140,0,180,0.55); box-shadow:0 0 0 3px rgba(110,0,150,0.12); }
+    select.search-input { cursor:pointer; }
 
     /* ── Section icon chips (visual hierarchy between the sections below) ── */
     .section-icon-chip {
@@ -73,6 +75,17 @@
     }
     .ban-section-desc { font-size:.78rem; color:var(--muted); margin-top:.3rem; padding-left:1.75rem; }
 
+    /* ── Stats bar (sits between the page header and the active-bans section) ──
+       Lightweight summary chips, not a heavy component — see updateStatsBar(). */
+    .stats-bar { display:flex; flex-wrap:wrap; gap:.6rem; margin-bottom:1.5rem; }
+    .stat-chip {
+      display:flex; align-items:baseline; gap:.45rem;
+      background:rgba(14,5,22,0.55); border:1px solid rgba(150,0,28,0.22);
+      border-radius:.6rem; padding:.5rem 1rem;
+    }
+    .stat-chip .stat-value { font-family:'Cinzel',serif; font-weight:700; font-size:1.05rem; color:var(--gold); }
+    .stat-chip .stat-label { font-size:.66rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; }
+
     /* ── Game-ban admin table (ported from the former standalone game-bans.html) ── */
     .g-card {
       background:var(--card); border:1px solid var(--border);
@@ -84,14 +97,14 @@
       content:''; position:absolute; top:0; left:20%; right:20%; height:1px;
       background:linear-gradient(90deg,transparent,rgba(200,0,45,0.35),transparent);
     }
-    #game-bans-section table, #public-bans-section table { width:100%; border-collapse:collapse; font-size:.82rem; }
-    #game-bans-section th, #public-bans-section th {
+    #active-bans-section table, #appeals-section table { width:100%; border-collapse:collapse; font-size:.82rem; }
+    #active-bans-section th, #appeals-section th {
       background:rgba(14,3,24,0.8); color:var(--muted); text-transform:uppercase;
       font-size:.65rem; letter-spacing:.1em; padding:.75rem 1rem; text-align:left;
       border-bottom:1px solid rgba(150,0,28,0.2); white-space:nowrap;
     }
-    #game-bans-section td, #public-bans-section td { padding:.65rem 1rem; border-bottom:1px solid rgba(150,0,28,0.1); color:var(--text); vertical-align:middle; }
-    #game-bans-section tbody tr:hover td, #public-bans-section tbody tr:hover td { background:rgba(150,0,28,0.06); }
+    #active-bans-section td, #appeals-section td { padding:.65rem 1rem; border-bottom:1px solid rgba(150,0,28,0.1); color:var(--text); vertical-align:middle; }
+    #active-bans-section tbody tr:hover td, #appeals-section tbody tr:hover td { background:rgba(150,0,28,0.06); }
 
     .btn-danger {
       background:rgba(150,0,20,0.22); border:1px solid rgba(220,40,60,0.4); color:#fca5a5;
@@ -106,6 +119,20 @@
       font-size:.68rem; font-weight:700; padding:.18rem .55rem; border-radius:9999px; letter-spacing:.03em;
     }
     .remaining { font-family:'Consolas','Courier New',monospace; font-size:.82rem; color:#f0b74a; }
+
+    /* ── "новый" pill + left-edge accent for bans placed within the last 24h (see
+       renderActiveBans()/activeBanRowHtml() — computed client-side from banned_at,
+       same pattern as the _unbanAtDate countdown below). ── */
+    .badge-new {
+      background:rgba(201,169,74,0.16); border:1px solid rgba(201,169,74,0.4); color:var(--gold);
+      font-size:.6rem; font-weight:700; padding:.14rem .45rem; border-radius:9999px; letter-spacing:.03em;
+      margin-left:.5rem; vertical-align:middle; white-space:nowrap;
+    }
+    .ban-row-new td:first-child { box-shadow:inset 3px 0 0 0 rgba(201,169,74,0.6); }
+
+    /* ── Reason category dot (see categorizeReason() — heuristic client-side keyword
+       matching only, not real backend data). ── */
+    .reason-dot { display:inline-block; width:.5rem; height:.5rem; border-radius:50%; margin-right:.4rem; vertical-align:middle; }
 
     @keyframes skel-shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
     .skel {
@@ -122,8 +149,29 @@
       .glass-nav > div { padding:.6rem 1rem !important; }
       /* Prevent iOS Safari zoom-on-focus for the search input. */
       input, textarea, select { font-size:16px !important; }
-      #game-bans-section table, #public-bans-section table { font-size:.74rem; }
-      #game-bans-section th, #game-bans-section td, #public-bans-section th, #public-bans-section td { padding:.5rem .6rem; }
+      #active-bans-section table, #appeals-section table { font-size:.74rem; }
+
+      /* ── Responsive "card" table layout — thead hidden, each row becomes a card, each
+         cell becomes a label:value flex row using its data-label attribute (always
+         present on every <td> emitted by activeBanRowHtml()/activeBanHistoryRowHtml()/
+         appealRowHtml() — harmless on desktop, used here on mobile). Applied uniformly
+         to all three tables on this page instead of relying on horizontal scroll. ── */
+      #active-bans-section table thead, #appeals-section table thead { display:none; }
+      #active-bans-section tbody tr, #appeals-section tbody tr {
+        display:block; background:rgba(14,3,24,0.5); border:1px solid rgba(150,0,28,0.18);
+        border-radius:.7rem; padding:.3rem .8rem; margin-bottom:.7rem;
+      }
+      #active-bans-section tbody tr:hover td, #appeals-section tbody tr:hover td { background:transparent; }
+      #active-bans-section td, #appeals-section td {
+        display:flex; justify-content:space-between; align-items:center; gap:.75rem;
+        border-bottom:1px solid rgba(150,0,28,0.08); white-space:normal; max-width:none;
+        text-overflow:clip; padding:.55rem 0; text-align:right;
+      }
+      #active-bans-section td:last-child, #appeals-section td:last-child { border-bottom:none; }
+      #active-bans-section td::before, #appeals-section td::before {
+        content:attr(data-label); color:var(--muted); font-size:.65rem; text-transform:uppercase;
+        letter-spacing:.06em; flex-shrink:0; text-align:left;
+      }
     }
   </style>
 </head>
@@ -179,130 +227,105 @@
     </p>
   </div>
 
-  <!-- Public bans list — GET /api/bans (unauthenticated). Visible to every visitor
-       unconditionally, unlike the admin-only sections below: in-game bans are ordinary
-       server-transparency content (character name + reason), not sensitive personal
-       data. The "Действия" column (Разбанить) is added only once the same nav-auth
-       check below confirms the visitor is an admin — see setPublicBansAdmin()/the
-       nav-auth block. Non-admins see the identical table with no action column. This
-       replaces 74b07ba's privacy-conscious count-only stat tile, which turned out not
-       to match what's wanted for this page. -->
-  <div id="public-bans-section" style="margin-bottom:1.75rem;animation:fade-up .4s ease .05s both;">
+  <!-- Stats bar — plain numbers + labels, updated from updateStatsBar() whenever the
+       active-bans data (below) refreshes. Pending-appeals chip only shown once admin is
+       confirmed (see setActiveBansAdmin()/loadAppeals()) — meaningless to non-admins
+       without the appeals section beneath it, and not worth leaking otherwise. -->
+  <div id="stats-bar" class="stats-bar" style="animation:fade-up .38s ease .02s both;">
+    <div class="stat-chip"><span class="stat-value" id="stat-total-bans">—</span><span class="stat-label">Активных банов</span></div>
+    <div class="stat-chip"><span class="stat-value" id="stat-permanent-bans">—</span><span class="stat-label">Навсегда</span></div>
+    <div class="stat-chip" id="stat-appeals-chip" style="display:none;"><span class="stat-value" id="stat-pending-appeals">—</span><span class="stat-label">Апелляций ждут</span></div>
+  </div>
+
+  <!-- Active bans — single merged section. Was two near-duplicate tables: a public
+       one (GET /api/bans) and an admin-only one (GET /api/admin/bans). Now one table:
+       loads via the public endpoint immediately for every visitor, then upgrades itself
+       in place to the admin endpoint once /api/auth/me confirms admin/superadmin (see
+       setActiveBansAdmin() in the nav-auth block below). The admin dataset additionally
+       carries steam_id (needed for the "История" link) and unbanned_at, which the
+       public endpoint deliberately omits. The search/server-filter row is visible to
+       everyone; the resolved-ban history toggle+table stay admin-only. -->
+  <div id="active-bans-section" style="margin-bottom:1.75rem;animation:fade-up .4s ease .05s both;">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.25rem;flex-wrap:wrap;">
       <div class="gothic ban-section-title">
         <span class="section-icon-chip chip-crimson">⛓</span> Забаненные игроки
       </div>
-      <span id="public-bans-total" style="font-size:.78rem;color:var(--muted);"></span>
+      <span id="active-bans-total" style="font-size:.78rem;color:var(--muted);"></span>
     </div>
     <p class="ban-section-desc">Активные баны, выданные через .ban на игровых серверах.</p>
+
+    <!-- Search by name + server filter — visible to every visitor, filters whichever
+         dataset is currently loaded (public or admin) client-side. Server options are
+         built dynamically from the loaded bans (this site tracks a configurable number
+         of servers) — see renderActiveBansServerFilterOptions(). -->
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin:.9rem 0 1rem;">
+      <div style="position:relative;flex:1 1 240px;max-width:340px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="active-bans-search" class="search-input" type="text" placeholder="Поиск по нику..." style="padding-left:2.4rem;" oninput="renderActiveBans()" />
+      </div>
+      <select id="active-bans-server-filter" class="search-input" style="flex:0 1 220px;" onchange="renderActiveBans()">
+        <option value="">Все сервера</option>
+      </select>
+    </div>
 
     <div class="g-card" style="margin-top:1rem;">
       <div style="overflow-x:auto;">
         <table>
-          <thead><tr id="public-bans-thead-row">
+          <thead><tr id="active-bans-thead-row">
             <th>Имя</th><th>Сервер</th><th>Осталось</th><th>Кто забанил</th><th>Причина</th>
           </tr></thead>
-          <tbody id="public-bans-tbody">
+          <tbody id="active-bans-tbody">
             <tr><td colspan="5" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <div id="public-bans-empty" class="game-bans-empty" style="display:none;">
+    <div id="active-bans-empty" class="game-bans-empty" style="display:none;">
       <div style="font-size:3rem;margin-bottom:.8rem;filter:drop-shadow(0 0 18px rgba(180,0,30,0.5));">⛓</div>
       <p class="gothic" style="font-size:.92rem;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:.4rem;">Активных банов нет</p>
     </div>
 
-    <div id="public-bans-error" style="display:none;text-align:center;padding:2.5rem 1rem;">
+    <div id="active-bans-error" style="display:none;text-align:center;padding:2.5rem 1rem;">
       <div style="font-size:2.2rem;margin-bottom:.7rem;opacity:.6;filter:drop-shadow(0 0 12px rgba(180,0,30,0.45));">⚠</div>
       <p style="font-size:.8rem;color:var(--muted);margin-bottom:.9rem;">Не удалось загрузить список банов.</p>
-      <button onclick="loadPublicBans()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
-    </div>
-  </div>
-
-  <!-- Section: in-game moderation bans (admin-only — GET/POST /api/admin/bans...).
-       Hidden until an authenticated admin/superadmin is confirmed via /api/auth/me;
-       see the nav-auth check below (same optimistic-cache-then-server-verify pattern
-       used for the "Админка" link on index.html/profile.html, just applied to a whole
-       section instead of a single nav link). Never fetched/rendered for non-admins. -->
-  <div id="game-bans-section" style="display:none;margin-top:1rem;animation:fade-up .38s ease both;">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.25rem;flex-wrap:wrap;">
-      <div class="gothic ban-section-title">
-        <span class="section-icon-chip chip-crimson">⛓</span> Забаненные игроки на сервере
-      </div>
-      <span id="game-bans-total" style="font-size:.78rem;color:var(--muted);"></span>
-    </div>
-    <p class="ban-section-desc">Активные игровые баны, выданные через .ban — видно только администрации, список обновляется автоматически.</p>
-
-    <!-- Client-side filter by character name -->
-    <div style="margin:.9rem 0 1rem;max-width:340px;">
-      <div style="position:relative;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input id="game-bans-search" class="search-input" type="text" placeholder="Поиск по нику..." style="padding-left:2.4rem;" oninput="renderGameBans()" />
-      </div>
+      <button onclick="loadActiveBans()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
     </div>
 
-    <div class="g-card" style="margin-top:1rem;">
-      <div style="overflow-x:auto;">
-        <table>
-          <thead><tr>
-            <th>Имя</th><th>Сервер</th><th>Осталось</th><th>Кто забанил</th><th>Причина</th><th>Действия</th>
-          </tr></thead>
-          <tbody id="game-bans-tbody">
-            <tr><td colspan="6" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- Empty state -->
-    <div id="game-bans-empty" class="game-bans-empty" style="display:none;">
-      <div style="font-size:3rem;margin-bottom:.8rem;filter:drop-shadow(0 0 18px rgba(180,0,30,0.5));">⛓</div>
-      <p class="gothic" style="font-size:.92rem;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:.4rem;">Активных банов нет</p>
-      <p style="font-size:.8rem;color:var(--muted);">Баны, выданные через .ban в игре, появятся здесь.</p>
-    </div>
-
-    <!-- Load-error state -->
-    <div id="game-bans-error" style="display:none;text-align:center;padding:2.5rem 1rem;">
-      <div style="font-size:2.2rem;margin-bottom:.7rem;opacity:.6;filter:drop-shadow(0 0 12px rgba(180,0,30,0.45));">⚠</div>
-      <p style="font-size:.8rem;color:var(--muted);margin-bottom:.9rem;">Не удалось загрузить список игровых банов.</p>
-      <button onclick="loadGameBans()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
-    </div>
-
-    <!-- History (resolved bans) toggle — fetched on demand via GET /api/admin/bans?status=resolved,
-         never eager-loaded alongside the active table above. -->
+    <!-- History (resolved bans) toggle — admin-only, revealed by setActiveBansAdmin().
+         Fetched on demand via GET /api/admin/bans?status=resolved, never eager-loaded
+         alongside the active table above. -->
     <div style="margin-top:1.5rem;">
-      <button id="game-bans-history-toggle" onclick="toggleGameBansHistory()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.45rem 1rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">Показать историю банов</button>
+      <button id="active-bans-history-toggle" onclick="toggleActiveBansHistory()" style="display:none;background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.45rem 1rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">Показать историю банов</button>
     </div>
 
-    <div id="game-bans-history-section" style="display:none;margin-top:1rem;">
+    <div id="active-bans-history-section" style="display:none;margin-top:1rem;">
       <div class="g-card">
         <div style="overflow-x:auto;">
           <table>
             <thead><tr>
               <th>Имя</th><th>Сервер</th><th>Снят</th><th>Кто забанил</th><th>Причина</th><th>Действия</th>
             </tr></thead>
-            <tbody id="game-bans-history-tbody">
+            <tbody id="active-bans-history-tbody">
               <tr><td colspan="6" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
             </tbody>
           </table>
         </div>
       </div>
-      <div id="game-bans-history-empty" class="game-bans-empty" style="display:none;">
+      <div id="active-bans-history-empty" class="game-bans-empty" style="display:none;">
         <p style="font-size:.8rem;color:var(--muted);">Снятых банов пока нет.</p>
       </div>
-      <div id="game-bans-history-error" style="display:none;text-align:center;padding:2.5rem 1rem;">
+      <div id="active-bans-history-error" style="display:none;text-align:center;padding:2.5rem 1rem;">
         <div style="font-size:2.2rem;margin-bottom:.7rem;opacity:.6;filter:drop-shadow(0 0 12px rgba(180,0,30,0.45));">⚠</div>
         <p style="font-size:.8rem;color:var(--muted);margin-bottom:.9rem;">Не удалось загрузить историю банов.</p>
-        <button onclick="loadGameBansHistory()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
+        <button onclick="loadActiveBansHistory()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
       </div>
     </div>
   </div>
 
   <!-- Section: ban appeals (admin-only — GET/POST /api/admin/appeals...). Same
-       admin-gating as game-bans-section above; initialised alongside it in the
-       nav-auth block below. Public submission form lives at /appeal.html. -->
+       admin-gating as active-bans-section's admin upgrade above; initialised alongside
+       it in the nav-auth block below. Public submission form lives at /appeal.html. -->
   <div id="appeals-section" style="display:none;margin-top:3rem;animation:fade-up .38s ease both;">
     <hr class="section-divider">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.25rem;flex-wrap:wrap;">
@@ -351,25 +374,26 @@
 const API = '/api';
 
 /* ── Nav auth ──
-   Also gates the admin-only "Забаненные игроки на сервере" section: cached-role check
-   first for an instant (optimistic) reveal — same pattern game-bans.html used to avoid
-   a content flash — then the server-verified /api/auth/me response (already being
-   fetched here for the nav Профиль/Войти toggle) is the actual source of truth and can
-   still hide the section again if the cache was stale. Bans are moderation-tier tooling
-   gated to "admin" (same tier as the Кланы/Настройки sections in admin.html), not
-   "moderator". The section's data/timers are only ever started once admin is confirmed
-   server-side — never fetched speculatively from the cached role alone. */
+   Also gates: (1) whether the appeals section is shown at all, and (2) whether the
+   always-visible active-bans table (below) is upgraded from the public dataset to the
+   admin one (extra steam_id-dependent "История" link + Действия column + resolved-ban
+   history). Cached-role check first for an instant (optimistic) reveal of the appeals
+   section — same pattern game-bans.html used to avoid a content flash — then the
+   server-verified /api/auth/me response (already being fetched here for the nav
+   Профиль/Войти toggle) is the actual source of truth and can still hide it again if
+   the cache was stale. Bans/appeals are moderation-tier tooling gated to "admin" (same
+   tier as the Кланы/Настройки sections in admin.html), not "moderator". The admin-only
+   data/timers are only ever started once admin is confirmed server-side — never
+   fetched speculatively from the cached role alone. */
 const ROLE_LEVELS = { user: 0, moderator: 1, admin: 2, superadmin: 3 };
 function roleLevel(role) { return ROLE_LEVELS[role] ?? 0; }
 
 (function() {
   const cached = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
-  const gameBansSection = document.getElementById('game-bans-section');
-  const appealsSection  = document.getElementById('appeals-section');
+  const appealsSection = document.getElementById('appeals-section');
   if (cached) {
     document.getElementById('nav-profile-link') && (document.getElementById('nav-profile-link').style.display = '');
     document.getElementById('nav-login-link') && (document.getElementById('nav-login-link').style.display = 'none');
-    if (gameBansSection && roleLevel(cached.role) >= ROLE_LEVELS.admin) gameBansSection.style.display = '';
     if (appealsSection && roleLevel(cached.role) >= ROLE_LEVELS.admin) appealsSection.style.display = '';
   }
   fetch('/api/auth/me', { credentials:'include' }).then(r => {
@@ -379,23 +403,18 @@ function roleLevel(role) { return ROLE_LEVELS[role] ?? 0; }
       if (profileLink) profileLink.style.display = '';
       if (loginLink)   loginLink.style.display = 'none';
       r.json().then(u => {
-        if (gameBansSection && roleLevel(u.role) >= ROLE_LEVELS.admin) {
-          gameBansSection.style.display = '';
-          initGameBans();
-        } else if (gameBansSection) {
-          gameBansSection.style.display = 'none';
-        }
-        if (appealsSection && roleLevel(u.role) >= ROLE_LEVELS.admin) {
+        const isAdmin = roleLevel(u.role) >= ROLE_LEVELS.admin;
+        if (appealsSection && isAdmin) {
           appealsSection.style.display = '';
           loadAppeals();
         } else if (appealsSection) {
           appealsSection.style.display = 'none';
         }
-        // Public bans table (always visible) only gets its "Разбанить" action column
-        // once admin is confirmed server-side — never from the cached role alone.
-        setPublicBansAdmin(roleLevel(u.role) >= ROLE_LEVELS.admin);
+        // Active-bans table (always visible to everyone) only upgrades to the admin
+        // dataset/actions once admin is confirmed server-side — never from the cached
+        // role alone.
+        setActiveBansAdmin(isAdmin);
       }).catch(() => {
-        if (gameBansSection) gameBansSection.style.display = 'none';
         if (appealsSection) appealsSection.style.display = 'none';
       });
     } else {
@@ -403,11 +422,9 @@ function roleLevel(role) { return ROLE_LEVELS[role] ?? 0; }
       localStorage.removeItem('token'); sessionStorage.removeItem('token');
       if (profileLink) profileLink.style.display = 'none';
       if (loginLink)   loginLink.style.display = '';
-      if (gameBansSection) gameBansSection.style.display = 'none';
       if (appealsSection) appealsSection.style.display = 'none';
     }
   }).catch(() => {
-    if (gameBansSection) gameBansSection.style.display = 'none';
     if (appealsSection) appealsSection.style.display = 'none';
   });
 })();
@@ -435,132 +452,6 @@ function applySiteBackground(bg) {
   } catch {}
 })();
 
-/* ════════════════════════════════════════════════════════════════════════
-   Public bans list (unauthenticated, runs for every visitor)
-   GET /api/bans now returns the actual active-ban list — character names and ban
-   reasons are ordinary server-transparency content, not sensitive personal data (no
-   real name/email/PII involved). Loaded unconditionally below, independent of the
-   admin nav-auth check above; that check only ever ADDS the "Действия"/unban column
-   once (and only once) admin is confirmed server-side — see setPublicBansAdmin().
-   Replaces the count-only stat tile 74b07ba added here.
-   ════════════════════════════════════════════════════════════════════════ */
-let _publicBansCache = [];
-let _publicBansIsAdmin = false;
-
-function publicBanRowHtml(b) {
-  const remainingHtml = b.unban_at
-    ? `<span class="remaining" id="public-ban-remaining-${b.id}">…</span>`
-    : `<span class="badge-permanent">Навсегда</span>`;
-  const actionCell = _publicBansIsAdmin
-    ? `<td><button class="btn-danger" onclick="unbanPublicBan(${b.id}, this)">Разбанить</button></td>`
-    : '';
-  return `<tr data-ban-id="${b.id}">
-    <td>${esc(b.character_name)}</td>
-    <td style="color:var(--muted);">${esc(b.server_name || `Сервер ${b.server_num}`)}</td>
-    <td>${remainingHtml}</td>
-    <td style="color:var(--muted);">${esc(b.admin_name)}</td>
-    <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(b.reason)}">${esc(b.reason)}</td>
-    ${actionCell}
-  </tr>`;
-}
-
-/* Adds/removes the "Действия" header cell to match _publicBansIsAdmin — called from
-   renderPublicBans() so the header always stays in sync with whatever was last
-   rendered (initial anonymous load, then again once admin is confirmed, or once more
-   if a stale admin session gets rejected by unbanPublicBan()). */
-function renderPublicBansHeader() {
-  const row = document.getElementById('public-bans-thead-row');
-  if (!row) return;
-  const existing = row.querySelector('[data-actions-col]');
-  if (_publicBansIsAdmin && !existing) {
-    row.insertAdjacentHTML('beforeend', '<th data-actions-col>Действия</th>');
-  } else if (!_publicBansIsAdmin && existing) {
-    existing.remove();
-  }
-}
-
-function renderPublicBans() {
-  renderPublicBansHeader();
-  const tbody = document.getElementById('public-bans-tbody');
-  const empty = document.getElementById('public-bans-empty');
-  const total = document.getElementById('public-bans-total');
-  if (total) total.textContent = _publicBansCache.length ? `Активные баны (${_publicBansCache.length})` : '';
-  if (!_publicBansCache.length) {
-    tbody.innerHTML = '';
-    empty.style.display = '';
-    return;
-  }
-  empty.style.display = 'none';
-  tbody.innerHTML = _publicBansCache.map(publicBanRowHtml).join('');
-  tickPublicBanCountdowns();
-}
-
-function tickPublicBanCountdowns() {
-  const now = Date.now();
-  _publicBansCache.forEach(b => {
-    if (!b._unbanAtDate) return;
-    const el = document.getElementById(`public-ban-remaining-${b.id}`);
-    if (!el) return;
-    el.textContent = formatRemaining(b._unbanAtDate.getTime() - now);
-  });
-}
-
-async function loadPublicBans() {
-  const errorEl = document.getElementById('public-bans-error');
-  const emptyEl = document.getElementById('public-bans-empty');
-  if (errorEl) errorEl.style.display = 'none';
-  if (emptyEl) emptyEl.style.display = 'none';
-  if (!_publicBansCache.length) tableShowSkeleton('public-bans-tbody', _publicBansIsAdmin ? 6 : 5, 5);
-  try {
-    const res = await fetch(`${API}/bans`);
-    if (!res.ok) throw new Error('load failed');
-    const data = await res.json();
-    _publicBansCache = (data.bans || []).map(b => ({
-      ...b,
-      _unbanAtDate: b.unban_at ? new Date(b.unban_at) : null,
-    }));
-    renderPublicBans();
-  } catch (err) {
-    const tbody = document.getElementById('public-bans-tbody');
-    if (tbody) tbody.innerHTML = '';
-    if (errorEl) errorEl.style.display = 'block';
-  }
-}
-
-/* Called from the nav-auth block above once /api/auth/me is server-verified — never
-   from the cached-role optimistic path, and never speculatively. */
-function setPublicBansAdmin(isAdmin) {
-  _publicBansIsAdmin = isAdmin;
-  renderPublicBans();
-}
-
-async function unbanPublicBan(id, btnEl) {
-  if (btnEl) { btnEl.disabled = true; btnEl.textContent = '…'; }
-  try {
-    const res = await fetch(`${API}/admin/bans/${id}/unban`, { method: 'POST', credentials: 'include' });
-    if (res.status === 401 || res.status === 403) {
-      // Session expired/revoked after the action column was shown — drop back to the
-      // read-only public view rather than leaving a dead button.
-      setPublicBansAdmin(false);
-      return;
-    }
-    if (!res.ok) throw new Error('unban failed');
-    _publicBansCache = _publicBansCache.filter(b => b.id !== id);
-    renderPublicBans();
-    if (typeof showToast === 'function') showToast('Разбанен, ожидание синхронизации с игрой…', 'success');
-    // The admin-only game-bans-section table below (if visible/inited) shows the same
-    // active bans — keep it honest too rather than leaving a stale duplicate row there.
-    if (_gameBansInited) loadGameBans();
-  } catch (err) {
-    if (typeof showToast === 'function') showToast('Ошибка при снятии бана', 'error');
-    if (btnEl) { btnEl.disabled = false; btnEl.textContent = 'Разбанить'; }
-  }
-}
-
-loadPublicBans();
-setInterval(tickPublicBanCountdowns, 1000);
-setInterval(loadPublicBans, 45000);
-
 /* ── Mobile nav ── */
 function toggleMobileNav() {
   const overlay = document.getElementById('mob-overlay');
@@ -580,16 +471,22 @@ function toggleMobileNav() {
    for this page's dates to behave differently from the rest of the site. */
 
 /* ════════════════════════════════════════════════════════════════════════
-   In-game moderation bans (admin-only)
-   Ported from the former standalone frontend/game-bans.html, now merged in
-   as a section on this page instead of its own route. Only ever
-   initialised (initGameBans) once /api/auth/me confirms an admin/superadmin
-   — see the nav-auth block above.
+   Active bans (single merged section)
+   Was two near-duplicate tables: public-bans-section (public, GET /api/bans) and the
+   admin-only game-bans-section (GET /api/admin/bans, ported from the former standalone
+   frontend/game-bans.html). Now one table: it loads via the public endpoint
+   immediately on page load for every visitor (no auth required — character names and
+   ban reasons are ordinary server-transparency content, not sensitive personal data),
+   then upgrades itself in place to the admin endpoint once /api/auth/me confirms
+   admin/superadmin — see setActiveBansAdmin() in the nav-auth block above. The admin
+   dataset additionally carries steam_id (needed for the "История" link) and
+   unbanned_at, which the public endpoint deliberately omits.
    ════════════════════════════════════════════════════════════════════════ */
-let _gameBansCache = [];   // [{...row, _unbanAtDate: Date|null}]
-let _gbTickTimer = null;
-let _gbRefreshTimer = null;
-let _gameBansInited = false;
+let _activeBansCache = [];   // [{...row, _unbanAtDate: Date|null}]
+let _activeBansIsAdmin = false;
+let _pendingAppealsCount = null; // captured from loadAppeals() when its filter is 'pending' — see updateStatsBar()
+
+function banServerLabel(b) { return b.server_name || `Сервер ${b.server_num}`; }
 
 function tableShowSkeleton(tbodyId, cols, rows) {
   const tbody = document.getElementById(tbodyId);
@@ -615,105 +512,187 @@ function formatRemaining(ms) {
   return `${s}с`;
 }
 
-function tickGameBanCountdowns() {
+/* Links a ban row to that player's filtered feed on admin.html's "Журнал модерации"
+   tab (GET /api/admin/moderation-log?steam_id=...) — see admin.html's own deep-link
+   handling of ?tab=moderation-log&steam_id=... near its "Deep-link" comment block.
+   Only ever called with a steam_id, which only the admin dataset carries. */
+function modLogHistoryLinkHtml(steamId) {
+  return `<a href="/admin.html?tab=moderation-log&steam_id=${encodeURIComponent(steamId)}" style="font-size:.72rem;color:var(--muted);text-decoration:none;border:1px solid rgba(150,0,28,0.25);border-radius:.4rem;padding:.32rem .6rem;white-space:nowrap;" title="История модерации этого игрока">История</a>`;
+}
+
+/* ── Best-effort ban-reason categorizer ──
+   Heuristic client-side keyword matching only — there is no `category` field on the
+   backend Ban model and none is planned; this is purely a visual scanning aid, NOT
+   authoritative moderation data. First matching category wins; no match means no badge
+   (a short specific reason shouldn't be forced into a generic "Другое" label). */
+const REASON_CATEGORIES = [
+  { label: 'Читерство',     color: '#ef4444', keywords: ['чит','cheat','спидхак','speedhack','aimbot','дюп','dupe','эксплойт','exploit'] },
+  { label: 'Токсичность',   color: '#f0b74a', keywords: ['оскорб','токсич','мат','харас','harassment','спам','флуд'] },
+  { label: 'Гриф',          color: '#a855f7', keywords: ['гриф','griefing','разрушил','снёс базу'] },
+  { label: 'Мультиаккаунт', color: '#38bdf8', keywords: ['мульт','альт','alt-account','обход бана','evade'] },
+];
+function categorizeReason(reason) {
+  const s = (reason || '').toLowerCase();
+  return REASON_CATEGORIES.find(cat => cat.keywords.some(k => s.includes(k))) || null;
+}
+function reasonBadgeHtml(reason) {
+  const cat = categorizeReason(reason);
+  return cat ? `<span class="reason-dot" style="background:${cat.color};" title="${esc(cat.label)}"></span>` : '';
+}
+
+function tickActiveBanCountdowns() {
   const now = Date.now();
-  _gameBansCache.forEach(b => {
+  _activeBansCache.forEach(b => {
     if (!b._unbanAtDate) return;
-    const el = document.getElementById(`game-ban-remaining-${b.id}`);
+    const el = document.getElementById(`active-ban-remaining-${b.id}`);
     if (!el) return;
     el.textContent = formatRemaining(b._unbanAtDate.getTime() - now);
   });
 }
 
-/* Links a ban row to that player's filtered feed on admin.html's "Журнал модерации"
-   tab (GET /api/admin/moderation-log?steam_id=...) — see admin.html's own deep-link
-   handling of ?tab=moderation-log&steam_id=... near its "Deep-link" comment block. */
-function modLogHistoryLinkHtml(steamId) {
-  return `<a href="/admin.html?tab=moderation-log&steam_id=${encodeURIComponent(steamId)}" style="font-size:.72rem;color:var(--muted);text-decoration:none;border:1px solid rgba(150,0,28,0.25);border-radius:.4rem;padding:.32rem .6rem;white-space:nowrap;" title="История модерации этого игрока">История</a>`;
-}
-
-function gameBanRowHtml(b) {
+function activeBanRowHtml(b) {
   const remainingHtml = b.unban_at
-    ? `<span class="remaining" id="game-ban-remaining-${b.id}">…</span>`
+    ? `<span class="remaining" id="active-ban-remaining-${b.id}">…</span>`
     : `<span class="badge-permanent">Навсегда</span>`;
-  return `<tr data-ban-id="${b.id}">
-    <td>${esc(b.character_name)}</td>
-    <td style="color:var(--muted);">${esc(b.server_name || `Сервер ${b.server_num}`)}</td>
-    <td>${remainingHtml}</td>
-    <td style="color:var(--muted);">${esc(b.admin_name)}</td>
-    <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(b.reason)}">${esc(b.reason)}</td>
-    <td style="display:flex;gap:.4rem;flex-wrap:wrap;"><button class="btn-danger" onclick="unbanGameBan(${b.id}, this)">Разбанить</button>${modLogHistoryLinkHtml(b.steam_id)}</td>
+  const isNew = !!b.banned_at && (Date.now() - new Date(b.banned_at).getTime()) < 24 * 60 * 60 * 1000;
+  const nameCell = `${esc(b.character_name)}${isNew ? '<span class="badge-new">новый</span>' : ''}`;
+  const actionCell = _activeBansIsAdmin
+    ? `<td data-label="Действия" style="display:flex;gap:.4rem;flex-wrap:wrap;"><button class="btn-danger" onclick="unbanActiveBan(${b.id}, this)">Разбанить</button>${b.steam_id ? modLogHistoryLinkHtml(b.steam_id) : ''}</td>`
+    : '';
+  return `<tr data-ban-id="${b.id}"${isNew ? ' class="ban-row-new"' : ''}>
+    <td data-label="Имя">${nameCell}</td>
+    <td data-label="Сервер" style="color:var(--muted);">${esc(banServerLabel(b))}</td>
+    <td data-label="Осталось">${remainingHtml}</td>
+    <td data-label="Кто забанил" style="color:var(--muted);">${esc(b.admin_name)}</td>
+    <td data-label="Причина" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(b.reason)}">${reasonBadgeHtml(b.reason)}${esc(b.reason)}</td>
+    ${actionCell}
   </tr>`;
 }
 
-function renderGameBans() {
-  const tbody = document.getElementById('game-bans-tbody');
-  const empty = document.getElementById('game-bans-empty');
-  const total = document.getElementById('game-bans-total');
-  if (total) total.textContent = _gameBansCache.length ? `Активные баны (${_gameBansCache.length})` : '';
-  if (!_gameBansCache.length) {
+/* Adds/removes the "Действия" header cell to match _activeBansIsAdmin — called from
+   renderActiveBans() so the header always stays in sync with whatever was last
+   rendered (initial anonymous load, then again once admin is confirmed, or once more
+   if a stale admin session gets rejected by unbanActiveBan()/loadActiveBans()). */
+function renderActiveBansHeader() {
+  const row = document.getElementById('active-bans-thead-row');
+  if (!row) return;
+  const existing = row.querySelector('[data-actions-col]');
+  if (_activeBansIsAdmin && !existing) {
+    row.insertAdjacentHTML('beforeend', '<th data-actions-col>Действия</th>');
+  } else if (!_activeBansIsAdmin && existing) {
+    existing.remove();
+  }
+}
+
+/* Rebuilds the server-filter <select> options from whatever's currently loaded (this
+   site tracks a configurable number of servers, so options are never hardcoded), while
+   preserving the visitor's current selection across refreshes/re-renders when it's
+   still a valid option. */
+function renderActiveBansServerFilterOptions() {
+  const sel = document.getElementById('active-bans-server-filter');
+  if (!sel) return;
+  const current = sel.value;
+  const names = Array.from(new Set(_activeBansCache.map(banServerLabel))).sort((a, b) => a.localeCompare(b, 'ru'));
+  sel.innerHTML = '<option value="">Все сервера</option>' + names.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+  if (names.includes(current)) sel.value = current;
+}
+
+function renderActiveBans() {
+  renderActiveBansHeader();
+  renderActiveBansServerFilterOptions();
+  const tbody = document.getElementById('active-bans-tbody');
+  const empty = document.getElementById('active-bans-empty');
+  const total = document.getElementById('active-bans-total');
+  if (total) total.textContent = _activeBansCache.length ? `Активные баны (${_activeBansCache.length})` : '';
+  updateStatsBar();
+  if (!_activeBansCache.length) {
     tbody.innerHTML = '';
     empty.style.display = '';
     return;
   }
   empty.style.display = 'none';
 
-  const q = (document.getElementById('game-bans-search')?.value || '').toLowerCase().trim();
-  const filtered = q
-    ? _gameBansCache.filter(b => (b.character_name || '').toLowerCase().includes(q))
-    : _gameBansCache;
+  const q = (document.getElementById('active-bans-search')?.value || '').toLowerCase().trim();
+  const serverFilter = document.getElementById('active-bans-server-filter')?.value || '';
+  const filtered = _activeBansCache.filter(b => {
+    if (q && !(b.character_name || '').toLowerCase().includes(q)) return false;
+    if (serverFilter && banServerLabel(b) !== serverFilter) return false;
+    return true;
+  });
 
   if (!filtered.length) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--muted);">Ничего не найдено по вашему запросу.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${_activeBansIsAdmin ? 6 : 5}" style="text-align:center;color:var(--muted);">Ничего не найдено по вашему запросу.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = filtered.map(gameBanRowHtml).join('');
-  tickGameBanCountdowns();
+  tbody.innerHTML = filtered.map(activeBanRowHtml).join('');
+  tickActiveBanCountdowns();
 }
 
-async function loadGameBans() {
-  document.getElementById('game-bans-error').style.display = 'none';
-  document.getElementById('game-bans-empty').style.display = 'none';
-  if (!_gameBansCache.length) tableShowSkeleton('game-bans-tbody', 6, 5);
+async function loadActiveBans() {
+  const errorEl = document.getElementById('active-bans-error');
+  const emptyEl = document.getElementById('active-bans-empty');
+  if (errorEl) errorEl.style.display = 'none';
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (!_activeBansCache.length) tableShowSkeleton('active-bans-tbody', _activeBansIsAdmin ? 6 : 5, 5);
   try {
-    const res = await fetch(`${API}/admin/bans`, { credentials: 'include' });
-    if (res.status === 401 || res.status === 403) {
-      // Role was revoked/expired after the section was revealed — hide it rather than
-      // bouncing an otherwise-public page to /login.html.
-      const section = document.getElementById('game-bans-section');
-      if (section) section.style.display = 'none';
+    const endpoint = _activeBansIsAdmin ? `${API}/admin/bans` : `${API}/bans`;
+    const res = await fetch(endpoint, _activeBansIsAdmin ? { credentials: 'include' } : {});
+    if (_activeBansIsAdmin && (res.status === 401 || res.status === 403)) {
+      // Session expired/revoked after the admin dataset was already loaded — drop back
+      // to the read-only public view rather than breaking the page.
+      setActiveBansAdmin(false);
       return;
     }
     if (!res.ok) throw new Error('load failed');
     const data = await res.json();
-    _gameBansCache = (data.bans || []).map(b => ({
+    _activeBansCache = (data.bans || []).map(b => ({
       ...b,
       _unbanAtDate: b.unban_at ? new Date(b.unban_at) : null,
     }));
-    renderGameBans();
+    renderActiveBans();
   } catch (err) {
-    document.getElementById('game-bans-tbody').innerHTML = '';
-    document.getElementById('game-bans-error').style.display = 'block';
-    if (typeof showToast === 'function') showToast('Ошибка загрузки списка игровых банов', 'error');
+    const tbody = document.getElementById('active-bans-tbody');
+    if (tbody) tbody.innerHTML = '';
+    if (errorEl) errorEl.style.display = 'block';
   }
 }
 
-async function unbanGameBan(id, btnEl) {
+/* Called from the nav-auth block above once /api/auth/me is server-verified — never
+   from the cached-role optimistic path, and never speculatively. Swaps the data source
+   (public <-> admin dataset) and re-renders the SAME table in place — this is the
+   in-place "upgrade" described in the task, not a second table. Also shows/hides the
+   admin-only resolved-ban history toggle+section. */
+function setActiveBansAdmin(isAdmin) {
+  if (_activeBansIsAdmin === isAdmin) return;
+  _activeBansIsAdmin = isAdmin;
+  _activeBansCache = []; // the two datasets carry different fields (steam_id/unbanned_at) — start clean
+  const historyToggle = document.getElementById('active-bans-history-toggle');
+  if (historyToggle) historyToggle.style.display = isAdmin ? '' : 'none';
+  if (!isAdmin) {
+    const historySection = document.getElementById('active-bans-history-section');
+    if (historySection) historySection.style.display = 'none';
+    if (historyToggle) historyToggle.textContent = 'Показать историю банов';
+  }
+  loadActiveBans();
+}
+
+async function unbanActiveBan(id, btnEl) {
   if (btnEl) { btnEl.disabled = true; btnEl.textContent = '…'; }
   try {
     const res = await fetch(`${API}/admin/bans/${id}/unban`, { method: 'POST', credentials: 'include' });
     if (res.status === 401 || res.status === 403) {
-      const section = document.getElementById('game-bans-section');
-      if (section) section.style.display = 'none';
+      // Session expired/revoked after the action column was shown — drop back to the
+      // read-only public view rather than leaving a dead button.
+      setActiveBansAdmin(false);
       return;
     }
     if (!res.ok) throw new Error('unban failed');
     // Optimistic removal — the plugin will actually execute the in-game unban within
     // ~60s of its next GET /api/plugin/due-unbans poll; the periodic refresh below keeps
     // the list honest even if this specific row somehow reappeared.
-    _gameBansCache = _gameBansCache.filter(b => b.id !== id);
-    renderGameBans();
+    _activeBansCache = _activeBansCache.filter(b => b.id !== id);
+    renderActiveBans();
     if (typeof showToast === 'function') showToast('Разбанен, ожидание синхронизации с игрой…', 'success');
   } catch (err) {
     if (typeof showToast === 'function') showToast('Ошибка при снятии бана', 'error');
@@ -721,43 +700,57 @@ async function unbanGameBan(id, btnEl) {
   }
 }
 
-function initGameBans() {
-  if (_gameBansInited) return; // guard: the confirming /api/auth/me call only fires once, but be defensive
-  _gameBansInited = true;
-  loadGameBans();
-  _gbTickTimer = setInterval(tickGameBanCountdowns, 1000);
-  _gbRefreshTimer = setInterval(loadGameBans, 45000);
+loadActiveBans();
+setInterval(tickActiveBanCountdowns, 1000);
+setInterval(loadActiveBans, 45000);
+
+/* ── Stats bar ──
+   Total active bans + how many are permanent come from whichever dataset is currently
+   loaded (same numbers either way — both are "active" bans, public vs admin only
+   differs in which extra columns/actions are available). Pending-appeals count is
+   admin-only (see _pendingAppealsCount, captured by loadAppeals() below) and hidden
+   entirely for non-admins. Called from renderActiveBans() so it stays in sync with the
+   active-bans data on every load/refresh. */
+function updateStatsBar() {
+  const totalEl = document.getElementById('stat-total-bans');
+  const permEl = document.getElementById('stat-permanent-bans');
+  if (totalEl) totalEl.textContent = _activeBansCache.length;
+  if (permEl) permEl.textContent = _activeBansCache.filter(b => !b.unban_at).length;
+  const appealsChip = document.getElementById('stat-appeals-chip');
+  const appealsEl = document.getElementById('stat-pending-appeals');
+  if (appealsChip) appealsChip.style.display = (_activeBansIsAdmin && _pendingAppealsCount !== null) ? '' : 'none';
+  if (appealsEl && _pendingAppealsCount !== null) appealsEl.textContent = _pendingAppealsCount;
 }
 
-/* ── Ban history (resolved bans) ──
+/* ── Ban history (resolved bans) — admin-only ──
    Fetched on demand only — GET /api/admin/bans?status=resolved is never called until
-   the admin actually opens this section, unlike the active table above which loads
-   immediately with initGameBans(). Read-only: no "Разбанить" button, since there's
+   an admin actually opens this section, unlike the active table above which loads
+   immediately once admin is confirmed. Read-only: no "Разбанить" button, since there's
    nothing left to unban. */
-let _gameBansHistoryLoaded = false;
+let _activeBansHistoryLoaded = false;
 
-function gameBanHistoryRowHtml(b) {
+function activeBanHistoryRowHtml(b) {
   return `<tr data-ban-id="${b.id}">
-    <td>${esc(b.character_name)}</td>
-    <td style="color:var(--muted);">${esc(b.server_name || `Сервер ${b.server_num}`)}</td>
-    <td style="color:var(--muted);white-space:nowrap;">${fmtDate(b.unbanned_at)}</td>
-    <td style="color:var(--muted);">${esc(b.admin_name)}</td>
-    <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(b.reason)}">${esc(b.reason)}</td>
-    <td>${modLogHistoryLinkHtml(b.steam_id)}</td>
+    <td data-label="Имя">${esc(b.character_name)}</td>
+    <td data-label="Сервер" style="color:var(--muted);">${esc(banServerLabel(b))}</td>
+    <td data-label="Снят" style="color:var(--muted);white-space:nowrap;">${fmtDate(b.unbanned_at)}</td>
+    <td data-label="Кто забанил" style="color:var(--muted);">${esc(b.admin_name)}</td>
+    <td data-label="Причина" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(b.reason)}">${reasonBadgeHtml(b.reason)}${esc(b.reason)}</td>
+    <td data-label="Действия">${modLogHistoryLinkHtml(b.steam_id)}</td>
   </tr>`;
 }
 
-async function loadGameBansHistory() {
-  const tbody = document.getElementById('game-bans-history-tbody');
-  const empty = document.getElementById('game-bans-history-empty');
-  const error = document.getElementById('game-bans-history-error');
+async function loadActiveBansHistory() {
+  const tbody = document.getElementById('active-bans-history-tbody');
+  const empty = document.getElementById('active-bans-history-empty');
+  const error = document.getElementById('active-bans-history-error');
   error.style.display = 'none';
   empty.style.display = 'none';
-  tableShowSkeleton('game-bans-history-tbody', 6, 4);
+  tableShowSkeleton('active-bans-history-tbody', 6, 4);
   try {
     const res = await fetch(`${API}/admin/bans?status=resolved`, { credentials: 'include' });
     if (res.status === 401 || res.status === 403) {
-      document.getElementById('game-bans-history-section').style.display = 'none';
+      document.getElementById('active-bans-history-section').style.display = 'none';
       return;
     }
     if (!res.ok) throw new Error('load failed');
@@ -768,7 +761,7 @@ async function loadGameBansHistory() {
       empty.style.display = '';
       return;
     }
-    tbody.innerHTML = bans.map(gameBanHistoryRowHtml).join('');
+    tbody.innerHTML = bans.map(activeBanHistoryRowHtml).join('');
   } catch (err) {
     tbody.innerHTML = '';
     error.style.display = 'block';
@@ -776,15 +769,15 @@ async function loadGameBansHistory() {
   }
 }
 
-function toggleGameBansHistory() {
-  const section = document.getElementById('game-bans-history-section');
-  const btn = document.getElementById('game-bans-history-toggle');
+function toggleActiveBansHistory() {
+  const section = document.getElementById('active-bans-history-section');
+  const btn = document.getElementById('active-bans-history-toggle');
   const show = section.style.display === 'none';
   section.style.display = show ? '' : 'none';
   if (btn) btn.textContent = show ? 'Скрыть историю банов' : 'Показать историю банов';
-  if (show && !_gameBansHistoryLoaded) {
-    _gameBansHistoryLoaded = true;
-    loadGameBansHistory();
+  if (show && !_activeBansHistoryLoaded) {
+    _activeBansHistoryLoaded = true;
+    loadActiveBansHistory();
   }
 }
 
@@ -808,13 +801,13 @@ function appealRowHtml(a) {
        <button class="btn-danger" onclick="resolveAppeal(${a.id}, false, this)">Отклонить</button>`
     : `<span style="font-size:.72rem;color:var(--muted);" title="${esc(a.admin_response || '')}">${esc(a.admin_name || '—')}${a.admin_response ? ': ' + esc(a.admin_response) : ''}</span>`;
   return `<tr data-appeal-id="${a.id}">
-    <td style="font-size:.78rem;">${esc(a.steam_id)}</td>
-    <td>${esc(a.character_name)}</td>
-    <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(a.message)}">${esc(a.message)}</td>
-    <td style="font-size:.78rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${banInfo}</td>
-    <td style="color:var(--muted);white-space:nowrap;">${fmtDate(a.created_at)}</td>
-    <td><span style="font-size:.68rem;font-weight:700;color:${statusColor};">${statusLabel}</span></td>
-    <td>${actions}</td>
+    <td data-label="SteamID" style="font-size:.78rem;">${esc(a.steam_id)}</td>
+    <td data-label="Персонаж">${esc(a.character_name)}</td>
+    <td data-label="Сообщение" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(a.message)}">${esc(a.message)}</td>
+    <td data-label="Причина бана" style="font-size:.78rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${banInfo}</td>
+    <td data-label="Дата" style="color:var(--muted);white-space:nowrap;">${fmtDate(a.created_at)}</td>
+    <td data-label="Статус"><span style="font-size:.68rem;font-weight:700;color:${statusColor};">${statusLabel}</span></td>
+    <td data-label="Действия">${actions}</td>
   </tr>`;
 }
 
@@ -845,7 +838,16 @@ async function loadAppeals() {
     }
     if (!res.ok) throw new Error('load failed');
     const data = await res.json();
-    renderAppeals(data.appeals || []);
+    const appeals = data.appeals || [];
+    // Piggyback the stats-bar's pending-appeals count on this call instead of firing a
+    // dedicated fetch — the status filter defaults to 'pending' (see the <select> above),
+    // so the common case (initial admin load) captures it for free; re-captured whenever
+    // this filter is explicitly set back to 'pending'.
+    if (status === 'pending') {
+      _pendingAppealsCount = appeals.length;
+      updateStatsBar();
+    }
+    renderAppeals(appeals);
   } catch (err) {
     document.getElementById('appeals-tbody').innerHTML = '';
     document.getElementById('appeals-error').style.display = 'block';
@@ -877,9 +879,8 @@ async function resolveAppeal(id, approve, btnEl) {
       showToast(approve ? 'Апелляция одобрена, игрок разбанен' : 'Апелляция отклонена', 'success');
     }
     loadAppeals();
-    // The underlying ban may have just been lifted — refresh the game-bans table too
-    // (only meaningful if that section is currently visible/initialised).
-    if (approve && _gameBansInited) loadGameBans();
+    // The underlying ban may have just been lifted — refresh the active-bans table too.
+    if (approve) loadActiveBans();
   } catch (err) {
     if (typeof showToast === 'function') showToast('Ошибка при обработке апелляции', 'error');
     if (row) row.querySelectorAll('button').forEach(b => b.disabled = false);
