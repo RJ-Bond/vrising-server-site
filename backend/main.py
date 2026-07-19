@@ -1662,12 +1662,15 @@ async def plugin_unban(
     _key: None = Depends(_require_plugin_key),
 ):
     """Called by the plugin right after it manually executes a .unban in-game. Resolves
-    whatever active ban(s) exist for this steam_id+server_num (normally at most one, but
-    handled gracefully either way); idempotent — 200 even if nothing was active."""
+    whatever active ban(s) exist for this steam_id across ALL servers (not just
+    body.server_num) — matches the cross-server enforcement in GET /api/plugin/ban-status:
+    a ban issued on one server now blocks connecting to every tracked server, so lifting it
+    must clear it everywhere too, including when an admin runs .unban on a different server
+    than the one that originally issued the ban. Idempotent — 200 even if nothing was
+    active."""
     result = await db.execute(
         select(Ban).where(
             Ban.steam_id == body.steam_id,
-            Ban.server_num == body.server_num,
             Ban.unbanned_at.is_(None),
         )
     )
@@ -1723,14 +1726,16 @@ async def plugin_ban_status(
 ):
     """Checked by the plugin on every player connect as a workaround for the game
     engine's own native ban enforcement not reliably rejecting an already-banned player.
-    Looks up the currently-active Ban (unbanned_at IS NULL) for this steam_id scoped to
-    server_num; unban_at NULL in the response means a permanent ban."""
+    Cross-server: a ban issued on ANY of the site's tracked servers now blocks connecting
+    to ALL of them — server_num is accepted for backward compatibility but no longer used
+    to filter; looks up any currently-active Ban (unbanned_at IS NULL) for this steam_id
+    regardless of which server originally issued it. If more than one is somehow active at
+    once, a permanent one wins over a temporary one, then the most recently issued.
+    unban_at NULL in the response means a permanent ban."""
     result = await db.execute(
-        select(Ban).where(
-            Ban.steam_id == steam_id,
-            Ban.server_num == server_num,
-            Ban.unbanned_at.is_(None),
-        )
+        select(Ban)
+        .where(Ban.steam_id == steam_id, Ban.unbanned_at.is_(None))
+        .order_by(Ban.unban_at.is_(None).desc(), Ban.banned_at.desc())
     )
     ban = result.scalars().first()
     if ban is None:
