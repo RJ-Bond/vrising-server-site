@@ -56,6 +56,13 @@
     { id: 3, user_id: 4, shop_item_id: null, item_name_snapshot: 'Legendary Weapon Skin', cost_snapshot: 800, status: 'fulfilled', delivery_mode: 'manual', player_note: null, admin_note: 'Выдано в игре', created_at: iso(2 * 24 * 3600 * 1000), resolved_at: iso(23 * 3600 * 1000), resolved_by: 'RJ Bond', username: 'Dracarys' },
   ];
 
+  // BanAppeal admin-list shape (backend/main.py's list_ban_appeals) — GET
+  // /api/admin/appeals. Used by the sidebar's "Баны и апелляции" pending-count badge.
+  const fakeAppeals = [
+    { id: 1, steam_id: '76500000000000101', character_name: 'Griefer42', message: 'Это была ошибка, я не читерил.', status: 'pending', admin_response: null, admin_name: null, created_at: iso(3600000), resolved_at: null, ban_reason: 'Использование читов (дюп предметов)', ban_admin_name: 'Overseer' },
+    { id: 2, steam_id: '76500000000000202', character_name: 'ToxicPlayer', message: 'Прошу снять бан, обещаю вести себя хорошо.', status: 'pending', admin_response: null, admin_name: null, created_at: iso(7200000), resolved_at: null, ban_reason: 'Оскорбления в чате', ban_admin_name: 'Overseer' },
+  ];
+
   // UserOut shape (backend/schemas.py) — auth/me and admin/users both return this.
   const userOut = (i, username, role) => ({
     id: i, username, email: `${username.toLowerCase().replace(/\s+/g, '')}@example.com`,
@@ -100,6 +107,11 @@
       const status = new URLSearchParams(url.split('?')[1] || '').get('status');
       const items = status ? fakeShopRedemptions.filter(r => r.status === status) : fakeShopRedemptions;
       return { total: items.length, page: 1, per_page: 50, items };
+    }],
+    [/\/api\/admin\/appeals(\?.*)?$/, (url) => {
+      const status = new URLSearchParams(url.split('?')[1] || '').get('status');
+      const appeals = status ? fakeAppeals.filter(a => a.status === status) : fakeAppeals;
+      return { appeals };
     }],
     [/\/api\/monitor\/status2/, () => ({ enabled: true, ...monitorStatus('[RU] Just-Skill.Ru | Brutal PvE', 0, '127.0.0.1', 27017) })],
     [/\/api\/monitor\/status$/, () => monitorStatus('[RU] Just-Skill.Ru | Standart PvE', 10, '127.0.0.1', 27016)],
