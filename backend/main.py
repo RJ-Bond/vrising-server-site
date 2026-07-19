@@ -4259,21 +4259,44 @@ async def unlink_steam_account(
     return {"ok": True}
 
 
-# ─── Public ban count ────────────────────────────────────────────────────────
+# ─── Public bans list ────────────────────────────────────────────────────────
 
 @app.get("/api/bans")
-async def get_bans_count(db: AsyncSession = Depends(get_db)):
-    """Public, privacy-safe summary for bans.html's anonymous visitors — a plain count
-    of currently-active in-game bans (Ban.unbanned_at IS NULL, same "active" semantics
-    as GET /api/admin/bans's default), no character names or reasons. This used to
-    paginate+list banned SITE accounts instead; that section was removed from bans.html
-    (frontend/bans.html no longer has any public content), leaving this endpoint
-    orphaned. Repurposed rather than left dead, since the page needs *some* public value
-    to justify staying in the main nav for non-admin visitors."""
-    active_bans = (await db.execute(
-        select(func.count(Ban.id)).where(Ban.unbanned_at.is_(None))
-    )).scalar_one()
-    return {"active_bans": active_bans}
+async def list_public_bans(db: AsyncSession = Depends(get_db)):
+    """Public, unauthenticated list of currently-active in-game bans for bans.html's
+    anonymous visitors. character_name and reason are shown deliberately: in-game
+    server bans are ordinary server-transparency content (like a public
+    rules-violations board), not sensitive personal data — there's no real name,
+    email, or other PII involved, just a game character name and why it was banned.
+    Same "active" semantics as GET /api/admin/bans's default (Ban.unbanned_at IS
+    NULL) and the same row shape that endpoint returns, minus steam_id/unbanned_at
+    (no reason to publish a player's SteamID, and "resolved" history has no public
+    view). No unban capability here — that stays admin-only via
+    POST /api/admin/bans/{id}/unban, which bans.html calls directly once it
+    separately confirms admin via /api/auth/me and shows an extra action column.
+    This briefly (74b07ba) returned just {"active_bans": N} instead, on the theory
+    that names/reasons were too sensitive to publish — that instinct turned out not
+    to match what's actually wanted for this page, so it's back to a full list."""
+    server_names = await _get_server_names(db)
+    result = await db.execute(
+        select(Ban).where(Ban.unbanned_at.is_(None)).order_by(Ban.banned_at.desc())
+    )
+    bans = result.scalars().all()
+    return {
+        "bans": [
+            {
+                "id": b.id,
+                "server_num": b.server_num,
+                "server_name": server_names.get(b.server_num) or f"Сервер {b.server_num}",
+                "character_name": b.character_name,
+                "admin_name": b.admin_name,
+                "reason": b.reason,
+                "banned_at": _fmt_dt_z(b.banned_at),
+                "unban_at": _fmt_dt_z(b.unban_at),
+            }
+            for b in bans
+        ]
+    }
 
 
 # ─── Public profile ──────────────────────────────────────────────────────────

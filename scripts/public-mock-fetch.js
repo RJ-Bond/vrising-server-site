@@ -81,11 +81,17 @@
     { id: 2, server_num: 2, wipe_type: 'map', wipe_date: iso(-56 * 24 * 3600 * 1000), note: null, created_at: iso(60 * 24 * 3600 * 1000) },
   ];
 
-  // GET /api/bans (backend/main.py) is now a public, unauthenticated, count-only
-  // summary of currently-active in-game bans — no character names/reasons — used by
-  // bans.html's public stat tile. Used to return a paginated site-account ban listing;
-  // that section was removed from the frontend and this endpoint repurposed.
-  const bans = { active_bans: 4 };
+  // GET /api/bans (backend/main.py) is a public, unauthenticated list of
+  // currently-active in-game bans — character names and reasons ARE included
+  // deliberately (ordinary server-transparency content, not sensitive personal data)
+  // — used by bans.html's public bans table.
+  const bans = {
+    bans: [
+      { id: 101, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', character_name: 'Griefer42', admin_name: 'Overseer', reason: 'Использование читов (дюп предметов)', banned_at: iso(2 * 24 * 3600 * 1000), unban_at: null },
+      { id: 102, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', character_name: 'ToxicPlayer', admin_name: 'Overseer', reason: 'Оскорбления в чате', banned_at: iso(5 * 3600 * 1000), unban_at: iso(-19 * 3600 * 1000) },
+      { id: 103, server_num: 2, server_name: '[RU] Just-Skill.Ru | Brutal PvE', character_name: 'RaidAbuser', admin_name: 'Nightwatch', reason: 'Рейд в защищённый период', banned_at: iso(30 * 3600 * 1000), unban_at: null },
+    ],
+  };
 
   const userProfile = {
     username: 'Vortigern', avatar_url: null, cover_url: null, role: 'user',
