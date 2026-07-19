@@ -944,6 +944,17 @@ class ShopRedemptionOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class PointsLeaderboardEntryOut(BaseModel):
+    """One row of GET /api/leaderboard/points — a site account ranked by points_balance.
+    Deliberately narrow (no email/role/etc.), same spirit as PlayerRecordOut for the
+    playtime leaderboard: this is a public-facing response."""
+    username: str
+    avatar_url: Optional[str] = None
+    points_balance: int
+
+    model_config = {"from_attributes": True}
+
+
 class PointsGrantIn(BaseModel):
     """Body for POST /api/admin/points/grant — a manual balance adjustment, primarily for
     donations (no payment integration exists in this repo yet). delta may be negative for

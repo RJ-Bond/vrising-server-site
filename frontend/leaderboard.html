@@ -325,7 +325,14 @@
       <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;">Игроки</h1>
       <span style="height:1px;width:36px;background:linear-gradient(90deg,var(--gold),transparent);"></span>
     </div>
-    <p style="font-size:.8rem;color:var(--muted);">Рейтинг по суммарному времени в игре</p>
+    <p style="font-size:.8rem;color:var(--muted);" id="lb-subtitle">Рейтинг по суммарному времени в игре</p>
+  </div>
+
+  <div style="display:flex;justify-content:center;margin-bottom:.85rem;">
+    <div class="lb-toggle" id="lb-metric-toggle">
+      <button class="lb-toggle-btn active" data-metric="playtime" onclick="setMetric('playtime',this)">⏱ Время в игре</button>
+      <button class="lb-toggle-btn"        data-metric="points"   onclick="setMetric('points',this)">💎 Очки</button>
+    </div>
   </div>
 
   <div id="lb-stats-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;margin-bottom:.85rem;">
@@ -337,7 +344,7 @@
     <div class="lb-stat-tile" id="lb-stat-leader">
       <div class="lb-stat-icon">🏆</div>
       <div class="lb-stat-val lb-stat-leader-name" id="lb-stat-leader-val">—</div>
-      <div class="lb-stat-label">Лидер сервера</div>
+      <div class="lb-stat-label" id="lb-stat-leader-label">Лидер сервера</div>
     </div>
     <div class="lb-stat-tile">
       <div class="lb-stat-icon">📅</div>
@@ -375,7 +382,7 @@
       <span style="width:2.2rem;flex-shrink:0;"></span>
       <span style="width:2rem;flex-shrink:0;"></span>
       <span style="flex:1;">Игрок</span>
-      <span style="flex-shrink:0;">Время</span>
+      <span style="flex-shrink:0;" id="lb-col-value">Время</span>
       <span class="lb-col-seen" style="min-width:5.5rem;text-align:right;flex-shrink:0;">Последний вход</span>
     </div>
     <div id="lb-list"></div>
@@ -391,7 +398,7 @@
 <script>
 const API = '/api';
 const PER_PAGE = 25;
-let _server = 1, _period = 'all', _page = 1;
+let _server = 1, _period = 'all', _page = 1, _metric = 'playtime';
 let _allPlayers = [];
 let _onlineNames = new Set();
 let _searchTimer = null;
@@ -430,6 +437,11 @@ function fmtPlaytime(sec) {
   if (!sec) return '0ч';
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
   return h > 0 ? `${h}ч ${m}м` : `${m}м`;
+}
+// Formats a row's ranked value according to the active metric toggle — playtime shows
+// hours/minutes, points shows a thousands-grouped count with a gem glyph.
+function fmtMetric(v) {
+  return _metric === 'points' ? `${(v || 0).toLocaleString('ru-RU')} 💎` : fmtPlaytime(v);
 }
 // _dateOpts — defined in common.js
 function relativeDate(iso) {
@@ -533,6 +545,22 @@ function applySiteBackground(bg) {
   } catch {}
 })();
 
+function setMetric(metric, btn) {
+  _metric = metric; _page = 1;
+  document.querySelectorAll('#lb-metric-toggle .lb-toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
+  const isPoints = metric === 'points';
+  // Points is a single global balance per site account (see _award_points() in main.py)
+  // — not per-server, not time-bucketed — so the server/period toggles don't apply.
+  document.getElementById('lb-server-toggle').style.display = isPoints ? 'none' : '';
+  document.getElementById('lb-period-toggle').style.display = isPoints ? 'none' : '';
+  document.getElementById('lb-col-value').textContent = isPoints ? 'Очки' : 'Время';
+  document.getElementById('lb-stat-leader-label').textContent = isPoints ? 'Лидер по очкам' : 'Лидер сервера';
+  document.getElementById('lb-subtitle').textContent = isPoints
+    ? 'Рейтинг по балансу очков'
+    : 'Рейтинг по суммарному времени в игре';
+  document.getElementById('lb-search').value = '';
+  loadLeaderboard();
+}
 function setServer(num, btn) {
   _server = num; _page = 1;
   document.querySelectorAll('#lb-server-toggle .lb-toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
@@ -582,14 +610,14 @@ function renderPodium(top3) {
     const avatarHtml = u.avatar_url
       ? `<img class="podium-avatar" src="${esc(u.avatar_url)}" alt="" style="border:2px solid ${borders[i]};">`
       : `<span class="podium-avatar" style="background:${grad};border:2px solid ${borders[i]};">${esc(name.charAt(0).toUpperCase())}</span>`;
-    const hours = Math.floor((u.total_seconds || 0) / 3600);
+    const valueText = fmtMetric(u.metricValue);
     const verifiedHtml = u.verified ? `<span class="lb-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>` : '';
     return `<a class="podium-card" href="/user.html?u=${encodeURIComponent(name)}"
         style="animation:podium-in .5s ease both;animation-delay:${i * 120}ms;">
       ${avatarHtml}
       <div class="podium-medal">${medals[i]}</div>
       <span class="podium-name">${esc(name)}</span>
-      <div class="podium-time">${hours}ч${verifiedHtml}</div>
+      <div class="podium-time">${valueText}${verifiedHtml}</div>
       <div class="podium-pillar" style="height:${pillH[i]};background:${pillBg[i]};border-top:2px solid ${borders[i]};">
         <span style="font-family:'Oswald',sans-serif;font-size:.68rem;color:rgba(255,255,255,.4);">#${ranks[i]}</span>
       </div>
@@ -635,7 +663,7 @@ function renderRows(players) {
   const list = document.getElementById('lb-list');
   if (!list) return;
   if (!players.length) { list.innerHTML = ''; return; }
-  const maxSeconds = (_allPlayers[0]?.total_seconds) || players[0]?.total_seconds || 1;
+  const maxMetric = (_allPlayers[0]?.metricValue) || players[0]?.metricValue || 1;
   list.innerHTML = players.map((p, i) => {
     const rank     = p._rank !== undefined ? p._rank : ((_page - 1) * PER_PAGE + i + 1);
     const rankCls  = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
@@ -648,11 +676,14 @@ function renderRows(players) {
     const avatarHtml = p.avatar_url
       ? `<img class="lb-avatar" src="${esc(p.avatar_url)}" alt="" loading="lazy">`
       : `<span class="lb-avatar" style="background:${grad}">${esc(name.charAt(0).toUpperCase())}</span>`;
+    // last_duration/last_seen/total_seconds are 0/null on points-mode rows (points is a
+    // global balance, not a per-session/per-server stat) — these naturally render as
+    // empty/"—" below without needing a _metric branch.
     const lastSession = p.last_duration > 0
       ? `<span class="lb-last-session">посл. сессия: ${fmtPlaytime(p.last_duration)}</span>` : '';
     const badge    = activityBadge(p.last_seen) + achievementBadge(p.total_seconds);
     const meBadge  = isMe ? `<span style="font-size:.5rem;font-weight:700;padding:.1rem .35rem;background:rgba(200,0,42,0.2);border:1px solid rgba(200,0,42,0.4);color:#fca5a5;border-radius:9999px;vertical-align:middle;margin-left:.4rem;">Вы</span>` : '';
-    const barPct   = Math.round((p.total_seconds / maxSeconds) * 100);
+    const barPct   = Math.round((p.metricValue / maxMetric) * 100);
     const barColor = rank === 1 ? '#ffd54a' : rank === 2 ? 'rgba(214,214,232,0.7)' : rank === 3 ? '#e0a361' : 'rgba(160,0,40,0.55)';
     let rankDeltaHtml = '';
     if (p.rank_delta !== null && p.rank_delta !== undefined && p.rank_delta !== 0) {
@@ -672,7 +703,7 @@ function renderRows(players) {
         ${lastSession}
         <div class="lb-progress"><div class="lb-progress-fill" style="width:${barPct}%;background:${barColor};"></div></div>
       </span>
-      <span class="lb-time">${fmtPlaytime(p.total_seconds)}${p.verified ? `<span class="lb-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>` : ''}</span>
+      <span class="lb-time">${fmtMetric(p.metricValue)}${p.verified ? `<span class="lb-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>` : ''}</span>
       <span class="lb-seen">${relativeDate(p.last_seen)}</span>
     </div>`;
   }).join('');
@@ -681,16 +712,33 @@ function renderRows(players) {
 async function loadLeaderboard() {
   const list = document.getElementById('lb-list');
   const pag  = document.getElementById('lb-pagination');
+  const isPoints = _metric === 'points';
   list.innerHTML = renderSkeleton();
   showFetchBar();
   try {
-    const [items] = await Promise.all([
-      fetch(`${API}/leaderboard?server=${_server}&period=${_period}&page=${_page}&per_page=${PER_PAGE}`).then(r => r.json()),
-      loadOnlineStatus(),
-    ]);
+    let items;
+    if (isPoints) {
+      // Points is a single global balance per site account, not per-server/per-session —
+      // no online-status join, no last_seen/last_duration. Normalize to the same row
+      // shape renderRows()/renderPodium() expect (see fmtMetric()/metricValue).
+      const raw = await fetch(`${API}/leaderboard/points?page=${_page}&per_page=${PER_PAGE}`).then(r => r.json());
+      _onlineNames = new Set();
+      items = raw.map(p => ({
+        player_name: p.username, avatar_url: p.avatar_url, metricValue: p.points_balance,
+        total_seconds: 0, last_seen: null, last_duration: 0, verified: false, rank_delta: null,
+      }));
+    } else {
+      const [pItems] = await Promise.all([
+        fetch(`${API}/leaderboard?server=${_server}&period=${_period}&page=${_page}&per_page=${PER_PAGE}`).then(r => r.json()),
+        loadOnlineStatus(),
+      ]);
+      items = pItems.map(p => ({ ...p, metricValue: p.total_seconds }));
+    }
     if (!items.length) {
       if (_page > 1) {
         list.innerHTML = emptyState('📜','Конец списка','Больше игроков нет на этой странице');
+      } else if (isPoints) {
+        list.innerHTML = emptyState('💎','Таблица пуста','Пока никто не заработал очки — играйте, чтобы попасть в рейтинг');
       } else if (_period !== 'all') {
         list.innerHTML = emptyState('📅','Нет данных за период','Попробуйте выбрать «Всё время»');
       } else {
@@ -712,9 +760,9 @@ async function loadLeaderboard() {
     const onlineEl = document.getElementById('lb-stat-online-val');
     const leaderEl = document.getElementById('lb-stat-leader-val');
     const periodEl = document.getElementById('lb-stat-period-val');
-    if (onlineEl) onlineEl.textContent = _onlineNames.size > 0 ? _onlineNames.size : '0';
+    if (onlineEl) onlineEl.textContent = isPoints ? '—' : (_onlineNames.size > 0 ? _onlineNames.size : '0');
     if (leaderEl && items.length) leaderEl.textContent = items[0].player_name || '—';
-    if (periodEl) periodEl.textContent = _period === 'week' ? 'Неделя' : _period === 'month' ? 'Месяц' : 'Всё время';
+    if (periodEl) periodEl.textContent = isPoints ? 'Всё время' : (_period === 'week' ? 'Неделя' : _period === 'month' ? 'Месяц' : 'Всё время');
     pag.style.display = (items.length === PER_PAGE || _page > 1) ? 'flex' : 'none';
     document.getElementById('lb-page-label').textContent = `Стр. ${_page}`;
     document.getElementById('lb-prev').disabled = _page <= 1;
@@ -737,7 +785,9 @@ async function findMe() {
     const searchPerPage = 100;
     let found = false;
     for (let p = 1; p <= 20; p++) {
-      const items = await fetch(`${API}/leaderboard?server=${_server}&period=${_period}&page=${p}&per_page=${searchPerPage}`).then(r => r.json());
+      const items = _metric === 'points'
+        ? await fetch(`${API}/leaderboard/points?page=${p}&per_page=${searchPerPage}`).then(r => r.json()).then(rows => rows.map(r => ({ player_name: r.username })))
+        : await fetch(`${API}/leaderboard?server=${_server}&period=${_period}&page=${p}&per_page=${searchPerPage}`).then(r => r.json());
       const idx = items.findIndex(it => it.player_name === user.username);
       if (idx !== -1) {
         const globalRank = (p - 1) * searchPerPage + idx;

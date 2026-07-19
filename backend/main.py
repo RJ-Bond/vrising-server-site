@@ -157,6 +157,7 @@ from .schemas import (
     ShopRedemptionOut,
     PointsGrantIn,
     PointsTransactionOut,
+    PointsLeaderboardEntryOut,
     strip_html_tags,
 )
 
@@ -4902,6 +4903,31 @@ async def get_leaderboard(
             item.rank_delta = hist_rank_map[r.player_name] - current_rank
         out.append(item)
     return out
+
+
+@app.get("/api/leaderboard/points", response_model=list[PointsLeaderboardEntryOut])
+async def get_points_leaderboard(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+):
+    """Points-economy leaderboard: site accounts ranked by points_balance (earned via
+    playtime/streak, spent in the shop — see _award_points()) descending. Unlike the
+    playtime leaderboard above this is not per-server (points_balance is a single global
+    balance per User) and has no week/month period filter (it's a running balance, not a
+    time-bucketed stat). Zero/negative balances and deactivated accounts are excluded,
+    same spirit as the playtime leaderboard only ever having rows for players who've
+    actually accrued something."""
+    query = (
+        select(User)
+        .where(User.is_active == True, User.points_balance > 0)
+        .order_by(User.points_balance.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+    )
+    result = await db.execute(query)
+    users = result.scalars().all()
+    return [PointsLeaderboardEntryOut.model_validate(u) for u in users]
 
 
 @app.delete("/api/admin/leaderboard/{record_id}", status_code=204)

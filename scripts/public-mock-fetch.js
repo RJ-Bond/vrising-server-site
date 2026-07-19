@@ -58,6 +58,14 @@
     verified: i % 2 === 0,
   }));
 
+  // PointsLeaderboardEntryOut shape (backend/schemas.py) — GET /api/leaderboard/points,
+  // the leaderboard.html "💎 Очки" toggle. Global per-account balance, not per-server.
+  const pointsLeaderboardPage = () => Array.from({ length: 10 }, (_, i) => ({
+    username: ['Vortigern', 'Shadowfang', 'Dracarys', 'buhalovna', 'Nightshade', 'Emberclaw', 'Grimwald', 'Ashlynn', 'Malakor', 'Seraphine'][i],
+    avatar_url: null,
+    points_balance: Math.max(10, 8200 - i * 740),
+  }));
+
   const monitorStatus = (name, players, ip, port) => ({
     online: true, name, players, max_players: 40, version: '1.0', map: 'Farbane Woods', vac: true,
     players_list: Array.from({ length: players }, (_, i) => ({ name: `Player${i}`, score: 0, duration: 3600 + i * 300 })),
@@ -135,6 +143,7 @@
     [/\/api\/clans\/\d+$/, (url) => clanDetail(url.match(/\/api\/clans\/(\d+)/)[1])],
     [/\/api\/clans(\?|$)/, () => clans],
     [/\/api\/events/, () => events],
+    [/\/api\/leaderboard\/points/, () => pointsLeaderboardPage()],
     [/\/api\/leaderboard/, (url) => leaderboardPage(url.includes('server=2') ? 2 : 1)],
     [/\/api\/monitor\/status2/, () => ({ enabled: true, ...monitorStatus('[RU] Just-Skill.Ru | Brutal PvE', 6, '127.0.0.1', 27017) })],
     [/\/api\/monitor\/status$/, () => monitorStatus('[RU] Just-Skill.Ru | Standart PvE', 14, '127.0.0.1', 27016)],
