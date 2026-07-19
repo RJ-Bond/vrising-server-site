@@ -2119,18 +2119,29 @@ def _force_unban(ban: Ban) -> None:
 
 @app.get("/api/admin/bans")
 async def list_bans(
+    status: str = Query(default="active"),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
-    """All currently-active bans (unbanned_at IS NULL) across every server, most recent
-    first. unban_at null means permanent; a timestamp is the scheduled expiry, for the
-    admin UI to compute/display a "time remaining" countdown. server_name is included as a
-    convenience (same server_num -> real-name lookup used by GET /api/clans) so the admin
-    page doesn't need a second round-trip just to label the server column."""
+    """Bans across every server, most recent first. status controls which ones:
+    "active" (default — preserves the original behavior of this endpoint, since existing
+    callers assume active-only) = unbanned_at IS NULL; "resolved" = unbanned_at IS NOT
+    NULL (already lifted, read-only history for the admin UI); "all" = no filter. Any
+    other value falls back to "active". unban_at null means permanent; a timestamp is the
+    scheduled expiry, for the admin UI to compute/display a "time remaining" countdown.
+    unbanned_at (null unless the ban has actually been lifted) is always included so the
+    "resolved" view can show when it was lifted. server_name is included as a convenience
+    (same server_num -> real-name lookup used by GET /api/clans) so the admin page doesn't
+    need a second round-trip just to label the server column."""
     server_names = await _get_server_names(db)
-    result = await db.execute(
-        select(Ban).where(Ban.unbanned_at.is_(None)).order_by(Ban.banned_at.desc())
-    )
+    query = select(Ban).order_by(Ban.banned_at.desc())
+    if status == "resolved":
+        query = query.where(Ban.unbanned_at.is_not(None))
+    elif status == "all":
+        pass
+    else:
+        query = query.where(Ban.unbanned_at.is_(None))
+    result = await db.execute(query)
     bans = result.scalars().all()
     return {
         "bans": [
@@ -2144,6 +2155,7 @@ async def list_bans(
                 "reason": b.reason,
                 "banned_at": _fmt_dt_z(b.banned_at),
                 "unban_at": _fmt_dt_z(b.unban_at),
+                "unbanned_at": _fmt_dt_z(b.unbanned_at),
             }
             for b in bans
         ]
@@ -2297,6 +2309,7 @@ async def resolve_ban_appeal(
 async def get_moderation_log(
     limit: int = Query(default=100, le=500),
     server_num: Optional[int] = Query(default=None),
+    steam_id: Optional[str] = Query(default=None),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
@@ -2308,7 +2321,10 @@ async def get_moderation_log(
     unbanned distinctly from the ban's original admin, so admin_name is reused rather than
     left null. Warning rows become "warn" entries (reason -> details). ModerationLogEntry
     rows (kick/mute/unmute/restart_scheduled/restart_executed, written by
-    POST /api/plugin/log-action) pass through as-is."""
+    POST /api/plugin/log-action) pass through as-is. steam_id, when given, narrows the feed
+    to just that player (matched against each source's own steam-id column — target_steam_id
+    in the merged output) — layered on top of the server_num filter, e.g. from bans.html's
+    "История" link into this page for one banned player."""
     ban_q = select(Ban)
     warn_q = select(Warning)
     log_q = select(ModerationLogEntry)
@@ -2316,6 +2332,10 @@ async def get_moderation_log(
         ban_q = ban_q.where(Ban.server_num == server_num)
         warn_q = warn_q.where(Warning.server_num == server_num)
         log_q = log_q.where(ModerationLogEntry.server_num == server_num)
+    if steam_id is not None:
+        ban_q = ban_q.where(Ban.steam_id == steam_id)
+        warn_q = warn_q.where(Warning.steam_id == steam_id)
+        log_q = log_q.where(ModerationLogEntry.target_steam_id == steam_id)
 
     bans = (await db.execute(ban_q)).scalars().all()
     warnings = (await db.execute(warn_q)).scalars().all()
