@@ -139,6 +139,26 @@ async def test_plugin_unban_is_noop_when_nothing_active(client, db_session):
     assert r.json() == {"success": True}
 
 
+async def test_plugin_unban_clears_ban_issued_on_different_server(client, db_session):
+    """Cross-server: .unban run on server 2 must clear a ban that was originally
+    issued on server 1 — see the cross-server enforcement change."""
+    await _set_plugin_key(db_session)
+    db_session.add(Ban(
+        server_num=1, steam_id="steam-unban-cross", character_name="C1",
+        admin_name="Admin1", reason="r1", banned_at=datetime.utcnow(), unban_at=None,
+    ))
+    await db_session.commit()
+
+    r = await client.post("/api/plugin/unban", json={"steam_id": "steam-unban-cross", "server_num": 2}, headers=_hdr())
+    assert r.status_code == 200
+    assert r.json() == {"success": True}
+
+    status_r = await client.get(
+        "/api/plugin/ban-status", params={"steam_id": "steam-unban-cross", "server_num": 1}, headers=_hdr()
+    )
+    assert status_r.json() == {"banned": False}
+
+
 # ─── GET /api/plugin/due-unbans ─────────────────────────────────────────────
 
 async def test_due_unbans_returns_only_expired_bans_and_consumes_them(client, db_session):
@@ -238,7 +258,11 @@ async def test_ban_status_false_for_already_unbanned(client, db_session):
     assert r.json() == {"banned": False}
 
 
-async def test_ban_status_scoped_per_server(client, db_session):
+async def test_ban_status_cross_server(client, db_session):
+    """A ban issued on one server blocks connecting to every tracked server — see
+    the cross-server enforcement change in GET /api/plugin/ban-status. server_num
+    is still accepted as a query param (the plugin always sends its own), but no
+    longer used to filter the lookup."""
     await _set_plugin_key(db_session)
     db_session.add(Ban(
         server_num=2, steam_id="status-other-server", character_name="Target",
@@ -250,7 +274,8 @@ async def test_ban_status_scoped_per_server(client, db_session):
         "/api/plugin/ban-status", params={"steam_id": "status-other-server", "server_num": 1}, headers=_hdr()
     )
     assert r.status_code == 200
-    assert r.json() == {"banned": False}
+    assert r.json()["banned"] is True
+    assert r.json()["admin_name"] == "A"
 
 
 # ─── GET /api/admin/bans ────────────────────────────────────────────────────
