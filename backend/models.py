@@ -77,6 +77,15 @@ class GameClanMember(Base):
     __tablename__ = "game_clan_members"
 
     id = Column(Integer, primary_key=True, index=True)
+    # NOTE: ondelete="CASCADE" here (and the matching "ON DELETE CASCADE" in the raw
+    # CREATE TABLE DDL in lifespan(), backend/main.py) does NOT reflect actually-enforced
+    # DB behavior: SQLite only applies ON DELETE CASCADE on connections that have run
+    # `PRAGMA foreign_keys = ON`, and this app's engine (backend/database.py) never sets
+    # that pragma. Deleting a GameClan row therefore does NOT delete its members — any
+    # caller that deletes from game_clans MUST also explicitly
+    # `delete(GameClanMember).where(GameClanMember.clan_id.in_(...))` first/alongside.
+    # (Root cause of a real bug: POST /api/plugin/clans/sync used to rely on this cascade
+    # and silently accumulated duplicate member rows every sync cycle.)
     clan_id = Column(Integer, ForeignKey("game_clans.id", ondelete="CASCADE"), nullable=False)
     steam_id = Column(String(32), nullable=False)
     character_name = Column(String(64), nullable=False)

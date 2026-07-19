@@ -166,3 +166,94 @@ async def test_clan_detail_enriches_members_with_linked_site_accounts(client, db
 async def test_clan_detail_404_for_missing_clan(client, db_session):
     r = await client.get("/api/clans/999999")
     assert r.status_code == 404
+
+
+async def test_repeated_sync_with_same_clan_and_member_does_not_accumulate(client, db_session):
+    """Regression test for a bug where GameClanMember rows were never actually deleted
+    (the DB-level ON DELETE CASCADE the ORM annotation implies is not enforced by
+    SQLite without PRAGMA foreign_keys = ON, which this app never sets), so every sync
+    cycle for the same server_num silently piled another duplicate member row onto the
+    same clan_id — since SQLite's plain INTEGER PRIMARY KEY reuses the freed rowid once
+    the game_clans table is emptied by delete(GameClan), the "new" clan kept landing on
+    the same id as before, so old orphaned members kept counting toward it forever."""
+    await _set_plugin_key(db_session)
+
+    body = {
+        "server_num": 1,
+        "clans": [
+            {
+                "clan_guid": "guid-solo",
+                "name": "Solo Clan",
+                "motto": "",
+                "members": [
+                    {"steam_id": "111", "character_name": "SoloLeader", "role": "leader"},
+                ],
+            },
+        ],
+    }
+
+    for _ in range(2):
+        r = await client.post("/api/plugin/clans/sync", json=body, headers=_hdr())
+        assert r.status_code == 200
+
+    list_r = await client.get("/api/clans")
+    assert list_r.status_code == 200
+    clans = list_r.json()
+    assert len(clans) == 1
+    assert clans[0]["name"] == "Solo Clan"
+    assert clans[0]["member_count"] == 1
+
+    detail_r = await client.get(f"/api/clans/{clans[0]['id']}")
+    assert detail_r.status_code == 200
+    assert len(detail_r.json()["members"]) == 1
+
+
+async def test_repeated_sync_with_different_member_replaces_not_adds(client, db_session):
+    """Same accumulation bug, but the second sync reports a different steam_id for the
+    same clan_guid (e.g. the old member left and a new one joined) — the old member must
+    be dropped, not kept alongside the new one."""
+    await _set_plugin_key(db_session)
+
+    first = {
+        "server_num": 1,
+        "clans": [
+            {
+                "clan_guid": "guid-solo",
+                "name": "Solo Clan",
+                "motto": "",
+                "members": [
+                    {"steam_id": "111", "character_name": "OldMember", "role": "leader"},
+                ],
+            },
+        ],
+    }
+    second = {
+        "server_num": 1,
+        "clans": [
+            {
+                "clan_guid": "guid-solo",
+                "name": "Solo Clan",
+                "motto": "",
+                "members": [
+                    {"steam_id": "999", "character_name": "NewMember", "role": "leader"},
+                ],
+            },
+        ],
+    }
+
+    r1 = await client.post("/api/plugin/clans/sync", json=first, headers=_hdr())
+    assert r1.status_code == 200
+    r2 = await client.post("/api/plugin/clans/sync", json=second, headers=_hdr())
+    assert r2.status_code == 200
+
+    list_r = await client.get("/api/clans")
+    assert list_r.status_code == 200
+    clans = list_r.json()
+    assert len(clans) == 1
+    assert clans[0]["member_count"] == 1
+
+    detail_r = await client.get(f"/api/clans/{clans[0]['id']}")
+    members = detail_r.json()["members"]
+    assert len(members) == 1
+    assert members[0]["steam_id"] == "999"
+    assert members[0]["character_name"] == "NewMember"

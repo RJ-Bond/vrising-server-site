@@ -1209,7 +1209,26 @@ async def plugin_clans_sync(
     """Sent periodically by the plugin with the FULL current in-game clan roster for one
     server. This replaces (not merges) all game_clans rows for body.server_num — the
     plugin always reports its complete current state, so a stale clan that no longer
-    exists in-game simply won't be in the next payload and gets dropped here."""
+    exists in-game simply won't be in the next payload and gets dropped here.
+
+    IMPORTANT: GameClanMember.clan_id declares ondelete="CASCADE" at the ORM level, but
+    that is NOT actually enforced by the live DB — SQLite only applies ON DELETE CASCADE
+    when a connection has run `PRAGMA foreign_keys = ON`, and this app's engine
+    (backend/database.py) never sets that pragma, so the cascade is silently a no-op.
+    Deleting a GameClan row without also explicitly deleting its GameClanMember rows
+    leaves them orphaned-but-still-clan_id-matching, and since SQLite's plain
+    `INTEGER PRIMARY KEY` (no AUTOINCREMENT) reuses the lowest free rowid, the next insert
+    can get the SAME id, causing every previous cycle's "orphaned" members to silently
+    reattach and pile up. So we must delete members explicitly, scoped by clan id, before
+    deleting the clans themselves. See models.py for the same note near the FK column."""
+    clan_ids_result = await db.execute(
+        select(GameClan.id).where(GameClan.server_num == body.server_num)
+    )
+    clan_ids = [row[0] for row in clan_ids_result.all()]
+    if clan_ids:
+        await db.execute(
+            delete(GameClanMember).where(GameClanMember.clan_id.in_(clan_ids))
+        )
     await db.execute(
         delete(GameClan).where(GameClan.server_num == body.server_num)
     )
