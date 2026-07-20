@@ -23,6 +23,32 @@ from fastapi.responses import StreamingResponse, FileResponse, Response
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
+# ─── Router split status ──────────────────────────────────────────────────────
+# Phase 1 of splitting this file into backend/routers/*.py is done: points economy
+# (shop/redemptions/grants), wipes, notifications, direct messages, reports, polls,
+# events & tournaments, and the whole news domain (public/reactions/comments/
+# comment-reactions/admin/templates) now live in backend/routers/. Shared helpers used
+# across domains moved to backend/helpers.py, the rate limiter to backend/rate_limit.py.
+#
+# Domains still living in this file, deliberately not split yet (each has real
+# cross-domain coupling or was simply out of scope for phase 1 — see the "Split
+# backend/main.py into routers" plan for the full rationale):
+#   - Auth (register/login/password reset/2FA/session)
+#   - Game Plugin Integration (the whole X-Plugin-Key-authenticated surface: status,
+#     heartbeat, playtime, connect streak, scheduled restarts, warnings/bans, clan sync)
+#   - Bans / Ban appeals / Unified moderation log (coupled via _force_unban, and
+#     moderation-log's three-table merge across warnings/bans/appeals)
+#   - Clans (game-synced, read-only — coupled to Users via steam_id join)
+#   - Monitor / Leaderboard (coupled via the _track_players background task)
+#   - The large admin-only tail: Settings (public/admin/import), Users, Linked game
+#     accounts, System operations (SSL/update/deploy), Dashboard stats, Comments
+#     moderation, File manager, Media library, DB Backup, RCON, Audit log, Analytics
+#     (page views), CSV export, Error log, Auto backups list, Bulk user actions
+#
+# Background tasks (scheduled publish, auto backup, cleanup, monitor poll, scheduler,
+# leaderboard snapshot) also stay here — several straddle multiple of the above domains
+# (e.g. _track_players writes Leaderboard data from inside what's filed as "Monitor").
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
