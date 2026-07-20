@@ -443,10 +443,11 @@ class PageViewMiddleware(BaseHTTPMiddleware):
 app.add_middleware(PageViewMiddleware)
 
 
-from .routers import points_shop, wipes
+from .routers import points_shop, wipes, notifications
 
 app.include_router(points_shop.router)
 app.include_router(wipes.router)
+app.include_router(notifications.router)
 
 
 # ─── Version ────────────────────────────────────────────────────────────────
@@ -3467,47 +3468,6 @@ async def get_comment_reactions(comment_id: int, request: Request, db: AsyncSess
     except Exception:
         pass
     return {"counts": counts, "user_reaction": user_reaction}
-
-
-# ─── Notifications ────────────────────────────────────────────────────────────
-
-@app.get("/api/notifications")
-async def get_notifications(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    res = await db.execute(
-        select(Notification)
-        .where(Notification.user_id == current_user.id)
-        .order_by(Notification.created_at.desc())
-        .limit(50)
-    )
-    items = res.scalars().all()
-    unread = sum(1 for n in items if not n.read)
-    return {
-        "items": [
-            {"id": n.id, "type": n.type, "data": json.loads(n.data or "{}"), "read": n.read, "created_at": n.created_at.isoformat()}
-            for n in items
-        ],
-        "unread": unread
-    }
-
-
-@app.post("/api/notifications/read-all")
-async def mark_notifications_read(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    await db.execute(
-        update(Notification)
-        .where(Notification.user_id == current_user.id, Notification.read == False)
-        .values(read=True)
-    )
-    await db.commit()
-    return {"ok": True}
-
-
-@app.delete("/api/notifications/{notif_id}")
-async def delete_notification(notif_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    n = await db.get(Notification, notif_id)
-    if n and n.user_id == current_user.id:
-        await db.delete(n)
-        await db.commit()
-    return {"ok": True}
 
 
 # ─── Discord Webhook ─────────────────────────────────────────────────────────
