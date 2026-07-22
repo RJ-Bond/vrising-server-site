@@ -4,7 +4,7 @@ router modules (backend/routers/*.py) can import them without importing main.py 
 changes; see the "Split backend/main.py into routers" plan for the rationale."""
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from .database import get_db
-from .models import User, AuditLog, ServerApiKey, Setting, PointsTransaction, Ban, PluginHeartbeat
+from .models import User, AuditLog, ServerApiKey, Setting, PointsTransaction, Ban, PluginHeartbeat, ScheduledRestart
 from .auth import COOKIE_NAME
 
 logger = logging.getLogger(__name__)
@@ -268,6 +268,34 @@ async def _site_timezone(db: AsyncSession) -> ZoneInfo:
         return ZoneInfo(tz_name or "Europe/Moscow")
     except Exception:
         return ZoneInfo("Europe/Moscow")
+
+
+# ─── Scheduled server restart ────────────────────────────────────────────────
+# Shared by the plugin-facing restart endpoints (backend/routers/plugin_integration.py)
+# and their admin-panel counterpart (backend/routers/server_admin.py) — both act on the
+# same ScheduledRestart row and must stay in sync, so the helpers live here rather than
+# in either router.
+
+async def _schedule_restart(db: AsyncSession, server_num: int, minutes: int) -> datetime:
+    if minutes < 1:
+        raise HTTPException(status_code=400, detail="invalid_minutes")
+    restart_at = datetime.utcnow() + timedelta(minutes=minutes)
+    result = await db.execute(select(ScheduledRestart).where(ScheduledRestart.server_num == server_num))
+    row = result.scalar_one_or_none()
+    if row is None:
+        row = ScheduledRestart(server_num=server_num)
+        db.add(row)
+    row.restart_at = restart_at
+    await db.commit()
+    return restart_at
+
+
+async def _cancel_restart(db: AsyncSession, server_num: int) -> None:
+    result = await db.execute(select(ScheduledRestart).where(ScheduledRestart.server_num == server_num))
+    row = result.scalar_one_or_none()
+    if row is not None and row.restart_at is not None:
+        row.restart_at = None
+        await db.commit()
 
 
 def _force_unban(ban: Ban) -> None:
