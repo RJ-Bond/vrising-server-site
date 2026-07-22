@@ -22,6 +22,10 @@ logger = logging.getLogger(__name__)
 UPLOAD_DIR = Path("/data/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+# Shared with main.py's own _auto_backup_task (Background tasks, not yet split out) —
+# same reason UPLOAD_DIR lives here rather than in routers/admin_system.py.
+BACKUP_DIR = Path("/data/backups")
+
 _totp_pending: dict[int, str] = {}
 
 # Visitor-tracking state — logically part of the Who's-online domain (main.py, not yet
