@@ -2215,6 +2215,7 @@
             <option value="unmute">Снятие мута</option>
             <option value="restart_scheduled">Рестарт запланирован</option>
             <option value="restart_executed">Рестарт выполнен</option>
+            <option value="report">Жалоба игрока</option>
           </select>
           <select id="modlog-server-filter" class="dark-input" style="font-size:.78rem;padding:.35rem .6rem;width:auto;" onchange="loadModerationLog()">
             <option value="">Все сервера</option>
@@ -5501,11 +5502,13 @@ let _modlogCache = [];
 const MODLOG_ACTION_LABELS = {
   ban: 'Бан', unban: 'Разбан', warn: 'Предупреждение', kick: 'Кик', mute: 'Мут',
   unmute: 'Снятие мута', restart_scheduled: 'Рестарт запланирован', restart_executed: 'Рестарт выполнен',
+  report: 'Жалоба игрока',
 };
 const MODLOG_ACTION_COLORS = {
   ban: 'rgba(220,38,38,.18)', unban: 'rgba(0,150,100,.18)', warn: 'rgba(245,158,11,.18)',
   kick: 'rgba(249,115,22,.18)', mute: 'rgba(100,100,100,.2)', unmute: 'rgba(0,150,100,.15)',
   restart_scheduled: 'rgba(90,130,240,.18)', restart_executed: 'rgba(90,130,240,.28)',
+  report: 'rgba(168,85,247,.18)',
 };
 
 // Reflects _modlogSteamIdFilter (set from the ?steam_id= deep-link param, or cleared via

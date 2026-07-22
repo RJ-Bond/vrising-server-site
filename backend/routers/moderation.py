@@ -204,7 +204,7 @@ async def plugin_ban_status(
     }
 
 
-_VALID_LOG_ACTIONS = {"kick", "mute", "unmute", "restart_scheduled", "restart_executed"}
+_VALID_LOG_ACTIONS = {"kick", "mute", "unmute", "restart_scheduled", "restart_executed", "report"}
 
 
 @router.post("/api/plugin/log-action")
@@ -217,9 +217,11 @@ async def plugin_log_action(
 ):
     """Records the moderation action types NOT already covered by their own dedicated
     endpoints — ban/unban -> POST /api/plugin/ban /unban, warn -> POST /api/plugin/warn —
-    for the unified feed at GET /api/admin/moderation-log. Only the 5 values in
+    for the unified feed at GET /api/admin/moderation-log. Only the values in
     _VALID_LOG_ACTIONS are accepted (400 "invalid_action" otherwise) to avoid
-    double-counting ban/unban/warn once merged into that feed."""
+    double-counting ban/unban/warn once merged into that feed. "report" (added for the
+    plugin's ".report" command) reuses admin_name for the REPORTING player rather than an
+    admin — it's the only action here not actually performed by an admin."""
     if body.action not in _VALID_LOG_ACTIONS:
         raise HTTPException(status_code=400, detail="invalid_action")
     db.add(ModerationLogEntry(
