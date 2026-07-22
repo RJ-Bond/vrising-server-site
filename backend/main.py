@@ -24,26 +24,29 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 # ─── Router split status ──────────────────────────────────────────────────────
-# Phase 1 of splitting this file into backend/routers/*.py is done: points economy
-# (shop/redemptions/grants), wipes, notifications, direct messages, reports, polls,
-# events & tournaments, and the whole news domain (public/reactions/comments/
-# comment-reactions/admin/templates) now live in backend/routers/. Shared helpers used
-# across domains moved to backend/helpers.py, the rate limiter to backend/rate_limit.py.
+# The split into backend/routers/*.py went further than this comment used to claim —
+# it was last updated after phase 1 and never revised as later phases landed. Current
+# state (verified against the actual app.include_router() calls below, not this
+# comment — trust those first if the two ever disagree again): auth, profile, users,
+# clans, leaderboard, news (+reactions/comments/polls/templates), wipes, events,
+# notifications, direct messages, reports, points economy (shop/redemptions/grants),
+# bans/ban-appeals/unified moderation-log, game plugin integration (the whole
+# X-Plugin-Key surface), server admin (restarts/message-templates/server-api-key),
+# and the admin settings/system/misc tail (users, files, media, backups, RCON, audit
+# log, analytics, CSV export, error log) are ALL split out now. Shared helpers moved
+# to backend/helpers.py, the rate limiter to backend/rate_limit.py.
 #
-# Domains still living in this file, deliberately not split yet (each has real
-# cross-domain coupling or was simply out of scope for phase 1 — see the "Split
-# backend/main.py into routers" plan for the full rationale):
-#   - Auth (register/login/password reset/2FA/session)
-#   - Game Plugin Integration (the whole X-Plugin-Key-authenticated surface: status,
-#     heartbeat, playtime, connect streak, scheduled restarts, warnings/bans, clan sync)
-#   - Bans / Ban appeals / Unified moderation log (coupled via _force_unban, and
-#     moderation-log's three-table merge across warnings/bans/appeals)
-#   - Clans (game-synced, read-only — coupled to Users via steam_id join)
-#   - Monitor / Leaderboard (coupled via the _track_players background task)
-#   - The large admin-only tail: Settings (public/admin/import), Users, Linked game
-#     accounts, System operations (SSL/update/deploy), Dashboard stats, Comments
-#     moderation, File manager, Media library, DB Backup, RCON, Audit log, Analytics
-#     (page views), CSV export, Error log, Auto backups list, Bulk user actions
+# What's still genuinely here, not yet split (see the "Split backend/main.py into
+# routers" plan for rationale — mostly background-task coupling, not scope creep):
+#   - Version / SEO (sitemap.xml, rss.xml, news-embed prerender, Google verification)
+#   - Setup wizard (first-run only)
+#   - AI chat ("Управляющий замком", optional Anthropic integration)
+#   - Presence ("who's online" ping/stream) and server Monitor (A2S polling, history/
+#     snapshots) — coupled via the _track_players background task, which also feeds
+#     Leaderboard
+#   - Admin chat announcements (CRUD + send-now/test-send) and admin plugin-status
+#   - Background tasks themselves: scheduled news publish, auto-backup, cleanup,
+#     leaderboard rank snapshots, event status transitions
 #
 # Background tasks (scheduled publish, auto backup, cleanup, monitor poll, scheduler,
 # leaderboard snapshot) also stay here — several straddle multiple of the above domains
