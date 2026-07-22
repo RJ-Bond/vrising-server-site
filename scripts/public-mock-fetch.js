@@ -19,6 +19,7 @@
     wipe_date2: iso(-56 * 24 * 3600 * 1000), wipe_type2: 'map',
     discord_url: 'https://discord.gg/example',
     event_active: 'false', rules: '1. Уважайте других игроков.\n2. Без читов.',
+    nav_hidden: '["/shop.html"]',
   };
 
   const clans = [

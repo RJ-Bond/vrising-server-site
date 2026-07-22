@@ -31,6 +31,7 @@
     server_name: '[RU] Just-Skill.Ru | Standart PvE',
     server2_name: '[RU] Just-Skill.Ru | Brutal PvE',
     discord_url: '',
+    nav_hidden: '["/shop.html"]',
   };
 
   const adminSettingsList = Object.entries({

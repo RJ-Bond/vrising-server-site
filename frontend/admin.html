@@ -1209,6 +1209,55 @@
           </div>
         </div>
 
+        <!-- Nav visibility -->
+        <div class="s-card">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(80,0,140,.18);border:1px solid rgba(140,0,220,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="1.8"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+            </div>
+            <div><h2>Видимость навигации</h2><p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Скрыть пункты меню, которые ещё не готовы. Страница остаётся доступной по прямой ссылке.</p></div>
+          </div>
+          <div class="s-field">
+            <label class="s-label">Скрытые пункты меню</label>
+            <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.3rem;">
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
+                <input type="checkbox" class="nav-hidden-cb" data-href="/" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                Главная
+              </label>
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
+                <input type="checkbox" class="nav-hidden-cb" data-href="/servers.html" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                Сервера
+              </label>
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
+                <input type="checkbox" class="nav-hidden-cb" data-href="/leaderboard.html" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                Игроки
+              </label>
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
+                <input type="checkbox" class="nav-hidden-cb" data-href="/clans.html" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                Кланы
+              </label>
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
+                <input type="checkbox" class="nav-hidden-cb" data-href="/map.html" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                Карта
+              </label>
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
+                <input type="checkbox" class="nav-hidden-cb" data-href="/bans.html" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                Баны
+              </label>
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
+                <input type="checkbox" class="nav-hidden-cb" data-href="/shop.html" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                Магазин
+              </label>
+              <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
+                <input type="checkbox" class="nav-hidden-cb" data-href="/faq.html" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                FAQ
+              </label>
+              <input type="hidden" id="setting-nav_hidden">
+            </div>
+            <p class="s-desc">Скрытая страница остаётся доступной по прямой ссылке — это только скрывает пункт из меню</p>
+          </div>
+        </div>
+
         <!-- Event banner -->
         <div class="s-card">
           <div class="s-card-head">
@@ -2363,7 +2412,7 @@
 
 <script src="/purify.min.js"></script>
 <script src="/quill.min.js"></script>
-<script src="/common.js?v=9"></script>
+<script src="/common.js?v=10"></script>
 <script>
 const API = '/api';
 // esc — defined in common.js
@@ -2932,7 +2981,7 @@ async function submitEditor() {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
-const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','hero_logo_url','hero_subtitle','favicon_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','plugin_api_key','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time','maintenance_start_time','maintenance_fallback_image'];
+const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','hero_logo_url','hero_subtitle','favicon_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','plugin_api_key','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time','maintenance_start_time','maintenance_fallback_image','nav_hidden'];
 let _settingsBaseline = {};
 
 async function loadSettings() {
@@ -2964,7 +3013,22 @@ async function loadSettings() {
   if (badge && map['https_domain']?.trim()) {
     badge.textContent = 'HTTPS'; badge.className = 's-status-badge s-status-https';
   }
+  // Nav-visibility checkboxes sync
+  try {
+    const hidden = JSON.parse(map['nav_hidden'] || '[]');
+    document.querySelectorAll('.nav-hidden-cb').forEach(cb => {
+      cb.checked = hidden.includes(cb.dataset.href);
+    });
+  } catch {}
   updateEventPreview();
+}
+
+function updateNavHidden() {
+  const hidden = Array.from(document.querySelectorAll('.nav-hidden-cb'))
+    .filter(cb => cb.checked)
+    .map(cb => cb.dataset.href);
+  document.getElementById('setting-nav_hidden').value = JSON.stringify(hidden);
+  saveSetting('nav_hidden');
 }
 
 // ─── Per-server plugin sub-tabs ─────────────────────────────────────────────

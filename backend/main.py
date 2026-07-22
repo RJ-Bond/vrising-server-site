@@ -251,6 +251,7 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="maintenance_fallback_image", value=""),
         Setting(key="maintenance_status_updates", value="[]"),
         Setting(key="maintenance_history", value="[]"),
+        Setting(key="nav_hidden", value="[]"),
         # Points economy — earning rates, tunable by an admin on the Economy tab
         # (not exposed on /api/settings/public: admin-only tuning, no anonymous use).
         Setting(key="points_per_minute_playtime", value="1"),

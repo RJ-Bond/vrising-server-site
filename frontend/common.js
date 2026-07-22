@@ -91,6 +91,18 @@ window.getSettings = function () {
         }
       }
 
+      // Nav-item visibility — admin can hide nav links whose destination
+      // isn't ready yet. Stored as a JSON array of hrefs; matches any <a>
+      // with that exact href, in every nav block on every page (including
+      // index.html's differently-structured side-panel, which shares hrefs).
+      if (s.nav_hidden) {
+        try {
+          JSON.parse(s.nav_hidden).forEach(href => {
+            document.querySelectorAll(`a[href="${href}"]`).forEach(el => { el.style.display = 'none'; });
+          });
+        } catch {}
+      }
+
       // Maintenance mode redirect
       if (s.maintenance_mode === 'true' || s.maintenance_mode === true) {
         const path = location.pathname.replace(/\/+$/, '') || '/';
