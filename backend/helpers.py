@@ -298,6 +298,29 @@ async def _cancel_restart(db: AsyncSession, server_num: int) -> None:
         await db.commit()
 
 
+# ─── Maintenance flag file ───────────────────────────────────────────────────
+# Written/removed for nginx to read directly (no DB round-trip on every request). Lives
+# here rather than in routers/admin_settings.py (its main caller) because main.py's own
+# startup lifespan also restores it from the "maintenance_mode" Setting on boot — same
+# sharing reason as _schedule_restart/_cancel_restart above.
+
+MAINTENANCE_FLAG_PATH = "/var/maintenance/.flag"
+
+
+def _write_maintenance_flag(enabled: bool) -> None:
+    """Write or remove the maintenance flag file for nginx."""
+    import os, pathlib
+    try:
+        flag = pathlib.Path(MAINTENANCE_FLAG_PATH)
+        if enabled:
+            flag.parent.mkdir(parents=True, exist_ok=True)
+            flag.touch()
+        else:
+            flag.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 def _force_unban(ban: Ban) -> None:
     """Brings unban_at forward to "now" (regardless of its previous value) rather than
     setting unbanned_at directly — that only happens once the plugin actually confirms the
