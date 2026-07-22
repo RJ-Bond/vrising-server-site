@@ -24,6 +24,14 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 _totp_pending: dict[int, str] = {}
 
+# Visitor-tracking state — logically part of the Who's-online domain (main.py, not yet
+# split out) but also written by POST /api/auth/logout (backend/routers/auth.py) to
+# retire a session immediately instead of waiting for its visitor-heartbeat entry to
+# expire. Lives here (like _get_server_names/_force_unban below) purely so both sides
+# can share the same dict without a main.py <-> routers circular import.
+_visitor_data: dict[str, dict] = {}  # visitor_id -> {ts, first_ts, db_ts, page, username, is_authed, is_bot}
+_explicit_logouts: dict[str, float] = {}  # username -> logout timestamp
+
 
 def _fmt_dt(dt: datetime | None) -> str | None:
     """Return ISO-8601 string with explicit UTC offset so JS always parses as UTC."""
