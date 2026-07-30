@@ -295,6 +295,52 @@ async def _git_log_oneline(repo: str, old_hash: str, new_hash: str) -> list[str]
         return []
 
 
+_GITHUB_REPO = "RJ-Bond/vrising-server-site"
+_REPO_VERSION_FILE = Path("/opt/vrising-site/VERSION")
+
+
+@router.get("/api/admin/update/check")
+async def check_for_update(_: User = Depends(get_superadmin_user)):
+    """Compares the locally deployed VERSION against GitHub's latest Release for this
+    repo, so the admin panel can show "update available" + its changelog before the
+    admin decides to actually run the update below. VERSION here is read from the
+    git-controlled repo checkout (/opt/vrising-site/VERSION, same path _git_short_hash
+    below operates against) — not /app/VERSION, which is baked into the Docker image at
+    build time and only changes on an image rebuild, not on the git pull this endpoint
+    is checking for. The CI release workflow (.github/workflows/ci.yml) bumps and
+    commits that file to master after every push, tagged with the same version it puts
+    in the GitHub Release, so a plain `git pull` here picks it up like any other file.
+    Best-effort: GitHub being unreachable (rate-limited, offline, DNS) degrades to
+    available=False rather than failing the whole Settings page."""
+    current_version = "unknown"
+    try:
+        current_version = _REPO_VERSION_FILE.read_text().strip() or "unknown"
+    except OSError:
+        pass
+
+    try:
+        async with httpx.AsyncClient(timeout=8.0) as client:
+            resp = await client.get(
+                f"https://api.github.com/repos/{_GITHUB_REPO}/releases/latest",
+                headers={"Accept": "application/vnd.github+json"},
+            )
+        if resp.status_code != 200:
+            return {"available": False, "current_version": current_version}
+        data = resp.json()
+        latest_version = data.get("tag_name") or "unknown"
+        return {
+            "available": True,
+            "current_version": current_version,
+            "latest_version": latest_version,
+            "up_to_date": current_version == latest_version,
+            "changelog": data.get("body") or "",
+            "release_url": data.get("html_url") or "",
+            "published_at": data.get("published_at"),
+        }
+    except Exception:
+        return {"available": False, "current_version": current_version}
+
+
 @router.post("/api/admin/update")
 async def site_update(_: User = Depends(get_superadmin_user)):
     async def stream():

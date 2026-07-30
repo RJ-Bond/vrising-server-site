@@ -152,6 +152,13 @@
       const server_num = url.includes('server_num=2') ? 2 : 1;
       return { api_key: server_num === 2 ? 'server-2-only-secret' : '' };
     }],
+    // GET /api/admin/update/check — backend/routers/admin_system.py.
+    [/\/api\/admin\/update\/check$/, () => ({
+      available: true, current_version: 'v2026.07.20', latest_version: 'v2026.07.23', up_to_date: false,
+      changelog: '- ✨ Add admin update-check banner with changelog\n- 🐛 Fix cover-title overlapping avatar on profile.html\n- ♻️ Split clans routes into backend/routers/clans.py',
+      release_url: 'https://github.com/RJ-Bond/vrising-server-site/releases/tag/v2026.07.23',
+      published_at: iso(2 * 3600 * 1000),
+    })],
   ];
 
   const realFetch = window.fetch.bind(window);
