@@ -3249,8 +3249,13 @@ async function loadAnnouncements() {
       // a parallel implementation, so the table shows genuinely colored text instead of
       // raw tag markup. It escapes everything outside a matched tag itself, so this is
       // just as XSS-safe as the plain esc() call it replaces.
-      const textRaw = a.text.length > 60 ? a.text.slice(0, 60) + '…' : a.text;
-      const textShort = renderColorTagPreview(textRaw);
+      // Must run on the FULL text, not a manually truncated slice — a `<color=...>`
+      // tag cut mid-way by a fixed-length slice loses its closing </color>, so the
+      // regex below stops matching and the raw tag markup leaks through as plain
+      // text (that's exactly what showed up in the admin table before this fix).
+      // The <td> below already truncates visually via text-overflow:ellipsis, so no
+      // separate JS-side truncation is needed at all.
+      const textShort = renderColorTagPreview(a.text);
       const expires = a.expires_at ? fmtDateTime(a.expires_at) : '—';
       return `<tr>
         <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(a.text)}">${textShort}</td>
