@@ -37,6 +37,19 @@ else
   SHORT_BEFORE=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD)
   log "Локальная версия до обновления: ${SHORT_BEFORE}"
 
+  # Self-heal servers already caught by a since-fixed bug in this very script: an
+  # earlier version of copy_project_files() below used to overwrite VERSION with a raw
+  # git hash, which — now that VERSION is CI-managed (bumped + committed automatically
+  # on every release) — left it locally modified and made THIS git pull fail on every
+  # run after the first ("Ваши локальные изменения в VERSION будут перезаписаны"),
+  # silently falling back to stale files forever. VERSION never legitimately needs a
+  # local edit preserved, so a stray modification to just that one file is always safe
+  # to discard before pulling.
+  if ! git -C "$SCRIPT_DIR" diff --quiet -- VERSION 2>/dev/null; then
+    warn "VERSION изменён локально (известный баг старых версий этого скрипта) — сбрасываем перед git pull."
+    git -C "$SCRIPT_DIR" checkout -- VERSION 2>/dev/null || true
+  fi
+
   log "Получение последних изменений с GitHub (git pull)..."
   if git -C "$SCRIPT_DIR" pull --ff-only origin "$BRANCH" 2>&1; then
     HASH_AFTER=$(git -C "$SCRIPT_DIR" rev-parse HEAD)
@@ -63,9 +76,15 @@ fi
 copy_project_files() {
   mkdir -p "$INSTALL_DIR"/{backend,frontend,nginx}
 
-  # Записываем текущий git-хеш в VERSION
-  _ver=$(git -C "$SCRIPT_DIR" rev-parse --short HEAD 2>/dev/null || echo "dev")
-  echo "$_ver" > "$SCRIPT_DIR/VERSION"
+  # VERSION used to get overwritten here with a raw git hash — harmless before the CI
+  # release workflow existed, since nothing else cared about its committed content. Now
+  # that CI bumps + commits a real semver value to VERSION on every release, writing to
+  # it here (when $SCRIPT_DIR == $INSTALL_DIR, the normal case — see the branch below)
+  # left the git working tree locally modified, which made THIS SAME SCRIPT'S OWN "git
+  # pull --ff-only" in step 0 fail on every subsequent run ("Ваши локальные изменения в
+  # VERSION будут перезаписаны"), silently falling back to stale local files forever
+  # after. git pull already brings VERSION to whatever's tracked upstream — nothing left
+  # to do here.
 
   if [[ "$(readlink -f "$SCRIPT_DIR")" == "$(readlink -f "$INSTALL_DIR")" ]]; then
     ok "Исходники и $INSTALL_DIR — одна и та же директория, git pull уже обновил файлы на месте."
