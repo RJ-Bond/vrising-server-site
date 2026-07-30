@@ -673,6 +673,25 @@ class PluginClanMemberIn(BaseModel):
     steam_id: str
     character_name: str
     role: str = "member"  # member | officer | leader
+    # Added by a later plugin build — defaulted so an older/interim plugin build that
+    # doesn't send these yet still validates.
+    is_online: bool = False
+    # Raw ECS User.TimeLastConnected value, assumed (not yet verified) to be Unix
+    # seconds.
+    last_connected_unix: int = 0
+    physical_power: Optional[float] = None
+    spell_power: Optional[float] = None
+
+
+class PluginClanBaseIn(BaseModel):
+    level: int
+    floor_count: int
+    is_raid_protected: bool
+    # 2D world-space bounding box of the castle's territory.
+    min_x: int
+    min_z: int
+    max_x: int
+    max_z: int
 
 
 class PluginClanIn(BaseModel):
@@ -680,6 +699,7 @@ class PluginClanIn(BaseModel):
     name: str
     motto: Optional[str] = ""
     members: list[PluginClanMemberIn] = []
+    bases: list[PluginClanBaseIn] = []
 
 
 class PluginClansSyncIn(BaseModel):
@@ -698,6 +718,24 @@ class GameClanMemberOut(BaseModel):
     # a site account via .register/.login
     username: Optional[str] = None
     avatar_url: Optional[str] = None
+    is_online: bool = False
+    # Experimental — see PluginClanMemberIn.last_connected_unix / GameClanMember model
+    # docstring. Not surfaced in the UI yet.
+    last_connected_unix: Optional[int] = None
+    physical_power: Optional[float] = None
+    spell_power: Optional[float] = None
+
+    model_config = {"from_attributes": True}
+
+
+class GameClanBaseOut(BaseModel):
+    level: int
+    floor_count: int
+    is_raid_protected: bool
+    min_x: int
+    min_z: int
+    max_x: int
+    max_z: int
 
     model_config = {"from_attributes": True}
 
@@ -714,6 +752,7 @@ class GameClanOut(BaseModel):
     # Up to 4 members (leaders/officers first), for the public clan-list card's mini
     # avatar-stack — the full roster is only fetched on GET /api/clans/{id}.
     member_preview: list[GameClanMemberOut] = []
+    bases: list[GameClanBaseOut] = []
 
     model_config = {"from_attributes": True}
 

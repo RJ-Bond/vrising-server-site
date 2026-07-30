@@ -74,6 +74,7 @@ class GameClan(Base):
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     members = relationship("GameClanMember", back_populates="clan", cascade="all, delete-orphan", lazy="selectin")
+    bases = relationship("GameClanBase", back_populates="clan", cascade="all, delete-orphan", lazy="selectin")
 
     __table_args__ = (UniqueConstraint("server_num", "clan_guid", name="uq_game_clan_server_guid"),)
 
@@ -95,10 +96,48 @@ class GameClanMember(Base):
     steam_id = Column(String(32), nullable=False)
     character_name = Column(String(64), nullable=False)
     role = Column(String(16), nullable=False, default="member")  # "member" | "officer" | "leader"
+    # Live-ish presence/combat fields added by a later plugin build — pushed with every
+    # sync cycle (~same cadence as the rest of the roster), not a real-time feed.
+    is_online = Column(Boolean, default=False, nullable=False)
+    # Raw ECS User.TimeLastConnected value, assumed (but NOT verified against a live
+    # value) to be Unix seconds — treat as experimental. Store/expose it, but don't build
+    # UI trusting its exact meaning until it's been eyeballed against a real timestamp.
+    last_connected_unix = Column(Integer, nullable=True)
+    # Combat power stats — null if the character has never spawned in-world (e.g. an
+    # account bound to the clan but that never picked a character).
+    physical_power = Column(Float, nullable=True)
+    spell_power = Column(Float, nullable=True)
 
     clan = relationship("GameClan", back_populates="members")
 
     __table_args__ = (Index("ix_game_clan_members_clan", "clan_id"),)
+
+
+class GameClanBase(Base):
+    """A clan's castle territory/heart, synced alongside GameClanMember by the same
+    POST /api/plugin/clans/sync — see that handler's docstring and the note on
+    GameClanMember.clan_id above: the ORM's ondelete="CASCADE" is NOT actually enforced
+    by the live DB (SQLite never runs with `PRAGMA foreign_keys = ON` here), so any
+    caller that deletes a GameClan row must also explicitly delete its GameClanBase rows,
+    same as it already must for GameClanMember."""
+
+    __tablename__ = "game_clan_bases"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clan_id = Column(Integer, ForeignKey("game_clans.id", ondelete="CASCADE"), nullable=False)
+    level = Column(Integer, nullable=False, default=0)
+    floor_count = Column(Integer, nullable=False, default=0)
+    is_raid_protected = Column(Boolean, nullable=False, default=False)
+    # 2D world-space bounding box of the castle's territory — not used for anything yet,
+    # captured now for a future map overlay.
+    min_x = Column(Integer, nullable=False, default=0)
+    min_z = Column(Integer, nullable=False, default=0)
+    max_x = Column(Integer, nullable=False, default=0)
+    max_z = Column(Integer, nullable=False, default=0)
+
+    clan = relationship("GameClan", back_populates="bases")
+
+    __table_args__ = (Index("ix_game_clan_bases_clan", "clan_id"),)
 
 
 class News(Base):

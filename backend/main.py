@@ -66,7 +66,7 @@ from sqlalchemy import select, func, delete, text, or_, update, and_
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, Announcement, ServerMessageTemplate, ServerApiKey, ScheduledRestart, PlayerDailyActivity, PointsTransaction, ShopItem, ShopRedemption
+from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, GameClanBase, Announcement, ServerMessageTemplate, ServerApiKey, ScheduledRestart, PlayerDailyActivity, PointsTransaction, ShopItem, ShopRedemption
 from .rate_limit import limiter
 from .helpers import (
     UPLOAD_DIR,
@@ -355,6 +355,13 @@ async def lifespan(app: FastAPI):
             "CREATE TABLE IF NOT EXISTS shop_items (id INTEGER PRIMARY KEY, name VARCHAR(128) NOT NULL, description TEXT, cost INTEGER NOT NULL, image_url VARCHAR(512), is_active BOOLEAN NOT NULL DEFAULT 1, stock INTEGER, sort_order INTEGER NOT NULL DEFAULT 0, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL)",
             "CREATE TABLE IF NOT EXISTS shop_redemptions (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, shop_item_id INTEGER REFERENCES shop_items(id) ON DELETE SET NULL, item_name_snapshot VARCHAR(128) NOT NULL, cost_snapshot INTEGER NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'pending', delivery_mode VARCHAR(16) NOT NULL DEFAULT 'manual', player_note VARCHAR(500), admin_note VARCHAR(500), created_at DATETIME NOT NULL, resolved_at DATETIME, resolved_by VARCHAR(64))",
             "CREATE INDEX IF NOT EXISTS ix_shop_redemptions_status_created ON shop_redemptions(status, created_at)",
+            # ─── Clan online-status/combat-power + castle bases (plugin sync) ──────
+            "ALTER TABLE game_clan_members ADD COLUMN is_online BOOLEAN NOT NULL DEFAULT 0",
+            "ALTER TABLE game_clan_members ADD COLUMN last_connected_unix INTEGER DEFAULT NULL",
+            "ALTER TABLE game_clan_members ADD COLUMN physical_power FLOAT DEFAULT NULL",
+            "ALTER TABLE game_clan_members ADD COLUMN spell_power FLOAT DEFAULT NULL",
+            "CREATE TABLE IF NOT EXISTS game_clan_bases (id INTEGER PRIMARY KEY, clan_id INTEGER NOT NULL REFERENCES game_clans(id) ON DELETE CASCADE, level INTEGER NOT NULL DEFAULT 0, floor_count INTEGER NOT NULL DEFAULT 0, is_raid_protected BOOLEAN NOT NULL DEFAULT 0, min_x INTEGER NOT NULL DEFAULT 0, min_z INTEGER NOT NULL DEFAULT 0, max_x INTEGER NOT NULL DEFAULT 0, max_z INTEGER NOT NULL DEFAULT 0)",
+            "CREATE INDEX IF NOT EXISTS ix_game_clan_bases_clan ON game_clan_bases(clan_id)",
         ]:
             try:
                 await conn.execute(text(stmt))

@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case
 
 from ..database import get_db
-from ..models import User, GameClan, GameClanMember
+from ..models import User, GameClan, GameClanMember, GameClanBase
 from ..helpers import _get_server_names
 from ..schemas import GameClanOut, GameClanDetailOut
 
@@ -29,11 +29,21 @@ async def _game_clan_out(db: AsyncSession, clan: GameClan, with_members: bool = 
     member_count = count_result.scalar_one()
     if server_names is None:
         server_names = await _get_server_names(db)
+    bases_result = await db.execute(
+        select(GameClanBase).where(GameClanBase.clan_id == clan.id)
+    )
+    base_list = [
+        {
+            "level": b.level, "floor_count": b.floor_count, "is_raid_protected": b.is_raid_protected,
+            "min_x": b.min_x, "min_z": b.min_z, "max_x": b.max_x, "max_z": b.max_z,
+        }
+        for b in bases_result.scalars().all()
+    ]
     base = {
         "id": clan.id, "server_num": clan.server_num, "clan_guid": clan.clan_guid,
         "server_name": server_names.get(clan.server_num) or f"Сервер {clan.server_num}",
         "name": clan.name, "motto": clan.motto or "", "updated_at": clan.updated_at,
-        "member_count": member_count,
+        "member_count": member_count, "bases": base_list,
     }
     if with_members:
         members_result = await db.execute(
@@ -53,6 +63,10 @@ async def _game_clan_out(db: AsyncSession, clan: GameClan, with_members: bool = 
                 "steam_id": m.steam_id, "character_name": m.character_name, "role": m.role,
                 "username": u.username if u else None,
                 "avatar_url": u.avatar_url if u else None,
+                "is_online": m.is_online,
+                "last_connected_unix": m.last_connected_unix,
+                "physical_power": m.physical_power,
+                "spell_power": m.spell_power,
             })
         base["members"] = member_list
     return base
@@ -105,6 +119,21 @@ async def list_clans(search: Optional[str] = None, limit: Optional[int] = None, 
             "steam_id": m.steam_id, "character_name": m.character_name, "role": m.role,
             "username": u.username if u else None,
             "avatar_url": u.avatar_url if u else None,
+            "is_online": m.is_online,
+            "last_connected_unix": m.last_connected_unix,
+            "physical_power": m.physical_power,
+            "spell_power": m.spell_power,
+        })
+
+    # Castle base(s) per clan — one bulk query, same pattern as the member preview above.
+    all_bases = (await db.execute(
+        select(GameClanBase).where(GameClanBase.clan_id.in_(clan_ids))
+    )).scalars().all()
+    bases_by_clan: dict[int, list[dict]] = {}
+    for b in all_bases:
+        bases_by_clan.setdefault(b.clan_id, []).append({
+            "level": b.level, "floor_count": b.floor_count, "is_raid_protected": b.is_raid_protected,
+            "min_x": b.min_x, "min_z": b.min_z, "max_x": b.max_x, "max_z": b.max_z,
         })
 
     out = [
@@ -114,6 +143,7 @@ async def list_clans(search: Optional[str] = None, limit: Optional[int] = None, 
             "name": c.name, "motto": c.motto or "", "updated_at": c.updated_at,
             "member_count": counts.get(c.id, 0),
             "member_preview": previews_by_clan.get(c.id, []),
+            "bases": bases_by_clan.get(c.id, []),
         }
         for c in clans
     ]

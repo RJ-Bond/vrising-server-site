@@ -292,6 +292,88 @@ async def test_repeated_sync_with_same_clan_and_member_does_not_accumulate(clien
     assert len(detail_r.json()["members"]) == 1
 
 
+async def test_sync_online_status_power_and_bases_round_trip(client, db_session):
+    """Regression test for the plugin's newer payload fields (is_online,
+    last_connected_unix, physical_power/spell_power per member, and the clan's `bases`
+    array) — send them on sync, then confirm GET /api/clans and GET /api/clans/{id} both
+    read them back."""
+    await _set_plugin_key(db_session)
+
+    body = {
+        "server_num": 1,
+        "clans": [
+            {
+                "clan_guid": "guid-alpha",
+                "name": "Alpha Clan",
+                "motto": "First!",
+                "members": [
+                    {
+                        "steam_id": "111", "character_name": "AlphaLeader", "role": "leader",
+                        "is_online": True, "last_connected_unix": 1732900000,
+                        "physical_power": 123.5, "spell_power": 87.25,
+                    },
+                    {
+                        "steam_id": "222", "character_name": "AlphaMember", "role": "member",
+                        "is_online": False, "last_connected_unix": 1732800000,
+                        "physical_power": None, "spell_power": None,
+                    },
+                ],
+                "bases": [
+                    {
+                        "level": 4, "floor_count": 3, "is_raid_protected": True,
+                        "min_x": -100, "min_z": -50, "max_x": 100, "max_z": 50,
+                    },
+                ],
+            },
+        ],
+    }
+    r = await client.post("/api/plugin/clans/sync", json=body, headers=_hdr())
+    assert r.status_code == 200
+
+    list_r = await client.get("/api/clans")
+    assert list_r.status_code == 200
+    clan = list_r.json()[0]
+    assert len(clan["bases"]) == 1
+    assert clan["bases"][0] == {
+        "level": 4, "floor_count": 3, "is_raid_protected": True,
+        "min_x": -100, "min_z": -50, "max_x": 100, "max_z": 50,
+    }
+    preview = {m["steam_id"]: m for m in clan["member_preview"]}
+    assert preview["111"]["is_online"] is True
+    assert preview["111"]["last_connected_unix"] == 1732900000
+    assert preview["111"]["physical_power"] == 123.5
+    assert preview["111"]["spell_power"] == 87.25
+    assert preview["222"]["is_online"] is False
+    assert preview["222"]["physical_power"] is None
+
+    detail_r = await client.get(f"/api/clans/{clan['id']}")
+    assert detail_r.status_code == 200
+    detail = detail_r.json()
+    assert len(detail["bases"]) == 1
+    assert detail["bases"][0]["level"] == 4
+    members = {m["steam_id"]: m for m in detail["members"]}
+    assert members["111"]["is_online"] is True
+    assert members["111"]["physical_power"] == 123.5
+    assert members["222"]["is_online"] is False
+
+
+async def test_sync_without_new_fields_defaults_sanely(client, db_session):
+    """Older/interim plugin builds may not send is_online/last_connected_unix/power/bases
+    at all — PluginClanMemberIn's defaults must keep the sync from 422ing, and the read
+    side should come back with the documented defaults (False/0/None/[])."""
+    await _set_plugin_key(db_session)
+    r = await client.post("/api/plugin/clans/sync", json=_sync_body(), headers=_hdr())
+    assert r.status_code == 200
+
+    list_r = await client.get("/api/clans")
+    clan = list_r.json()[0]
+    assert clan["bases"] == []
+    for m in clan["member_preview"]:
+        assert m["is_online"] is False
+        assert m["physical_power"] is None
+        assert m["spell_power"] is None
+
+
 async def test_repeated_sync_with_different_member_replaces_not_adds(client, db_session):
     """Same accumulation bug, but the second sync reports a different steam_id for the
     same clan_guid (e.g. the old member left and a new one joined) — the old member must

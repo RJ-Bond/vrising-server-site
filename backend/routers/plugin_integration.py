@@ -9,7 +9,7 @@ from sqlalchemy import select, func, delete, or_
 
 from ..database import get_db
 from ..models import (
-    User, Setting, PlayerRecord, PluginHeartbeat, GameClan, GameClanMember,
+    User, Setting, PlayerRecord, PluginHeartbeat, GameClan, GameClanMember, GameClanBase,
     Announcement, ServerMessageTemplate, ScheduledRestart, PlayerDailyActivity,
 )
 from ..auth import get_password_hash, verify_password
@@ -301,12 +301,13 @@ async def plugin_clans_sync(
     that is NOT actually enforced by the live DB — SQLite only applies ON DELETE CASCADE
     when a connection has run `PRAGMA foreign_keys = ON`, and this app's engine
     (backend/database.py) never sets that pragma, so the cascade is silently a no-op.
-    Deleting a GameClan row without also explicitly deleting its GameClanMember rows
-    leaves them orphaned-but-still-clan_id-matching, and since SQLite's plain
-    `INTEGER PRIMARY KEY` (no AUTOINCREMENT) reuses the lowest free rowid, the next insert
-    can get the SAME id, causing every previous cycle's "orphaned" members to silently
-    reattach and pile up. So we must delete members explicitly, scoped by clan id, before
-    deleting the clans themselves. See models.py for the same note near the FK column."""
+    Deleting a GameClan row without also explicitly deleting its GameClanMember (and
+    GameClanBase) rows leaves them orphaned-but-still-clan_id-matching, and since
+    SQLite's plain `INTEGER PRIMARY KEY` (no AUTOINCREMENT) reuses the lowest free rowid,
+    the next insert can get the SAME id, causing every previous cycle's "orphaned" rows to
+    silently reattach and pile up. So we must delete members/bases explicitly, scoped by
+    clan id, before deleting the clans themselves. See models.py for the same note near
+    the FK columns."""
     clan_ids_result = await db.execute(
         select(GameClan.id).where(GameClan.server_num == body.server_num)
     )
@@ -314,6 +315,9 @@ async def plugin_clans_sync(
     if clan_ids:
         await db.execute(
             delete(GameClanMember).where(GameClanMember.clan_id.in_(clan_ids))
+        )
+        await db.execute(
+            delete(GameClanBase).where(GameClanBase.clan_id.in_(clan_ids))
         )
     await db.execute(
         delete(GameClan).where(GameClan.server_num == body.server_num)
@@ -333,6 +337,21 @@ async def plugin_clans_sync(
                 steam_id=member_in.steam_id,
                 character_name=member_in.character_name,
                 role=member_in.role,
+                is_online=member_in.is_online,
+                last_connected_unix=member_in.last_connected_unix,
+                physical_power=member_in.physical_power,
+                spell_power=member_in.spell_power,
+            ))
+        for base_in in clan_in.bases:
+            db.add(GameClanBase(
+                clan_id=clan.id,
+                level=base_in.level,
+                floor_count=base_in.floor_count,
+                is_raid_protected=base_in.is_raid_protected,
+                min_x=base_in.min_x,
+                min_z=base_in.min_z,
+                max_x=base_in.max_x,
+                max_z=base_in.max_z,
             ))
     await db.commit()
     return {"success": True, "clan_count": len(body.clans)}
