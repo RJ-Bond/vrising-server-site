@@ -465,15 +465,8 @@
       box-shadow:0 0 26px rgba(100,26,255,0.28),inset 0 0 14px rgba(100,26,255,0.1);
       transform:translateY(-1px);
     }
-    /* ── Sparkline hover ── */
+    /* ── Sparkline (Chart.js canvas, tooltip handled by Chart.js) ── */
     .spark-wrap { position:relative; display:block; }
-    .spark-xhair { display:none;position:absolute;top:.5rem;bottom:.15rem;width:1px;pointer-events:none; }
-    .spark-tip {
-      display:none;position:absolute;bottom:calc(100% + 2px);z-index:20;pointer-events:none;
-      background:rgba(6,0,12,.96);border:1px solid rgba(150,0,28,.4);
-      color:#c8c5d4;font-size:.68rem;padding:.22rem .55rem;border-radius:.35rem;
-      white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,.55);line-height:1.5;
-    }
 
     /* ── Online widget ── */
     .online-stat { flex:1;text-align:center;padding:.4rem .3rem;border-radius:.5rem; }

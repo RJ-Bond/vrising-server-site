@@ -473,10 +473,8 @@
       <div style="width:100%;height:3rem;border-radius:.5rem;background:rgba(110,0,20,0.1);animation:pulse 2s ease-in-out infinite;"></div>
     </div>
     <div id="left-circles"></div>
-    <div class="spark-wrap" id="spark1-wrap">
-      <canvas id="left-spark" height="36" style="width:100%;display:none;border-radius:.3rem;margin-top:.5rem;margin-bottom:.1rem;opacity:.75;cursor:crosshair;"></canvas>
-      <div id="spark1-xhair" class="spark-xhair" style="background:rgba(224,85,117,.55);"></div>
-      <div id="spark1-tip" class="spark-tip"></div>
+    <div class="spark-wrap" id="spark1-wrap" style="height:36px;margin-top:.5rem;margin-bottom:.1rem;">
+      <canvas id="left-spark" style="display:none;border-radius:.3rem;opacity:.75;cursor:crosshair;"></canvas>
     </div>
     <div id="left-connect" style="margin-top:.75rem;"></div>
     <div id="left-players" style="margin-top:.6rem;"></div>
@@ -493,10 +491,8 @@
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.55),transparent);margin:1.1rem 0;"></div>
       <div id="left-status2" style="margin-bottom:.75rem;"></div>
       <div id="left-circles2"></div>
-      <div class="spark-wrap" id="spark2-wrap">
-        <canvas id="left-spark2" height="36" style="width:100%;display:none;border-radius:.3rem;margin-top:.5rem;margin-bottom:.1rem;opacity:.75;cursor:crosshair;"></canvas>
-        <div id="spark2-xhair" class="spark-xhair" style="background:rgba(153,85,238,.55);"></div>
-        <div id="spark2-tip" class="spark-tip"></div>
+      <div class="spark-wrap" id="spark2-wrap" style="height:36px;margin-top:.5rem;margin-bottom:.1rem;">
+        <canvas id="left-spark2" style="display:none;border-radius:.3rem;opacity:.75;cursor:crosshair;"></canvas>
       </div>
       <div id="left-connect2" style="margin-top:.75rem;"></div>
       <div id="left-players2" style="margin-top:.6rem;"></div>
@@ -694,6 +690,8 @@
 </footer>
 
 <script src="/purify.min.js"></script>
+<script src="/chart.min.js"></script>
+<script src="/charts.js?v=1"></script>
 <script src="/common.js?v=10"></script>
 <script src="/index.js?v=10"></script>
 <div id="ow-hover-card"></div>

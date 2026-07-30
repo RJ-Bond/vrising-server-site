@@ -711,97 +711,10 @@ function updateHunters(players) {
 
 function drawMiniSparkline(canvasId, snaps, accentRgb) {
   const canvas = document.getElementById(canvasId);
-  if (!canvas || !snaps || snaps.length < 2) { if (canvas) canvas.style.display = 'none'; return null; }
+  if (!canvas || !window.renderPlayerChart) { if (canvas) canvas.style.display = 'none'; return; }
   const cutoff = Date.now() / 1000 - 86400;
-  const pts = snaps.filter(s => s.ts >= cutoff);
-  if (pts.length < 2) { canvas.style.display = 'none'; return null; }
-  canvas.style.display = 'block';
-  const dpr = window.devicePixelRatio || 1;
-  const w = canvas.clientWidth || canvas.parentElement?.clientWidth || 180;
-  const h = 36;
-  canvas.width = w * dpr; canvas.height = h * dpr;
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const maxP = Math.max(1, ...pts.map(s => s.players));
-  const tMin = pts[0].ts, tSpan = Math.max(1, pts[pts.length - 1].ts - tMin);
-  const px = s => ((s.ts - tMin) / tSpan) * w;
-  const py = s => h - 2 - (s.players / maxP) * (h - 4);
-  const coords = pts.map(s => ({ x: px(s), y: py(s) }));
-  // fill
-  ctx.beginPath();
-  ctx.moveTo(coords[0].x, h);
-  ctx.lineTo(coords[0].x, coords[0].y);
-  for (let i = 1; i < coords.length - 1; i++) {
-    const xc = (coords[i].x + coords[i + 1].x) / 2, yc = (coords[i].y + coords[i + 1].y) / 2;
-    ctx.quadraticCurveTo(coords[i].x, coords[i].y, xc, yc);
-  }
-  const last = coords[coords.length - 1];
-  ctx.quadraticCurveTo(coords[coords.length - 2].x, coords[coords.length - 2].y, last.x, last.y);
-  ctx.lineTo(last.x, h);
-  ctx.closePath();
-  const grad = ctx.createLinearGradient(0, 0, 0, h);
-  grad.addColorStop(0, `rgba(${accentRgb},0.35)`);
-  grad.addColorStop(1, `rgba(${accentRgb},0.02)`);
-  ctx.fillStyle = grad;
-  ctx.fill();
-  // line
-  ctx.beginPath();
-  ctx.moveTo(coords[0].x, coords[0].y);
-  for (let i = 1; i < coords.length - 1; i++) {
-    const xc = (coords[i].x + coords[i + 1].x) / 2, yc = (coords[i].y + coords[i + 1].y) / 2;
-    ctx.quadraticCurveTo(coords[i].x, coords[i].y, xc, yc);
-  }
-  ctx.quadraticCurveTo(coords[coords.length - 2].x, coords[coords.length - 2].y, last.x, last.y);
-  ctx.strokeStyle = `rgba(${accentRgb},0.9)`;
-  ctx.lineWidth = 1.5;
-  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-  ctx.stroke();
-  return { pts, w, tMin, tSpan };
-}
-
-function setupSparkHover(canvasId, geom, tipId, xhairId) {
-  const canvas = document.getElementById(canvasId);
-  const tip    = document.getElementById(tipId);
-  const xhair  = document.getElementById(xhairId);
-  if (!canvas || !tip || !xhair || !geom) return;
-
-  const { pts, w, tMin, tSpan } = geom;
-  const spx = s => ((s.ts - tMin) / tSpan) * w;
-
-  const nearest = mx => pts.reduce((b, s) => Math.abs(spx(s) - mx) < Math.abs(spx(b) - mx) ? s : b, pts[0]);
-
-  const onMove = e => {
-    const mx = e.offsetX;
-    if (mx < 0 || mx > w) { tip.style.display = 'none'; xhair.style.display = 'none'; return; }
-    const s = nearest(mx);
-    const sx = spx(s);
-
-    xhair.style.display = 'block';
-    xhair.style.left = sx + 'px';
-
-    const dt = new Date(s.ts * 1000);
-    const dStr = dt.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: window.__TZ || 'Europe/Moscow' });
-    const n = s.players;
-    const word = n === 1 ? 'игрок' : (n >= 2 && n <= 4) ? 'игрока' : 'игроков';
-    const dot = s.online ? '<span style="color:#4ade80;">●</span>' : '<span style="color:#f87171;">●</span>';
-    tip.innerHTML = `${dot} <b style="color:#ece3f7;">${n} ${word}</b><span style="color:var(--muted);margin-left:.3rem;">${dStr}</span>`;
-
-    tip.style.display = 'block';
-    const tipW = tip.offsetWidth || 140;
-    let left = sx - tipW / 2;
-    if (left + tipW > w) left = w - tipW;
-    if (left < 0) left = 0;
-    tip.style.left = left + 'px';
-  };
-
-  const onLeave = () => { tip.style.display = 'none'; xhair.style.display = 'none'; };
-
-  if (canvas._spMove)  canvas.removeEventListener('mousemove',  canvas._spMove);
-  if (canvas._spLeave) canvas.removeEventListener('mouseleave', canvas._spLeave);
-  canvas._spMove  = onMove;
-  canvas._spLeave = onLeave;
-  canvas.addEventListener('mousemove',  onMove);
-  canvas.addEventListener('mouseleave', onLeave);
+  const pts = (snaps || []).filter(s => s.ts >= cutoff);
+  renderPlayerChart(canvas, { snapshots: pts, color: `rgb(${accentRgb})`, rgb: accentRgb }, { minimal: true });
 }
 
 async function loadSparklines() {
@@ -810,10 +723,8 @@ async function loadSparklines() {
       fetch(`${API}/monitor/snapshots?server=1`).then(r => r.json()).catch(() => []),
       fetch(`${API}/monitor/snapshots?server=2`).then(r => r.json()).catch(() => []),
     ]);
-    const g1 = drawMiniSparkline('left-spark',  s1, '224,85,117');
-    const g2 = drawMiniSparkline('left-spark2', s2, '153,85,238');
-    setupSparkHover('left-spark',  g1, 'spark1-tip', 'spark1-xhair');
-    setupSparkHover('left-spark2', g2, 'spark2-tip', 'spark2-xhair');
+    drawMiniSparkline('left-spark',  s1, '224,85,117');
+    drawMiniSparkline('left-spark2', s2, '153,85,238');
   } catch {}
 }
 

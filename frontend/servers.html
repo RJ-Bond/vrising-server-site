@@ -223,17 +223,6 @@
     .srv-period-btn:hover { color:var(--text); }
     .srv-period-btn.active { background:var(--accent); color:#fff; }
     .srv-graph-wrap { position:relative; }
-    .srv-live-dot {
-      position:absolute; width:8px; height:8px; border-radius:50%;
-      background:var(--accent); pointer-events:none; transform:translate(-50%,-50%);
-      box-shadow:0 0 0 0 var(--accent); z-index:3; display:none;
-      animation:live-pulse 2.4s ease-out infinite;
-    }
-    @keyframes live-pulse {
-      0%   { box-shadow:0 0 0 0 rgba(var(--accent-rgb),.7); }
-      70%  { box-shadow:0 0 0 8px rgba(var(--accent-rgb),0); }
-      100% { box-shadow:0 0 0 0 rgba(var(--accent-rgb),0); }
-    }
     .srv-graph-tooltip {
       position:absolute; pointer-events:none; background:rgba(10,2,18,0.96); border:1px solid rgba(150,0,28,0.4);
       border-radius:.4rem; padding:.4rem .6rem; font-size:.68rem; color:var(--text); white-space:nowrap;
@@ -241,7 +230,6 @@
     }
     .srv-graph-tooltip b { color:var(--accent); font-size:.88rem; }
     .srv-graph-tooltip span { color:var(--muted); font-size:.62rem; display:block; }
-    .srv-graph-axis { display:flex; justify-content:space-between; margin-top:.35rem; font-size:.58rem; color:var(--muted); }
     .srv-heatmap-area { position:relative; }
     .srv-heatmap { display:flex; align-items:flex-end; gap:2px; height:60px; cursor:crosshair; }
     .srv-heatbar { flex:1; background:var(--accent); border-radius:2px 2px 0 0; min-height:2px; opacity:.55; transition:opacity .15s; position:relative; }
@@ -443,9 +431,8 @@
       <div style="font-family:'Philosopher',serif;font-weight:700;font-size:1rem;color:#ece3f7;">Сравнение серверов</div>
     </div>
     <div class="g-card-body">
-      <div class="srv-graph-wrap">
-        <canvas id="compare-canvas" height="150" style="width:100%;display:block;cursor:crosshair;"></canvas>
-        <div class="srv-graph-tooltip" id="compare-tip" style="display:none;"></div>
+      <div class="srv-graph-wrap" style="height:150px;">
+        <canvas id="compare-canvas" style="display:block;cursor:crosshair;"></canvas>
       </div>
       <div style="display:flex;gap:1.5rem;justify-content:center;margin-top:.5rem;font-size:.72rem;">
         <span style="display:flex;align-items:center;gap:.35rem;"><span style="width:12px;height:3px;background:#e05575;display:inline-block;border-radius:2px;"></span> <span class="compare-leg-1">Сервер 1</span></span>
@@ -458,6 +445,8 @@
   </div>
 </div>
 
+<script src="/chart.min.js"></script>
+<script src="/charts.js?v=1"></script>
 <script src="/common.js?v=10"></script>
 <script>
 const API = '/api';
@@ -807,12 +796,9 @@ function srvCardSkeleton(num) {
         </div>
         <button id="srv-zoom-reset-${num}" onclick="resetGraphZoom(${num})" style="display:none;font-size:.6rem;color:var(--crimson);background:none;border:none;cursor:pointer;padding:.2rem .4rem;">✕ Сбросить</button>
       </div>
-      <div class="srv-graph-wrap">
-        <canvas id="srv-graph-${num}" height="130" style="width:100%;display:block;cursor:crosshair;"></canvas>
-        <div class="srv-live-dot" id="srv-live-dot-${num}"></div>
-        <div class="srv-graph-tooltip" id="srv-graph-tip-${num}" style="display:none;"></div>
+      <div class="srv-graph-wrap" style="height:145px;">
+        <canvas id="srv-graph-${num}" style="display:block;"></canvas>
       </div>
-      <div class="srv-graph-axis" id="srv-graph-axis-${num}"></div>
       <p id="srv-graph-empty-${num}" class="srv-empty" style="display:none;">Нет данных за этот период.</p>
     </div>
     <div id="srv-heatmap-wrap-${num}">
@@ -1203,8 +1189,6 @@ function setupHeatmapHover(num) {
 
 let _graphData = {};
 let _graphPeriod = { 1: 7, 2: 7 };
-let _graphGeom = {};
-let _hoverSetup = {};
 
 async function loadServerGraph(num) {
   const canvas = document.getElementById(`srv-graph-${num}`);
@@ -1231,47 +1215,45 @@ function setGraphPeriod(num, days, btn) {
   drawHeatmap(num);
 }
 
+function _graphWipes(num) {
+  const wipeEntries = [...(_wipeHistory[num] || [])];
+  if (_wipeSettings[num] && _wipeSettings[num].date) {
+    wipeEntries.push({ wipe_date: _wipeSettings[num].date, type: _wipeSettings[num].type });
+  }
+  return wipeEntries
+    .map(wipe => {
+      const dateStr = wipe.wipe_date || wipe.date;
+      if (!dateStr) return null;
+      const wipeType = wipe.type || 'full';
+      const color = wipeType === 'map' ? 'rgba(201,169,74,0.7)' : wipeType === 'progress' ? 'rgba(153,85,238,0.7)' : 'rgba(200,0,42,0.7)';
+      return { ts: new Date(dateStr).getTime() / 1000, color };
+    })
+    .filter(Boolean);
+}
+
 function drawGraph(num) {
   const canvas = document.getElementById(`srv-graph-${num}`);
   const empty  = document.getElementById(`srv-graph-empty-${num}`);
-  const axis   = document.getElementById(`srv-graph-axis-${num}`);
   if (!canvas) return;
 
   // Zoom mode: render a single day
   if (_graphZoom[num]) {
-    const { snaps, key } = _graphZoom[num];
+    const { snaps } = _graphZoom[num];
     if (!snaps.length) {
-      canvas.style.display = 'none';
-      if (axis) axis.innerHTML = '';
+      renderPlayerChart(canvas, [], {});
       if (empty) { empty.style.display = ''; empty.textContent = 'Нет данных за этот день.'; }
       return;
     }
-    canvas.style.display = '';
     if (empty) empty.style.display = 'none';
-    const dpr = window.devicePixelRatio || 1;
-    const w = canvas.clientWidth || canvas.parentElement.clientWidth;
-    const h = 130;
-    canvas.width = w * dpr; canvas.height = h * dpr;
-    const ctx = canvas.getContext('2d');
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const accent = SERVER_THEMES[num].accentRgb;
-    const maxPlayers = Math.max(1, ...snaps.map(s => s.players));
-    const padL = 28, padR = 4, padT = 8, padB = 4;
-    const plotW = w - padL - padR, plotH = h - padT - padB;
-    const tMin = snaps[0].ts, tMax = snaps[snaps.length - 1].ts;
-    const tSpan = Math.max(1, tMax - tMin);
-    const x = s => padL + ((s.ts - tMin) / tSpan) * plotW;
-    const y = s => padT + plotH - (s.players / maxPlayers) * plotH;
-    _graphGeom[num] = { snaps, x, y, padL, padT, plotW, plotH, w, h, accent };
-    renderChart(num);
-    renderAxisLabels(num, snaps, 1);
-    setupGraphHover(num);
+    renderPlayerChart(canvas, { snapshots: snaps, color: `rgb(${accent})`, rgb: accent }, {
+      wipes: _graphWipes(num), timeMode: 'time', xTicks: 4,
+    });
     return;
   }
 
   if (_graphData[num] === null) {
-    canvas.style.display = 'none';
-    if (axis) axis.innerHTML = '';
+    renderPlayerChart(canvas, [], {});
     if (empty) { empty.style.display = ''; empty.textContent = 'Ошибка загрузки графика.'; }
     return;
   }
@@ -1281,241 +1263,16 @@ function drawGraph(num) {
   const snaps = (_graphData[num] || []).filter(s => s.ts >= cutoff);
 
   if (!snaps.length) {
-    canvas.style.display = 'none';
-    if (axis) axis.innerHTML = '';
+    renderPlayerChart(canvas, [], {});
     if (empty) { empty.style.display = ''; empty.textContent = 'Нет данных за этот период.'; }
     return;
   }
-  canvas.style.display = '';
   if (empty) empty.style.display = 'none';
 
-  const dpr = window.devicePixelRatio || 1;
-  const w = canvas.clientWidth || canvas.parentElement.clientWidth;
-  const h = 130;
-  canvas.width = w * dpr; canvas.height = h * dpr;
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
   const accent = SERVER_THEMES[num].accentRgb;
-  const maxPlayers = Math.max(1, ...snaps.map(s => s.players));
-  const padL = 28, padR = 4, padT = 8, padB = 4;
-  const plotW = w - padL - padR, plotH = h - padT - padB;
-  const tMin = snaps[0].ts, tMax = snaps[snaps.length - 1].ts;
-  const tSpan = Math.max(1, tMax - tMin);
-  const x = s => padL + ((s.ts - tMin) / tSpan) * plotW;
-  const y = s => padT + plotH - (s.players / maxPlayers) * plotH;
-
-  _graphGeom[num] = { snaps, x, y, padL, padT, plotW, plotH, w, h, accent };
-
-  renderChart(num);
-  renderAxisLabels(num, snaps, days);
-  setupGraphHover(num);
-}
-
-function smoothPathTo(ctx, pts) {
-  if (pts.length < 2) { if (pts.length === 1) ctx.lineTo(pts[0].x, pts[0].y); return; }
-  for (let i = 1; i < pts.length - 1; i++) {
-    const xc = (pts[i].x + pts[i + 1].x) / 2;
-    const yc = (pts[i].y + pts[i + 1].y) / 2;
-    ctx.quadraticCurveTo(pts[i].x, pts[i].y, xc, yc);
-  }
-  const last = pts.length - 1;
-  ctx.quadraticCurveTo(pts[last - 1].x, pts[last - 1].y, pts[last].x, pts[last].y);
-}
-
-function renderChart(num) {
-  const canvas = document.getElementById(`srv-graph-${num}`);
-  const geom = _graphGeom[num];
-  if (!canvas || !geom) return;
-  const ctx = canvas.getContext('2d');
-  const { snaps, x, y, padL, padT, plotW, plotH, w, h, accent } = geom;
-  const maxPlayers = Math.max(1, ...snaps.map(s => s.players));
-  ctx.clearRect(0, 0, w, h);
-
-  // Y-axis gridlines + labels
-  ctx.font = '500 8px Inter, system-ui, sans-serif';
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
-  [0, 0.5, 1].forEach(f => {
-    const gy = padT + plotH * (1 - f);
-    const playerVal = Math.round(maxPlayers * f);
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(padL, gy);
-    ctx.lineTo(padL + plotW, gy);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(182,168,210,0.55)';
-    ctx.fillText(playerVal, padL - 4, gy);
+  renderPlayerChart(canvas, { snapshots: snaps, color: `rgb(${accent})`, rgb: accent }, {
+    wipes: _graphWipes(num), timeMode: days <= 1 ? 'time' : 'date', xTicks: days <= 1 ? 4 : 6,
   });
-
-  const pts = snaps.map(s => ({ x: x(s), y: y(s) }));
-
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, padT + plotH);
-  ctx.lineTo(pts[0].x, pts[0].y);
-  smoothPathTo(ctx, pts);
-  ctx.lineTo(pts[pts.length - 1].x, padT + plotH);
-  ctx.closePath();
-  const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
-  grad.addColorStop(0, `rgba(${accent},0.4)`);
-  grad.addColorStop(1, `rgba(${accent},0.02)`);
-  ctx.fillStyle = grad;
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y);
-  smoothPathTo(ctx, pts);
-  ctx.strokeStyle = `rgb(${accent})`;
-  ctx.lineWidth = 2;
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-  ctx.save();
-  ctx.shadowBlur = 10;
-  ctx.shadowColor = `rgba(${accent}, 0.7)`;
-  ctx.stroke();
-  ctx.restore();
-  ctx.shadowBlur = 0;
-  ctx.stroke();
-
-  ctx.fillStyle = 'rgb(255,93,126)';
-  snaps.forEach(s => { if (!s.online) { ctx.beginPath(); ctx.arc(x(s), padT + plotH - 1, 1.3, 0, Math.PI * 2); ctx.fill(); } });
-
-  // Live endpoint dot (glow in canvas + position CSS pulse ring)
-  const last = snaps[snaps.length - 1];
-  if (last && last.online) {
-    const lx = x(last), ly = y(last);
-    ctx.save();
-    ctx.shadowBlur = 14;
-    ctx.shadowColor = `rgb(${accent})`;
-    ctx.fillStyle = `rgb(${accent})`;
-    ctx.beginPath();
-    ctx.arc(lx, ly, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.arc(lx, ly, 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    // Position the CSS pulse ring
-    const dotEl = document.getElementById(`srv-live-dot-${num}`);
-    if (dotEl) {
-      dotEl.style.display = 'block';
-      dotEl.style.left = lx + 'px';
-      dotEl.style.top = ly + 'px';
-    }
-  } else {
-    const dotEl = document.getElementById(`srv-live-dot-${num}`);
-    if (dotEl) dotEl.style.display = 'none';
-  }
-
-  // Wipe annotations — vertical dashed lines
-  const wipeEntries = [...(_wipeHistory[num] || [])];
-  if (_wipeSettings[num] && _wipeSettings[num].date) {
-    wipeEntries.push({ wipe_date: _wipeSettings[num].date, type: _wipeSettings[num].type });
-  }
-  wipeEntries.forEach(wipe => {
-    const dateStr = wipe.wipe_date || wipe.date;
-    if (!dateStr) return;
-    const ts = new Date(dateStr).getTime() / 1000;
-    const px = geom.x({ ts });
-    if (px < padL || px > padL + plotW) return;
-    const wipeType = wipe.type || 'full';
-    const lineColor = wipeType === 'map' ? 'rgba(201,169,74,0.7)' : wipeType === 'progress' ? 'rgba(153,85,238,0.7)' : 'rgba(200,0,42,0.7)';
-    ctx.save();
-    ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.beginPath();
-    ctx.moveTo(px, padT);
-    ctx.lineTo(px, padT + plotH);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.fillStyle = lineColor;
-    ctx.beginPath();
-    ctx.arc(px, padT + 4, 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  });
-}
-
-function renderAxisLabels(num, snaps, days) {
-  const axis = document.getElementById(`srv-graph-axis-${num}`);
-  if (!axis) return;
-  const tMin = snaps[0].ts, tMax = snaps[snaps.length - 1].ts;
-  const count = days <= 1 ? 4 : 6;
-  const labels = [];
-  for (let i = 0; i <= count; i++) {
-    const ts = tMin + (tMax - tMin) * (i / count);
-    const d = new Date(ts * 1000);
-    labels.push(days <= 1
-      ? d.toLocaleTimeString('ru-RU', { timeZone:window.__TZ||'Europe/Moscow', hour12:!!(window.__H12), hour: '2-digit', minute: '2-digit' })
-      : d.toLocaleDateString('ru-RU', { timeZone:window.__TZ||'Europe/Moscow', day: '2-digit', month: '2-digit' }));
-  }
-  axis.innerHTML = labels.map(l => `<span>${esc(l)}</span>`).join('');
-}
-
-function setupGraphHover(num) {
-  if (_hoverSetup[num]) return;
-  _hoverSetup[num] = true;
-  const canvas = document.getElementById(`srv-graph-${num}`);
-  if (!canvas) return;
-
-  let raf = null;
-  const move = (clientX) => {
-    if (raf) return;
-    raf = requestAnimationFrame(() => { raf = null; handleGraphHover(num, clientX); });
-  };
-  canvas.addEventListener('mousemove', e => move(e.clientX));
-  canvas.addEventListener('mouseleave', () => hideGraphTooltip(num));
-  canvas.addEventListener('touchmove', e => { if (e.touches[0]) move(e.touches[0].clientX); }, { passive: true });
-  canvas.addEventListener('touchend', () => hideGraphTooltip(num));
-}
-
-function hideGraphTooltip(num) {
-  const tip = document.getElementById(`srv-graph-tip-${num}`);
-  if (tip) tip.style.display = 'none';
-  renderChart(num);
-}
-
-function handleGraphHover(num, clientX) {
-  const geom = _graphGeom[num];
-  const canvas = document.getElementById(`srv-graph-${num}`);
-  const tip = document.getElementById(`srv-graph-tip-${num}`);
-  if (!geom || !canvas || !tip) return;
-  const rect = canvas.getBoundingClientRect();
-  const mx = clientX - rect.left;
-
-  let nearest = geom.snaps[0], nd = Infinity;
-  geom.snaps.forEach(s => {
-    const dx = Math.abs(geom.x(s) - mx);
-    if (dx < nd) { nd = dx; nearest = s; }
-  });
-
-  renderChart(num);
-  const ctx = canvas.getContext('2d');
-  const px = geom.x(nearest), py = geom.y(nearest);
-  ctx.save();
-  ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(px, geom.padT);
-  ctx.lineTo(px, geom.padT + geom.plotH);
-  ctx.stroke();
-  ctx.fillStyle = `rgb(${geom.accent})`;
-  ctx.beginPath();
-  ctx.arc(px, py, 3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-
-  const dateStr = new Date(nearest.ts * 1000).toLocaleString('ru-RU', { timeZone:window.__TZ||'Europe/Moscow', hour12:!!(window.__H12), day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-  tip.innerHTML = `<b>${nearest.players}</b> игроков<span>${dateStr}</span>${!nearest.online ? '<span style="color:var(--red);">офлайн</span>' : ''}`;
-  tip.style.display = 'block';
-  let left = px + 10;
-  if (left + 120 > geom.w) left = px - 130;
-  tip.style.left = Math.max(0, left) + 'px';
-  tip.style.top = Math.max(0, py - 44) + 'px';
 }
 
 async function refreshAll() {
@@ -1695,7 +1452,6 @@ function toggleCompare() {
 
 function drawCompareChart() {
   const canvas = document.getElementById('compare-canvas');
-  const tip = document.getElementById('compare-tip');
   if (!canvas) return;
   // Update legend labels with real server names
   const leg1 = document.querySelector('#compare-card .compare-leg-1');
@@ -1704,85 +1460,16 @@ function drawCompareChart() {
   if (leg2) leg2.textContent = _serverNames[2];
   const d1 = _graphData[1] || [];
   const d2 = _graphData[2] || [];
-  if (!d1.length && !d2.length) { canvas.style.display='none'; return; }
-  canvas.style.display = '';
 
-  const days = Math.max(_graphPeriod[1]||7, _graphPeriod[2]||7);
-  const cutoff = Date.now()/1000 - days*86400;
-  const s1 = d1.filter(s=>s.ts>=cutoff);
-  const s2 = d2.filter(s=>s.ts>=cutoff);
+  const days = Math.max(_graphPeriod[1] || 7, _graphPeriod[2] || 7);
+  const cutoff = Date.now() / 1000 - days * 86400;
+  const s1 = d1.filter(s => s.ts >= cutoff);
+  const s2 = d2.filter(s => s.ts >= cutoff);
 
-  const dpr = window.devicePixelRatio||1;
-  const w = canvas.clientWidth||canvas.parentElement.clientWidth;
-  const h = 150;
-  canvas.width = w*dpr; canvas.height = h*dpr;
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.clearRect(0,0,w,h);
-
-  const allSnaps = [...s1,...s2];
-  if (!allSnaps.length) return;
-  const tMin = Math.min(...allSnaps.map(s=>s.ts));
-  const tMax = Math.max(...allSnaps.map(s=>s.ts));
-  const maxP = Math.max(1,...allSnaps.map(s=>s.players));
-  const padL=28, padR=4, padT=8, padB=4;
-  const plotW=w-padL-padR, plotH=h-padT-padB;
-  const tSpan = Math.max(1,tMax-tMin);
-  const xf = ts => padL + ((ts-tMin)/tSpan)*plotW;
-  const yf = p => padT + plotH - (p/maxP)*plotH;
-
-  [0,0.5,1].forEach(f => {
-    const gy = padT+plotH*(1-f);
-    ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.moveTo(padL,gy); ctx.lineTo(padL+plotW,gy); ctx.stroke();
-    ctx.fillStyle='rgba(182,168,210,0.55)'; ctx.font='500 8px Inter,sans-serif';
-    ctx.textAlign='right'; ctx.textBaseline='middle';
-    ctx.fillText(Math.round(maxP*f), padL-4, gy);
-  });
-
-  const drawSeries = (snaps, rgb) => {
-    if (!snaps.length) return;
-    const pts = snaps.map(s=>({x:xf(s.ts),y:yf(s.players)}));
-    ctx.beginPath(); ctx.moveTo(pts[0].x,padT+plotH); ctx.lineTo(pts[0].x,pts[0].y);
-    for(let i=1;i<pts.length-1;i++){const xc=(pts[i].x+pts[i+1].x)/2,yc=(pts[i].y+pts[i+1].y)/2;ctx.quadraticCurveTo(pts[i].x,pts[i].y,xc,yc);}
-    if(pts.length>1)ctx.quadraticCurveTo(pts[pts.length-2].x,pts[pts.length-2].y,pts[pts.length-1].x,pts[pts.length-1].y);
-    ctx.lineTo(pts[pts.length-1].x,padT+plotH); ctx.closePath();
-    const g=ctx.createLinearGradient(0,padT,0,padT+plotH);
-    g.addColorStop(0,`rgba(${rgb},0.25)`); g.addColorStop(1,`rgba(${rgb},0.01)`);
-    ctx.fillStyle=g; ctx.fill();
-    ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y);
-    for(let i=1;i<pts.length-1;i++){const xc=(pts[i].x+pts[i+1].x)/2,yc=(pts[i].y+pts[i+1].y)/2;ctx.quadraticCurveTo(pts[i].x,pts[i].y,xc,yc);}
-    if(pts.length>1)ctx.quadraticCurveTo(pts[pts.length-2].x,pts[pts.length-2].y,pts[pts.length-1].x,pts[pts.length-1].y);
-    ctx.strokeStyle=`rgb(${rgb})`; ctx.lineWidth=2; ctx.lineJoin='round'; ctx.stroke();
-  };
-
-  drawSeries(s1, '224,85,117');
-  drawSeries(s2, '153,85,238');
-
-  if (!canvas._cmpHover) {
-    canvas._cmpHover = true;
-    canvas.addEventListener('mousemove', e => {
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const find = (snaps) => {
-        if (!snaps.length) return null;
-        return snaps.reduce((b,s) => Math.abs(xf(s.ts)-mx) < Math.abs(xf(b.ts)-mx) ? s : b);
-      };
-      const n1 = find(s1), n2 = find(s2);
-      let html = '';
-      if (n1) html += `<div style="color:#e05575;font-weight:700;">${n1.players} игр. (${_serverNames[1]})</div>`;
-      if (n2) html += `<div style="color:#9955ee;font-weight:700;">${n2.players} игр. (${_serverNames[2]})</div>`;
-      const ref = n1||n2;
-      if (ref) {
-        const dt = new Date(ref.ts*1000).toLocaleString('ru-RU',{timeZone:window.__TZ||'Europe/Moscow',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-        html += `<span style="font-size:.62rem;color:var(--muted);">${dt}</span>`;
-        tip.innerHTML = html; tip.style.display='block';
-        let left = xf(ref.ts)+8; if(left+130>w) left=xf(ref.ts)-140;
-        tip.style.left=Math.max(0,left)+'px'; tip.style.top='4px';
-      }
-    });
-    canvas.addEventListener('mouseleave', () => tip.style.display='none');
-  }
+  renderPlayerChart(canvas, [
+    { snapshots: s1, color: '#e05575', rgb: '224,85,117', label: _serverNames[1] || 'Сервер 1' },
+    { snapshots: s2, color: '#9955ee', rgb: '153,85,238', label: _serverNames[2] || 'Сервер 2' },
+  ], { timeMode: days <= 1 ? 'time' : 'date', xTicks: days <= 1 ? 4 : 6 });
 }
 
 function _showServerEvent(text, color) {
