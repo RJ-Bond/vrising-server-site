@@ -566,7 +566,7 @@ function activeBanRowHtml(b) {
     ? `<td data-label="Действия" style="display:flex;gap:.4rem;flex-wrap:wrap;"><button class="btn-danger" onclick="unbanActiveBan(${b.id}, this)">Разбанить</button>${b.steam_id ? modLogHistoryLinkHtml(b.steam_id) : ''}</td>`
     : '';
   return `<tr data-ban-id="${b.id}"${isNew ? ' class="ban-row-new"' : ''}>
-    <td data-label="Имя">${nameCell}</td>
+    <td data-label="Имя" style="white-space:nowrap;">${nameCell}</td>
     <td data-label="Сервер" style="color:var(--muted);">${esc(banServerLabel(b))}</td>
     <td data-label="Осталось">${remainingHtml}</td>
     <td data-label="Кто забанил" style="color:var(--muted);">${esc(b.admin_name)}</td>
@@ -740,7 +740,7 @@ function activeBanHistoryRowHtml(b) {
     ? `<a class="ban-profile-link" href="/user.html?u=${encodeURIComponent(b.linked_username)}" title="Открыть профиль ${esc(b.linked_username)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-user"></use></svg>${esc(b.character_name)}</a>`
     : esc(b.character_name);
   return `<tr data-ban-id="${b.id}">
-    <td data-label="Имя">${nameHtml}</td>
+    <td data-label="Имя" style="white-space:nowrap;">${nameHtml}</td>
     <td data-label="Сервер" style="color:var(--muted);">${esc(banServerLabel(b))}</td>
     <td data-label="Снят" style="color:var(--muted);white-space:nowrap;">${fmtDate(b.unbanned_at)}</td>
     <td data-label="Кто забанил" style="color:var(--muted);">${esc(b.admin_name)}</td>
