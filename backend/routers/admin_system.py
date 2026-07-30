@@ -353,6 +353,29 @@ def _read_version(repo: str) -> str:
         return "unknown"
 
 
+async def _discard_stray_version_diff(repo: str) -> None:
+    """VERSION is CI-managed (bumped + committed automatically on every release) and
+    never legitimately needs a local edit preserved — but an old, since-removed bug in
+    install.sh's own update path used to stamp a raw git hash directly into it, and that
+    stray content can already be sitting in a server's working tree from before this fix
+    shipped. `git pull --ff-only` below only errors about it when the merge would
+    actually need to touch VERSION; if the repo already happens to be caught up (nothing
+    new to pull), the dirty file just silently sits there forever, unnoticed, since
+    there's nothing forcing git to reconcile it. install.sh's own equivalent self-heal
+    (see there for the fuller story) only covers the SSH/`sudo js` path — this covers
+    the "Обновить сайт" button here, a second, independent update path that had the
+    same exposure."""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "git", "-C", repo, "diff", "--quiet", "--", "VERSION",
+        )
+        if await proc.wait() != 0:
+            checkout = await asyncio.create_subprocess_exec("git", "-C", repo, "checkout", "--", "VERSION")
+            await checkout.wait()
+    except Exception:
+        pass
+
+
 @router.post("/api/admin/update")
 async def site_update(_: User = Depends(get_superadmin_user)):
     async def stream():
@@ -360,6 +383,7 @@ async def site_update(_: User = Depends(get_superadmin_user)):
             return f"data: {msg}\n\n"
 
         repo = "/opt/vrising-site"
+        await _discard_stray_version_diff(repo)
         old_hash = await _git_short_hash(repo)
         old_version = _read_version(repo)
         yield sse(f"📦 Текущая версия: {old_version}")

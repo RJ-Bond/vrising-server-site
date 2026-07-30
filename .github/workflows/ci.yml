@@ -44,7 +44,12 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     needs: [backend, frontend]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    # Paused at the maintainer's request (2026-07-30), after the VERSION-file incident
+    # this feature's first real day caused (install.sh's own update path stomping the
+    # same file CI commits to, blocking `git pull` on the server). Re-enable by
+    # restoring the commented-out condition below once asked to.
+    # if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: false
     permissions:
       contents: write
     steps:
