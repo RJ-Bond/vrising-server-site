@@ -2759,6 +2759,23 @@ function initQuill() {
   });
 }
 
+// Parses a fetch Response as JSON with a legible error instead of a raw parser
+// exception when the response isn't actually JSON — e.g. nginx rejecting an oversized
+// upload with its own HTML 413 page before the request ever reaches FastAPI, which
+// showed up in the admin panel as "Unexpected token '<' ... is not valid JSON" instead
+// of a real error. Shared by every /admin/upload caller below (they all send
+// multipart FormData, the only requests here actually at risk of tripping a proxy's
+// body-size limit).
+async function _parseUploadResponse(res) {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    if (res.status === 413) throw new Error('Файл слишком большой');
+    throw new Error(`Сервер вернул неожиданный ответ (HTTP ${res.status})`);
+  }
+}
+
 async function editorImageHandler() {
   const input = document.createElement('input');
   input.type = 'file'; input.accept = 'image/*'; input.click();
@@ -2769,7 +2786,7 @@ async function editorImageHandler() {
       const res = await fetch(`${API}/admin/upload`, {
         method: 'POST', credentials: 'include', body: fd,
       });
-      const data = await res.json();
+      const data = await _parseUploadResponse(res);
       if (!res.ok) throw new Error(data.detail || 'Ошибка');
       const range = quill.getSelection(true);
       quill.insertEmbed(range.index, 'image', data.url);
@@ -2804,7 +2821,7 @@ async function uploadThumb(input) {
     const res = await fetch(`${API}/admin/upload`, {
       method: 'POST', credentials: 'include', body: fd,
     });
-    const data = await res.json();
+    const data = await _parseUploadResponse(res);
     if (!res.ok) throw new Error(data.detail || 'Ошибка');
     document.getElementById('editor-news-thumb').value = data.url;
   } catch (err) { showToast('Ошибка загрузки: ' + err.message, 'error'); }
@@ -3804,7 +3821,7 @@ async function uploadLogoFile(input) {
     const res = await fetch(`${API}/admin/upload`, {
       method: 'POST', credentials: 'include', body: fd,
     });
-    const data = await res.json();
+    const data = await _parseUploadResponse(res);
     if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки');
     document.getElementById('setting-site_logo_url').value = data.url;
     previewLogo(data.url);
@@ -3839,7 +3856,7 @@ async function uploadFaviconFile(input) {
   const fd = new FormData(); fd.append('file', file);
   try {
     const res = await fetch(`${API}/admin/upload`, { method: 'POST', credentials: 'include', body: fd });
-    const data = await res.json();
+    const data = await _parseUploadResponse(res);
     if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки');
     document.getElementById('setting-favicon_url').value = data.url;
     previewFavicon(data.url);
@@ -3867,7 +3884,7 @@ async function uploadHeroLogoFile(input) {
     const res = await fetch(`${API}/admin/upload`, {
       method: 'POST', credentials: 'include', body: fd,
     });
-    const data = await res.json();
+    const data = await _parseUploadResponse(res);
     if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки');
     document.getElementById('setting-hero_logo_url').value = data.url;
     previewHeroLogo(data.url);
@@ -3887,7 +3904,7 @@ async function uploadBgFile(input) {
     const res = await fetch(`${API}/admin/upload`, {
       method: 'POST', credentials: 'include', body: fd,
     });
-    const data = await res.json();
+    const data = await _parseUploadResponse(res);
     if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки');
     document.getElementById('setting-bg_image_url').value = data.url;
     await saveSetting('bg_image_url');
