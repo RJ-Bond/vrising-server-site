@@ -22,20 +22,34 @@
     nav_hidden: '["/shop.html"]',
   };
 
-  // member_preview mirrors GET /api/clans's shape (backend/routers/clans.py) — up to 4
-  // members, leaders/officers first, feeding clans.html's card avatar-stack.
+  // member_preview mirrors GET /api/clans's shape (GameClanMemberOut in backend/schemas.py)
+  // — up to 4 members, leaders/officers first, feeding clans.html's card avatar-stack.
+  // is_online mixed true/false so the presence-dot screenshot shows both states.
+  // last_connected_unix/physical_power/spell_power are part of the real response shape
+  // but not displayed yet (experimental / needs eyeballing first) — included here only
+  // to mirror the backend's exact fields, not because the frontend reads them.
   const memberPreview = (n) => [
-    { steam_id: '1', character_name: 'Vortigern', role: 'leader', username: 'Vortigern', avatar_url: null },
-    { steam_id: '2', character_name: 'Shadowfang', role: 'officer', username: 'Shadowfang', avatar_url: null },
-    { steam_id: '3', character_name: 'Dracarys', role: 'member', username: 'Dracarys', avatar_url: null },
-    { steam_id: '999', character_name: 'UnlinkedWanderer', role: 'member', username: null, avatar_url: null },
+    { steam_id: '1', character_name: 'Vortigern', role: 'leader', username: 'Vortigern', avatar_url: null, is_online: true, last_connected_unix: Math.floor(now / 1000), physical_power: 812.5, spell_power: 640.2 },
+    { steam_id: '2', character_name: 'Shadowfang', role: 'officer', username: 'Shadowfang', avatar_url: null, is_online: false, last_connected_unix: Math.floor((now - 3600000) / 1000), physical_power: 705.0, spell_power: 512.8 },
+    { steam_id: '3', character_name: 'Dracarys', role: 'member', username: 'Dracarys', avatar_url: null, is_online: true, last_connected_unix: Math.floor(now / 1000), physical_power: 590.4, spell_power: 480.1 },
+    { steam_id: '999', character_name: 'UnlinkedWanderer', role: 'member', username: null, avatar_url: null, is_online: false, last_connected_unix: Math.floor((now - 86400000) / 1000), physical_power: 320.0, spell_power: 210.5 },
   ].slice(0, Math.min(n, 4));
 
+  // GameClanBaseOut shape (backend/schemas.py) — castle base(s) synced per clan.
+  // min/max x/z are for a future map overlay, not used by clans.html yet.
   const clans = [
-    { id: 1, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', clan_guid: 'guid-1', name: 'Кровавые Клыки', motto: 'Старейший клан сервера. Ищем активных игроков для рейдов.', member_count: 12, updated_at: iso(2 * 3600 * 1000), member_preview: memberPreview(12) },
-    { id: 2, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', clan_guid: 'guid-2', name: 'Ночная Стража', motto: 'PvE-фокус, помогаем новичкам освоиться.', member_count: 7, updated_at: iso(5 * 3600 * 1000), member_preview: memberPreview(7) },
-    { id: 3, server_num: 2, server_name: '[RU] Just-Skill.Ru | Brutal PvE', clan_guid: 'guid-3', name: 'Алый Договор', motto: '', member_count: 3, updated_at: iso(24 * 3600 * 1000), member_preview: memberPreview(3) },
-    { id: 4, server_num: 2, server_name: '[RU] Just-Skill.Ru | Brutal PvE', clan_guid: 'guid-4', name: 'Пепельный Клинок', motto: 'PvP-кланы, объединяйтесь.', member_count: 5, updated_at: iso(10 * 3600 * 1000), member_preview: memberPreview(5) },
+    { id: 1, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', clan_guid: 'guid-1', name: 'Кровавые Клыки', motto: 'Старейший клан сервера. Ищем активных игроков для рейдов.', member_count: 12, updated_at: iso(2 * 3600 * 1000), member_preview: memberPreview(12),
+      bases: [{ level: 5, floor_count: 12, is_raid_protected: true, min_x: -420, min_z: -180, max_x: -340, max_z: -100 }] },
+    { id: 2, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', clan_guid: 'guid-2', name: 'Ночная Стража', motto: 'PvE-фокус, помогаем новичкам освоиться.', member_count: 7, updated_at: iso(5 * 3600 * 1000), member_preview: memberPreview(7),
+      bases: [{ level: 3, floor_count: 6, is_raid_protected: false, min_x: 60, min_z: 200, max_x: 130, max_z: 270 }] },
+    { id: 3, server_num: 2, server_name: '[RU] Just-Skill.Ru | Brutal PvE', clan_guid: 'guid-3', name: 'Алый Договор', motto: '', member_count: 3, updated_at: iso(24 * 3600 * 1000), member_preview: memberPreview(3),
+      bases: [] },
+    { id: 4, server_num: 2, server_name: '[RU] Just-Skill.Ru | Brutal PvE', clan_guid: 'guid-4', name: 'Пепельный Клинок', motto: 'PvP-кланы, объединяйтесь.', member_count: 5, updated_at: iso(10 * 3600 * 1000), member_preview: memberPreview(5),
+      // Multiple bases — exercises clans.html's "highest level / summed floors / any protected" aggregation.
+      bases: [
+        { level: 4, floor_count: 8, is_raid_protected: false, min_x: -800, min_z: 300, max_x: -730, max_z: 370 },
+        { level: 6, floor_count: 3, is_raid_protected: true, min_x: -700, min_z: 320, max_x: -660, max_z: 360 },
+      ] },
   ];
 
   const clanDetail = (id) => {
@@ -43,9 +57,9 @@
     return {
       ...base,
       members: [
-        { steam_id: '1', character_name: 'Vortigern', role: 'leader', username: 'Vortigern', avatar_url: null },
-        { steam_id: '2', character_name: 'Shadowfang', role: 'officer', username: 'Shadowfang', avatar_url: null },
-        { steam_id: '999', character_name: 'UnlinkedWanderer', role: 'member', username: null, avatar_url: null },
+        { steam_id: '1', character_name: 'Vortigern', role: 'leader', username: 'Vortigern', avatar_url: null, is_online: true, last_connected_unix: Math.floor(now / 1000), physical_power: 812.5, spell_power: 640.2 },
+        { steam_id: '2', character_name: 'Shadowfang', role: 'officer', username: 'Shadowfang', avatar_url: null, is_online: false, last_connected_unix: Math.floor((now - 3600000) / 1000), physical_power: 705.0, spell_power: 512.8 },
+        { steam_id: '999', character_name: 'UnlinkedWanderer', role: 'member', username: null, avatar_url: null, is_online: false, last_connected_unix: Math.floor((now - 86400000) / 1000), physical_power: 320.0, spell_power: 210.5 },
       ],
     };
   };

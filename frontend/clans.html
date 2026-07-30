@@ -67,12 +67,16 @@
 
     /* ── Member avatar-stack on the card ── */
     .member-stack { display:flex; align-items:center; margin-bottom:.85rem; }
+    /* Wraps each avatar so the online-presence dot (position:absolute) has a positioned
+       parent — the overlap margin lives here now (was on .member-stack-avatar) so the
+       dot itself never gets clipped by the negative margin. */
+    .member-stack-item { position:relative; display:inline-flex; margin-left:-.5rem; flex-shrink:0; }
+    .member-stack-item:first-child { margin-left:0; }
     .member-stack-avatar {
-      width:1.55rem; height:1.55rem; border-radius:50%; object-fit:cover; margin-left:-.5rem;
+      width:1.55rem; height:1.55rem; border-radius:50%; object-fit:cover;
       border:2px solid var(--card); flex-shrink:0; display:flex; align-items:center;
       justify-content:center; font-size:.6rem; font-weight:700; color:#fff;
     }
-    .member-stack-avatar:first-child { margin-left:0; }
     .member-stack-more {
       width:1.55rem; height:1.55rem; border-radius:50%; margin-left:-.5rem;
       background:rgba(20,5,35,0.92); border:2px solid var(--card); flex-shrink:0;
@@ -154,6 +158,10 @@
       display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
     }
     .clan-card-desc-empty { opacity:.55; font-style:italic; }
+
+    /* ── Castle base line (card + detail modal) ── */
+    .base-info-line { display:flex; align-items:center; gap:.35rem; font-size:.66rem; color:var(--muted); margin-bottom:.6rem; }
+    .base-raid-badge { display:inline-flex; align-items:center; color:#4ade80; flex-shrink:0; }
 
     /* ── Summary stat tiles ── */
     .stat-tile {
@@ -396,9 +404,10 @@ function memberStackHtml(clan) {
   const avatarsHtml = preview.map(m => {
     const label = m.username || m.character_name || '?';
     const grad = (typeof nameGradient === 'function') ? nameGradient(label) : '#3a0060';
-    return m.avatar_url
+    const inner = m.avatar_url
       ? `<img class="member-stack-avatar" src="${esc(m.avatar_url)}" alt="" title="${esc(label)}">`
       : `<span class="member-stack-avatar" style="background:${grad};" title="${esc(label)}">${esc(label.charAt(0).toUpperCase())}</span>`;
+    return `<span class="member-stack-item">${inner}${onlineDotHtml(m.is_online, { size: 7, corner: 'left' })}</span>`;
   }).join('');
   const extra = (clan.member_count || 0) - preview.length;
   const moreHtml = extra > 0 ? `<span class="member-stack-more" title="ещё ${extra}">+${extra}</span>` : '';
@@ -440,6 +449,8 @@ function buildCard(clan, idx) {
       </div>
       <!-- Member avatar-stack -->
       ${memberStackHtml(clan)}
+      <!-- Castle base(s) -->
+      ${baseInfoHtml(clan)}
       <!-- Motto -->
       ${descHtml}
       ${updated ? `<div style="font-size:.6rem;color:var(--muted);opacity:.65;margin-bottom:.85rem;">Обновлено: ${esc(updated)}</div>` : ''}
@@ -466,6 +477,41 @@ const ROLE_PLURALS = {
 function roleCountLabel(role, n) {
   const [one, few, many] = ROLE_PLURALS[role] || ROLE_PLURALS.member;
   return `${n} ${pluralRu(n, one, few, many)}`;
+}
+
+/* ── Online-status dot — same green/gray + glow visual language as common.js's
+   _statusInfo() (see user.html's #user-status), just without a label: GameClanMemberOut
+   only gives a boolean is_online (last_connected_unix is experimental/epoch-format-
+   unverified and explicitly not surfaced yet), so there's no "X min ago" text to show,
+   only online/offline. Positioned as a small presence badge on the avatar's corner.
+   corner:'left' is used in the card's overlapping avatar-stack, where a right-corner
+   dot would get covered by the next avatar's negative margin. ── */
+function onlineDotHtml(isOnline, opts) {
+  opts = opts || {};
+  const size = opts.size || 8;
+  const pos = opts.corner === 'left' ? 'left:-1px;' : 'right:-1px;';
+  const bg = isOnline ? '#22c55e' : '#374151';
+  const glow = isOnline ? 'box-shadow:0 0 6px rgba(34,197,94,.65);' : '';
+  const title = isOnline ? 'Онлайн' : 'Не в сети';
+  return `<span style="position:absolute;${pos}bottom:-1px;width:${size}px;height:${size}px;border-radius:50%;border:2px solid var(--card);background:${bg};${glow}" title="${esc(title)}"></span>`;
+}
+
+/* ── Castle base summary line — a clan can have multiple bases (GameClanBaseOut list);
+   kept simple per-spec: highest level + summed floor count, shield badge if ANY base
+   is raid-protected. Bounding-box fields (min/max x/z) are for a future map overlay,
+   not used here. ── */
+function baseInfoHtml(clan) {
+  const bases = clan.bases || [];
+  if (!bases.length) return '';
+  const maxLevel = Math.max(...bases.map(b => b.level || 0));
+  const totalFloors = bases.reduce((s, b) => s + (b.floor_count || 0), 0);
+  const anyProtected = bases.some(b => b.is_raid_protected);
+  const countSuffix = bases.length > 1 ? ` · ${bases.length} ${pluralRu(bases.length, 'база', 'базы', 'баз')}` : '';
+  const floorWord = pluralRu(totalFloors, 'этаж', 'этажа', 'этажей');
+  const shieldHtml = anyProtected
+    ? `<span class="base-raid-badge" title="Под защитой от рейда"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-shield"></use></svg></span>`
+    : '';
+  return `<div class="base-info-line">🏰 Ур. ${maxLevel} · ${totalFloors} ${floorWord}${countSuffix}${shieldHtml}</div>`;
 }
 
 /* ── Relative "updated X ago" — updated_at comes back as a naive UTC timestamp with
@@ -630,7 +676,7 @@ function memberRowHtml(m) {
   const linkClose = m.username ? '</a>' : '</span>';
   return `
     <div class="member-row">
-      ${avatarHtml}
+      <span style="position:relative;display:inline-flex;flex-shrink:0;">${avatarHtml}${onlineDotHtml(m.is_online, { size: 9 })}</span>
       <div style="flex:1;min-width:0;font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${linkOpen}${displayName}${linkClose}</div>
       <span class="role-badge ${esc(m.role || 'member')}">${roleLabel(m.role)}</span>
     </div>
@@ -664,7 +710,9 @@ async function openClanDetail(clanId) {
       <h2 class="gothic" style="font-size:.95rem;font-weight:700;letter-spacing:.06em;color:var(--text);margin-bottom:.2rem;padding-right:1.5rem;">${esc(clan.name)}</h2>
       <div style="font-size:.68rem;color:var(--gold);margin-bottom:.5rem;">${esc(clan.server_name || '')}</div>
       ${motto ? `<p style="font-size:.78rem;color:var(--muted);margin-bottom:.8rem;">${esc(motto)}</p>` : ''}
-      ${summaryHtml || updated ? `<div style="font-size:.68rem;color:var(--muted);margin-bottom:1rem;">${esc(summaryHtml)}${summaryHtml && updated ? ' · ' : ''}${updated ? `обновлено ${esc(updated)}` : ''}</div>` : '<div style="margin-bottom:1rem;"></div>'}
+      ${summaryHtml || updated ? `<div style="font-size:.68rem;color:var(--muted);margin-bottom:.6rem;">${esc(summaryHtml)}${summaryHtml && updated ? ' · ' : ''}${updated ? `обновлено ${esc(updated)}` : ''}</div>` : ''}
+      ${baseInfoHtml(clan)}
+      <div style="margin-bottom:.4rem;"></div>
       <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem;">Участники (${members.length})</div>
       <div>${members.length ? members.map(memberRowHtml).join('') : '<p style="font-size:.78rem;color:var(--muted);">Нет участников</p>'}</div>
     `;
