@@ -22,10 +22,20 @@
     nav_hidden: '["/shop.html"]',
   };
 
+  // member_preview mirrors GET /api/clans's shape (backend/routers/clans.py) — up to 4
+  // members, leaders/officers first, feeding clans.html's card avatar-stack.
+  const memberPreview = (n) => [
+    { steam_id: '1', character_name: 'Vortigern', role: 'leader', username: 'Vortigern', avatar_url: null },
+    { steam_id: '2', character_name: 'Shadowfang', role: 'officer', username: 'Shadowfang', avatar_url: null },
+    { steam_id: '3', character_name: 'Dracarys', role: 'member', username: 'Dracarys', avatar_url: null },
+    { steam_id: '999', character_name: 'UnlinkedWanderer', role: 'member', username: null, avatar_url: null },
+  ].slice(0, Math.min(n, 4));
+
   const clans = [
-    { id: 1, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', clan_guid: 'guid-1', name: 'Кровавые Клыки', motto: 'Старейший клан сервера. Ищем активных игроков для рейдов.', member_count: 12, updated_at: iso(2 * 3600 * 1000) },
-    { id: 2, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', clan_guid: 'guid-2', name: 'Ночная Стража', motto: 'PvE-фокус, помогаем новичкам освоиться.', member_count: 7, updated_at: iso(5 * 3600 * 1000) },
-    { id: 3, server_num: 2, server_name: '[RU] Just-Skill.Ru | Brutal PvE', clan_guid: 'guid-3', name: 'Алый Договор', motto: '', member_count: 3, updated_at: iso(24 * 3600 * 1000) },
+    { id: 1, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', clan_guid: 'guid-1', name: 'Кровавые Клыки', motto: 'Старейший клан сервера. Ищем активных игроков для рейдов.', member_count: 12, updated_at: iso(2 * 3600 * 1000), member_preview: memberPreview(12) },
+    { id: 2, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', clan_guid: 'guid-2', name: 'Ночная Стража', motto: 'PvE-фокус, помогаем новичкам освоиться.', member_count: 7, updated_at: iso(5 * 3600 * 1000), member_preview: memberPreview(7) },
+    { id: 3, server_num: 2, server_name: '[RU] Just-Skill.Ru | Brutal PvE', clan_guid: 'guid-3', name: 'Алый Договор', motto: '', member_count: 3, updated_at: iso(24 * 3600 * 1000), member_preview: memberPreview(3) },
+    { id: 4, server_num: 2, server_name: '[RU] Just-Skill.Ru | Brutal PvE', clan_guid: 'guid-4', name: 'Пепельный Клинок', motto: 'PvP-кланы, объединяйтесь.', member_count: 5, updated_at: iso(10 * 3600 * 1000), member_preview: memberPreview(5) },
   ];
 
   const clanDetail = (id) => {

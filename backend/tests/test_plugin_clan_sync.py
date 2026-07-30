@@ -175,6 +175,51 @@ async def test_clan_detail_404_for_missing_clan(client, db_session):
     assert r.status_code == 404
 
 
+async def test_clan_list_includes_member_preview_leaders_first_capped_at_four(client, db_session):
+    """member_preview backs the public clan-list card's mini avatar-stack — leaders/
+    officers should sort first, and it should never exceed 4 entries even for a clan
+    with more members (member_count still reflects the true total)."""
+    await _set_plugin_key(db_session)
+    linked_user = User(
+        username="LinkedLeader", email="ll@example.com",
+        hashed_password=get_password_hash("x"), steam_id="1",
+        avatar_url="https://example.com/a.png",
+    )
+    db_session.add(linked_user)
+    await db_session.commit()
+
+    body = {
+        "server_num": 1,
+        "clans": [{
+            "clan_guid": "guid-big",
+            "name": "Big Clan",
+            "motto": "",
+            "members": [
+                {"steam_id": "5", "character_name": "Zebra", "role": "member"},
+                {"steam_id": "4", "character_name": "Yak", "role": "member"},
+                {"steam_id": "3", "character_name": "Xenon", "role": "member"},
+                {"steam_id": "2", "character_name": "Officer1", "role": "officer"},
+                {"steam_id": "1", "character_name": "TheLeader", "role": "leader"},
+            ],
+        }],
+    }
+    await client.post("/api/plugin/clans/sync", json=body, headers=_hdr())
+
+    r = await client.get("/api/clans")
+    clan = r.json()[0]
+    assert clan["member_count"] == 5
+    preview = clan["member_preview"]
+    assert len(preview) == 4  # capped, even though the clan has 5 members
+    assert preview[0]["character_name"] == "TheLeader"
+    assert preview[0]["role"] == "leader"
+    assert preview[0]["username"] == "LinkedLeader"
+    assert preview[0]["avatar_url"] == "https://example.com/a.png"
+    assert preview[1]["character_name"] == "Officer1"
+    assert preview[1]["role"] == "officer"
+    # remaining two slots filled alphabetically from the plain members
+    assert [m["character_name"] for m in preview[2:]] == ["Xenon", "Yak"]
+
+
 async def test_public_list_hides_empty_clans_and_sorts_by_member_count(client, db_session):
     """Production regression: V Rising lets anyone spin up a clan for free, so a large
     share of game-synced clans have 0 members (abandoned/throwaway) — those shouldn't

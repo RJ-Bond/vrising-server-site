@@ -711,6 +711,9 @@ class GameClanOut(BaseModel):
     motto: Optional[str] = ""
     updated_at: datetime
     member_count: int = 0
+    # Up to 4 members (leaders/officers first), for the public clan-list card's mini
+    # avatar-stack — the full roster is only fetched on GET /api/clans/{id}.
+    member_preview: list[GameClanMemberOut] = []
 
     model_config = {"from_attributes": True}
 

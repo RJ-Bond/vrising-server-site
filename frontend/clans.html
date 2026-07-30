@@ -59,6 +59,26 @@
     .clan-search-input::placeholder { color:var(--muted); }
     .clan-search-input:focus { border-color:rgba(200,0,40,0.45); }
 
+    /* ── Per-server toggle (ported from leaderboard.html's .lb-toggle) ── */
+    .clan-toggle { display:flex; gap:.2rem; background:var(--panel); border:1px solid rgba(255,255,255,0.08); border-radius:.5rem; padding:2px; flex-wrap:wrap; }
+    .clan-toggle-btn { background:none; border:none; color:var(--muted); font-size:.74rem; font-weight:600; padding:.4rem .8rem; border-radius:.4rem; cursor:pointer; transition:all .15s; font-family:'Inter',sans-serif; }
+    .clan-toggle-btn:hover { color:var(--text); }
+    .clan-toggle-btn.active { background:linear-gradient(135deg,#7a001c,var(--crimson)); color:#fff; }
+
+    /* ── Member avatar-stack on the card ── */
+    .member-stack { display:flex; align-items:center; margin-bottom:.85rem; }
+    .member-stack-avatar {
+      width:1.55rem; height:1.55rem; border-radius:50%; object-fit:cover; margin-left:-.5rem;
+      border:2px solid var(--card); flex-shrink:0; display:flex; align-items:center;
+      justify-content:center; font-size:.6rem; font-weight:700; color:#fff;
+    }
+    .member-stack-avatar:first-child { margin-left:0; }
+    .member-stack-more {
+      width:1.55rem; height:1.55rem; border-radius:50%; margin-left:-.5rem;
+      background:rgba(20,5,35,0.92); border:2px solid var(--card); flex-shrink:0;
+      display:flex; align-items:center; justify-content:center; font-size:.56rem; font-weight:700; color:var(--muted);
+    }
+
     /* ── Clan card ── */
     .clan-card {
       padding:1.25rem; cursor:pointer;
@@ -185,6 +205,8 @@
       <h1 class="gothic" style="font-size:1.25rem;font-weight:700;letter-spacing:.1em;color:var(--text);text-transform:uppercase;">Кланы</h1>
       <p style="font-size:.76rem;color:var(--muted);margin-top:.25rem;">Состав кланов синхронизирован напрямую из игры</p>
     </div>
+    <!-- Populated once clans load — hidden entirely when everything is on one server -->
+    <div id="clan-server-tabs" class="clan-toggle"></div>
   </div>
 
   <!-- Summary tiles -->
@@ -319,6 +341,22 @@ function renderStats(clans) {
   `;
 }
 
+/* ── Member avatar-stack (up to 4, from GET /api/clans's member_preview) ── */
+function memberStackHtml(clan) {
+  const preview = clan.member_preview || [];
+  if (!preview.length) return '';
+  const avatarsHtml = preview.map(m => {
+    const label = m.username || m.character_name || '?';
+    const grad = (typeof nameGradient === 'function') ? nameGradient(label) : '#3a0060';
+    return m.avatar_url
+      ? `<img class="member-stack-avatar" src="${esc(m.avatar_url)}" alt="" title="${esc(label)}">`
+      : `<span class="member-stack-avatar" style="background:${grad};" title="${esc(label)}">${esc(label.charAt(0).toUpperCase())}</span>`;
+  }).join('');
+  const extra = (clan.member_count || 0) - preview.length;
+  const moreHtml = extra > 0 ? `<span class="member-stack-more" title="ещё ${extra}">+${extra}</span>` : '';
+  return `<div class="member-stack">${avatarsHtml}${moreHtml}</div>`;
+}
+
 /* ── Render single card HTML ── */
 function buildCard(clan, idx) {
   const initials = esc((clan.name || '?').trim().slice(0, 2).toUpperCase());
@@ -328,6 +366,9 @@ function buildCard(clan, idx) {
   const descHtml = motto
     ? `<div class="clan-card-desc">${esc(motto)}</div>`
     : `<div class="clan-card-desc clan-card-desc-empty">Без девиза</div>`;
+  // Per-clan color instead of one uniform purple badge for every card — same
+  // deterministic-from-name gradient already used for member avatars below.
+  const badgeGrad = (typeof nameGradient === 'function') ? nameGradient(clan.name || '') : 'linear-gradient(135deg,rgba(80,0,150,0.4),rgba(120,0,20,0.3))';
 
   return `
     <div class="clan-card g-card"
@@ -336,12 +377,14 @@ function buildCard(clan, idx) {
       onclick="openClanDetail(${clan.id})">
       <!-- Header: initials badge + name -->
       <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;">
-        <div style="width:2.8rem;height:2.8rem;border-radius:.55rem;background:linear-gradient(135deg,rgba(80,0,150,0.4),rgba(120,0,20,0.3));border:1px solid rgba(110,0,150,0.3);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:var(--gold);flex-shrink:0;">${initials}</div>
+        <div style="width:2.8rem;height:2.8rem;border-radius:.55rem;background:${badgeGrad};border:1px solid rgba(110,0,150,0.3);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:var(--gold);flex-shrink:0;">${initials}</div>
         <div style="min-width:0;">
           <div style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
           <div style="font-size:.62rem;color:var(--muted);margin-top:.1rem;">${members} участник${pluralMembers(members)} · ${esc(clan.server_name || '')}</div>
         </div>
       </div>
+      <!-- Member avatar-stack -->
+      ${memberStackHtml(clan)}
       <!-- Motto -->
       ${descHtml}
       <!-- Action -->
@@ -384,11 +427,40 @@ function renderGrid(clans) {
   if (window.animateEntrance) animateEntrance('#clans-grid .clan-card', { distance: 10, stagger: 60 });
 }
 
-/* ── Filter cards by search query ── */
+/* ── Per-server filter tabs ── */
+let _serverFilter = 'all';
+
+function renderServerTabs(clans) {
+  const wrap = document.getElementById('clan-server-tabs');
+  if (!wrap) return;
+  const servers = [];
+  const seen = new Set();
+  clans.forEach(c => {
+    if (!seen.has(c.server_num)) { seen.add(c.server_num); servers.push({ num: c.server_num, name: c.server_name || `Сервер ${c.server_num}` }); }
+  });
+  // Not worth a tab bar when every clan is already on the same one server.
+  if (servers.length < 2) { wrap.innerHTML = ''; return; }
+  servers.sort((a, b) => a.num - b.num);
+  const tab = (label, active, onclick) => `<button class="clan-toggle-btn${active ? ' active' : ''}" onclick="${onclick}">${esc(label)}</button>`;
+  wrap.innerHTML = [
+    tab('Все', _serverFilter === 'all', `setServerFilter('all')`),
+    ...servers.map(s => tab(s.name, _serverFilter === s.num, `setServerFilter(${s.num})`)),
+  ].join('');
+}
+
+function setServerFilter(num) {
+  _serverFilter = num;
+  renderServerTabs(_allClans);
+  filterCards();
+}
+
+/* ── Filter cards by server + search query ── */
 function filterCards() {
   const q = (document.getElementById('clan-search').value || '').trim().toLowerCase();
-  if (!q) { renderGrid(_allClans); return; }
-  renderGrid(_allClans.filter(c => (c.name || '').toLowerCase().includes(q)));
+  let list = _allClans;
+  if (_serverFilter !== 'all') list = list.filter(c => c.server_num === _serverFilter);
+  if (q) list = list.filter(c => (c.name || '').toLowerCase().includes(q));
+  renderGrid(list);
 }
 
 /* ── Load clans ── */
@@ -403,6 +475,7 @@ async function init() {
     document.getElementById('clans-loading').style.display = 'none';
 
     renderStats(_allClans);
+    renderServerTabs(_allClans);
     renderGrid(_allClans);
   } catch (err) {
     document.getElementById('clans-loading').style.display = 'none';
