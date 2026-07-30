@@ -111,11 +111,18 @@ async def test_sync_for_different_server_num_is_independent(client, db_session):
 
 async def test_clan_list_search_filters_by_name(client, db_session):
     await _set_plugin_key(db_session)
+    # Both clans need >=1 member — 0-member clans are excluded from GET /api/clans
+    # entirely (see test_public_list_hides_empty_clans_and_sorts_by_member_count), and
+    # this test is only about the search filter, not that behavior.
     body = {
         "server_num": 1,
         "clans": [
-            {"clan_guid": "guid-a", "name": "Blood Fangs", "motto": "", "members": []},
-            {"clan_guid": "guid-b", "name": "Night Watch", "motto": "", "members": []},
+            {"clan_guid": "guid-a", "name": "Blood Fangs", "motto": "", "members": [
+                {"steam_id": "1", "character_name": "P1", "role": "leader"},
+            ]},
+            {"clan_guid": "guid-b", "name": "Night Watch", "motto": "", "members": [
+                {"steam_id": "2", "character_name": "P2", "role": "leader"},
+            ]},
         ],
     }
     await client.post("/api/plugin/clans/sync", json=body, headers=_hdr())
@@ -166,6 +173,38 @@ async def test_clan_detail_enriches_members_with_linked_site_accounts(client, db
 async def test_clan_detail_404_for_missing_clan(client, db_session):
     r = await client.get("/api/clans/999999")
     assert r.status_code == 404
+
+
+async def test_public_list_hides_empty_clans_and_sorts_by_member_count(client, db_session):
+    """Production regression: V Rising lets anyone spin up a clan for free, so a large
+    share of game-synced clans have 0 members (abandoned/throwaway) — those shouldn't
+    clutter the public showcase. The remaining ones should lead with the biggest (most
+    real) clans, not alphabetically — plain alphabetical sort put junk like "1"/"123"
+    ahead of every active community since digits sort before letters."""
+    await _set_plugin_key(db_session)
+    body = {
+        "server_num": 1,
+        "clans": [
+            {"clan_guid": "guid-empty", "name": "1", "motto": "", "members": []},
+            {"clan_guid": "guid-small", "name": "Small Clan", "motto": "", "members": [
+                {"steam_id": "1", "character_name": "P1", "role": "leader"},
+            ]},
+            {"clan_guid": "guid-big", "name": "Big Clan", "motto": "", "members": [
+                {"steam_id": "2", "character_name": "P2", "role": "leader"},
+                {"steam_id": "3", "character_name": "P3", "role": "officer"},
+                {"steam_id": "4", "character_name": "P4", "role": "member"},
+            ]},
+        ],
+    }
+    await client.post("/api/plugin/clans/sync", json=body, headers=_hdr())
+
+    r = await client.get("/api/clans")
+    assert r.status_code == 200
+    clans = r.json()
+    names = [c["name"] for c in clans]
+    assert "1" not in names  # 0-member clan excluded entirely
+    assert names == ["Big Clan", "Small Clan"]  # biggest first
+    assert all(c["member_count"] > 0 for c in clans)
 
 
 async def test_repeated_sync_with_same_clan_and_member_does_not_accumulate(client, db_session):

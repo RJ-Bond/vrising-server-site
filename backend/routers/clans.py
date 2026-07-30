@@ -57,13 +57,21 @@ async def list_clans(search: Optional[str] = None, limit: Optional[int] = None, 
     query = select(GameClan)
     if search:
         query = query.where(GameClan.name.ilike(f"%{search}%"))
-    query = query.order_by(GameClan.name)
-    if limit:
-        query = query.limit(limit)
     result = await db.execute(query)
     clans = result.scalars().all()
     server_names = await _get_server_names(db)
-    return [await _game_clan_out(db, c, server_names=server_names) for c in clans]
+    out = [await _game_clan_out(db, c, server_names=server_names) for c in clans]
+    # Real communities first, not alphabetical: V Rising lets anyone spin up a clan
+    # trivially, and on production ~1 in 5 synced clans has 0 members (abandoned or a
+    # throwaway) and dozens more are unnamed test clutter ("1", "123", literally "clan"
+    # x13) — sorted alphabetically, that noise dominated the top of the page ahead of
+    # every active clan. A 0-member clan isn't a community yet, so it's hidden outright
+    # rather than just sorted last.
+    out = [c for c in out if c["member_count"] > 0]
+    out.sort(key=lambda c: c["member_count"], reverse=True)
+    if limit:
+        out = out[:limit]
+    return out
 
 
 @router.get("/api/clans/{clan_id}", response_model=GameClanDetailOut)
