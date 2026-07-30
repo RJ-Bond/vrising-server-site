@@ -14,7 +14,8 @@ from datetime import datetime, timedelta
 
 import pytest
 
-from backend.models import Ban
+from backend.auth import get_password_hash
+from backend.models import Ban, User
 
 pytestmark = pytest.mark.asyncio
 
@@ -31,6 +32,17 @@ async def _make_ban(db_session, **kwargs):
     await db_session.commit()
     await db_session.refresh(ban)
     return ban
+
+
+async def _make_user(db_session, username, steam_id=None, is_active=True):
+    user = User(
+        username=username, email=f"{username.lower()}@example.com",
+        hashed_password=get_password_hash("password1"), steam_id=steam_id, is_active=is_active,
+    )
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+    return user
 
 
 async def test_no_bans_returns_empty_list(client):
@@ -81,11 +93,31 @@ async def test_response_shape_matches_admin_active_bans_minus_steam_id(client, d
     b = r.json()["bans"][0]
     assert set(b.keys()) == {
         "id", "server_num", "server_name", "character_name", "admin_name", "reason",
-        "banned_at", "unban_at",
+        "banned_at", "unban_at", "linked_username",
     }
     assert b["id"] == ban.id
     assert "steam_id" not in b
     assert "unbanned_at" not in b
+
+
+async def test_linked_username_present_for_registered_active_account(client, db_session):
+    await _make_user(db_session, "GriefKnown", steam_id="76561198000000002")
+    await _make_ban(db_session, steam_id="76561198000000002", character_name="Griefer")
+    r = await client.get("/api/bans")
+    assert r.json()["bans"][0]["linked_username"] == "GriefKnown"
+
+
+async def test_linked_username_null_when_no_matching_account(client, db_session):
+    await _make_ban(db_session, steam_id="76561198000000003", character_name="NoAccount")
+    r = await client.get("/api/bans")
+    assert r.json()["bans"][0]["linked_username"] is None
+
+
+async def test_linked_username_null_for_inactive_account(client, db_session):
+    await _make_user(db_session, "Deactivated", steam_id="76561198000000004", is_active=False)
+    await _make_ban(db_session, steam_id="76561198000000004", character_name="StillBanned")
+    r = await client.get("/api/bans")
+    assert r.json()["bans"][0]["linked_username"] is None
 
 
 async def test_permanent_ban_has_null_unban_at(client, db_session):

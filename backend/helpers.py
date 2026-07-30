@@ -352,3 +352,16 @@ async def _get_server_names(db: AsyncSession) -> dict:
     ServerHostSettings.json "Name", not a site setting that could drift out of sync)."""
     result = await db.execute(select(PluginHeartbeat.server_num, PluginHeartbeat.server_name))
     return {num: name for num, name in result.all() if name}
+
+
+async def _get_linked_usernames(db: AsyncSession, steam_ids) -> dict:
+    """steam_id -> username, for whichever of the given steam_ids belong to a registered,
+    active site account (set via the plugin's .register/.login, see User.steam_id). Used to
+    let bans.html link a banned character name to its site profile, if one exists."""
+    ids = {s for s in steam_ids if s}
+    if not ids:
+        return {}
+    result = await db.execute(
+        select(User.steam_id, User.username).where(User.steam_id.in_(ids), User.is_active == True)
+    )
+    return {steam_id: username for steam_id, username in result.all()}

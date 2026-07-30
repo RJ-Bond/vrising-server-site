@@ -120,9 +120,9 @@
   // — used by bans.html's public bans table.
   const bans = {
     bans: [
-      { id: 101, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', character_name: 'Griefer42', admin_name: 'Overseer', reason: 'Использование читов (дюп предметов)', banned_at: iso(2 * 24 * 3600 * 1000), unban_at: null },
-      { id: 102, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', character_name: 'ToxicPlayer', admin_name: 'Overseer', reason: 'Оскорбления в чате', banned_at: iso(5 * 3600 * 1000), unban_at: iso(-19 * 3600 * 1000) },
-      { id: 103, server_num: 2, server_name: '[RU] Just-Skill.Ru | Brutal PvE', character_name: 'RaidAbuser', admin_name: 'Nightwatch', reason: 'Рейд в защищённый период', banned_at: iso(30 * 3600 * 1000), unban_at: null },
+      { id: 101, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', character_name: 'Griefer42', admin_name: 'Overseer', reason: 'Использование читов (дюп предметов)', banned_at: iso(2 * 24 * 3600 * 1000), unban_at: null, linked_username: 'Griefer42' },
+      { id: 102, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', character_name: 'ToxicPlayer', admin_name: 'Overseer', reason: 'Оскорбления в чате', banned_at: iso(5 * 3600 * 1000), unban_at: iso(-19 * 3600 * 1000), linked_username: null },
+      { id: 103, server_num: 2, server_name: '[RU] Just-Skill.Ru | Brutal PvE', character_name: 'RaidAbuser', admin_name: 'Nightwatch', reason: 'Рейд в защищённый период', banned_at: iso(30 * 3600 * 1000), unban_at: null, linked_username: null },
     ],
   };
 

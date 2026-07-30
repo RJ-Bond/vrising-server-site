@@ -9,7 +9,7 @@ from ..database import get_db
 from ..models import User, Ban, Warning, BanAppeal, ModerationLogEntry
 from ..auth import get_admin_user
 from ..rate_limit import limiter
-from ..helpers import _require_plugin_key, _fmt_dt_z, _force_unban, _audit, _get_server_names
+from ..helpers import _require_plugin_key, _fmt_dt_z, _force_unban, _audit, _get_server_names, _get_linked_usernames
 from ..schemas import (
     PluginWarnIn,
     PluginBanIn,
@@ -256,7 +256,9 @@ async def list_bans(
     unbanned_at (null unless the ban has actually been lifted) is always included so the
     "resolved" view can show when it was lifted. server_name is included as a convenience
     (same server_num -> real-name lookup used by GET /api/clans) so the admin page doesn't
-    need a second round-trip just to label the server column."""
+    need a second round-trip just to label the server column. linked_username (null unless
+    the banned steam_id matches a registered, active site account) lets bans.html link the
+    character name to that account's public profile."""
     server_names = await _get_server_names(db)
     query = select(Ban).order_by(Ban.banned_at.desc())
     if status == "resolved":
@@ -267,6 +269,7 @@ async def list_bans(
         query = query.where(Ban.unbanned_at.is_(None))
     result = await db.execute(query)
     bans = result.scalars().all()
+    linked_usernames = await _get_linked_usernames(db, (b.steam_id for b in bans))
     return {
         "bans": [
             {
@@ -280,6 +283,7 @@ async def list_bans(
                 "banned_at": _fmt_dt_z(b.banned_at),
                 "unban_at": _fmt_dt_z(b.unban_at),
                 "unbanned_at": _fmt_dt_z(b.unbanned_at),
+                "linked_username": linked_usernames.get(b.steam_id),
             }
             for b in bans
         ]
@@ -531,12 +535,17 @@ async def list_public_bans(db: AsyncSession = Depends(get_db)):
     separately confirms admin via /api/auth/me and shows an extra action column.
     This briefly (74b07ba) returned just {"active_bans": N} instead, on the theory
     that names/reasons were too sensitive to publish — that instinct turned out not
-    to match what's actually wanted for this page, so it's back to a full list."""
+    to match what's actually wanted for this page, so it's back to a full list.
+    linked_username (null unless the banned steam_id matches a registered, active site
+    account) lets bans.html link the character name to that account's public profile —
+    steam_id itself stays unpublished here, only the (already-public-elsewhere) username
+    is exposed."""
     server_names = await _get_server_names(db)
     result = await db.execute(
         select(Ban).where(Ban.unbanned_at.is_(None)).order_by(Ban.banned_at.desc())
     )
     bans = result.scalars().all()
+    linked_usernames = await _get_linked_usernames(db, (b.steam_id for b in bans))
     return {
         "bans": [
             {
@@ -548,6 +557,7 @@ async def list_public_bans(db: AsyncSession = Depends(get_db)):
                 "reason": b.reason,
                 "banned_at": _fmt_dt_z(b.banned_at),
                 "unban_at": _fmt_dt_z(b.unban_at),
+                "linked_username": linked_usernames.get(b.steam_id),
             }
             for b in bans
         ]

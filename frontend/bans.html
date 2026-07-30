@@ -130,6 +130,16 @@
     }
     .ban-row-new td:first-child { box-shadow:inset 3px 0 0 0 rgba(201,169,74,0.6); }
 
+    /* ── Profile link for banned players who have a linked site account (see
+       activeBanRowHtml() — b.linked_username, joined server-side from Ban.steam_id
+       against users.steam_id). Only rendered when linked_username is present. ── */
+    .ban-profile-link {
+      display:inline-flex; align-items:center; gap:.32rem; color:var(--gold); text-decoration:none;
+      font-weight:600; border-bottom:1px dashed rgba(201,169,74,0.5); transition:border-color .15s,color .15s;
+    }
+    .ban-profile-link:hover { color:#e2c876; border-bottom-color:#e2c876; }
+    .ban-profile-link svg { flex-shrink:0; opacity:.85; }
+
     /* ── Reason category dot (see categorizeReason() — heuristic client-side keyword
        matching only, not real backend data). ── */
     .reason-dot { display:inline-block; width:.5rem; height:.5rem; border-radius:50%; margin-right:.4rem; vertical-align:middle; }
@@ -548,7 +558,10 @@ function activeBanRowHtml(b) {
     ? `<span class="remaining" id="active-ban-remaining-${b.id}">…</span>`
     : `<span class="badge-permanent">Навсегда</span>`;
   const isNew = !!b.banned_at && (Date.now() - new Date(b.banned_at).getTime()) < 24 * 60 * 60 * 1000;
-  const nameCell = `${esc(b.character_name)}${isNew ? '<span class="badge-new">новый</span>' : ''}`;
+  const nameHtml = b.linked_username
+    ? `<a class="ban-profile-link" href="/user.html?u=${encodeURIComponent(b.linked_username)}" title="Открыть профиль ${esc(b.linked_username)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-user"></use></svg>${esc(b.character_name)}</a>`
+    : esc(b.character_name);
+  const nameCell = `${nameHtml}${isNew ? '<span class="badge-new">новый</span>' : ''}`;
   const actionCell = _activeBansIsAdmin
     ? `<td data-label="Действия" style="display:flex;gap:.4rem;flex-wrap:wrap;"><button class="btn-danger" onclick="unbanActiveBan(${b.id}, this)">Разбанить</button>${b.steam_id ? modLogHistoryLinkHtml(b.steam_id) : ''}</td>`
     : '';
@@ -723,8 +736,11 @@ function updateStatsBar() {
 let _activeBansHistoryLoaded = false;
 
 function activeBanHistoryRowHtml(b) {
+  const nameHtml = b.linked_username
+    ? `<a class="ban-profile-link" href="/user.html?u=${encodeURIComponent(b.linked_username)}" title="Открыть профиль ${esc(b.linked_username)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-user"></use></svg>${esc(b.character_name)}</a>`
+    : esc(b.character_name);
   return `<tr data-ban-id="${b.id}">
-    <td data-label="Имя">${esc(b.character_name)}</td>
+    <td data-label="Имя">${nameHtml}</td>
     <td data-label="Сервер" style="color:var(--muted);">${esc(banServerLabel(b))}</td>
     <td data-label="Снят" style="color:var(--muted);white-space:nowrap;">${fmtDate(b.unbanned_at)}</td>
     <td data-label="Кто забанил" style="color:var(--muted);">${esc(b.admin_name)}</td>
