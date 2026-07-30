@@ -359,11 +359,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
-<body>
+<body x-data="{ mobNavOpen: false }" x-init="$watch('mobNavOpen', v => document.body.style.overflow = v ? 'hidden' : '')">
 
 <!-- NAV -->
-<div class="mobile-overlay" id="mob-overlay" onclick="toggleMobileNav()"></div>
-<div class="mobile-drawer" id="mob-drawer">
+<div class="mobile-overlay" :class="{ open: mobNavOpen }" @click="mobNavOpen = false"></div>
+<div class="mobile-drawer" :class="{ open: mobNavOpen }">
   <a href="/">Главная</a>
   <a href="/servers.html" class="active">Сервера</a>
   <a href="/leaderboard.html">Игроки</a>
@@ -407,7 +407,7 @@
         <div id="notif-list" style="max-height:320px;overflow-y:auto;"></div>
       </div>
     </div>
-    <button class="nav-burger" onclick="toggleMobileNav()" aria-label="Меню">☰</button>
+    <button class="nav-burger" @click="mobNavOpen = !mobNavOpen" aria-label="Меню">☰</button>
   </div>
 </nav>
 
@@ -447,6 +447,7 @@
 
 <script src="/chart.min.js"></script>
 <script src="/charts.js?v=1"></script>
+<script src="/alpine.min.js"></script>
 <script src="/common.js?v=10"></script>
 <script>
 const API = '/api';
@@ -1574,15 +1575,6 @@ document.addEventListener('mousemove', e => {
     _hcEl.style.top = y + 'px';
   }
 });
-
-function toggleMobileNav() {
-  const overlay = document.getElementById('mob-overlay');
-  const drawer = document.getElementById('mob-drawer');
-  const isOpen = drawer.classList.contains('open');
-  drawer.classList.toggle('open', !isOpen);
-  overlay.classList.toggle('open', !isOpen);
-  document.body.style.overflow = isOpen ? '' : 'hidden';
-}
 
 // ── Notification bell ──────────────────────────────────────────────────────
 let _notifOpen = false;

@@ -81,11 +81,11 @@
     }
   </style>
 </head>
-<body>
+<body x-data="{ mobNavOpen: false }" x-init="$watch('mobNavOpen', v => document.body.style.overflow = v ? 'hidden' : '')">
 
 <!-- NAV -->
-<div class="mobile-overlay" id="mob-overlay" onclick="toggleMobileNav()"></div>
-<div class="mobile-drawer" id="mob-drawer">
+<div class="mobile-overlay" :class="{ open: mobNavOpen }" @click="mobNavOpen = false"></div>
+<div class="mobile-drawer" :class="{ open: mobNavOpen }">
   <a href="/">Главная</a>
   <a href="/servers.html">Сервера</a>
   <a href="/leaderboard.html">Игроки</a>
@@ -111,7 +111,7 @@
       <a id="nav-profile-link" href="/profile.html" class="topnav-link" style="display:none;">Профиль</a>
       <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
     </div>
-    <button class="nav-burger" onclick="toggleMobileNav()" aria-label="Меню">☰</button>
+    <button class="nav-burger" @click="mobNavOpen = !mobNavOpen" aria-label="Меню">☰</button>
   </div>
 </nav>
 
@@ -254,15 +254,8 @@ function applySiteBackground(bg) {
   } catch {}
 })();
 
-function toggleMobileNav() {
-  const overlay = document.getElementById('mob-overlay');
-  const drawer = document.getElementById('mob-drawer');
-  const isOpen = drawer.classList.contains('open');
-  drawer.classList.toggle('open', !isOpen);
-  overlay.classList.toggle('open', !isOpen);
-  document.body.style.overflow = isOpen ? '' : 'hidden';
-}
 </script>
+<script src="/alpine.min.js"></script>
 <script src="/common.js?v=10"></script>
 </body>
 </html>
