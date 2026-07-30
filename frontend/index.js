@@ -1172,9 +1172,9 @@ async function loadNews(page = 1, append = false) {
       ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" loading="lazy" style="width:22px;height:22px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.25);flex-shrink:0;">`
       : `<span style="width:22px;height:22px;border-radius:50%;background:${nameGradient(n.author.username)};border:1px solid rgba(190,0,40,0.22);display:inline-flex;align-items:center;justify-content:center;font-size:.58rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
     const commentBadge = n.comment_count > 0
-      ? `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.6rem;color:var(--muted);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>${n.comment_count}</span>`
+      ? `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.6rem;color:var(--muted);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-comment"></use></svg>${n.comment_count}</span>`
       : '';
-    const viewsBadge = `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.6rem;color:var(--muted);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>${n.views || 0}</span>`;
+    const viewsBadge = `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.6rem;color:var(--muted);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-eye"></use></svg>${n.views || 0}</span>`;
     const pinnedBadge = n.pinned
       ? `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.58rem;font-weight:700;letter-spacing:.06em;color:rgba(240,192,64,0.9);background:rgba(180,130,0,0.15);border:1px solid rgba(210,165,0,0.35);border-radius:9999px;padding:.05rem .4rem;white-space:nowrap;">📌 Закреплено</span>`
       : '';
@@ -1235,7 +1235,7 @@ async function loadNews(page = 1, append = false) {
         text-decoration:none;line-height:1;
         transition:color .15s,border-color .15s,box-shadow .15s;
         z-index:10;`;
-      editBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Ред.`;
+      editBtn.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-edit"></use></svg> Ред.`;
       editBtn.onmouseover = () => { editBtn.style.color = '#fff'; editBtn.style.borderColor = 'rgba(200,0,35,0.7)'; editBtn.style.boxShadow = '0 0 10px rgba(180,0,30,0.35)'; };
       editBtn.onmouseout  = () => { editBtn.style.color = 'var(--muted)'; editBtn.style.borderColor = 'rgba(150,0,28,0.4)'; editBtn.style.boxShadow = ''; };
       card.style.position = 'relative';
@@ -1344,7 +1344,7 @@ async function openNews(slug, highlightCommentId) {
         <div style="display:flex;align-items:center;gap:.7rem;margin-top:.15rem;">
           <span style="font-size:.7rem;color:var(--muted);">${fmtDateTime(n.created_at)}</span>
           <span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.7rem;color:var(--muted);">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-eye"></use></svg>
             ${n.views || 0}
           </span>
           <span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.7rem;color:var(--muted);">
@@ -2507,7 +2507,7 @@ async function loadTeam() {
           style="margin-top:.6rem;width:100%;display:flex;align-items:center;justify-content:center;gap:.3rem;padding:.3rem .5rem;background:rgba(70,0,110,0.18);border:1px solid rgba(100,0,140,0.32);color:var(--muted);border-radius:.45rem;font-size:.65rem;cursor:pointer;transition:all .2s;"
           onmouseover="this.style.background='rgba(120,0,190,0.25)';this.style.borderColor='rgba(150,0,210,0.55)';this.style.color='#d4b8f0';this.style.boxShadow='0 0 10px rgba(120,0,180,0.22)'"
           onmouseout="this.style.background='rgba(70,0,110,0.18)';this.style.borderColor='rgba(100,0,140,0.32)';this.style.color='var(--muted)';this.style.boxShadow=''">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-comment"></use></svg>
           написать
         </button>
       </div>`;
