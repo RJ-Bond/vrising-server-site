@@ -341,6 +341,18 @@ async def check_for_update(_: User = Depends(get_superadmin_user)):
         return {"available": False, "current_version": current_version}
 
 
+def _read_version(repo: str) -> str:
+    """Human-facing version for the update-flow messages below — the semver tag from
+    VERSION (bumped + committed to master by the CI release workflow, so a plain git
+    pull picks it up like any other file), not the raw git short hash _git_short_hash
+    returns. The hash is still used internally (git log range, "did anything actually
+    change" check) since not every commit gets its own version tag."""
+    try:
+        return (Path(repo) / "VERSION").read_text().strip() or "unknown"
+    except OSError:
+        return "unknown"
+
+
 @router.post("/api/admin/update")
 async def site_update(_: User = Depends(get_superadmin_user)):
     async def stream():
@@ -349,7 +361,8 @@ async def site_update(_: User = Depends(get_superadmin_user)):
 
         repo = "/opt/vrising-site"
         old_hash = await _git_short_hash(repo)
-        yield sse(f"📦 Текущая версия: {old_hash}")
+        old_version = _read_version(repo)
+        yield sse(f"📦 Текущая версия: {old_version}")
         yield sse("⬇️ Получаем обновления из репозитория...")
 
         rc = 0
@@ -365,11 +378,12 @@ async def site_update(_: User = Depends(get_superadmin_user)):
             return
 
         new_hash = await _git_short_hash(repo)
+        new_version = _read_version(repo)
 
         if old_hash == new_hash:
-            yield sse(f"✅ Уже актуальная версия ({new_hash}). Обновлений нет.")
+            yield sse(f"✅ Уже актуальная версия ({new_version}). Обновлений нет.")
         else:
-            yield sse(f"✅ Обновлено: {old_hash} → {new_hash}")
+            yield sse(f"✅ Обновлено: {old_version} → {new_version}")
             commits = await _git_log_oneline(repo, old_hash, new_hash)
             if commits:
                 yield sse("📋 Что изменилось:")

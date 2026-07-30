@@ -19,12 +19,19 @@ from .auth import COOKIE_NAME
 
 logger = logging.getLogger(__name__)
 
-UPLOAD_DIR = Path("/data/uploads")
+# /data is the production Docker volume (docker-compose.yml) — overridable via env var
+# so importing this module doesn't require a real /data to exist (it doesn't, and can't
+# be created without root, on a bare CI runner or a local dev machine); scripts/
+# check_backend.sh and test_backend.sh, plus .github/workflows/ci.yml, point these at a
+# writable temp dir instead. This bit CI silently: it ran on a bare Linux runner where
+# `/data` truly doesn't exist and PermissionError'd on mkdir — every run failed at this
+# import before even reaching pytest, so the release job downstream never once fired.
+UPLOAD_DIR = Path(os.getenv("UPLOAD_DIR", "/data/uploads"))
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Shared with main.py's own _auto_backup_task (Background tasks, not yet split out) —
 # same reason UPLOAD_DIR lives here rather than in routers/admin_system.py.
-BACKUP_DIR = Path("/data/backups")
+BACKUP_DIR = Path(os.getenv("BACKUP_DIR", "/data/backups"))
 
 _totp_pending: dict[int, str] = {}
 

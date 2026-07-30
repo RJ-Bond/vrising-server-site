@@ -26,13 +26,20 @@ jobs:
       - name: Validate frontend/*.html + CSS
         run: bash scripts/check.sh
 
-  # Every push to master that passes both jobs above gets an automatic CalVer tag
-  # (vYYYY.MM.DD, with a .N suffix for same-day releases) + a GitHub Release whose
-  # notes are the emoji-annotated commit list since the previous tag (see
-  # scripts/release_notes.sh). Deploy itself stays manual (`sudo js` on the server,
-  # per CLAUDE.md) — this job only marks/documents releases, it never touches the
-  # server. Skipped on pull_request (no new commits on master yet to release) and on
-  # the VERSION-bump commit itself, via the standard "[skip ci]" convention below.
+  # Every push to master that passes both jobs above gets an automatic semver tag
+  # (vMAJOR.MINOR.PATCH, PATCH auto-incremented — see "Compute next version" below
+  # for why) + a GitHub Release whose notes are the emoji-annotated commit list since
+  # the previous tag (see scripts/release_notes.sh). Deploy itself stays manual
+  # (`sudo js` on the server, per CLAUDE.md) — this job only marks/documents releases,
+  # it never touches the server. Skipped on pull_request (no new commits on master yet
+  # to release) and on the VERSION-bump commit itself, via the standard "[skip ci]"
+  # convention below.
+  #
+  # Started at v0.1.0, replacing the original vYYYY.MM.DD calendar-versioning scheme —
+  # semver is what most people expect a "version" to look like. The last CalVer tag is
+  # deliberately never matched as a "previous" version to increment from (see the
+  # single-digit-major glob below), since e.g. "v2026.07.23" parsed as MAJOR.MINOR.PATCH
+  # would produce a nonsense v2026.07.24 next version.
   release:
     name: Release
     runs-on: ubuntu-latest
@@ -48,12 +55,18 @@ jobs:
       - name: Compute next version
         id: version
         run: |
-          today=$(date -u +%Y.%m.%d)
-          count=$(git tag -l "v${today}*" | wc -l)
-          if [ "$count" -eq 0 ]; then
-            new_version="v${today}"
+          # PATCH auto-increments on every release; MAJOR/MINOR are a human decision
+          # (edit VERSION + tag by hand whenever a release actually deserves one) — this
+          # repo ships many small commits a day with no Conventional-Commits typing to
+          # reliably infer a bigger bump from, so PATCH-per-release is the only auto-bump
+          # that's honest without a person deciding. The glob requires a single-digit
+          # MAJOR so old vYYYY.MM.DD calendar tags (4-digit "major") never match here.
+          last_tag=$(git tag -l 'v[0-9].[0-9]*.[0-9]*' | sort -V | tail -1)
+          if [ -z "$last_tag" ]; then
+            new_version="v0.1.0"
           else
-            new_version="v${today}.$((count + 1))"
+            IFS='.' read -r major minor patch <<< "${last_tag#v}"
+            new_version="v${major}.${minor}.$((patch + 1))"
           fi
           prev_tag=$(git describe --tags --abbrev=0 2>/dev/null || true)
           echo "version=$new_version" >> "$GITHUB_OUTPUT"
