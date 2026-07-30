@@ -502,6 +502,23 @@ class Warning(Base):
     created_at = Column(DateTime, nullable=False)
 
 
+class WarnEscalationState(Base):
+    """One row per steam_id that's ever crossed the .warn auto-escalation threshold —
+    last_escalation_count is their total Warning count at the moment escalation last fired,
+    a high-water mark used by plugin_warn to decide should_escalate: only true once
+    warning_count - last_escalation_count >= threshold, i.e. once per threshold's worth of
+    NEW warnings since the last auto-ban, not on every single .warn once a player's
+    lifetime count happens to sit above the threshold (that was the bug: with a naive
+    warning_count >= threshold check, a player who'd already crossed it once — including
+    just from earlier testing — got auto-banned again on literally every subsequent .warn,
+    forever, even right after being unbanned). steam_id is the primary key (not id-based)
+    since this is a pure 1-row-per-player upsert target, no history needed."""
+    __tablename__ = "warn_escalation_state"
+
+    steam_id = Column(String(32), primary_key=True)
+    last_escalation_count = Column(Integer, nullable=False, default=0)
+
+
 class Ban(Base):
     """An in-game moderation ban issued via the .ban admin chat command
     (POST /api/plugin/ban), lifted either by the temp-ban timer expiring or an admin

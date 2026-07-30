@@ -3,11 +3,11 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, delete
 
 from ..database import get_db
-from ..models import User, Ban, Warning, BanAppeal, ModerationLogEntry
-from ..auth import get_admin_user
+from ..models import User, Ban, Warning, BanAppeal, ModerationLogEntry, WarnEscalationState
+from ..auth import get_admin_user, get_superadmin_user
 from ..rate_limit import limiter
 from ..helpers import _require_plugin_key, _fmt_dt_z, _force_unban, _audit, _get_server_names, _get_linked_usernames
 from ..schemas import (
@@ -32,7 +32,15 @@ async def plugin_warn(
 ):
     """Backs the in-game .warn admin chat command. Logs a moderation warning against
     body.steam_id; warning_count is the player's total across all servers/time,
-    including the one just inserted."""
+    including the one just inserted.
+
+    should_escalate decides whether the plugin should auto-ban this player, computed here
+    (not by the plugin comparing warning_count >= threshold itself) so it only fires once
+    per threshold's worth of NEW warnings rather than on every single .warn once a player's
+    lifetime count sits above the threshold — see WarnEscalationState's docstring for the
+    bug this replaced. threshold <= 0 means auto-escalation is disabled (plugin's
+    WarnEscalationThreshold = 0), in which case should_escalate is always false and no
+    state row is touched."""
     db.add(Warning(
         server_num=body.server_num,
         steam_id=body.steam_id,
@@ -44,7 +52,20 @@ async def plugin_warn(
     await db.commit()
     count_result = await db.execute(select(func.count()).where(Warning.steam_id == body.steam_id))
     warning_count = count_result.scalar_one()
-    return {"success": True, "warning_count": warning_count}
+
+    should_escalate = False
+    if body.threshold > 0:
+        state = await db.get(WarnEscalationState, body.steam_id)
+        last_count = state.last_escalation_count if state else 0
+        if warning_count - last_count >= body.threshold:
+            should_escalate = True
+            if state:
+                state.last_escalation_count = warning_count
+            else:
+                db.add(WarnEscalationState(steam_id=body.steam_id, last_escalation_count=warning_count))
+            await db.commit()
+
+    return {"success": True, "warning_count": warning_count, "should_escalate": should_escalate}
 
 
 @router.get("/api/plugin/warnings")
@@ -516,6 +537,29 @@ async def get_moderation_log(
     return {
         "log": [{**e, "created_at": _fmt_dt_z(e["created_at"])} for e in entries]
     }
+
+
+@router.delete("/api/admin/moderation-log")
+async def clear_moderation_log(
+    current_user: User = Depends(get_superadmin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Superadmin-only: clears only the "safe" part of the unified feed — every
+    ModerationLogEntry row (kick/mute/unmute/restart_*/report, pure log data with no other
+    purpose) plus already-resolved Ban rows (unbanned_at IS NOT NULL, pure history at that
+    point). Deliberately does NOT touch active bans (unbanned_at IS NULL — the Ban row IS
+    the enforcement record; deleting it would unban the player) or Warning rows (deleting
+    those would reset players' warning counts, including the .warn auto-escalation
+    threshold tracking). BanAppeal rows are untouched too — appeals keep their own steam_id
+    independent of ban_id specifically so they survive a purged Ban row (see BanAppeal's
+    docstring)."""
+    log_result = await db.execute(delete(ModerationLogEntry))
+    ban_result = await db.execute(delete(Ban).where(Ban.unbanned_at.is_not(None)))
+    log_count = log_result.rowcount or 0
+    ban_count = ban_result.rowcount or 0
+    await _audit(db, current_user.id, "clear_moderation_log", detail=f"{log_count} log entries, {ban_count} resolved bans")
+    await db.commit()
+    return {"success": True, "deleted_log_entries": log_count, "deleted_resolved_bans": ban_count}
 
 
 # ─── Public bans list ────────────────────────────────────────────────────────

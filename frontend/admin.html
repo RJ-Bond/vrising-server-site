@@ -2220,6 +2220,7 @@
             <option value="2">Сервер 2</option>
           </select>
           <button onclick="loadModerationLog()" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
+          <button onclick="clearModerationLog()" class="modlog-superadmin-only" style="display:none;font-size:.78rem;background:rgba(150,0,20,0.18);border:1px solid rgba(220,40,60,0.4);color:#fca5a5;border-radius:.4rem;padding:.35rem .7rem;cursor:pointer;font-family:'Inter',sans-serif;" title="Удаляет кик/мут/рестарт-записи и уже снятые баны — активные баны и предупреждения не трогает">🗑 Очистить журнал</button>
         </div>
       </div>
       <div class="glass-card" style="border-radius:.75rem;overflow:hidden;">
@@ -2602,6 +2603,9 @@ function applyRoleVisibility() {
     if (btn) btn.style.display = meetsRole(minRole) ? '' : 'none';
   });
   document.querySelectorAll('.users-role-edit').forEach(el => {
+    el.style.display = meetsRole('superadmin') ? '' : 'none';
+  });
+  document.querySelectorAll('.modlog-superadmin-only').forEach(el => {
     el.style.display = meetsRole('superadmin') ? '' : 'none';
   });
   const pill = document.getElementById('nav-role-pill');
@@ -5509,6 +5513,24 @@ async function loadModerationLog() {
     renderModerationLog();
   } catch {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>';
+  }
+}
+
+/* Superadmin-only (DELETE /api/admin/moderation-log, 403s otherwise — button itself is
+   also hidden below that role by applyRoleVisibility()). Only removes kick/mute/restart
+   log entries and already-resolved bans; active bans and warnings are untouched (server
+   enforces this, see the endpoint's docstring) — the confirm text says so explicitly since
+   this is irreversible. */
+async function clearModerationLog() {
+  if (!confirm('Очистить журнал модерации?\n\nБудут удалены записи кик/мут/рестарт и уже снятые баны.\nАктивные баны и предупреждения игроков затронуты не будут.\n\nДействие необратимо.')) return;
+  try {
+    const res = await fetch(`${API}/admin/moderation-log`, { method: 'DELETE', credentials: 'include', headers: authH() });
+    if (!res.ok) throw new Error('request failed');
+    const d = await res.json();
+    showToast(`Журнал очищен: ${d.deleted_log_entries} записей, ${d.deleted_resolved_bans} снятых банов`, 'success');
+    loadModerationLog();
+  } catch {
+    showToast('Не удалось очистить журнал', 'error');
   }
 }
 

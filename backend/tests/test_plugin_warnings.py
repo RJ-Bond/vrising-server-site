@@ -10,6 +10,17 @@ pytestmark = pytest.mark.asyncio
 PLUGIN_KEY = "test-plugin-key-123"
 
 
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """POST /api/plugin/warn is rate-limited (30/minute per IP); the new should_escalate
+    tests below each issue several warns, which can cumulatively exceed that within one
+    test-run minute — reset slowapi's in-memory counters before each test rather than
+    sharing state across the whole module, same pattern as test_ban_appeals.py."""
+    from backend.main import app
+    app.state.limiter.reset()
+    yield
+
+
 async def _set_plugin_key(db_session, value=PLUGIN_KEY):
     db_session.add(Setting(key="plugin_api_key", value=value))
     await db_session.commit()
@@ -187,3 +198,83 @@ async def test_warnings_list_with_wrong_plugin_key_is_rejected(client, db_sessio
         headers=_hdr("not-the-real-key"),
     )
     assert r.status_code == 401
+
+
+# ─── should_escalate (WarnEscalationState — "once per threshold crossing") ───
+
+async def _warn(client, steam_id, threshold=0, admin_name="Admin"):
+    return await client.post(
+        "/api/plugin/warn",
+        json={
+            "steam_id": steam_id, "character_name": "P", "reason": "r",
+            "admin_name": admin_name, "threshold": threshold,
+        },
+        headers=_hdr(),
+    )
+
+
+async def test_should_escalate_false_when_threshold_disabled(client, db_session):
+    await _set_plugin_key(db_session)
+    steam_id = "76561198000000301"
+    for _ in range(5):
+        r = await _warn(client, steam_id, threshold=0)
+    assert r.json()["should_escalate"] is False
+
+
+async def test_should_escalate_true_exactly_on_reaching_threshold(client, db_session):
+    await _set_plugin_key(db_session)
+    steam_id = "76561198000000302"
+    r1 = await _warn(client, steam_id, threshold=3)
+    assert r1.json()["should_escalate"] is False
+    r2 = await _warn(client, steam_id, threshold=3)
+    assert r2.json()["should_escalate"] is False
+    r3 = await _warn(client, steam_id, threshold=3)
+    assert r3.json()["should_escalate"] is True
+
+
+async def test_should_escalate_does_not_refire_on_next_single_warn(client, db_session):
+    """The bug this replaced: a naive warning_count >= threshold check kept firing on
+    literally every subsequent .warn once a player's count crossed the threshold once."""
+    await _set_plugin_key(db_session)
+    steam_id = "76561198000000303"
+    for _ in range(3):
+        r = await _warn(client, steam_id, threshold=3)
+    assert r.json()["should_escalate"] is True
+
+    r4 = await _warn(client, steam_id, threshold=3)
+    assert r4.json()["should_escalate"] is False
+
+
+async def test_should_escalate_fires_again_after_another_full_threshold(client, db_session):
+    await _set_plugin_key(db_session)
+    steam_id = "76561198000000304"
+    for _ in range(3):
+        r = await _warn(client, steam_id, threshold=3)
+    assert r.json()["should_escalate"] is True
+
+    # 2 more warns (count 4, 5) — not another full threshold's worth yet.
+    r = await _warn(client, steam_id, threshold=3)
+    assert r.json()["should_escalate"] is False
+    r = await _warn(client, steam_id, threshold=3)
+    assert r.json()["should_escalate"] is False
+    # 3rd more warn (count 6) — that's 3 new warnings since the last escalation.
+    r = await _warn(client, steam_id, threshold=3)
+    assert r.json()["should_escalate"] is True
+
+
+async def test_should_escalate_true_immediately_if_already_past_threshold(client, db_session):
+    """A player who already has warnings above the threshold (e.g. from before it was
+    configured, or from testing) still gets exactly one escalation on their very next
+    warn — not "never again" (the == bug) and not "every single warn forever" (the naive
+    >= bug)."""
+    await _set_plugin_key(db_session)
+    steam_id = "76561198000000305"
+    for _ in range(5):
+        r = await _warn(client, steam_id, threshold=0)  # accumulate without escalating
+    assert r.json()["warning_count"] == 5
+
+    r = await _warn(client, steam_id, threshold=3)
+    assert r.json()["should_escalate"] is True
+
+    r = await _warn(client, steam_id, threshold=3)
+    assert r.json()["should_escalate"] is False

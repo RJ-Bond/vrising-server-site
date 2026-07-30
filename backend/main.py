@@ -362,6 +362,8 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE game_clan_members ADD COLUMN spell_power FLOAT DEFAULT NULL",
             "CREATE TABLE IF NOT EXISTS game_clan_bases (id INTEGER PRIMARY KEY, clan_id INTEGER NOT NULL REFERENCES game_clans(id) ON DELETE CASCADE, level INTEGER NOT NULL DEFAULT 0, floor_count INTEGER NOT NULL DEFAULT 0, is_raid_protected BOOLEAN NOT NULL DEFAULT 0, min_x INTEGER NOT NULL DEFAULT 0, min_z INTEGER NOT NULL DEFAULT 0, max_x INTEGER NOT NULL DEFAULT 0, max_z INTEGER NOT NULL DEFAULT 0)",
             "CREATE INDEX IF NOT EXISTS ix_game_clan_bases_clan ON game_clan_bases(clan_id)",
+            # ─── .warn auto-escalation "once per threshold crossing" state ─────────
+            "CREATE TABLE IF NOT EXISTS warn_escalation_state (steam_id VARCHAR(32) PRIMARY KEY, last_escalation_count INTEGER NOT NULL DEFAULT 0)",
         ]:
             try:
                 await conn.execute(text(stmt))

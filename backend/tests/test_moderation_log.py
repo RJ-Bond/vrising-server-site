@@ -239,3 +239,58 @@ async def test_moderation_log_steam_id_filter_combines_with_server_num(client, d
     log = r.json()["log"]
     assert len(log) == 1
     assert log[0]["server_num"] == 2
+
+
+# ─── DELETE /api/admin/moderation-log (superadmin-only "clear log") ──────────
+
+async def _make_superadmin(db_session, username="ModLogSuperadmin"):
+    admin = User(
+        username=username,
+        email=f"{username.lower()}@example.com",
+        hashed_password=get_password_hash("superpass1"),
+        role="superadmin",
+    )
+    db_session.add(admin)
+    await db_session.commit()
+    await db_session.refresh(admin)
+    return admin
+
+
+async def test_clear_moderation_log_requires_superadmin_not_just_admin(client, db_session):
+    admin = await _make_admin(db_session)
+    r = await client.delete("/api/admin/moderation-log", headers=_bearer(admin))
+    assert r.status_code == 403
+
+
+async def test_clear_moderation_log_deletes_log_entries_and_resolved_bans_only(client, db_session):
+    await _set_plugin_key(db_session)
+    now = datetime.utcnow()
+    db_session.add_all([
+        # Resolved ban — should be deleted.
+        Ban(server_num=1, steam_id="s-resolved", character_name="Resolved",
+            admin_name="A", reason="r", banned_at=now - timedelta(hours=2),
+            unban_at=now - timedelta(hours=1), unbanned_at=now - timedelta(hours=1)),
+        # Active ban — must survive (deleting it would unban the player).
+        Ban(server_num=1, steam_id="s-active", character_name="Active",
+            admin_name="A", reason="r", banned_at=now, unban_at=None, unbanned_at=None),
+        # Warning — must survive (deleting would reset escalation counts).
+        Warning(server_num=1, steam_id="s-warn", character_name="Warned",
+                reason="r", admin_name="A", created_at=now),
+    ])
+    await db_session.commit()
+    await client.post(
+        "/api/plugin/log-action",
+        json={"server_num": 1, "action": "kick", "admin_name": "A", "target_name": "P", "target_steam_id": "s-kick", "details": None},
+        headers=_hdr(),
+    )
+
+    superadmin = await _make_superadmin(db_session)
+    r = await client.delete("/api/admin/moderation-log", headers=_bearer(superadmin))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["deleted_log_entries"] == 1
+    assert body["deleted_resolved_bans"] == 1
+
+    log = (await client.get("/api/admin/moderation-log", headers=_bearer(superadmin))).json()["log"]
+    remaining_steam_ids = {e["target_steam_id"] for e in log}
+    assert remaining_steam_ids == {"s-active", "s-warn"}

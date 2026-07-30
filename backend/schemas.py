@@ -125,12 +125,16 @@ class PluginCancelRestartIn(BaseModel):
 class PluginWarnIn(BaseModel):
     """Body for POST /api/plugin/warn — backs the in-game .warn admin chat command.
     admin_name is the issuing admin's in-game character name (audit trail only, no
-    site user_id FK)."""
+    site user_id FK). threshold is the plugin's own WarnEscalationThreshold config value
+    (0 = auto-escalation disabled) — passed in so the site can decide should_escalate
+    atomically against WarnEscalationState in the same request, see plugin_warn's
+    docstring for why that decision has to live here rather than in the plugin."""
     steam_id: str
     character_name: str
     reason: str
     admin_name: str
     server_num: int = 1
+    threshold: int = 0
 
 
 class PluginBanIn(BaseModel):
