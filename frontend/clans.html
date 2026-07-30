@@ -79,12 +79,55 @@
       display:flex; align-items:center; justify-content:center; font-size:.56rem; font-weight:700; color:var(--muted);
     }
 
+    /* ── Top-3 podium (ported from leaderboard.html's .podium-*) ── */
+    .podium-wrap { display:flex; align-items:flex-end; justify-content:center; gap:1rem; margin-bottom:1.5rem; }
+    .podium-card {
+      display:flex; flex-direction:column; align-items:center; text-align:center;
+      cursor:pointer; flex:1; max-width:150px; transition:transform .22s; background:none; border:none;
+    }
+    .podium-card:hover { transform:translateY(-5px); }
+    .podium-avatar {
+      width:3.2rem; height:3.2rem; border-radius:.7rem; object-fit:cover;
+      display:flex; align-items:center; justify-content:center;
+      font-family:'Cinzel',serif; font-size:1.1rem; color:var(--gold);
+      margin-bottom:.35rem; flex-shrink:0;
+    }
+    .podium-medal { font-size:1.5rem; margin-bottom:.22rem; line-height:1; }
+    .podium-name {
+      font-size:.78rem; font-family:'Cinzel',serif; color:var(--text); font-weight:700;
+      max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      margin-bottom:.18rem;
+    }
+    .podium-time { font-size:.66rem; color:var(--muted); margin-bottom:.5rem; }
+    .podium-pillar {
+      width:100%; border-radius:.45rem .45rem 0 0; min-width:82px;
+      display:flex; align-items:center; justify-content:center;
+    }
+    @keyframes podium-in { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
     /* ── Clan card ── */
     .clan-card {
       padding:1.25rem; cursor:pointer;
       transition:transform .18s, box-shadow .2s, border-left-color .2s;
     }
     .clan-card:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(130,0,22,0.2); }
+
+    /* ── Rank chip (top-right corner of every card, gold/silver/bronze for #1-3) ── */
+    .rank-chip {
+      position:absolute; top:.7rem; right:.7rem; font-family:'Oswald',sans-serif;
+      font-size:.66rem; font-weight:700; padding:.16rem .45rem; border-radius:.35rem;
+      background:rgba(20,5,35,0.75); border:1px solid rgba(255,255,255,0.08); color:var(--muted);
+    }
+    .rank-chip.gold   { color:var(--gold); border-color:rgba(201,169,74,.4); background:rgba(201,169,74,.14); }
+    .rank-chip.silver { color:#d4d4e0; border-color:rgba(180,180,200,.4); background:rgba(180,180,200,.12); }
+    .rank-chip.bronze { color:#d99a5c; border-color:rgba(160,100,40,.4); background:rgba(160,100,40,.14); }
+
+    /* ── Server pill on the card (short server label, full name stays in the tabs/modal) ── */
+    .server-pill {
+      display:inline-flex; align-items:center; font-size:.6rem; font-weight:600;
+      padding:.1rem .4rem; border-radius:.3rem; background:rgba(110,0,150,0.14);
+      border:1px solid rgba(110,0,150,0.3); color:#c4b5fd; white-space:nowrap;
+    }
 
     /* ── Action button ── */
     .clan-btn {
@@ -208,6 +251,11 @@
     <!-- Populated once clans load — hidden entirely when everything is on one server -->
     <div id="clan-server-tabs" class="clan-toggle"></div>
   </div>
+
+  <!-- Top-3 podium — tracks the server tab above, ignores the search box below
+       (same behavior as leaderboard.html's podium: a "find a clan" search shouldn't
+       also reshuffle the hall-of-fame highlight). Hidden until there are >=3 clans. -->
+  <div id="clan-podium" class="podium-wrap" style="display:none;"></div>
 
   <!-- Summary tiles -->
   <div id="clan-stats-row" style="display:flex;gap:.6rem;margin-bottom:1.25rem;"></div>
@@ -370,34 +418,108 @@ function buildCard(clan, idx) {
   // deterministic-from-name gradient already used for member avatars below.
   const badgeGrad = (typeof nameGradient === 'function') ? nameGradient(clan.name || '') : 'linear-gradient(135deg,rgba(80,0,150,0.4),rgba(120,0,20,0.3))';
 
+  const rankClass = idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? 'bronze' : '';
+  const updated = timeAgoShort(clan.updated_at);
+
   return `
     <div class="clan-card g-card"
       data-clan-id="${clan.id}"
       data-search="${(clan.name || '').toLowerCase()}"
       onclick="openClanDetail(${clan.id})">
+      <span class="rank-chip ${rankClass}">#${idx + 1}</span>
       <!-- Header: initials badge + name -->
-      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;">
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;padding-right:2.2rem;">
         <div style="width:2.8rem;height:2.8rem;border-radius:.55rem;background:${badgeGrad};border:1px solid rgba(110,0,150,0.3);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:var(--gold);flex-shrink:0;">${initials}</div>
         <div style="min-width:0;">
           <div style="font-family:'Cinzel',serif;font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${name}</div>
-          <div style="font-size:.62rem;color:var(--muted);margin-top:.1rem;">${members} участник${pluralMembers(members)} · ${esc(clan.server_name || '')}</div>
+          <div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;margin-top:.25rem;">
+            <span style="font-size:.62rem;color:var(--muted);">${members} участник${pluralMembers(members)}</span>
+            <span class="server-pill">${esc(shortServerLabel(clan.server_name))}</span>
+          </div>
         </div>
       </div>
       <!-- Member avatar-stack -->
       ${memberStackHtml(clan)}
       <!-- Motto -->
       ${descHtml}
+      ${updated ? `<div style="font-size:.6rem;color:var(--muted);opacity:.65;margin-bottom:.85rem;">Обновлено: ${esc(updated)}</div>` : ''}
       <!-- Action -->
       <div class="card-btn-wrap"><button class="clan-btn view" onclick="event.stopPropagation();openClanDetail(${clan.id})">Подробнее</button></div>
     </div>
   `;
 }
 
-function pluralMembers(n) {
+/* ── RU pluralization ── */
+function pluralRu(n, one, few, many) {
   const mod10 = n % 10, mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return '';
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return 'а';
-  return 'ов';
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  return many;
+}
+function pluralMembers(n) { return pluralRu(n, '', 'а', 'ов'); }
+
+const ROLE_PLURALS = {
+  leader: ['лидер', 'лидера', 'лидеров'],
+  officer: ['офицер', 'офицера', 'офицеров'],
+  member: ['участник', 'участника', 'участников'],
+};
+function roleCountLabel(role, n) {
+  const [one, few, many] = ROLE_PLURALS[role] || ROLE_PLURALS.member;
+  return `${n} ${pluralRu(n, one, few, many)}`;
+}
+
+/* ── Relative "updated X ago" — updated_at comes back as a naive UTC timestamp with
+   no offset (SQLite drops tzinfo), so 'Z' must be appended before parsing or this
+   reads local-timezone-off by however many hours the server's TZ differs from UTC. ── */
+function timeAgoShort(iso) {
+  if (!iso) return '';
+  const hasOffset = iso.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(iso);
+  const t = new Date(hasOffset ? iso : iso + 'Z').getTime();
+  if (isNaN(t)) return '';
+  const m = Math.max(0, Math.floor((Date.now() - t) / 60000));
+  if (m < 1) return 'только что';
+  if (m < 60) return `${m} ${pluralRu(m, 'минуту', 'минуты', 'минут')} назад`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h} ${pluralRu(h, 'час', 'часа', 'часов')} назад`;
+  const d = Math.floor(h / 24);
+  return `${d} ${pluralRu(d, 'день', 'дня', 'дней')} назад`;
+}
+
+/* Short server label for the card's pill — full "[RU] Just-Skill.Ru | Standart PvE"
+   is too long for a small chip; the tabs/modal above already show the full name. */
+function shortServerLabel(name) {
+  const parts = (name || '').split('|');
+  return (parts[parts.length - 1] || name || '').trim();
+}
+
+/* ── Top-3 podium (ported from leaderboard.html's renderPodium) — reflects the
+   server-tab filter, ignores the search box, same as the leaderboard's version. ── */
+function renderPodium(top3) {
+  const section = document.getElementById('clan-podium');
+  if (!section) return;
+  if (!top3 || top3.length < 3) { section.style.display = 'none'; return; }
+  const order   = [top3[1], top3[0], top3[2]]; // 2nd left, 1st center, 3rd right
+  const medals  = ['🥈', '🥇', '🥉'];
+  const pillH   = ['70px', '100px', '55px'];
+  const borders = ['rgba(180,180,200,.5)', 'rgba(201,169,74,.6)', 'rgba(160,100,40,.5)'];
+  const pillBg  = ['rgba(180,180,200,.07)', 'rgba(201,169,74,.12)', 'rgba(160,100,40,.08)'];
+  const ranks   = [2, 1, 3];
+  section.innerHTML = order.map((c, i) => {
+    const name = c.name || '?';
+    const grad = (typeof nameGradient === 'function') ? nameGradient(name) : '#3a0060';
+    const initials = esc(name.trim().slice(0, 2).toUpperCase());
+    const members = c.member_count || 0;
+    return `<button class="podium-card" onclick="openClanDetail(${c.id})" style="animation:podium-in .5s ease both;animation-delay:${i * 120}ms;">
+      <span class="podium-avatar" style="background:${grad};border:2px solid ${borders[i]};">${initials}</span>
+      <div class="podium-medal">${medals[i]}</div>
+      <span class="podium-name">${esc(name)}</span>
+      <div class="podium-time">${members} участник${pluralMembers(members)}</div>
+      <div class="podium-pillar" style="height:${pillH[i]};background:${pillBg[i]};border-top:2px solid ${borders[i]};">
+        <span style="font-family:'Oswald',sans-serif;font-size:.68rem;color:rgba(255,255,255,.4);">#${ranks[i]}</span>
+      </div>
+    </button>`;
+  }).join('');
+  section.style.display = '';
 }
 
 /* ── Render grid ── */
@@ -448,17 +570,21 @@ function renderServerTabs(clans) {
   ].join('');
 }
 
+function serverFilteredClans() {
+  return _serverFilter === 'all' ? _allClans : _allClans.filter(c => c.server_num === _serverFilter);
+}
+
 function setServerFilter(num) {
   _serverFilter = num;
   renderServerTabs(_allClans);
+  renderPodium(serverFilteredClans().slice(0, 3));
   filterCards();
 }
 
 /* ── Filter cards by server + search query ── */
 function filterCards() {
   const q = (document.getElementById('clan-search').value || '').trim().toLowerCase();
-  let list = _allClans;
-  if (_serverFilter !== 'all') list = list.filter(c => c.server_num === _serverFilter);
+  let list = serverFilteredClans();
   if (q) list = list.filter(c => (c.name || '').toLowerCase().includes(q));
   renderGrid(list);
 }
@@ -476,6 +602,7 @@ async function init() {
 
     renderStats(_allClans);
     renderServerTabs(_allClans);
+    renderPodium(_allClans.slice(0, 3));
     renderGrid(_allClans);
   } catch (err) {
     document.getElementById('clans-loading').style.display = 'none';
@@ -523,10 +650,21 @@ async function openClanDetail(clanId) {
     });
     const motto = (clan.motto || '').trim();
     const members = Array.isArray(clan.members) ? clan.members : [];
+    // Role breakdown (leader/officer/member counts) — the flat member list below
+    // already shows each person's role badge, but a quick "2 офицера · 8 участников"
+    // summary up top gives the clan's shape at a glance without reading every row.
+    const roleCounts = { leader: 0, officer: 0, member: 0 };
+    members.forEach(m => { roleCounts[(m.role === 'leader' || m.role === 'officer') ? m.role : 'member']++; });
+    const summaryHtml = ['leader', 'officer', 'member']
+      .filter(r => roleCounts[r] > 0)
+      .map(r => roleCountLabel(r, roleCounts[r]))
+      .join(' · ');
+    const updated = timeAgoShort(clan.updated_at);
     body.innerHTML = `
       <h2 class="gothic" style="font-size:.95rem;font-weight:700;letter-spacing:.06em;color:var(--text);margin-bottom:.2rem;padding-right:1.5rem;">${esc(clan.name)}</h2>
       <div style="font-size:.68rem;color:var(--gold);margin-bottom:.5rem;">${esc(clan.server_name || '')}</div>
-      ${motto ? `<p style="font-size:.78rem;color:var(--muted);margin-bottom:1rem;">${esc(motto)}</p>` : '<div style="margin-bottom:1rem;"></div>'}
+      ${motto ? `<p style="font-size:.78rem;color:var(--muted);margin-bottom:.8rem;">${esc(motto)}</p>` : ''}
+      ${summaryHtml || updated ? `<div style="font-size:.68rem;color:var(--muted);margin-bottom:1rem;">${esc(summaryHtml)}${summaryHtml && updated ? ' · ' : ''}${updated ? `обновлено ${esc(updated)}` : ''}</div>` : '<div style="margin-bottom:1rem;"></div>'}
       <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem;">Участники (${members.length})</div>
       <div>${members.length ? members.map(memberRowHtml).join('') : '<p style="font-size:.78rem;color:var(--muted);">Нет участников</p>'}</div>
     `;
