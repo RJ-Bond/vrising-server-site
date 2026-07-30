@@ -62,9 +62,13 @@
     }
     @keyframes twinkle { 0%{opacity:.15} 100%{opacity:.75} }
     .cover-title {
-      position:absolute; bottom:1rem; left:1.5rem;
+      /* Right-aligned, not left: the avatar sits at left:1.5rem and pulls up over the
+         cover's bottom-left corner (margin-top:-48px, z-index:2) — a left-positioned
+         label here rendered directly behind/through the avatar circle. */
+      position:absolute; bottom:1rem; right:1.5rem;
       font-family:'Cinzel',serif; font-size:.6rem; font-weight:700;
       letter-spacing:.22em; color:rgba(200,170,255,0.55); text-transform:uppercase;
+      max-width:60%; text-align:right; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     }
     .cover-glow {
       position:absolute; bottom:0; left:0; right:0; height:2px;
@@ -846,32 +850,47 @@ function _recordAchDates(pub, actData, user, username) {
   return dateMap;
 }
 
-function _checkNewAchievements(pub, actData, user, username) {
+async function _checkNewAchievements(pub, actData, user, username) {
   const key = `ach_earned_${username}`;
-  const prev = new Set(JSON.parse(localStorage.getItem(key) || '[]'));
   const now = ACHIEVEMENTS.filter(a => a.cond(pub, actData, user)).map(a => a.id);
-  const newOnes = now.filter(id => !prev.has(id));
-  if (newOnes.length) {
-    newOnes.forEach(id => {
-      const a = ACHIEVEMENTS.find(x => x.id === id);
-      if (a) showToast(`Новое достижение: ${a.icon} ${a.label}`, 'achievement', 5000);
-    });
-    setTimeout(() => {
+
+  const run = () => {
+    // Union, never shrink: renderAchievements runs twice per load — first with
+    // partial activity data (fewer earned), then with full data. Overwriting with
+    // `now` let the partial pass drop ids, so the full pass re-flagged them as
+    // "new" and re-toasted every single visit. Merging keeps earned ids sticky.
+    const prev = new Set(JSON.parse(localStorage.getItem(key) || '[]'));
+    const newOnes = now.filter(id => !prev.has(id));
+    if (newOnes.length) {
       newOnes.forEach(id => {
-        const el = document.querySelector(`[data-ach-id="${id}"]`);
-        if (el) {
-          el.style.animation = 'ach-unlock .6s ease';
-          el.addEventListener('animationend', () => el.style.animation = '', { once: true });
-        }
+        const a = ACHIEVEMENTS.find(x => x.id === id);
+        if (a) showToast(`Новое достижение: ${a.icon} ${a.label}`, 'achievement', 5000);
       });
-    }, 100);
+      setTimeout(() => {
+        newOnes.forEach(id => {
+          const el = document.querySelector(`[data-ach-id="${id}"]`);
+          if (el) {
+            el.style.animation = 'ach-unlock .6s ease';
+            el.addEventListener('animationend', () => el.style.animation = '', { once: true });
+          }
+        });
+      }, 100);
+    }
+    const merged = Array.from(new Set([...prev, ...now]));
+    localStorage.setItem(key, JSON.stringify(merged));
+  };
+
+  // The merge above makes a single tab's repeated renders safe, but two tabs (or a
+  // reload fired while the previous load's JS hasn't finished) can each read
+  // localStorage before the other writes its merge back — both then conclude the
+  // same already-earned achievement is "new" and both toast it. Web Locks serializes
+  // the read-merge-write across every tab/frame on this origin; browsers without it
+  // (pre-2022) just run unlocked, same behavior as before this fix.
+  if (navigator.locks?.request) {
+    await navigator.locks.request(`ach-notify-${username}`, run);
+  } else {
+    run();
   }
-  // Union, never shrink: renderAchievements runs twice per load — first with
-  // partial activity data (fewer earned), then with full data. Overwriting with
-  // `now` let the partial pass drop ids, so the full pass re-flagged them as
-  // "new" and re-toasted every single visit. Merging keeps earned ids sticky.
-  const merged = Array.from(new Set([...prev, ...now]));
-  localStorage.setItem(key, JSON.stringify(merged));
 }
 
 function buildCoverStars() {
