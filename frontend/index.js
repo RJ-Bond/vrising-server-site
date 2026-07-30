@@ -2303,7 +2303,7 @@ async function loadVersion() {
   try {
     const d = await fetch(`${API}/version`).then(r => r.json());
     const el = document.getElementById('footer-version');
-    if (el) el.textContent = `Версия: ${d.version || 'dev'}`;
+    if (el) el.textContent = `🏷️ Версия: ${d.version || 'dev'}`;
   } catch {}
 }
 

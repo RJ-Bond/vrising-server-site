@@ -1577,9 +1577,15 @@
             <label>Plugin API Key</label>
             <div class="s-field-row">
               <input id="setting-plugin_api_key" type="password" class="dark-input" placeholder="общий секрет с плагином">
+              <button type="button" class="s-save-btn" title="Показать/скрыть" onclick="toggleApiKeyVisibility(this)" style="flex:0 0 auto;width:2.1rem;padding:0;display:flex;align-items:center;justify-content:center;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-eye"></use></svg>
+              </button>
+              <button type="button" class="s-save-btn" title="Скопировать" onclick="copyApiKey(this)" style="flex:0 0 auto;width:2.1rem;padding:0;display:flex;align-items:center;justify-content:center;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 9h-9a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2z"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
               <button class="s-save-btn" onclick="saveSetting('plugin_api_key')">Сохранить</button>
             </div>
-            <p class="s-desc">Должен совпадать со значением ApiKey в BepInEx/config/rjbond.vrising.bepinexplugin.cfg на игровом сервере.</p>
+            <p class="s-desc">Должен совпадать со значением ApiKey в BepInEx/config/rjbond.vrising.bepinexplugin.cfg на игровом сервере — один и тот же ключ прописывается на КАЖДОМ игровом сервере (общий секрет, не отдельный на сервер).</p>
           </div>
         </div>
       </div>
@@ -3912,6 +3918,23 @@ async function uploadBgFile(input) {
     setTimeout(() => { statusEl.textContent = ''; }, 3000);
   } catch (err) { statusEl.textContent = '✘ ' + err.message; statusEl.style.color = '#fca5a5'; }
   input.value = '';
+}
+
+function toggleApiKeyVisibility(btn) {
+  const input = document.getElementById('setting-plugin_api_key');
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  const use = btn.querySelector('use');
+  if (use) use.setAttribute('href', showing ? '/icons.svg#icon-eye' : '/icons.svg#icon-eye-off');
+}
+
+function copyApiKey(btn) {
+  const value = document.getElementById('setting-plugin_api_key')?.value ?? '';
+  if (!value) { if (typeof showToast === 'function') showToast('Ключ пуст — нечего копировать', 'error'); return; }
+  navigator.clipboard?.writeText(value).then(
+    () => { if (typeof showToast === 'function') showToast('Ключ скопирован', 'success'); },
+    () => { if (typeof showToast === 'function') showToast('Не удалось скопировать', 'error'); },
+  );
 }
 
 async function saveSetting(key) {
