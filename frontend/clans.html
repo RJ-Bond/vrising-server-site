@@ -47,8 +47,6 @@
       background:linear-gradient(90deg,transparent,rgba(200,0,45,0.35),transparent);
     }
 
-    /* ── Clan-in stagger animation ── */
-    @keyframes clan-in { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
 
     /* ── Search row ── */
     .clan-search-wrap { position:relative; }
@@ -249,6 +247,8 @@
 </div>
 
 <script src="/alpine.min.js"></script>
+<script src="/anime.min.js"></script>
+<script src="/anim.js?v=1"></script>
 <script src="/common.js?v=10"></script>
 <script>
 const API = '/api';
@@ -324,7 +324,6 @@ function buildCard(clan, idx) {
   const initials = esc((clan.name || '?').trim().slice(0, 2).toUpperCase());
   const name = esc(clan.name);
   const members = clan.member_count || 0;
-  const delay = idx * 60;
   const motto = (clan.motto || '').trim();
   const descHtml = motto
     ? `<div class="clan-card-desc">${esc(motto)}</div>`
@@ -334,8 +333,7 @@ function buildCard(clan, idx) {
     <div class="clan-card g-card"
       data-clan-id="${clan.id}"
       data-search="${(clan.name || '').toLowerCase()}"
-      onclick="openClanDetail(${clan.id})"
-      style="animation:clan-in .35s ease both;animation-delay:${delay}ms;">
+      onclick="openClanDetail(${clan.id})">
       <!-- Header: initials badge + name -->
       <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.85rem;">
         <div style="width:2.8rem;height:2.8rem;border-radius:.55rem;background:linear-gradient(135deg,rgba(80,0,150,0.4),rgba(120,0,20,0.3));border:1px solid rgba(110,0,150,0.3);display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:var(--gold);flex-shrink:0;">${initials}</div>
@@ -383,6 +381,7 @@ function renderGrid(clans) {
   noresult.style.display = 'none';
   grid.style.display = 'grid';
   grid.innerHTML = clans.map((c, i) => buildCard(c, i)).join('');
+  if (window.animateEntrance) animateEntrance('#clans-grid .clan-card', { distance: 10, stagger: 60 });
 }
 
 /* ── Filter cards by search query ── */

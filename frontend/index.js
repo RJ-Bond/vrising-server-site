@@ -2485,9 +2485,8 @@ async function loadTeam() {
       const dot = `<span title="${st.label}" style="position:absolute;bottom:1px;right:1px;width:11px;height:11px;border-radius:50%;background:${st.dot};border:2px solid rgba(10,2,18,0.95);${st.glow?'box-shadow:'+st.glow+';':''}"></span>`;
 
       const titleHtml = `<div style="margin-top:.28rem;">${_renderAdminBadge(u)}</div>`;
-      const anim = firstLoad ? `opacity:0;transform:translateY(12px);animation:teamCardIn .35s ease forwards;animation-delay:${i * 0.08}s;` : `opacity:1;`;
 
-      return `<div style="background:rgba(12,3,20,0.72);border:1px solid rgba(110,0,28,0.28);border-radius:.85rem;padding:.85rem .65rem .7rem;text-align:center;transition:all .22s;position:relative;overflow:hidden;${anim}"
+      return `<div class="team-card" style="background:rgba(12,3,20,0.72);border:1px solid rgba(110,0,28,0.28);border-radius:.85rem;padding:.85rem .65rem .7rem;text-align:center;transition:all .22s;position:relative;overflow:hidden;"
         onmouseover="this.style.borderColor='rgba(180,0,42,0.55)';this.style.boxShadow='0 0 22px rgba(130,0,30,0.22),inset 0 0 14px rgba(100,0,20,0.07)';this.style.background='rgba(16,4,26,0.88)'"
         onmouseout="this.style.borderColor='rgba(110,0,28,0.28)';this.style.boxShadow='';this.style.background='rgba(12,3,20,0.72)'">
         <div style="position:absolute;top:0;left:20%;right:20%;height:1px;background:linear-gradient(90deg,transparent,rgba(200,0,42,0.3),transparent);"></div>
@@ -2514,6 +2513,7 @@ async function loadTeam() {
     }).join('');
     list.style.cssText = `display:grid;grid-template-columns:repeat(${data.length === 1 ? '1' : '2'},1fr);gap:.55rem;`;
     wrap.style.display = '';
+    if (firstLoad && window.animateEntrance) animateEntrance('#team-list .team-card', { distance: 12, stagger: 80 });
   } catch {}
 }
 

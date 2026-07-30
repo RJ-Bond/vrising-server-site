@@ -102,6 +102,14 @@
     ],
   };
 
+  // GET /api/team (backend/routers/profile.py) — public admin/superadmin staff
+  // roster shown on index.html's "Команда" section (frontend/index.js loadTeam()).
+  const team = [
+    { id: 1, username: 'Vortigern', avatar_url: null, created_at: iso(300 * 24 * 3600 * 1000), admin_title: null, last_active_at: iso(60 * 1000), is_online: true, badge_icon_url: null, badge_style: 'crown', role: 'superadmin' },
+    { id: 2, username: 'Overseer', avatar_url: null, created_at: iso(250 * 24 * 3600 * 1000), admin_title: null, last_active_at: iso(2 * 3600 * 1000), is_online: false, badge_icon_url: null, badge_style: 'shield', role: 'admin' },
+    { id: 3, username: 'Nightwatch', avatar_url: null, created_at: iso(200 * 24 * 3600 * 1000), admin_title: 'Модератор чата', last_active_at: iso(20 * 24 * 3600 * 1000), is_online: false, badge_icon_url: null, badge_style: 'flame', role: 'admin' },
+  ];
+
   const userProfile = {
     username: 'Vortigern', avatar_url: null, cover_url: null, role: 'user',
     created_at: iso(180 * 24 * 3600 * 1000), game_nickname: 'Vortigern',
@@ -139,6 +147,7 @@
   const routes = [
     [/\/api\/settings\/public$/, () => settingsPublic],
     [/\/api\/auth\/me$/, () => null], // anonymous visitor — handled as 401 below
+    [/\/api\/team/, () => team],
     [/\/api\/users\/[^/]+\/activity/, () => userActivity],
     [/\/api\/users\/[^/]+$/, () => userProfile],
     [/\/api\/clans\/\d+$/, (url) => clanDetail(url.match(/\/api\/clans\/(\d+)/)[1])],
