@@ -225,6 +225,33 @@ async def plugin_ban_status(
     }
 
 
+@router.get("/api/plugin/ban-lookup")
+@limiter.limit("30/minute")
+async def plugin_ban_lookup(
+    request: Request,
+    character_name: str,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Backs ".unban <ник>" — a banned player is offline by definition, so the plugin can't
+    resolve a nickname to a steam_id through the game's own online-player lookup the way
+    every other moderation command does; this is the site-side fallback (the site is the
+    only place that still has character_name recorded against the ban). Case-insensitive
+    exact match against active bans (unbanned_at IS NULL) only — a lifted ban's old
+    character_name is irrelevant here. character_name isn't unique (a nickname could
+    coincidentally collide, or be reused after a rename) so ties go to the most recently
+    issued active ban, same tiebreak convention as plugin_ban_status."""
+    result = await db.execute(
+        select(Ban)
+        .where(func.lower(Ban.character_name) == character_name.lower(), Ban.unbanned_at.is_(None))
+        .order_by(Ban.banned_at.desc())
+    )
+    ban = result.scalars().first()
+    if ban is None:
+        return {"found": False, "steam_id": None}
+    return {"found": True, "steam_id": ban.steam_id}
+
+
 _VALID_LOG_ACTIONS = {"kick", "mute", "unmute", "restart_scheduled", "restart_executed", "report"}
 
 

@@ -278,6 +278,72 @@ async def test_ban_status_cross_server(client, db_session):
     assert r.json()["admin_name"] == "A"
 
 
+# ─── GET /api/plugin/ban-lookup ─────────────────────────────────────────────
+
+async def test_ban_lookup_found_case_insensitive(client, db_session):
+    await _set_plugin_key(db_session)
+    db_session.add(Ban(
+        server_num=1, steam_id="lookup-steam-1", character_name="WhiteLegioN",
+        admin_name="A", reason="r", banned_at=datetime.utcnow(), unban_at=None,
+    ))
+    await db_session.commit()
+
+    r = await client.get(
+        "/api/plugin/ban-lookup", params={"character_name": "whitelegion"}, headers=_hdr()
+    )
+    assert r.status_code == 200
+    assert r.json() == {"found": True, "steam_id": "lookup-steam-1"}
+
+
+async def test_ban_lookup_not_found(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.get(
+        "/api/plugin/ban-lookup", params={"character_name": "NoSuchPlayer"}, headers=_hdr()
+    )
+    assert r.status_code == 200
+    assert r.json() == {"found": False, "steam_id": None}
+
+
+async def test_ban_lookup_ignores_already_unbanned(client, db_session):
+    await _set_plugin_key(db_session)
+    db_session.add(Ban(
+        server_num=1, steam_id="lookup-lifted", character_name="LiftedPlayer",
+        admin_name="A", reason="r", banned_at=datetime.utcnow(), unban_at=None,
+        unbanned_at=datetime.utcnow(),
+    ))
+    await db_session.commit()
+
+    r = await client.get(
+        "/api/plugin/ban-lookup", params={"character_name": "LiftedPlayer"}, headers=_hdr()
+    )
+    assert r.status_code == 200
+    assert r.json() == {"found": False, "steam_id": None}
+
+
+async def test_ban_lookup_multiple_matches_returns_most_recent(client, db_session):
+    await _set_plugin_key(db_session)
+    now = datetime.utcnow()
+    db_session.add_all([
+        Ban(server_num=1, steam_id="lookup-older", character_name="DupeName",
+            admin_name="A", reason="r", banned_at=now - timedelta(days=1), unban_at=None),
+        Ban(server_num=1, steam_id="lookup-newer", character_name="DupeName",
+            admin_name="B", reason="r", banned_at=now, unban_at=None),
+    ])
+    await db_session.commit()
+
+    r = await client.get(
+        "/api/plugin/ban-lookup", params={"character_name": "DupeName"}, headers=_hdr()
+    )
+    assert r.status_code == 200
+    assert r.json() == {"found": True, "steam_id": "lookup-newer"}
+
+
+async def test_ban_lookup_requires_plugin_key(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.get("/api/plugin/ban-lookup", params={"character_name": "X"})
+    assert r.status_code == 401
+
+
 # ─── GET /api/admin/bans ────────────────────────────────────────────────────
 
 async def test_admin_bans_requires_admin_auth(client, db_session):
