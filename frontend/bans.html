@@ -172,15 +172,29 @@
         border-radius:.7rem; padding:.3rem .8rem; margin-bottom:.7rem;
       }
       #active-bans-section tbody tr:hover td, #appeals-section tbody tr:hover td { background:transparent; }
+      /* Label-above-value, not label-left-value-right: the original flex row
+         (justify-content:space-between) broke two ways at once on real content —
+         (1) several cells (e.g. "Причина") carry an INLINE white-space:nowrap/
+         max-width/overflow:hidden/text-overflow:ellipsis, meant for the desktop
+         table's single-line truncation, which wins over any external stylesheet rule
+         regardless of selector specificity (only !important beats an inline style);
+         (2) even overriding that, a flex child's default min-width is `auto` — it
+         refuses to shrink below its content's unwrapped intrinsic width, and a bare
+         text node (most of these cells have no wrapping <span>) can't be individually
+         targeted to fix that either. Both together meant long values (server names,
+         ban reasons) just overflowed the card past the viewport edge instead of
+         wrapping. A plain block layout sidesteps both problems entirely — text wraps
+         to its container's width the normal way, no flex involved. */
       #active-bans-section td, #appeals-section td {
-        display:flex; justify-content:space-between; align-items:center; gap:.75rem;
-        border-bottom:1px solid rgba(150,0,28,0.08); white-space:normal; max-width:none;
-        text-overflow:clip; padding:.55rem 0; text-align:right;
+        display:block; text-align:left;
+        border-bottom:1px solid rgba(150,0,28,0.08); padding:.5rem 0;
+        white-space:normal !important; max-width:none !important;
+        overflow:visible !important; text-overflow:clip !important;
       }
       #active-bans-section td:last-child, #appeals-section td:last-child { border-bottom:none; }
       #active-bans-section td::before, #appeals-section td::before {
-        content:attr(data-label); color:var(--muted); font-size:.65rem; text-transform:uppercase;
-        letter-spacing:.06em; flex-shrink:0; text-align:left;
+        content:attr(data-label); display:block; color:var(--muted); font-size:.62rem;
+        text-transform:uppercase; letter-spacing:.06em; margin-bottom:.2rem;
       }
     }
   </style>
