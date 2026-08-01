@@ -39,3 +39,14 @@
   --pink-a:    #c2218a;
   --pink-b:    #9233ea;
 }
+
+/* `background-attachment:fixed` on a raster image (custom site bg / hero bg,
+   set via inline styles in each page's loadSiteSettings()) renders broken on
+   Android/mobile Chrome — `cover` gets sized against the wrong viewport box,
+   so the photo ends up cropped to a sliver stuck off to one side instead of
+   filling the screen. Desktop is unaffected; force `scroll` below the
+   breakpoint where the bug appears. `!important` is required to beat the
+   inline style each page sets via JS. */
+@media (max-width: 900px) {
+  body, .hero-bg-img { background-attachment: scroll !important; }
+}
