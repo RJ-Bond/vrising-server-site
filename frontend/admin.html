@@ -2477,15 +2477,27 @@ async function logout() {
 function applySiteBackground(bg) {
   bg = (bg || '').trim();
   if (!bg) return;
-  document.body.style.backgroundImage = [
+  // A real position:fixed element, not background-attachment:fixed on body —
+  // that CSS property is unreliable on Android/mobile Chrome (cover ends up
+  // sized against the wrong box, leaving the photo cropped to a sliver stuck
+  // off to one side instead of filling the screen). admin.html doesn't load
+  // theme.css (no .site-bg-photo class here), so the fixed/z-index styling
+  // is set inline instead.
+  let layer = document.getElementById('site-bg-photo');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.id = 'site-bg-photo';
+    Object.assign(layer.style, { position: 'fixed', inset: '0', zIndex: '-1', pointerEvents: 'none', backgroundRepeat: 'no-repeat' });
+    document.body.prepend(layer);
+  }
+  layer.style.backgroundImage = [
     'radial-gradient(ellipse at 20% 60%, rgba(80,0,120,0.16) 0%, transparent 55%)',
     'radial-gradient(ellipse at 80% 20%, rgba(150,0,28,0.12) 0%, transparent 50%)',
     'linear-gradient(rgba(8,0,16,0.78), rgba(8,0,16,0.78))',
     `url('${bg}')`,
   ].join(',');
-  document.body.style.backgroundSize = 'auto,auto,auto,cover';
-  document.body.style.backgroundPosition = 'center,center,center,center';
-  document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
+  layer.style.backgroundSize = 'auto,auto,auto,cover';
+  layer.style.backgroundPosition = 'center,center,center,center';
 }
 
 // ── Role hierarchy (mirrors backend/auth.py's ROLE_LEVELS) ──────────────────

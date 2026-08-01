@@ -40,13 +40,20 @@
   --pink-b:    #9233ea;
 }
 
-/* `background-attachment:fixed` on a raster image (custom site bg / hero bg,
-   set via inline styles in each page's loadSiteSettings()) renders broken on
-   Android/mobile Chrome — `cover` gets sized against the wrong viewport box,
-   so the photo ends up cropped to a sliver stuck off to one side instead of
-   filling the screen. Desktop is unaffected; force `scroll` below the
-   breakpoint where the bug appears. `!important` is required to beat the
-   inline style each page sets via JS. */
-@media (max-width: 900px) {
-  body, .hero-bg-img { background-attachment: scroll !important; }
+/* Custom site background photo (bg_image_url, set via each page's
+   applySiteBackground()/loadSiteSettings()). A real position:fixed element,
+   NOT `background-attachment:fixed` on body — that CSS property is unreliable
+   on Android/mobile Chrome: `cover` gets sized against the wrong box, leaving
+   the photo cropped to a sliver stuck off to one side instead of filling the
+   screen (confirmed via a real-device screenshot; a first attempt at fixing
+   this by forcing `background-attachment:scroll` on mobile just traded it for
+   a different bug — `cover` then sizes against body's full, very tall,
+   scrollable height instead of the viewport, blowing the image up far past
+   recognizable). z-index:-1 keeps it under all normal-flow content while
+   still painting above <body>'s own opaque canvas-level background.
+   pointer-events:none since it must never intercept clicks/taps. */
+.site-bg-photo {
+  position: fixed; inset: 0; z-index: -1;
+  background-repeat: no-repeat;
+  pointer-events: none;
 }

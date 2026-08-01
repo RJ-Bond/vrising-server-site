@@ -2092,15 +2092,21 @@ async function loadSiteSettings() {
     const bg       = (d.bg_image_url || '').trim();
 
     if (bg) {
-      document.body.style.backgroundImage = [
+      let bgLayer = document.getElementById('site-bg-photo');
+      if (!bgLayer) {
+        bgLayer = document.createElement('div');
+        bgLayer.id = 'site-bg-photo';
+        bgLayer.className = 'site-bg-photo';
+        document.body.prepend(bgLayer);
+      }
+      bgLayer.style.backgroundImage = [
         'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
         'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
         'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
         `url('${bg}')`,
       ].join(',');
-      document.body.style.backgroundSize = 'auto,auto,auto,cover';
-      document.body.style.backgroundPosition = 'center,center,center,center';
-      document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
+      bgLayer.style.backgroundSize = 'auto,auto,auto,cover';
+      bgLayer.style.backgroundPosition = 'center,center,center,center';
       const heroImg = document.getElementById('hero-bg-img');
       if (heroImg) {
         heroImg.style.backgroundImage = `url('${bg}')`;

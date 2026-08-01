@@ -1170,11 +1170,14 @@
       #news-list .skel-thumb { width:100% !important; height:11rem !important; }
     }
 
-    /* ── Hero parallax bg layer ── */
+    /* ── Hero parallax bg layer ──
+       No background-attachment:fixed — unreliable on Android/mobile Chrome
+       (see .site-bg-photo in theme.css for the full story). This box is
+       already pinned to .hero via inset:0, so plain scroll attachment looks
+       identical here (the hero itself doesn't scroll independently). */
     .hero-bg-img {
       position:absolute; inset:0; z-index:0;
       background-size:cover; background-position:center 30%;
-      background-attachment:fixed;
       opacity:0; transition:opacity .7s ease;
       pointer-events:none;
     }

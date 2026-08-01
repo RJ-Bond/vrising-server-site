@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
-  <link rel="stylesheet" href="/theme.css?v=2" />
+  <link rel="stylesheet" href="/theme.css?v=3" />
   <link rel="stylesheet" href="/components.css?v=2" />
   <style>
     /* Base tokens in /theme.css; overrides below for this page's lighter surfaces/text. */
@@ -213,15 +213,21 @@ function getToken() { return localStorage.getItem('token') || sessionStorage.get
 function applySiteBackground(bg) {
   bg = (bg || '').trim();
   if (!bg) return;
-  document.body.style.backgroundImage = [
+  let layer = document.getElementById('site-bg-photo');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.id = 'site-bg-photo';
+    layer.className = 'site-bg-photo';
+    document.body.prepend(layer);
+  }
+  layer.style.backgroundImage = [
     'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
     'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
     'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
     `url('${bg}')`,
   ].join(',');
-  document.body.style.backgroundSize = 'auto,auto,auto,cover';
-  document.body.style.backgroundPosition = 'center,center,center,center';
-  document.body.style.backgroundAttachment = 'fixed,fixed,fixed,fixed';
+  layer.style.backgroundSize = 'auto,auto,auto,cover';
+  layer.style.backgroundPosition = 'center,center,center,center';
 }
 
 (function() {
