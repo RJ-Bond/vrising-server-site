@@ -99,6 +99,29 @@ async def plugin_get_rules(
     return {"rules": rules}
 
 
+@router.get("/api/plugin/senior-admins")
+@limiter.limit("60/minute")
+async def plugin_get_senior_admins(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """SteamIDs of site users with the "admin" or "superadmin" role (site's own 3-tier role
+    system, see ROLE_LEVELS in auth.py) — polled by the plugin (~60s, same cadence as
+    message-templates) and unioned with its own local SeniorAdminSteamIds config list, so
+    the site's real role system can govern which in-game admins may target another admin or
+    issue a permanent ban instead of requiring the same SteamIDs to be hand-maintained in
+    both places. "moderator" is deliberately excluded — that tier is content/user
+    moderation only (comments, reports, ban toggle) per CLAUDE.md, not the stronger
+    in-game moderation hierarchy this list gates. Only users with a linked steam_id (via
+    .register/.login) can appear here at all."""
+    result = await db.execute(
+        select(User.steam_id).where(User.role.in_(["admin", "superadmin"]), User.steam_id.isnot(None))
+    )
+    steam_ids = [row[0] for row in result.all()]
+    return {"steam_ids": steam_ids}
+
+
 @router.post("/api/plugin/accept-rules")
 @limiter.limit("30/minute")
 async def plugin_accept_rules(
