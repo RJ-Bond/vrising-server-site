@@ -57,6 +57,26 @@
     { id: 3, user_id: 4, shop_item_id: null, item_name_snapshot: 'Legendary Weapon Skin', cost_snapshot: 800, status: 'fulfilled', delivery_mode: 'manual', player_note: null, admin_note: 'Выдано в игре', created_at: iso(2 * 24 * 3600 * 1000), resolved_at: iso(23 * 3600 * 1000), resolved_by: 'RJ Bond', username: 'Dracarys' },
   ];
 
+  // ReportOut-ish shape (backend/schemas.py's ReportOut / backend/routers/reports.py's
+  // list_reports()) — GET /api/admin/reports. Used to preview frontend/admin.html's
+  // #section-reports table, including its mobile data-label card fallback.
+  const fakeReports = [
+    { id: 1, reporter_id: 2, target_type: 'comment', target_id: 44, reason: 'Оскорбления в комментарии, много токсичного текста для проверки переноса строк', status: 'pending', admin_note: null, created_at: iso(3600000), reviewed_at: null },
+    { id: 2, reporter_id: 3, target_type: 'user', target_id: 6, reason: 'Спам ссылками', status: 'pending', admin_note: null, created_at: iso(2 * 3600000), reviewed_at: null },
+    { id: 3, reporter_id: 4, target_type: 'clan', target_id: 2, reason: 'Оскорбительное название клана', status: 'reviewed', admin_note: 'Название изменено', created_at: iso(24 * 3600000), reviewed_at: iso(20 * 3600000) },
+    { id: 4, reporter_id: 5, target_type: 'comment', target_id: 51, reason: 'Ложное обвинение', status: 'dismissed', admin_note: null, created_at: iso(2 * 24 * 3600000), reviewed_at: iso(47 * 3600000) },
+  ];
+
+  // AuditLog row shape (backend/models.py's AuditLog, serialized by
+  // backend/routers/admin_misc.py's get_audit_log()) — GET /api/admin/audit-log. Used to
+  // preview #section-auditlog's table + its mobile data-label card fallback.
+  const fakeAuditLog = [
+    { id: 1, admin: 'RJ Bond', action: 'news.create', target_type: 'news', target_id: 37, detail: 'Обновление сервера 1.2.0', created_at: iso(1800000) },
+    { id: 2, admin: 'RJ Bond', action: 'user.ban', target_type: 'user', target_id: 12, detail: 'Использование читов (дюп предметов)', created_at: iso(3600000) },
+    { id: 3, admin: 'Overseer', action: 'settings.update', target_type: 'settings', target_id: 0, detail: 'Изменён site_title, discord_url', created_at: iso(5 * 3600000) },
+    { id: 4, admin: 'Overseer', action: 'user.unban', target_type: 'user', target_id: 9, detail: 'Апелляция одобрена', created_at: iso(24 * 3600000) },
+  ];
+
   // BanAppeal admin-list shape (backend/main.py's list_ban_appeals) — GET
   // /api/admin/appeals. Used by the sidebar's "Баны и апелляции" pending-count badge.
   const fakeAppeals = [
@@ -104,6 +124,12 @@
     [/\/api\/admin\/users$/, () => fakeUsers],
     [/\/api\/admin\/settings$/, () => adminSettingsList.map(s => ({ ...s, updated_at: iso(0) }))],
     [/\/api\/admin\/shop\/items$/, () => fakeShopItems],
+    [/\/api\/admin\/reports(\?.*)?$/, (url) => {
+      const status = new URLSearchParams(url.split('?')[1] || '').get('status');
+      const items = status ? fakeReports.filter(r => r.status === status) : fakeReports;
+      return { total: items.length, items };
+    }],
+    [/\/api\/admin\/audit-log$/, () => ({ total: fakeAuditLog.length, page: 1, per_page: 50, items: fakeAuditLog })],
     [/\/api\/admin\/shop\/redemptions(\?.*)?$/, (url) => {
       const status = new URLSearchParams(url.split('?')[1] || '').get('status');
       const items = status ? fakeShopRedemptions.filter(r => r.status === status) : fakeShopRedemptions;
