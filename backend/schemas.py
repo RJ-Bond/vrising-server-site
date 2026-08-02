@@ -473,6 +473,16 @@ class PlayerRecordOut(BaseModel):
     verified: bool = False  # populated at runtime from PlayerRecord.steam_id is not None — True once at least
     # one session for this row was reported by the game plugin, vs. purely from A2S polling.
     # Exposed as a boolean (not the raw steam_id) since this is a public-facing response.
+    # Clan/combat-power/online status: populated at runtime from GameClanMember (the
+    # game plugin's clan-sync data), matched by steam_id — None for every field on an
+    # unverified row or a verified player who isn't currently in a synced clan, never a
+    # misleading 0/false.
+    clan_id: Optional[int] = None
+    clan_name: Optional[str] = None
+    physical_power: Optional[float] = None
+    spell_power: Optional[float] = None
+    is_online: Optional[bool] = None
+    streak_days: int = 0  # populated at runtime from PlayerDailyActivity — see _current_streak()
 
     model_config = {"from_attributes": True}
 
