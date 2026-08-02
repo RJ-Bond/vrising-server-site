@@ -486,12 +486,10 @@ function roleCountLabel(role, n) {
 }
 
 /* ── Online-status dot — same green/gray + glow visual language as common.js's
-   _statusInfo() (see user.html's #user-status), just without a label: GameClanMemberOut
-   only gives a boolean is_online (last_connected_unix is experimental/epoch-format-
-   unverified and explicitly not surfaced yet), so there's no "X min ago" text to show,
-   only online/offline. Positioned as a small presence badge on the avatar's corner.
-   corner:'left' is used in the card's overlapping avatar-stack, where a right-corner
-   dot would get covered by the next avatar's negative margin. ── */
+   _statusInfo() (see user.html's #user-status), just without a label. Positioned as a
+   small presence badge on the avatar's corner. corner:'left' is used in the card's
+   overlapping avatar-stack, where a right-corner dot would get covered by the next
+   avatar's negative margin. ── */
 function onlineDotHtml(isOnline, opts) {
   opts = opts || {};
   const size = opts.size || 8;
@@ -535,6 +533,77 @@ function timeAgoShort(iso) {
   if (h < 24) return `${h} ${pluralRu(h, 'час', 'часа', 'часов')} назад`;
   const d = Math.floor(h / 24);
   return `${d} ${pluralRu(d, 'день', 'дня', 'дней')} назад`;
+}
+
+/* ── "Был X назад" for offline members, from GameClanMemberOut.last_connected_unix
+   (assumed Unix seconds per the plugin/backend's own field comment — NOT verified
+   against a live value, so this is defensive: any value that lands outside a sane
+   window (negative, in the future, or implausibly old — before V Rising's 2022
+   release) is treated as garbage and hidden rather than shown as a confusing
+   timestamp). Mirrors common.js's _statusInfo() "Был N ... назад" phrasing for
+   consistency with the rest of the site, but that helper takes an ISO string, not
+   Unix seconds, hence a separate function here instead of reusing it directly. ── */
+function lastSeenFromUnix(unixSeconds) {
+  if (!unixSeconds || typeof unixSeconds !== 'number' || unixSeconds <= 0) return '';
+  const t = unixSeconds * 1000;
+  const V_RISING_RELEASE = Date.parse('2022-05-17T00:00:00Z');
+  if (t < V_RISING_RELEASE || t > Date.now() + 3600_000) return '';
+  const m = Math.max(0, Math.floor((Date.now() - t) / 60000));
+  if (m < 1) return 'только что';
+  if (m < 60) return `Был ${m} ${pluralRu(m, 'минуту', 'минуты', 'минут')} назад`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `Был ${h} ${pluralRu(h, 'час', 'часа', 'часов')} назад`;
+  const d = Math.floor(h / 24);
+  return `Был ${d} ${pluralRu(d, 'день', 'дня', 'дней')} назад`;
+}
+
+/* ── Combat power (StoredPowerStats, synced per-member) — shown separately as
+   physical/spell rather than a single summed "power" number, since the exact
+   formula V Rising itself uses to display a player's on-screen Power/Gear Score
+   isn't confirmed to just be their sum. ── */
+function powerHtml(m) {
+  const phys = m.physical_power, spell = m.spell_power;
+  if (phys == null && spell == null) return '';
+  const parts = [];
+  if (phys != null) parts.push(`⚔ ${Math.round(phys)}`);
+  if (spell != null) parts.push(`🔮 ${Math.round(spell)}`);
+  return `<span style="font-size:.62rem;color:var(--muted);white-space:nowrap;flex-shrink:0;" title="Физическая / магическая мощь">${parts.join(' · ')}</span>`;
+}
+
+/* ── Relative base-territory schema (clan detail modal only) — the bounding box
+   (min/max x/z) captured per base has no georeferenced world-map image behind it
+   yet, so this deliberately draws bases to scale RELATIVE TO EACH OTHER (useful to
+   compare a clan's own bases by size/position) rather than implying a real position
+   on the world map. Raid-protected bases get a green tint, others crimson, matching
+   the shield badge's color elsewhere on this page. ── */
+function basesMapSvg(bases) {
+  const valid = (bases || []).filter(b => b.max_x > b.min_x && b.max_z > b.min_z);
+  if (!valid.length) return '';
+  const W = 260, H = 150, PAD = 10;
+  const minX = Math.min(...valid.map(b => b.min_x));
+  const maxX = Math.max(...valid.map(b => b.max_x));
+  const minZ = Math.min(...valid.map(b => b.min_z));
+  const maxZ = Math.max(...valid.map(b => b.max_z));
+  const spanX = Math.max(1, maxX - minX);
+  const spanZ = Math.max(1, maxZ - minZ);
+  const scale = Math.min((W - PAD * 2) / spanX, (H - PAD * 2) / spanZ);
+  const offX = PAD + ((W - PAD * 2) - spanX * scale) / 2;
+  const offZ = PAD + ((H - PAD * 2) - spanZ * scale) / 2;
+  const rects = valid.map(b => {
+    const x = offX + (b.min_x - minX) * scale;
+    const z = offZ + (b.min_z - minZ) * scale;
+    const w = Math.max(2, (b.max_x - b.min_x) * scale);
+    const h = Math.max(2, (b.max_z - b.min_z) * scale);
+    const fill = b.is_raid_protected ? 'rgba(74,222,128,.28)' : 'rgba(200,0,45,.28)';
+    const stroke = b.is_raid_protected ? '#4ade80' : '#e0435f';
+    const title = esc(`Ур. ${b.level}, X ${b.min_x}..${b.max_x}, Z ${b.min_z}..${b.max_z}`);
+    return `<rect x="${x.toFixed(1)}" y="${z.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${fill}" stroke="${stroke}" stroke-width="1"><title>${title}</title></rect>`;
+  }).join('');
+  return `
+    <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:.6rem 0 .3rem;">Расположение баз</div>
+    <svg width="100%" viewBox="0 0 ${W} ${H}" style="background:var(--panel);border:1px solid var(--border);border-radius:.5rem;display:block;">${rects}</svg>
+    <div style="font-size:.58rem;color:var(--muted);opacity:.6;margin-top:.25rem;">Схема территории клана (масштаб относительный, не привязан к карте мира) · X ${minX}..${maxX} · Z ${minZ}..${maxZ}</div>
+  `;
 }
 
 /* Short server label for the card's pill — full "[RU] Just-Skill.Ru | Standart PvE"
@@ -656,6 +725,11 @@ async function init() {
     renderServerTabs(_allClans);
     renderPodium(_allClans.slice(0, 3));
     renderGrid(_allClans);
+
+    // Deep link — e.g. clans.html?clan=42 opens that clan's detail modal directly,
+    // for sharing a link straight to one clan instead of "go find it in the list".
+    const clanParam = new URLSearchParams(location.search).get('clan');
+    if (clanParam && /^\d+$/.test(clanParam)) openClanDetail(Number(clanParam));
   } catch (err) {
     document.getElementById('clans-loading').style.display = 'none';
     document.getElementById('clans-error').style.display = 'block';
@@ -680,10 +754,15 @@ function memberRowHtml(m) {
     : `<span class="member-avatar" style="background:${grad};">${initial}</span>`;
   const linkOpen = m.username ? `<a href="/user.html?u=${encodeURIComponent(m.username)}" style="color:var(--text);text-decoration:none;">` : `<span style="color:var(--text);">`;
   const linkClose = m.username ? '</a>' : '</span>';
+  const lastSeen = m.is_online ? '' : lastSeenFromUnix(m.last_connected_unix);
   return `
     <div class="member-row">
       <span style="position:relative;display:inline-flex;flex-shrink:0;">${avatarHtml}${onlineDotHtml(m.is_online, { size: 9 })}</span>
-      <div style="flex:1;min-width:0;font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${linkOpen}${displayName}${linkClose}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:.82rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${linkOpen}${displayName}${linkClose}</div>
+        ${lastSeen ? `<div style="font-size:.6rem;color:var(--muted);opacity:.7;margin-top:.1rem;">${esc(lastSeen)}</div>` : ''}
+      </div>
+      ${powerHtml(m)}
       <span class="role-badge ${esc(m.role || 'member')}">${roleLabel(m.role)}</span>
     </div>
   `;
@@ -718,6 +797,7 @@ async function openClanDetail(clanId) {
       ${motto ? `<p style="font-size:.78rem;color:var(--muted);margin-bottom:.8rem;">${esc(motto)}</p>` : ''}
       ${summaryHtml || updated ? `<div style="font-size:.68rem;color:var(--muted);margin-bottom:.6rem;">${esc(summaryHtml)}${summaryHtml && updated ? ' · ' : ''}${updated ? `обновлено ${esc(updated)}` : ''}</div>` : ''}
       ${baseInfoHtml(clan)}
+      ${basesMapSvg(clan.bases)}
       <div style="margin-bottom:.4rem;"></div>
       <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem;">Участники (${members.length})</div>
       <div>${members.length ? members.map(memberRowHtml).join('') : '<p style="font-size:.78rem;color:var(--muted);">Нет участников</p>'}</div>
