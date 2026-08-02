@@ -57,7 +57,7 @@ async def test_unlink_steam_requires_admin_auth(client, db_session):
 
 async def test_list_linked_accounts_returns_only_users_with_steam_id(client, db_session):
     admin = await _make_admin(db_session)
-    linked = await _make_linked_user(db_session, "LinkedPlayer", "76561198000000001")
+    await _make_linked_user(db_session, "LinkedPlayer", "76561198000000001")
     db_session.add(User(
         username="UnlinkedPlayer",
         email="unlinkedplayer@example.com",

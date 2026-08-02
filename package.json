@@ -1,0 +1,13 @@
+{
+  "name": "vrising-site",
+  "private": true,
+  "description": "Lint-only tooling for frontend/*.js. No build step — frontend/ is still served as-is by nginx.",
+  "devDependencies": {
+    "eslint": "^10.8.0",
+    "@eslint/js": "^10.0.1",
+    "globals": "^17.8.0"
+  },
+  "scripts": {
+    "lint": "eslint frontend"
+  }
+}

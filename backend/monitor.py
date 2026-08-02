@@ -19,8 +19,8 @@ HISTORY_MAX = 288       # 24h at 5-min intervals
 def _validate_ip(ip: str) -> None:
     try:
         addr = ipaddress.ip_address(ip)
-    except ValueError:
-        raise ValueError(f"Invalid IP address: {ip}")
+    except ValueError as e:
+        raise ValueError(f"Invalid IP address: {ip}") from e
     if addr.is_loopback:
         raise ValueError(f"Loopback address not allowed: {ip}")
 

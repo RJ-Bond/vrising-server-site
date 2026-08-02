@@ -1,0 +1,36 @@
+# Local dev safety net mirroring what CI already runs (.github/workflows/ci.yml) —
+# catches the same issues before they're even committed, not just before merge.
+# Install once per clone: `pip install pre-commit && pre-commit install`.
+# All hooks below reuse the exact scripts CI calls (scripts/*.sh), so there is only
+# one place that defines "what passing means" for this repo.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        name: ruff (backend/*.py)
+        args: [--config, pyproject.toml]
+        files: ^backend/
+
+  - repo: local
+    hooks:
+      - id: check-backend-imports
+        name: backend import check (scripts/check_backend.sh)
+        entry: bash scripts/check_backend.sh
+        language: system
+        files: ^backend/.*\.py$
+        pass_filenames: false
+
+      - id: check-frontend
+        name: frontend HTML/CSS validation (scripts/check.sh)
+        entry: bash scripts/check.sh
+        language: system
+        files: ^frontend/.*\.(html|css)$
+        pass_filenames: false
+
+      - id: lint-frontend-js
+        name: frontend JS lint (scripts/lint_frontend.sh)
+        entry: bash scripts/lint_frontend.sh
+        language: system
+        files: ^frontend/.*\.js$
+        pass_filenames: false

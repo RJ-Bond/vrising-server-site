@@ -1,7 +1,6 @@
 """Regression tests for server-side HTML-tag stripping on comment/DM content —
 defense-in-depth so a stored comment/DM can never contain live HTML tags, even if
 some future rendering path forgets to escape/sanitize on the way out."""
-from datetime import datetime, timezone
 
 import pytest
 
@@ -58,7 +57,7 @@ async def test_comment_creation_strips_html_tags(client, db_session):
 
 async def test_dm_creation_strips_html_tags(client, db_session):
     sender = await _make_user(db_session, "sender1")
-    recipient = await _make_user(db_session, "recipient1")
+    await _make_user(db_session, "recipient1")
     token = create_access_token({"sub": str(sender.id)})
 
     r = await client.post(

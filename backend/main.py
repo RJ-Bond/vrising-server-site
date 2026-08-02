@@ -1,25 +1,23 @@
-﻿import csv
-import html
-import io
+﻿import html
 import logging
 import os
-import math
 import re
 import json
-import uuid
 import time
 import asyncio
 import httpx
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from typing import Optional
-from pydantic import BaseModel, field_validator
-from fastapi import FastAPI, Depends, HTTPException, Request, Query, Header, UploadFile, File
+from pydantic import BaseModel
+from fastapi import FastAPI, Depends, HTTPException, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, FileResponse, Response
+from fastapi.responses import StreamingResponse, Response
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -52,132 +50,74 @@ from slowapi.errors import RateLimitExceeded
 # leaderboard snapshot) also stay here — several straddle multiple of the above domains
 # (e.g. _track_players writes Leaderboard data from inside what's filed as "Monitor").
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, delete, text, update
+from sqlalchemy.orm import selectinload
+
+from .database import engine, get_db
+from .models import Base, User, News, Setting, PlayerRecord, ServerSnapshot, PageView, ErrorLog, RevokedToken, Event, PlayerRankSnapshot, PluginHeartbeat, Announcement
+from .rate_limit import limiter
+from .helpers import (
+    BACKUP_DIR,
+    _visitor_data,
+    _explicit_logouts,
+    _write_maintenance_flag,
+    _fmt_dt,
+    _utc_ts,
+    _set_auth_cookie,
+    _audit,
+)
+from .auth import (
+    get_password_hash,
+    create_access_token,
+    get_admin_user,
+    get_optional_user,
+)
+from .schemas import (
+    UserOut,
+    TokenOut,
+    SetupComplete,
+    ChatRequest,
+    PluginHeartbeatOut,
+    AnnouncementCreate,
+    AnnouncementUpdate,
+    AnnouncementOut,
+    AnnouncementTestSend,
+)
+from .monitor import get_server_status, get_history
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
 
+# ─── Optional Sentry error monitoring ──────────────────────────────────────
+# Complete no-op unless SENTRY_DSN is set (docker-compose.yml / .env.example) — safe
+# to ship even though nobody has a Sentry project yet. sentry_sdk is imported
+# unconditionally up top (cheap even unused); only the .init() call below is gated
+# behind the env var. The FastAPI integration auto-instruments every route (including
+# the routers/*.py split) so unhandled 500s get reported without wrapping each handler
+# by hand. Sample rate is kept low/configurable — this is a small hobby-scale site,
+# not a candidate for full trace sampling.
+_sentry_dsn = os.getenv("SENTRY_DSN")
+if _sentry_dsn:
+    sentry_sdk.init(
+        dsn=_sentry_dsn,
+        integrations=[FastApiIntegration()],
+        traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+    )
+    logger.info("Sentry error monitoring enabled")
+
 # Repo root is bind-mounted read/write at /opt/vrising-site (see docker-compose.yml) for
 # the deploy/update endpoints; reused here to serve frontend/index.html for news-embed.
 _INDEX_HTML_PATH = "/opt/vrising-site/frontend/index.html"
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete, text, or_, update, and_
-from sqlalchemy.orm import selectinload
-
-from .database import engine, get_db
-from .models import Base, User, News, Setting, Comment, Wipe, PlayerRecord, ServerSnapshot, AuditLog, Reaction, PasswordReset, CommentReaction, Notification, Report, Poll, PollOption, PollVote, PageView, ErrorLog, Message, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, GameClan, GameClanMember, GameClanBase, Announcement, ServerMessageTemplate, ServerApiKey, ScheduledRestart, PlayerDailyActivity, PointsTransaction, ShopItem, ShopRedemption
-from .rate_limit import limiter
-from .helpers import (
-    UPLOAD_DIR,
-    BACKUP_DIR,
-    _totp_pending,
-    _visitor_data,
-    _explicit_logouts,
-    _schedule_restart,
-    _cancel_restart,
-    _write_maintenance_flag,
-    _fmt_dt,
-    _fmt_dt_z,
-    _utc_ts,
-    _set_auth_cookie,
-    _clear_auth_cookie,
-    log_audit,
-    _audit,
-    _award_points,
-    _get_points_config,
-    _send_reset_email,
-    _send_notification_email,
-    _site_timezone,
-)
-from .auth import (
-    verify_password,
-    get_password_hash,
-    create_access_token,
-    get_current_user,
-    get_admin_user,
-    get_moderator_user,
-    get_superadmin_user,
-    get_optional_user,
-    revoke_token,
-    role_level,
-    is_at_least,
-    ROLE_LEVELS,
-    SECRET_KEY,
-    ALGORITHM,
-    COOKIE_NAME,
-)
-from jose import jwt as jose_jwt
-from .schemas import (
-    UserRegister,
-    UserLogin,
-    UserOut,
-    TokenOut,
-    NewsCreate,
-    NewsUpdate,
-    NewsOut,
-    NewsListOut,
-    PaginatedNews,
-    SettingUpdate,
-    SettingOut,
-    SetupComplete,
-    ChatRequest,
-    CommentCreate,
-    CommentUpdate,
-    CommentOut,
-    PaginatedComments,
-    WipeCreate,
-    WipeOut,
-    PlayerRecordOut,
-    ForgotPasswordRequest,
-    ResetPasswordBody,
-    ChangePasswordBody,
-    ChangeEmailBody,
-    ReactBody,
-    ReportCreate,
-    ReportReview,
-    ReportOut,
-    PollCreate,
-    PollOut,
-    PluginRegister,
-    PluginLogin,
-    PluginAcceptRules,
-    PluginHeartbeatIn,
-    PluginHeartbeatOut,
-    PluginSessionReport,
-    PluginConnectStreakIn,
-    PluginClansSyncIn,
-    GameClanOut,
-    GameClanDetailOut,
-    AnnouncementCreate,
-    AnnouncementUpdate,
-    AnnouncementOut,
-    AnnouncementTestSend,
-    ServerMessageTemplateOut,
-    ServerMessageTemplateUpdate,
-    ServerApiKeyOut,
-    ServerApiKeyUpdate,
-    PluginScheduleRestartIn,
-    PluginCancelRestartIn,
-    LinkedAccountOut,
-    ShopItemCreate,
-    ShopItemUpdate,
-    ShopItemOut,
-    ShopRedeemIn,
-    ShopRedemptionResolveIn,
-    ShopRedemptionOut,
-    PointsGrantIn,
-    PointsTransactionOut,
-    PointsLeaderboardEntryOut,
-    strip_html_tags,
-)
 
 OVERSEER_PROMPT = """Ты — Тёмный Управляющий Замком, древний вампирский дух, хранитель этого сервера V Rising.
 Твоя задача — помогать игрокам: отвечать на вопросы об игровом сервере, правилах, механиках V Rising, событиях.
 Стиль: готический, величественный, слегка таинственный. Обращайся к игрокам как «смертный», «странник» или по имени.
 Отвечай на языке вопроса (русский или английский). Максимум 3–4 предложения. Будь полезным и по делу.
 Если не знаешь конкретных данных сервера — говори об этом честно, но оставайся в образе."""
-from .monitor import get_server_status, get_history
 
 
 async def _migrate_admin_role_tiers(db: AsyncSession):
@@ -433,8 +373,8 @@ app.add_middleware(
 )
 
 
-import hashlib
-from starlette.middleware.base import BaseHTTPMiddleware
+import hashlib  # noqa: E402 — kept next to the middleware that's its only user, not worth a top-of-file import for one call site
+from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402 — same reason
 
 
 class PageViewMiddleware(BaseHTTPMiddleware):
@@ -471,7 +411,7 @@ class PageViewMiddleware(BaseHTTPMiddleware):
 app.add_middleware(PageViewMiddleware)
 
 
-from .routers import points_shop, wipes, notifications, messages, reports, polls, events, news, auth as auth_router, profile, clans, leaderboard, plugin_integration, server_admin, users, admin_settings, admin_system, admin_misc, moderation
+from .routers import points_shop, wipes, notifications, messages, reports, polls, events, news, auth as auth_router, profile, clans, leaderboard, plugin_integration, server_admin, users, admin_settings, admin_system, admin_misc, moderation  # noqa: E402 — deliberately after `app`/middleware are fully set up, right above the include_router() calls that use it
 
 app.include_router(points_shop.router)
 app.include_router(wipes.router)
@@ -626,8 +566,8 @@ async def news_embed(slug: str, db: AsyncSession = Depends(get_db)):
     try:
         with open(_INDEX_HTML_PATH, "r", encoding="utf-8") as f:
             page = f.read()
-    except OSError:
-        raise HTTPException(status_code=404, detail="index.html not found")
+    except OSError as e:
+        raise HTTPException(status_code=404, detail="index.html not found") from e
 
     result = await db.execute(
         select(News).options(selectinload(News.author)).where(News.slug == slug, News.published == True)
@@ -780,8 +720,8 @@ async def castle_overseer_chat(request: Request, body: ChatRequest):
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
-    except ImportError:
-        raise HTTPException(status_code=503, detail="Библиотека anthropic не установлена")
+    except ImportError as e:
+        raise HTTPException(status_code=503, detail="Библиотека anthropic не установлена") from e
 
 
 @app.get("/api/admin/plugin-status", response_model=list[PluginHeartbeatOut])
@@ -1442,7 +1382,7 @@ async def test_discord_webhook(request: Request, current_user: User = Depends(ge
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Ошибка запроса: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=502, detail=f"Ошибка запроса: {type(e).__name__}: {e}") from e
 
 
 # ─── Background tasks ────────────────────────────────────────────────────────

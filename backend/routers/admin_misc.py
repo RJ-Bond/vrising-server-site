@@ -49,7 +49,7 @@ async def test_discord_webhook(request: Request, current_user: User = Depends(ge
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Ошибка запроса: {type(e).__name__}: {e}")
+        raise HTTPException(status_code=502, detail=f"Ошибка запроса: {type(e).__name__}: {e}") from e
 
 
 # ─── Dashboard stats ─────────────────────────────────────────────────────────

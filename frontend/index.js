@@ -248,7 +248,6 @@ function toggleDrawer() {
       }
       // join date
       if (u.created_at) {
-        const d = new Date(u.created_at);
         const sinceEl = document.getElementById('nav-user-since-text');
         if (sinceEl) sinceEl.textContent = `с ${fmtDate(u.created_at)}`;
         document.getElementById('nav-user-since').style.display = 'flex';
@@ -585,7 +584,6 @@ function renderServerBlock(d, sfx) {
   const pct = d.max_players > 0 ? Math.round(d.players / d.max_players * 100) : 0;
   const cls = d.online ? 'badge-on' : 'badge-off';
   const lbl = d.online ? '● ОНЛАЙН' : '● ОФЛАЙН';
-  const dot = d.online ? '<span class="dot-pulse">●</span>' : '●';
 
   const accent = sfx === '2' ? 'var(--purple)' : 'var(--crimson)';
   const accentRgb = sfx === '2' ? '124,58,237' : '200,0,42';
@@ -731,7 +729,6 @@ async function loadSparklines() {
 async function loadStats() {
   try {
     const s = await fetch(`${API}/monitor/stats?server=1`).then(r => r.json());
-    const fmt = v => v === null ? '—' : `${v}%`;
     const el24 = document.getElementById('stat-uptime24');
     const el7d  = document.getElementById('stat-uptime7d');
     const elpk  = document.getElementById('stat-peak7d');
@@ -791,7 +788,6 @@ async function loadStats() {
 
   try {
     const s2 = await fetch(`${API}/monitor/stats?server=2`).then(r => r.json());
-    const fmt = v => v === null ? '—' : `${v}%`;
     const el24 = document.getElementById('stat-uptime24-s2');
     const el7d  = document.getElementById('stat-uptime7d-s2');
     const elpk  = document.getElementById('stat-peak7d-s2');
@@ -2085,7 +2081,6 @@ async function loadSiteSettings() {
     const title       = (d.site_title || '').trim() || 'V RISING';
     const tagline     = (d.site_tagline || '').trim() || 'Замок';
     const description = (d.site_description || '').trim() || 'Официальный сайт игрового сервера V Rising — новости, статус серверов, лидерборд, правила.';
-    const logo        = (d.site_logo_url || '').trim();
     const heroLogo    = (d.hero_logo_url || '').trim();
     const heroSubtitle = (d.hero_subtitle || '').trim();
     const discord  = (d.discord_url || '').trim();
@@ -2938,7 +2933,7 @@ function renderPoll(poll, slug, wrap) {
 }
 
 async function votePoll(slug, optionId) {
-  const r = await fetch(`${API}/news/${slug}/poll/vote`, {
+  await fetch(`${API}/news/${slug}/poll/vote`, {
     method: 'POST', credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ option_ids: [optionId] }),

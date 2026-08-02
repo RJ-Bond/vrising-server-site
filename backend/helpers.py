@@ -5,11 +5,13 @@ changes; see the "Split backend/main.py into routers" plan for the rationale."""
 import logging
 import os
 from datetime import datetime, timedelta, timezone
+from io import BytesIO
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from typing import Optional
 from fastapi import Depends, HTTPException, Request, Response
+from PIL import Image
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -32,6 +34,50 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 # Shared with main.py's own _auto_backup_task (Background tasks, not yet split out) —
 # same reason UPLOAD_DIR lives here rather than in routers/admin_system.py.
 BACKUP_DIR = Path(os.getenv("BACKUP_DIR", "/data/backups"))
+
+# Longest side, in px, that an uploaded photo is downscaled to. Site backgrounds/hero
+# logos/avatars/covers are never displayed anywhere near source-camera resolution
+# (a phone photo can be 4000px+ wide) — the mobile background-photo bug found this
+# session was a 970x546 *already-small* image; a full-res upload would be much worse
+# on mobile data. 2000px keeps desktop full-bleed banners sharp with real headroom.
+_IMAGE_MAX_DIMENSION = 2000
+_IMAGE_OPTIMIZABLE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp"}
+
+
+def optimize_image_bytes(content: bytes, suffix: str) -> bytes:
+    """Downscale + re-compress an uploaded raster image before it hits disk.
+
+    Deliberately a no-op for .gif (re-saving via Pillow would collapse an animation to
+    its first frame) and .ico (already tiny, and Pillow's ICO writer doesn't preserve
+    multi-resolution icon sets). The source format is always preserved (PNG stays PNG,
+    etc) rather than normalized to JPEG — several of these uploads are logos/icons that
+    rely on transparency (site logo, hero logo, favicon), which a blind JPEG conversion
+    would silently flatten onto an opaque background. Any decode/encode failure falls
+    back to the original bytes rather than raising — a file that already passed the
+    extension/MIME check should still upload even if it's some format quirk Pillow
+    chokes on; this is a size optimization, not a validation gate.
+    """
+    if suffix.lower() not in _IMAGE_OPTIMIZABLE_SUFFIXES:
+        return content
+    try:
+        img = Image.open(BytesIO(content))
+        img.load()
+        fmt = img.format
+        width, height = img.size
+        if max(width, height) > _IMAGE_MAX_DIMENSION:
+            scale = _IMAGE_MAX_DIMENSION / max(width, height)
+            img = img.resize((max(1, round(width * scale)), max(1, round(height * scale))), Image.LANCZOS)
+        out = BytesIO()
+        save_kwargs = {"optimize": True}
+        if fmt in ("JPEG", "WEBP"):
+            save_kwargs["quality"] = 85
+        img.save(out, format=fmt, **save_kwargs)
+        optimized = out.getvalue()
+    except Exception:
+        return content
+    # Re-encoding a tiny/already-optimal source (e.g. a small PNG icon) can come out
+    # slightly larger than the original — only use the result if it actually helped.
+    return optimized if len(optimized) < len(content) else content
 
 _totp_pending: dict[int, str] = {}
 
@@ -320,7 +366,7 @@ MAINTENANCE_FLAG_PATH = "/var/maintenance/.flag"
 
 def _write_maintenance_flag(enabled: bool) -> None:
     """Write or remove the maintenance flag file for nginx."""
-    import os, pathlib
+    import pathlib
     try:
         flag = pathlib.Path(MAINTENANCE_FLAG_PATH)
         if enabled:

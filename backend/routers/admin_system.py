@@ -2,7 +2,7 @@ import asyncio
 import os
 import struct
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
@@ -15,7 +15,7 @@ from sqlalchemy import select
 from ..database import get_db
 from ..models import User, Setting, News
 from ..auth import get_admin_user, get_superadmin_user
-from ..helpers import UPLOAD_DIR, BACKUP_DIR, log_audit
+from ..helpers import UPLOAD_DIR, BACKUP_DIR, log_audit, optimize_image_bytes
 
 router = APIRouter()
 
@@ -46,6 +46,7 @@ async def upload_file(
     content = await file.read()
     if len(content) > _MAX_UPLOAD_BYTES:
         raise HTTPException(400, detail="Файл слишком большой (максимум 10 МБ)")
+    content = optimize_image_bytes(content, suffix)
     filename = f"{uuid.uuid4().hex}{suffix}"
     dest = UPLOAD_DIR / filename
     dest.write_bytes(content)
@@ -289,7 +290,7 @@ async def _git_log_oneline(repo: str, old_hash: str, new_hash: str) -> list[str]
             stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
         )
         out, _ = await proc.communicate()
-        lines = [l for l in out.decode().strip().splitlines() if l]
+        lines = [ln for ln in out.decode().strip().splitlines() if ln]
         return lines[:10]
     except Exception:
         return []
@@ -559,8 +560,10 @@ async def _rcon_exec(ip: str, port: int, password: str, command: str, timeout: f
         return resp or "(пустой ответ)"
     finally:
         writer.close()
-        try: await writer.wait_closed()
-        except: pass
+        try:
+            await writer.wait_closed()
+        except Exception:
+            pass
 
 
 class RconBody(BaseModel):
@@ -586,9 +589,9 @@ async def admin_rcon(body: RconBody, current_user: User = Depends(get_superadmin
         await db.commit()
         return {"output": result}
     except ValueError as e:
-        raise HTTPException(401, str(e))
+        raise HTTPException(401, str(e)) from e
     except Exception as e:
-        raise HTTPException(503, f"RCON ошибка: {e}")
+        raise HTTPException(503, f"RCON ошибка: {e}") from e
 
 
 # ─── Auto backups list ────────────────────────────────────────────────────────

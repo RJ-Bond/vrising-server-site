@@ -4,14 +4,13 @@ boundaries, the reclassified endpoints, cross-user hierarchy protection, the one
 migration's idempotency, the "literal string" landmine (manual checks that used to
 compare against exactly "admin" and would silently reject a superadmin), and the
 setup-bypass guard the migration could otherwise open."""
-from datetime import datetime, timezone
 
 import pytest
 from sqlalchemy import select
 
 from backend.auth import create_access_token, get_password_hash, role_level, ROLE_LEVELS
 from backend.main import _migrate_admin_role_tiers
-from backend.models import User, News, Comment, Setting
+from backend.models import User, News, Comment
 
 pytestmark = pytest.mark.asyncio
 

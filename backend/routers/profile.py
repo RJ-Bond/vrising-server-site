@@ -12,7 +12,7 @@ from ..database import get_db
 from ..models import User
 from ..auth import get_current_user, is_at_least
 from ..rate_limit import limiter
-from ..helpers import UPLOAD_DIR, _fmt_dt, _explicit_logouts
+from ..helpers import UPLOAD_DIR, _fmt_dt, _explicit_logouts, optimize_image_bytes
 
 router = APIRouter()
 
@@ -35,6 +35,7 @@ async def upload_cover(
     content = await file.read()
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(400, "File too large (max 10 MB)")
+    content = optimize_image_bytes(content, ext)
     covers_dir = UPLOAD_DIR / "covers"
     covers_dir.mkdir(parents=True, exist_ok=True)
     fname = f"cover_{current_user.id}_{uuid.uuid4().hex[:10]}{ext}"
@@ -160,6 +161,7 @@ async def upload_badge_icon(
     content = await file.read()
     if len(content) > 2 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Максимальный размер 2 МБ")
+    content = optimize_image_bytes(content, ext)
     fname = f"badge_{current_user.id}_{uuid.uuid4().hex[:8]}{ext}"
     (UPLOAD_DIR / fname).write_bytes(content)
     old = (current_user.badge_icon_url or "").rsplit("/", 1)[-1]

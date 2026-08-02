@@ -28,6 +28,7 @@ from ..helpers import (
     _set_auth_cookie,
     _clear_auth_cookie,
     _send_reset_email,
+    optimize_image_bytes,
 )
 from ..schemas import (
     UserRegister,
@@ -357,6 +358,7 @@ async def upload_avatar(
     content = await file.read()
     if len(content) > 5 * 1024 * 1024:
         raise HTTPException(400, "File too large (max 5 MB)")
+    content = optimize_image_bytes(content, ext)
     fname = f"avatar_{current_user.id}_{uuid.uuid4().hex[:10]}{ext}"
     (UPLOAD_DIR / fname).write_bytes(content)
     # remove old avatar file

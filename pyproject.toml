@@ -1,0 +1,38 @@
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+exclude = ["frontend", ".git", "__pycache__"]
+
+[tool.ruff.lint]
+# Deliberately narrow for a first pass on an existing codebase: F (pyflakes — unused
+# imports/vars, undefined names, real bugs) + E/W (pycodestyle) + B (bugbear — mutable
+# defaults, bare except, etc). Import-sorting (I) and pyupgrade/simplify (UP/SIM) are
+# left off for now — they'd produce a repo-wide cosmetic-churn commit with zero
+# behavior change, which is a bad first PR to review. Turn them on later, deliberately,
+# as their own commit.
+select = ["E", "F", "W", "B"]
+ignore = [
+    "E501",  # line length is a formatting nit, not a correctness issue — not worth blocking CI over
+    # SQLAlchemy query-building idiom: `.where(Model.col == True)` / `.where(Model.col != None)`
+    # build a SQL BinaryExpression, not a Python truth check — ruff's suggested rewrite
+    # (`Model.col` / `Model.col is not None`) would evaluate to a plain Python bool *before*
+    # reaching .where(), silently turning a NULL-check into a constant-True filter. Real bug,
+    # not a style nit, so these stay off rather than getting "fixed".
+    "E711",
+    "E712",
+    # Single-line if/try one-liners here are deliberate (e.g. a hand-aligned block of
+    # `if 'x' in fields: news.x = body.x` in routers/news.py, or tight offset-tracking
+    # in monitor.py's binary A2S parser) — no behavior change from reflowing them, real
+    # risk of a transcription slip in the binary parser specifically. Not worth it.
+    "E701",
+    "E702",
+]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's DI idiom is `def endpoint(user = Depends(get_current_user))` — B008 exists
+# to catch accidental shared-mutable-default bugs, not this. Without this allowlist
+# every one of the ~300 route handlers in backend/main.py would false-positive.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Body", "fastapi.Header", "fastapi.Cookie", "fastapi.File", "fastapi.Form"]
+
+[tool.ruff.lint.per-file-ignores]
+"backend/tests/*" = ["B"]

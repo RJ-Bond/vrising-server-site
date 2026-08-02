@@ -77,7 +77,6 @@ async def test_rank_delta_before_any_snapshot_exists(client, db_session):
 async def test_snapshot_task_writes_current_standings(db_session, db_engine):
     import backend.main as main
 
-    now = datetime.now(timezone.utc)
     db_session.add_all([
         PlayerRecord(server_num=1, player_name="Alice", total_seconds=10000, session_count=5),
         PlayerRecord(server_num=1, player_name="Bob",   total_seconds=5000,  session_count=5),

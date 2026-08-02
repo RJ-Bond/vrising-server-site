@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, update
 
@@ -129,7 +129,7 @@ async def list_shop_redemptions_admin(
 @router.post("/api/admin/shop/redemptions/{redemption_id}/fulfill", response_model=ShopRedemptionOut)
 async def fulfill_shop_redemption(
     redemption_id: int,
-    body: ShopRedemptionResolveIn = ShopRedemptionResolveIn(),
+    body: ShopRedemptionResolveIn = Body(default_factory=ShopRedemptionResolveIn),
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -152,7 +152,7 @@ async def fulfill_shop_redemption(
 @router.post("/api/admin/shop/redemptions/{redemption_id}/cancel", response_model=ShopRedemptionOut)
 async def cancel_shop_redemption(
     redemption_id: int,
-    body: ShopRedemptionResolveIn = ShopRedemptionResolveIn(),
+    body: ShopRedemptionResolveIn = Body(default_factory=ShopRedemptionResolveIn),
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):

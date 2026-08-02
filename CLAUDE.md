@@ -110,6 +110,53 @@ Three layers, loaded in this order (page inline `<style>` wins last):
     blind CSS-reasoning-only mobile fixes went wrong this same session —
     don't repeat that pattern for backend code, where a mistake means a 500
     or a broken deploy, not just an ugly screenshot.
+- `bash scripts/lint_backend.sh` — ruff (`pyproject.toml` has the rule
+  selection + the *reasons* for each ignore — read it before "fixing" an
+  E711/E712 SQLAlchemy `== True`/`!= None` finding; that rewrite is a real
+  bug in query-building code, not a style nit, which is exactly why it's
+  ignored repo-wide rather than fixed). Wired into CI as its own step.
+- `bash scripts/lint_frontend.sh` — ESLint (flat config: `eslint.config.js`)
+  over the standalone `frontend/*.js` files only (not inline `<script>`
+  blocks in HTML, not vendored `*.min.js`). Needs `npm ci` once (Node/npm are
+  available in CI via `actions/setup-node`; not guaranteed in every dev
+  sandbox). No stylistic rules — real-bug rules only (`no-undef`,
+  `no-unused-vars` scoped to function-local vars only, since many top-level
+  functions are legitimately only called from `onclick="..."` in
+  server-rendered/innerHTML markup ESLint can't see).
+- `.pre-commit-config.yaml` — runs the four checks above (ruff, check_backend,
+  check.sh, lint_frontend) locally before a commit lands, not just in CI.
+  `pip install pre-commit && pre-commit install` once per clone; opt-in, not
+  enforced server-side.
+- **Alembic** (`alembic/`) is set up (env.py bridges its sync migration
+  context to the app's async engine via `run_sync`) with one verified initial
+  migration reproducing today's 41-table schema exactly — but it is **not
+  yet wired into the startup path**. `main.py`'s `lifespan()` still calls
+  `Base.metadata.create_all()` on every boot (fine for fresh installs, does
+  nothing for existing tables/columns on prod). Until that integration
+  happens, a schema change still needs the same manual care it always has;
+  don't assume `alembic upgrade head` runs anywhere in prod yet.
+- **Pillow-based upload optimization** (`optimize_image_bytes()` in
+  `backend/helpers.py`) downscales any upload wider than 2000px and
+  re-compresses it, called from all 4 raster-upload endpoints (admin generic
+  upload, avatar, profile cover, badge icon). Deliberately preserves the
+  source format rather than normalizing to JPEG (several uploads — site
+  logo, hero logo, favicon — need transparency JPEG would flatten), and is a
+  no-op for `.gif`/`.ico` (animation / multi-res icon sets Pillow can't
+  round-trip). Any decode/encode failure silently falls back to the original
+  bytes — it's a size optimization, not a validation gate.
+- **Sentry error monitoring** is wired but **inert by default** — nobody has
+  a Sentry project yet. Backend: gated on `SENTRY_DSN` env var (`main.py`,
+  right after the logging setup) — unset means `sentry_sdk.init()` never
+  runs. Frontend: gated on a hardcoded empty `SENTRY_DSN` constant at the top
+  of `common.js` (couldn't thread it through `/api/settings/public` without
+  touching `admin_settings.py`, out of scope when this was added — revisit if
+  Sentry actually gets adopted). `frontend/sentry.min.js` is a real vendored
+  `@sentry/browser` bundle, only fetched when the constant is non-empty.
+  Turning it on for real also needs the Sentry ingest domain added to
+  `connect-src` in both `nginx/nginx.conf` and `nginx/nginx-ssl.conf` (CSP
+  blocks it otherwise) — see the comment at that line in each file.
+- **Dependabot** (`.github/dependabot.yml`) — weekly PRs for pip (grouped
+  into one), Docker base images, and GitHub Actions versions.
 
 ## Gotchas (bitten by these)
 - **Service worker** (`frontend/sw.js`): never intercept image requests — proxying
@@ -121,7 +168,9 @@ Three layers, loaded in this order (page inline `<style>` wins last):
   `_utc_ts()` / `_fmt_dt()` in `main.py`).
 - **Settings** are key/value in the DB. A new setting needs: add to
   `ALLOWED_SETTING_KEYS` (save allow-list) **and** the `/api/settings/public`
-  keys list in `main.py`, plus admin `SETTINGS_FIELD_KEYS` in `admin.html`.
+  keys list, both in `backend/routers/admin_settings.py` (not `main.py` —
+  moved there in the router split), plus admin `SETTINGS_FIELD_KEYS` in
+  `admin.html`.
 - **FOUC:** don't hard-code placeholder text (e.g. "V RISING") that JS overwrites
   from settings — it flashes on refresh. Leave it empty; JS fills it.
 - Line endings handled by `.gitattributes` (LF). `.shots/` is gitignored.

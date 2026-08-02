@@ -1,4 +1,5 @@
 .env
+node_modules/
 __pycache__/
 *.pyc
 *.pyo
@@ -15,3 +16,4 @@ frontend/.preview_admin_frame.html
 frontend/.admin_mock*
 frontend/.nav_sim.js
 frontend/.index_nav_sim.html
+uv.lock

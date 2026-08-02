@@ -14,3 +14,6 @@ slowapi==0.1.9
 aiosmtplib>=3.0
 pyotp>=2.9.0
 tzdata>=2024.1
+Pillow>=10.3.0
+alembic==1.13.1
+sentry-sdk[fastapi]==2.66.1

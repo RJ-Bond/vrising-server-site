@@ -1,5 +1,44 @@
 /* common.js — shared utilities for all pages */
 
+// ─── Optional Sentry error monitoring (frontend) ───────────────────────────
+// Off by default: SENTRY_DSN is empty, so this whole block is a total no-op — no
+// extra script fetch, no network call. To enable: paste a DSN from a Sentry project
+// (sentry.io or self-hosted) below, and add that project's ingest domain to
+// connect-src in nginx/nginx.conf + nginx/nginx-ssl.conf (see the comment at that
+// line — the SDK POSTs error reports there even though it's vendored locally).
+//
+// This is static frontend with no build step and no server-side templating, so the
+// DSN can't be threaded in via an env var the way the backend's SENTRY_DSN is. The
+// existing /api/settings/public mechanism (see CLAUDE.md's "Settings" gotcha) would
+// need a new key added to ALLOWED_SETTING_KEYS + the public-keys list — both of
+// which currently live in backend/routers/admin_settings.py, out of scope for this
+// change. A hardcoded constant here is the simpler, equally-safe alternative for an
+// opt-in feature flag with no admin-panel exposure yet; revisit if/when Sentry
+// actually gets adopted and a toggle in admin.html is worth building.
+//
+// frontend/sentry.min.js is the real, complete @sentry/browser 10.69.0 CDN bundle
+// (vendored the same way purify.min.js / quill.min.js are — see those files' own
+// header comments), not a stub. It's only fetched, via a dynamically injected
+// <script> tag, when a DSN is actually configured — so unconfigured sites (the
+// default) never load it.
+const SENTRY_DSN = ''; // e.g. 'https://examplePublicKey@o0.ingest.sentry.io/0'
+
+if (SENTRY_DSN) {
+  const _sentryScript = document.createElement('script');
+  _sentryScript.src = '/sentry.min.js';
+  _sentryScript.onload = function () {
+    // Defensive check: works identically whether or not the vendored file is
+    // actually present/loaded successfully.
+    if (typeof Sentry !== 'undefined') {
+      Sentry.init({
+        dsn: SENTRY_DSN,
+        tracesSampleRate: 0.1,
+      });
+    }
+  };
+  document.head.appendChild(_sentryScript);
+}
+
 // Inject shared styles once: toast animation + a keyboard-focus ring (a11y).
 // :focus-visible shows only on keyboard navigation (not mouse clicks), so it
 // adds an accessible focus indicator without affecting pointer users.
