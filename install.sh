@@ -119,6 +119,22 @@ start_containers() {
   log "Сборка и запуск контейнеров..."
   docker compose -f "$INSTALL_DIR/docker-compose.yml" --env-file "$INSTALL_DIR/.env" up -d --build
 
+  # nginx.conf/nginx-ssl.conf are bind-mounted (docker-compose.yml), not baked into the
+  # nginx image — `up -d --build` only recreates a container when its OWN compose
+  # service definition changes (image/env/volumes list), so editing just the mounted
+  # config file's *content* never triggers that, no matter how many times this script
+  # runs. Worse: nginx resolves proxy_pass hostnames (e.g. vrising_api) to an IP ONCE,
+  # at worker startup, and caches it for the container's entire lifetime (no `resolver`
+  # directive configured) — so once `web` (or any upstream) gets recreated with a new
+  # IP by the `up -d --build` above, a long-running nginx starts throwing 502 "Connection
+  # refused" against the stale IP. This is exactly what took the site down on
+  # 2026-08-02: nginx had been running 11 days untouched, never picked up ANY nginx.conf
+  # change in that window, then started 502ing the moment `web` got a new IP from an
+  # unrelated deploy. An unconditional restart here is cheap (nginx starts in ~1s) and
+  # fixes both problems at once — new config loaded, upstream IPs re-resolved.
+  log "Перезапуск nginx (подхват конфига + пересборка DNS-кэша до апстримов)..."
+  docker compose -f "$INSTALL_DIR/docker-compose.yml" --env-file "$INSTALL_DIR/.env" restart nginx
+
   log "Ожидание запуска API (до 60 сек)..."
   for i in $(seq 1 30); do
     if curl -sf http://localhost/api/monitor/status &>/dev/null; then
