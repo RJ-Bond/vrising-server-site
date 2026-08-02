@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 
 from ..database import get_db
 from ..models import User, Report
@@ -40,12 +40,16 @@ async def list_reports(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     status: str = Query(""),
+    q: str = Query(""),
     _: User = Depends(get_moderator_user),
     db: AsyncSession = Depends(get_db),
 ):
     filters = []
     if status.strip():
         filters.append(Report.status == status.strip())
+    if q.strip():
+        like = f"%{q.strip()}%"
+        filters.append(or_(Report.reason.ilike(like), Report.admin_note.ilike(like)))
     total = (await db.execute(select(func.count(Report.id)).where(*filters))).scalar_one()
     rows = (await db.execute(
         select(Report).where(*filters).order_by(Report.created_at.desc())

@@ -138,6 +138,7 @@
     tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 rgba(181,0,42,0.7); }
     .pagination-btn { background: rgba(14,3,24,0.8); border: 1px solid rgba(150,0,28,0.3); color: var(--muted); padding: .35rem .75rem; border-radius: .4rem; cursor: pointer; font-size: .8rem; transition: all .2s; }
     .pagination-btn:hover, .pagination-btn.active { border-color: var(--accent); color: var(--text); box-shadow: 0 0 8px var(--accent-glow); }
+    .pagination-ellipsis { color: var(--muted); font-size: .8rem; padding: .35rem .3rem; user-select: none; }
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: rgba(8,0,16,0.5); }
     ::-webkit-scrollbar-thumb { background: rgba(150,0,28,0.5); border-radius: 3px; }
@@ -474,11 +475,23 @@
       </span>
     </div>
     <div class="flex items-center gap-3">
+      <button onclick="openQuickNav()" class="btn-ghost" title="Быстрый переход по разделам (Ctrl+K)" aria-label="Быстрый переход по разделам" style="display:flex;align-items:center;gap:.4rem;font-size:.75rem;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span style="opacity:.6;font-family:monospace;">Ctrl+K</span>
+      </button>
       <span id="nav-username" class="text-sm" style="color:var(--muted);"></span>
       <button onclick="logout()" class="btn-ghost">Выйти</button>
     </div>
   </div>
 </nav>
+
+<!-- Quick nav (Ctrl+K) -->
+<div id="quicknav-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:flex-start;justify-content:center;padding-top:10vh;" onclick="if(event.target===this)closeQuickNav()">
+  <div style="background:rgba(14,3,24,.98);border:1px solid rgba(150,0,28,.4);border-radius:.75rem;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;">
+    <input id="quicknav-input" type="text" placeholder="Перейти в раздел…" oninput="_quickNavFilter()" onkeydown="_quickNavKeydown(event)" style="width:100%;box-sizing:border-box;background:none;border:none;border-bottom:1px solid rgba(150,0,28,.3);padding:.9rem 1.1rem;color:var(--text);font-size:.9rem;outline:none;">
+    <div id="quicknav-results" style="max-height:50vh;overflow-y:auto;"></div>
+  </div>
+</div>
 
 <div class="relative z-10 max-w-7xl mx-auto px-4 py-8 flex gap-5">
 
@@ -555,24 +568,24 @@
           <div id="dash-users" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Пользователи</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('news')" title="Перейти к новостям" style="border-top:2px solid rgba(181,0,42,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('news')" title="Перейти к новостям" style="border-top:2px solid rgba(200,0,42,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">📰</div>
-          <div id="dash-news" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
+          <div id="dash-news" style="font-size:1.75rem;font-family:'Cinzel',serif;color:#c8002a;line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Новости</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('comments')" title="Перейти к комментариям" style="border-top:2px solid rgba(90,130,240,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('comments')" title="Перейти к комментариям" style="border-top:2px solid rgba(153,85,238,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">💬</div>
-          <div id="dash-comments" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
+          <div id="dash-comments" style="font-size:1.75rem;font-family:'Cinzel',serif;color:#9955ee;line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Комментарии</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('files')" title="Перейти к файлам" style="border-top:2px solid rgba(120,80,200,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('files')" title="Перейти к файлам" style="border-top:2px solid rgba(96,192,240,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">📁</div>
-          <div id="dash-files" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
+          <div id="dash-files" style="font-size:1.75rem;font-family:'Cinzel',serif;color:#60c0f0;line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Файлы</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('users')" title="Активные за 7 дней" style="border-top:2px solid rgba(96,192,240,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('users')" title="Активные за 7 дней" style="border-top:2px solid rgba(45,212,191,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">⚡</div>
-          <div id="dash-new7" style="font-size:1.75rem;font-family:'Cinzel',serif;color:#60c0f0;line-height:1;">—</div>
+          <div id="dash-new7" style="font-size:1.75rem;font-family:'Cinzel',serif;color:#2dd4bf;line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Активны 7 дней</div>
         </div>
         <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('resets')" title="Перейти к сбросу паролей" style="border-top:2px solid rgba(251,191,36,.3);position:relative;overflow:hidden;">
@@ -774,6 +787,7 @@
           <p style="font-size:.78rem;color:var(--muted);">Управление серверами, оформлением и безопасностью</p>
         </div>
         <div style="display:flex;align-items:center;gap:.6rem;">
+          <input id="settings-search" type="text" placeholder="Поиск по настройкам…" class="dark-input" style="width:auto;font-size:.78rem;padding:.45rem .8rem;" oninput="filterSettings()">
           <button id="save-all-btn" onclick="saveAllSettings()" class="btn-primary" style="font-size:.75rem;padding:.5rem 1rem;">💾 Сохранить все изменения</button>
           <button onclick="exportSettings()" class="btn-ghost" style="font-size:.75rem;display:inline-flex;align-items:center;gap:.35rem;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="/icons.svg#icon-download"></use></svg>
@@ -1914,9 +1928,14 @@
           <span id="comments-total" style="font-size:.78rem;color:var(--muted);white-space:nowrap;"></span>
         </div>
       </div>
+      <div id="comments-bulk-panel" style="display:none;align-items:center;gap:.75rem;padding:.75rem 1rem;margin-bottom:.75rem;background:rgba(120,0,28,.15);border:1px solid rgba(180,0,42,.3);border-radius:.6rem;">
+        <span id="comments-bulk-count" style="font-size:.82rem;color:var(--text);"></span>
+        <button onclick="bulkDeleteComments()" class="btn-danger" style="font-size:.78rem;">Удалить выбранное</button>
+        <button onclick="clearCommentsBulk()" class="btn-ghost" style="font-size:.78rem;">Отменить выбор</button>
+      </div>
       <div class="glass-card rounded-xl overflow-hidden">
         <table>
-          <thead><tr><th>Автор</th><th>Новость</th><th>Комментарий</th><th>Дата</th><th></th></tr></thead>
+          <thead><tr><th><input type="checkbox" id="select-all-comments" onchange="toggleSelectAllComments(this)" style="accent-color:var(--accent)"></th><th>Автор</th><th>Новость</th><th>Комментарий</th><th>Дата</th><th></th></tr></thead>
           <tbody id="comments-table-body"></tbody>
         </table>
       </div>
@@ -1925,14 +1944,15 @@
 
     <!-- PLAYERS -->
     <div id="section-players" class="hidden">
-      <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h1 class="section-title">Игроки</h1>
-        <div style="display:flex;gap:.5rem;align-items:center;">
-          <select id="players-server" onchange="loadAdminPlayers()" class="dark-input" style="width:auto;padding:.4rem .7rem;font-size:.8rem;">
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+          <input id="players-search" type="text" placeholder="Поиск по имени…" class="dark-input" style="width:auto;padding:.4rem .7rem;font-size:.8rem;" oninput="_playersSearchDebounced()">
+          <select id="players-server" onchange="loadAdminPlayers(1)" class="dark-input" style="width:auto;padding:.4rem .7rem;font-size:.8rem;">
             <option value="1">Сервер 1</option>
             <option value="2">Сервер 2</option>
           </select>
-          <select id="players-period" onchange="loadAdminPlayers()" class="dark-input" style="width:auto;padding:.4rem .7rem;font-size:.8rem;">
+          <select id="players-period" onchange="loadAdminPlayers(1)" class="dark-input" style="width:auto;padding:.4rem .7rem;font-size:.8rem;">
             <option value="all">Всё время</option>
             <option value="week">Неделя</option>
           </select>
@@ -1948,7 +1968,13 @@
           <tbody id="players-table-body"></tbody>
         </table>
       </div>
-      <div id="players-count-footer" class="table-foot" style="display:none;"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.75rem;flex-wrap:wrap;gap:.5rem;">
+        <div id="players-count-footer" class="table-foot" style="display:none;"></div>
+        <div style="display:flex;gap:.5rem;">
+          <button id="players-prev" onclick="loadAdminPlayers(_playersPage-1)" class="pagination-btn" disabled>← Пред.</button>
+          <button id="players-next" onclick="loadAdminPlayers(_playersPage+1)" class="pagination-btn">След. →</button>
+        </div>
+      </div>
     </div>
 
     <!-- FILES -->
@@ -2001,16 +2027,25 @@
     <div id="section-reports" class="hidden">
       <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h1 class="section-title">Жалобы</h1>
-        <select id="reports-status-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="loadReports(1)">
-          <option value="">Все</option>
-          <option value="pending">Ожидают рассмотрения</option>
-          <option value="reviewed">Рассмотрены</option>
-          <option value="dismissed">Отклонены</option>
-        </select>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <input id="reports-search" type="text" placeholder="Поиск по причине…" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" oninput="_reportsSearchDebounced()">
+          <select id="reports-status-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="loadReports(1)">
+            <option value="">Все</option>
+            <option value="pending">Ожидают рассмотрения</option>
+            <option value="reviewed">Рассмотрены</option>
+            <option value="dismissed">Отклонены</option>
+          </select>
+        </div>
+      </div>
+      <div id="reports-bulk-panel" style="display:none;align-items:center;gap:.75rem;padding:.75rem 1rem;margin-bottom:.75rem;background:rgba(120,0,28,.15);border:1px solid rgba(180,0,42,.3);border-radius:.6rem;">
+        <span id="reports-bulk-count" style="font-size:.82rem;color:var(--text);"></span>
+        <button onclick="bulkReviewReports('reviewed')" style="font-size:.78rem;background:rgba(0,150,100,.2);border:1px solid rgba(0,200,130,.3);border-radius:.4rem;padding:.4rem .8rem;color:#6ee7b7;cursor:pointer;">✓ Отметить рассмотренными</button>
+        <button onclick="bulkReviewReports('dismissed')" style="font-size:.78rem;background:rgba(100,100,100,.15);border:1px solid rgba(150,150,150,.2);border-radius:.4rem;padding:.4rem .8rem;color:var(--muted);cursor:pointer;">✗ Отклонить</button>
+        <button onclick="clearReportsBulk()" class="btn-ghost" style="font-size:.78rem;">Отменить выбор</button>
       </div>
       <div class="glass-card rounded-xl overflow-hidden">
         <table>
-          <thead><tr><th>ID</th><th>Тип</th><th>ID объекта</th><th>Причина</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
+          <thead><tr><th><input type="checkbox" id="select-all-reports" onchange="toggleSelectAllReports(this)" style="accent-color:var(--accent)"></th><th>ID</th><th>Тип</th><th>ID объекта</th><th>Причина</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
           <tbody id="reports-table-body"></tbody>
         </table>
       </div>
@@ -2114,7 +2149,10 @@
     <div id="section-errors" class="hidden">
       <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h1 class="section-title">Лог ошибок</h1>
-        <span id="errors-total" style="font-size:.78rem;color:var(--muted);"></span>
+        <div style="display:flex;align-items:center;gap:.75rem;">
+          <input id="errors-search" type="text" placeholder="Поиск по пути или тексту ошибки…" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" oninput="_errorsSearchDebounced()">
+          <span id="errors-total" style="font-size:.78rem;color:var(--muted);"></span>
+        </div>
       </div>
       <div class="glass-card rounded-xl overflow-hidden">
         <table>
@@ -2129,19 +2167,32 @@
     <div id="section-media" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
         <h2 class="section-title">Медиатека</h2>
-        <button onclick="loadMedia()" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
+        <div style="display:flex;gap:.5rem;align-items:center;">
+          <input id="media-search" type="text" placeholder="Поиск по имени файла…" class="dark-input" style="width:auto;padding:.4rem .7rem;font-size:.8rem;" oninput="_mediaFilter()">
+          <button onclick="loadMedia()" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
+        </div>
       </div>
       <div id="media-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;">
         <div style="color:var(--muted);font-size:.82rem;grid-column:1/-1;text-align:center;padding:2rem 0;">Загрузка…</div>
       </div>
       <div id="media-empty" style="display:none;text-align:center;padding:3rem 1rem;color:var(--muted);font-size:.85rem;">Нет загруженных файлов</div>
+      <div id="media-pagination" style="display:flex;justify-content:center;gap:.5rem;margin-top:1rem;"></div>
     </div>
 
     <!-- EVENTS -->
     <div id="section-events" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
         <h2 class="section-title">События и турниры</h2>
-        <button onclick="openEventEditor(null)" class="btn-primary" style="font-size:.82rem;">+ Создать событие</button>
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+          <select id="events-status-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="loadEvents(1)">
+            <option value="">Все статусы</option>
+            <option value="upcoming">Предстоящие</option>
+            <option value="active">Активные</option>
+            <option value="ended">Завершённые</option>
+            <option value="cancelled">Отменённые</option>
+          </select>
+          <button onclick="openEventEditor(null)" class="btn-primary" style="font-size:.82rem;">+ Создать событие</button>
+        </div>
       </div>
 
       <!-- Events list -->
@@ -2155,6 +2206,7 @@
           </tbody>
         </table>
       </div>
+      <div id="events-pagination" class="flex gap-2 mt-4"></div>
 
       <!-- Event editor modal -->
       <div id="event-editor-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
@@ -2745,14 +2797,7 @@ async function loadAdminNews(page = 1) {
       </div>`;
     list.appendChild(el);
   });
-  const pag = document.getElementById('admin-news-pagination');
-  pag.innerHTML = '';
-  for (let i = 1; i <= data.pages; i++) {
-    const b = document.createElement('button');
-    b.className = 'pagination-btn' + (i === page ? ' active' : '');
-    b.textContent = i; b.onclick = () => loadAdminNews(i);
-    pag.appendChild(b);
-  }
+  renderPagination('admin-news-pagination', page, data.pages, loadAdminNews);
 }
 
 // showToast — defined in common.js
@@ -2773,7 +2818,67 @@ function closeConfirm() {
   document.getElementById('confirm-modal').style.display = 'none';
   if (_confirmOnCancel) { const cb = _confirmOnCancel; _confirmOnCancel = null; cb(); }
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeConfirm(); closePreview(); } });
+// Closing every modal on Escape, not just the confirm dialog, so pressing it
+// anywhere in admin.html does the expected thing — previously only the confirm
+// modal and news preview responded, event/shop-item/template editors were stuck
+// open until you clicked their own close button.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  closeConfirm();
+  closePreview();
+  closeQuickNav();
+  if (typeof closeEventEditor === 'function') closeEventEditor();
+  if (typeof closeShopItemEditor === 'function') closeShopItemEditor();
+  if (typeof closeTemplates === 'function') closeTemplates();
+});
+
+// ─── Quick nav (Ctrl+K) ─────────────────────────────────────────────────────
+// Reads section names straight off the sidebar buttons (id="btn-X" + visible label)
+// rather than a hand-maintained list, so it never drifts out of sync when a section
+// is added/renamed. Only buttons the current role can actually see (offsetParent
+// null'd by applyRoleVisibility()'s display:none) are offered.
+let _quickNavItems = [];
+function openQuickNav() {
+  const overlay = document.getElementById('quicknav-overlay');
+  if (!overlay) return;
+  _quickNavItems = [...document.querySelectorAll('.sidebar-btn')]
+    .filter(b => b.id && b.offsetParent !== null)
+    .map(b => ({ id: b.id.replace(/^btn-/, ''), label: b.textContent.trim() }));
+  overlay.style.display = 'flex';
+  const input = document.getElementById('quicknav-input');
+  input.value = '';
+  _renderQuickNavResults(_quickNavItems);
+  requestAnimationFrame(() => input.focus());
+}
+function closeQuickNav() {
+  const overlay = document.getElementById('quicknav-overlay');
+  if (overlay) overlay.style.display = 'none';
+}
+function _renderQuickNavResults(items) {
+  const el = document.getElementById('quicknav-results');
+  if (!el) return;
+  if (!items.length) { el.innerHTML = '<div style="padding:1rem 1.1rem;color:var(--muted);font-size:.82rem;">Ничего не найдено</div>'; return; }
+  el.innerHTML = items.map((it, i) => `
+    <div class="quicknav-item" data-section="${it.id}" onclick="showSection('${it.id}');closeQuickNav();"
+      style="padding:.65rem 1.1rem;cursor:pointer;font-size:.85rem;color:${i===0?'var(--text)':'var(--muted)'};background:${i===0?'rgba(150,0,28,.15)':'none'};border-bottom:1px solid rgba(255,255,255,.04);"
+      onmouseover="this.style.background='rgba(150,0,28,.15)'" onmouseout="this.style.background=[...document.querySelectorAll('.quicknav-item')].indexOf(this)===0?'rgba(150,0,28,.15)':'none'">${esc(it.label)}</div>
+  `).join('');
+}
+function _quickNavFilter() {
+  const q = document.getElementById('quicknav-input').value.trim().toLowerCase();
+  _renderQuickNavResults(q ? _quickNavItems.filter(it => it.label.toLowerCase().includes(q)) : _quickNavItems);
+}
+function _quickNavKeydown(e) {
+  if (e.key !== 'Enter') return;
+  const first = document.querySelector('.quicknav-item');
+  if (first) { showSection(first.dataset.section); closeQuickNav(); }
+}
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    openQuickNav();
+  }
+});
 
 async function deleteNews(id) {
   showConfirm({
@@ -3057,6 +3162,23 @@ async function submitEditor() {
 // ─── Settings ─────────────────────────────────────────────────────────────
 const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','hero_logo_url','hero_subtitle','favicon_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','plugin_api_key','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time','maintenance_start_time','maintenance_fallback_image','nav_hidden'];
 let _settingsBaseline = {};
+
+// Client-side filter over the existing .s-card blocks — cheaper and safer than
+// restructuring 52 settings fields into tabs; matches label/heading text within each
+// card, hides cards with no match. Whole .s-row hidden too once every card inside it
+// is filtered out, so an empty row doesn't leave a gap.
+function filterSettings() {
+  const q = (document.getElementById('settings-search')?.value || '').trim().toLowerCase();
+  document.querySelectorAll('#section-settings .s-row').forEach(row => {
+    let anyVisible = false;
+    row.querySelectorAll(':scope > .s-card').forEach(card => {
+      const match = !q || card.textContent.toLowerCase().includes(q);
+      card.style.display = match ? '' : 'none';
+      if (match) anyVisible = true;
+    });
+    row.style.display = anyVisible ? '' : 'none';
+  });
+}
 
 async function loadSettings() {
   const res = await fetch(`${API}/admin/settings`, { credentials: 'include', headers: authH() });
@@ -4368,7 +4490,7 @@ async function unbanUserAction(banId, username) {
 async function deleteUser(userId, username) {
   showConfirm({
     title: 'Удалить пользователя?',
-    text: `Пользователь «${username}» будет удалён без возможности восстановления.`,
+    text: `Пользователь «${username}» и всё связанное с ним будет удалено без возможности восстановления: комментарии, реакции, личные сообщения, история очков/заказов в магазине, уведомления, голоса в опросах. Действие необратимо.`,
     onOk: async () => {
       const res = await fetch(`${API}/admin/users/${userId}`, { method: 'DELETE', credentials: 'include', headers: authH() });
       if (res.ok) { loadUsers(); loadSidebarBadges(); } else showToast('Ошибка удаления пользователя', 'error');
@@ -4768,11 +4890,42 @@ async function loadDashGraph() {
       return;
     }
     if (empty) empty.style.display = 'none';
-    renderPlayerChart(canvas, { snapshots: snaps, color, rgb }, { timeMode: 'date', xTicks: 6 });
+    // No forced timeMode: this graph often shows <36h of data (e.g. right after a
+    // fresh install), and forcing 'date' mode there duplicated the same day label
+    // across all 6 ticks ("01.08, 02.08, 02.08, 02.08, 02.08") — renderPlayerChart's
+    // own auto-detection (time vs date, based on the actual data span) handles this.
+    renderPlayerChart(canvas, { snapshots: snaps, color, rgb }, { xTicks: 6 });
   } catch {
     renderPlayerChart(canvas, [], {});
     if (empty) { empty.style.display = ''; empty.textContent = 'Ошибка загрузки графика.'; }
   }
+}
+
+// ─── Shared pagination-button renderer ────────────────────────────────────
+// Replaces 6 near-identical hand-rolled implementations across this file (a plain
+// unbounded loop for news/comments/log — hundreds of buttons on a large table;
+// inline-styled buttons instead of .pagination-btn for reports; a crude
+// first-10-pages-only cap with no way to reach later pages for auditlog/shop-queue).
+// Truncates with "…" beyond a small window around the current page.
+function renderPagination(containerId, page, totalPages, onPageClick) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (!totalPages || totalPages <= 1) { el.innerHTML = ''; return; }
+  const windowSize = 2; // pages shown on each side of the current one
+  const shown = [];
+  for (let p = 1; p <= totalPages; p++) {
+    if (p === 1 || p === totalPages || Math.abs(p - page) <= windowSize) shown.push(p);
+  }
+  let html = '', prev = 0;
+  for (const p of shown) {
+    if (prev && p - prev > 1) html += `<span class="pagination-ellipsis">…</span>`;
+    html += `<button class="pagination-btn${p === page ? ' active' : ''}" data-page="${p}">${p}</button>`;
+    prev = p;
+  }
+  el.innerHTML = html;
+  el.querySelectorAll('button[data-page]').forEach(b => {
+    b.onclick = () => onPageClick(Number(b.dataset.page));
+  });
 }
 
 // ─── Comments moderation ──────────────────────────────────────────────────
@@ -4786,22 +4939,24 @@ const _commentsSearchDebounced = debounce(() => loadAdminComments(1), 350);
 
 async function loadAdminComments(page = 1) {
   _commentsPage = page;
-  tableShowSkeleton('comments-table-body', 5);
+  tableShowSkeleton('comments-table-body', 6);
+  clearCommentsBulk();
   const q = encodeURIComponent((document.getElementById('comments-search')?.value || '').trim());
   const newsSlug = encodeURIComponent((document.getElementById('comments-filter-news')?.value || '').trim());
+  const tbody = document.getElementById('comments-table-body');
   try {
     let url = `${API}/admin/comments?page=${page}&per_page=20&q=${q}`;
     if (newsSlug) url += `&news_slug=${newsSlug}`;
     const res = await fetch(url, { credentials: 'include', headers: authH() });
-    if (!res.ok) { handleAuth(res); return; }
+    if (!res.ok) { handleAuth(res); tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; return; }
     const d = await res.json();
     document.getElementById('comments-total').textContent = `Всего: ${d.total}`;
-    const tbody = document.getElementById('comments-table-body');
     if (!d.items.length) {
-      tbody.innerHTML = `<tr><td colspan="5" style="color:var(--muted);text-align:center;">Комментариев нет.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" style="color:var(--muted);text-align:center;">Комментариев нет.</td></tr>`;
     } else {
       tbody.innerHTML = d.items.map(c => `
         <tr>
+          <td><input type="checkbox" class="comment-check" data-id="${c.id}" onchange="_onCommentCheck()" style="accent-color:var(--accent)"></td>
           <td style="font-weight:600;white-space:nowrap;">${esc(c.author)}</td>
           <td style="color:var(--muted);font-size:.78rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.news_title)}</td>
           <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.content)}</td>
@@ -4810,15 +4965,45 @@ async function loadAdminComments(page = 1) {
         </tr>`).join('');
     }
     const pages = Math.ceil(d.total / 20) || 1;
-    const pag = document.getElementById('comments-pagination');
-    pag.innerHTML = '';
-    for (let i = 1; i <= pages; i++) {
-      const b = document.createElement('button');
-      b.className = 'pagination-btn' + (i === page ? ' active' : '');
-      b.textContent = i; b.onclick = () => loadAdminComments(i);
-      pag.appendChild(b);
-    }
-  } catch { }
+    renderPagination('comments-pagination', page, pages, loadAdminComments);
+  } catch { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+}
+
+function toggleSelectAllComments(cb) {
+  document.querySelectorAll('.comment-check').forEach(el => { el.checked = cb.checked; });
+  _onCommentCheck();
+}
+function clearCommentsBulk() {
+  document.querySelectorAll('.comment-check').forEach(el => el.checked = false);
+  const sa = document.getElementById('select-all-comments');
+  if (sa) sa.checked = false;
+  _onCommentCheck();
+}
+function _onCommentCheck() {
+  const ids = [...document.querySelectorAll('.comment-check:checked')].map(el => el.dataset.id);
+  const panel = document.getElementById('comments-bulk-panel');
+  const countEl = document.getElementById('comments-bulk-count');
+  if (panel) panel.style.display = ids.length ? 'flex' : 'none';
+  if (countEl) countEl.textContent = `Выбрано: ${ids.length}`;
+}
+async function bulkDeleteComments() {
+  const ids = [...document.querySelectorAll('.comment-check:checked')].map(el => el.dataset.id);
+  if (!ids.length) return;
+  showConfirm({
+    title: `Удалить ${ids.length} комментариев?`,
+    text: 'Действие необратимо.',
+    onOk: async () => {
+      // No bulk-delete endpoint on the backend for comments — N parallel single-DELETE
+      // requests instead of adding one, since a moderation batch is realistically tens
+      // of rows, not thousands, and this avoids a new endpoint for a rare admin action.
+      const results = await Promise.all(ids.map(id =>
+        fetch(`${API}/admin/comments/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() }).then(r => r.ok).catch(() => false)
+      ));
+      const okCount = results.filter(Boolean).length;
+      showToast(`Удалено: ${okCount} из ${ids.length}`, okCount === ids.length ? 'success' : 'error');
+      loadAdminComments(_commentsPage);
+    },
+  });
 }
 
 async function deleteAdminComment(id) {
@@ -4834,54 +5019,58 @@ async function deleteAdminComment(id) {
   });
 }
 
-async function deleteComment(id) {
-  if (!confirm('Удалить комментарий?')) return;
-  try {
-    const r = await fetch(`${API}/admin/comments/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() });
-    if (r.ok) {
-      const row = document.getElementById(`comment-row-${id}`);
-      if (row) row.remove();
-    } else {
-      const d = await r.json().catch(() => {});
-      showToast(d?.detail || 'Ошибка удаления', 'error');
-    }
-  } catch { showToast('Ошибка', 'error'); }
-}
-
 // ─── Players ──────────────────────────────────────────────────────────────
-async function loadAdminPlayers() {
+const _PLAYERS_PER_PAGE = 20;
+let _playersPage = 1;
+const _playersSearchDebounced = debounce(() => loadAdminPlayers(1), 350);
+
+async function loadAdminPlayers(page = 1) {
+  _playersPage = page;
   const server = document.getElementById('players-server')?.value || '1';
   const period = document.getElementById('players-period')?.value || 'all';
+  const q = encodeURIComponent((document.getElementById('players-search')?.value || '').trim());
   tableShowSkeleton('players-table-body', 4);
+  const tbody = document.getElementById('players-table-body');
+  const prevBtn = document.getElementById('players-prev');
+  const nextBtn = document.getElementById('players-next');
   try {
-    const res = await fetch(`${API}/leaderboard?server=${server}&period=${period}`);
-    if (!res.ok) return;
-    const items = await res.json();
+    // per_page one more than the page size — a full extra row tells us a next page
+    // exists without a separate count endpoint (GET /api/leaderboard is also the
+    // PUBLIC leaderboard.html's endpoint, returning a bare list — adding a
+    // {items,total} wrapper here would be a breaking change for that page).
+    const res = await fetch(`${API}/leaderboard?server=${server}&period=${period}&q=${q}&page=${page}&per_page=${_PLAYERS_PER_PAGE + 1}`);
+    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; return; }
+    const fetched = await res.json();
+    const hasMore = fetched.length > _PLAYERS_PER_PAGE;
+    const items = hasMore ? fetched.slice(0, _PLAYERS_PER_PAGE) : fetched;
     _playersDataCache = items;
-    const tbody = document.getElementById('players-table-body');
+    if (prevBtn) prevBtn.disabled = page <= 1;
+    if (nextBtn) nextBtn.disabled = !hasMore;
     if (!items.length) {
-      tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);text-align:center;">Нет данных.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="4" style="color:var(--muted);text-align:center;">${page > 1 ? 'Больше записей нет.' : 'Нет данных.'}</td></tr>`;
       return;
     }
     tbody.innerHTML = items.map((p, i) => `
       <tr>
-        <td style="color:var(--muted);">${i + 1}</td>
+        <td style="color:var(--muted);">${(page - 1) * _PLAYERS_PER_PAGE + i + 1}</td>
         <td style="font-weight:600;">${esc(p.player_name)}</td>
         <td style="color:var(--muted);">${Math.floor((p.total_seconds || 0) / 3600)}ч ${Math.floor(((p.total_seconds || 0) % 3600) / 60)}м</td>
         <td style="color:var(--muted);font-size:.78rem;">${p.last_seen ? fmtDateTime(p.last_seen) : '—'}</td>
       </tr>`).join('');
     const pf = document.getElementById('players-count-footer');
-    if (pf) { pf.style.display = 'block'; pf.textContent = `Всего: ${items.length} игроков`; }
-  } catch { }
+    if (pf) { pf.style.display = 'block'; pf.textContent = `Страница ${page}${hasMore ? '' : ' (последняя)'}`; }
+  } catch { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
 }
 
 // ─── File manager ─────────────────────────────────────────────────────────
 let _allFiles = [];
 
 async function loadAdminFiles() {
+  const grid0 = document.getElementById('files-grid');
+  if (grid0) grid0.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Загрузка…</p>`;
   try {
     const res = await fetch(`${API}/admin/uploads`, { credentials: 'include', headers: authH() });
-    if (!res.ok) { handleAuth(res); return; }
+    if (!res.ok) { handleAuth(res); if (grid0) grid0.innerHTML = `<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки.</p>`; return; }
     const files = await res.json();
     _allFiles = files;
     document.getElementById('files-count').textContent = `Файлов: ${files.length}`;
@@ -4912,7 +5101,7 @@ async function loadAdminFiles() {
         </div>
       </div>`;
     }).join('');
-  } catch { }
+  } catch { if (grid0) grid0.innerHTML = `<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки.</p>`; }
 }
 
 async function deleteUploadedFile(filename) {
@@ -4975,8 +5164,27 @@ async function exportLogCsv() {
 
 let _playersDataCache = [];
 
-function exportPlayersCsv() {
-  const items = _playersDataCache;
+async function exportPlayersCsv() {
+  // Loops through every page (like exportLogCsv below) rather than exporting just
+  // _playersDataCache — that only ever holds the CURRENTLY VISIBLE page since players
+  // got real pagination; exporting just the cache would silently truncate the CSV to
+  // one page's worth of players, same class of bug fixed by adding pagination itself.
+  showToast('Загрузка игроков…', 'info');
+  const server = document.getElementById('players-server')?.value || '1';
+  const period = document.getElementById('players-period')?.value || 'all';
+  const q = encodeURIComponent((document.getElementById('players-search')?.value || '').trim());
+  let items = [];
+  let page = 1;
+  try {
+    while (true) {
+      const res = await fetch(`${API}/leaderboard?server=${server}&period=${period}&q=${q}&page=${page}&per_page=100`);
+      if (!res.ok) break;
+      const batch = await res.json();
+      items = items.concat(batch);
+      if (batch.length < 100) break;
+      page++;
+    }
+  } catch { showToast('Ошибка загрузки', 'error'); return; }
   if (!items.length) { showToast('Нет данных для экспорта', 'info'); return; }
   downloadCsv(
     `players-${new Date().toISOString().slice(0,10)}.csv`,
@@ -5038,14 +5246,7 @@ async function loadAuditLog(page = 1) {
         </tr>`).join('');
     }
     const pages = Math.ceil(d.total / 50) || 1;
-    const pag = document.getElementById('log-pagination');
-    pag.innerHTML = '';
-    for (let i = 1; i <= pages; i++) {
-      const b = document.createElement('button');
-      b.className = 'pagination-btn' + (i === page ? ' active' : '');
-      b.textContent = i; b.onclick = () => loadAuditLog(i);
-      pag.appendChild(b);
-    }
+    renderPagination('log-pagination', page, pages, loadAuditLog);
   } catch { }
 }
 
@@ -5343,19 +5544,25 @@ async function executeBulk(action) {
   const ids = _getCheckedUserIds();
   if (!ids.length) return;
   const labels = { ban: 'заблокировать', unban: 'разблокировать', delete: 'удалить' };
-  if (!confirm(`${labels[action]} ${ids.length} пользователей?`)) return;
-  const r = await fetch(`${API}/admin/users/bulk`, {
-    method: 'POST', credentials: 'include', headers: authH(),
-    body: JSON.stringify({ user_ids: ids, action }),
+  showConfirm({
+    title: `${labels[action]} ${ids.length} пользователей?`,
+    text: action === 'delete' ? 'Это действие необратимо.' : 'Действие применится сразу ко всем выбранным аккаунтам.',
+    okLabel: labels[action].charAt(0).toUpperCase() + labels[action].slice(1),
+    onOk: async () => {
+      const r = await fetch(`${API}/admin/users/bulk`, {
+        method: 'POST', credentials: 'include', headers: authH(),
+        body: JSON.stringify({ user_ids: ids, action }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        showToast(`Выполнено: ${d.affected} пользователей`, 'success');
+        clearBulk();
+        loadUsers();
+      } else {
+        showToast('Ошибка выполнения операции', 'error');
+      }
+    },
   });
-  if (r.ok) {
-    const d = await r.json();
-    showToast(`Выполнено: ${d.affected} пользователей`, 'success');
-    clearBulk();
-    loadUsers();
-  } else {
-    showToast('Ошибка выполнения операции', 'error');
-  }
 }
 
 // ─── Templates ────────────────────────────────────────────────────────────
@@ -5398,6 +5605,15 @@ function applyTemplate(t) {
 }
 
 // ─── Media library ────────────────────────────────────────────────────────
+// GET /api/admin/media has no page/search params (it's a plain filesystem scan, not
+// a DB query) — pagination + search are done client-side over the full list, cached
+// here. Cheap for the realistic scale of an uploads folder; revisit server-side if
+// this ever needs to handle thousands of files.
+let _mediaAllItems = [];
+let _mediaPage = 1;
+const _MEDIA_PER_PAGE = 24;
+const _mediaFilter = debounce(() => { _mediaPage = 1; _renderMediaGrid(); }, 250);
+
 async function loadMedia() {
   const grid = document.getElementById('media-grid');
   const empty = document.getElementById('media-empty');
@@ -5406,53 +5622,80 @@ async function loadMedia() {
   if (empty) empty.style.display = 'none';
   try {
     const d = await fetch(`${API}/admin/media`, { credentials: 'include', headers: authH() }).then(r => r.json());
-    const items = d.items || [];
-    if (!items.length) {
-      grid.innerHTML = '';
-      if (empty) empty.style.display = '';
-      return;
-    }
-    const imgExts = ['jpg','jpeg','png','gif','webp','svg','ico'];
-    grid.innerHTML = items.map(f => {
-      const ext = f.filename.split('.').pop().toLowerCase();
-      const isImg = imgExts.includes(ext);
-      const kb = (f.size_bytes / 1024).toFixed(1);
-      const thumb = isImg
-        ? `<img class="media-thumb-img" src="${esc(f.url)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'media-thumb-img media-no-img\\'>📄</div>'">`
-        : `<div class="media-thumb-img media-no-img">📄</div>`;
-      return `<div class="media-thumb">
-        ${thumb}
-        <div class="media-thumb-info">
-          <div class="media-thumb-name" title="${esc(f.filename)}">${esc(f.filename)}</div>
-          <div style="font-size:.58rem;color:var(--muted);margin-bottom:.3rem;">${kb} КБ</div>
-          <div class="media-thumb-actions">
-            <button onclick="copyMediaUrl('${esc(f.url)}')" class="btn-ghost" style="font-size:.6rem;padding:.2rem .45rem;flex:1;" title="Скопировать URL">📋</button>
-            <button onclick="deleteMedia('${esc(f.url)}',this.closest('.media-thumb'))" class="btn-danger" style="font-size:.6rem;padding:.2rem .45rem;" title="Удалить">🗑</button>
-          </div>
-        </div>
-      </div>`;
-    }).join('');
+    _mediaAllItems = d.items || [];
+    _mediaPage = 1;
+    _renderMediaGrid();
   } catch {
     grid.innerHTML = '<div style="color:#f87171;text-align:center;padding:2rem;grid-column:1/-1;">Ошибка загрузки</div>';
   }
+}
+
+function _renderMediaGrid() {
+  const grid = document.getElementById('media-grid');
+  const empty = document.getElementById('media-empty');
+  if (!grid) return;
+  const q = (document.getElementById('media-search')?.value || '').trim().toLowerCase();
+  const filtered = q ? _mediaAllItems.filter(f => f.filename.toLowerCase().includes(q)) : _mediaAllItems;
+  if (!filtered.length) {
+    grid.innerHTML = '';
+    document.getElementById('media-pagination').innerHTML = '';
+    if (empty) { empty.style.display = ''; empty.textContent = q ? 'Ничего не найдено.' : 'Нет загруженных файлов'; }
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  const pages = Math.ceil(filtered.length / _MEDIA_PER_PAGE);
+  _mediaPage = Math.min(_mediaPage, pages);
+  const pageItems = filtered.slice((_mediaPage - 1) * _MEDIA_PER_PAGE, _mediaPage * _MEDIA_PER_PAGE);
+  const imgExts = ['jpg','jpeg','png','gif','webp','svg','ico'];
+  grid.innerHTML = pageItems.map(f => {
+    const ext = f.filename.split('.').pop().toLowerCase();
+    const isImg = imgExts.includes(ext);
+    const kb = (f.size_bytes / 1024).toFixed(1);
+    const thumb = isImg
+      ? `<img class="media-thumb-img" src="${esc(f.url)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'media-thumb-img media-no-img\\'>📄</div>'">`
+      : `<div class="media-thumb-img media-no-img">📄</div>`;
+    return `<div class="media-thumb">
+      ${thumb}
+      <div class="media-thumb-info">
+        <div class="media-thumb-name" title="${esc(f.filename)}">${esc(f.filename)}</div>
+        <div style="font-size:.58rem;color:var(--muted);margin-bottom:.3rem;">${kb} КБ</div>
+        <div class="media-thumb-actions">
+          <button onclick="copyMediaUrl('${esc(f.url)}')" class="btn-ghost" style="font-size:.6rem;padding:.2rem .45rem;flex:1;" title="Скопировать URL">📋</button>
+          <button onclick="deleteMedia('${esc(f.url)}',this.closest('.media-thumb'))" class="btn-danger" style="font-size:.6rem;padding:.2rem .45rem;" title="Удалить">🗑</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  renderPagination('media-pagination', _mediaPage, pages, (p) => { _mediaPage = p; _renderMediaGrid(); });
 }
 
 function copyMediaUrl(url) {
   const full = location.origin + url;
   navigator.clipboard?.writeText(full).then(
     () => showToast('URL скопирован', 'success'),
-    () => alert('Скопировано: ' + full),
+    // Clipboard API rejected (no permission / not a secure context) — this branch
+    // fires on FAILURE, so the old fallback ('Скопировано: ' + full) claimed success
+    // it hadn't achieved. Show the URL so the admin can select/copy it manually.
+    () => showToast(`Не удалось скопировать. URL: ${full}`, 'error'),
   );
 }
 
 async function deleteMedia(url, el) {
-  if (!confirm('Удалить файл?')) return;
-  const rel = url.replace(/^\/uploads\//, '');
-  try {
-    const r = await fetch(`${API}/admin/media/${encodeURIComponent(rel)}`, { method: 'DELETE', credentials: 'include', headers: authH() });
-    if (r.ok) { el?.remove(); }
-    else { const d = await r.json().catch(() => {}); showToast(d?.detail || 'Ошибка удаления', 'error'); }
-  } catch { showToast('Ошибка', 'error'); }
+  showConfirm({
+    title: 'Удалить файл?',
+    text: url,
+    onOk: async () => {
+      const rel = url.replace(/^\/uploads\//, '');
+      try {
+        const r = await fetch(`${API}/admin/media/${encodeURIComponent(rel)}`, { method: 'DELETE', credentials: 'include', headers: authH() });
+        if (r.ok) {
+          el?.remove();
+          _mediaAllItems = _mediaAllItems.filter(f => f.url !== url);
+        }
+        else { const d = await r.json().catch(() => {}); showToast(d?.detail || 'Ошибка удаления', 'error'); }
+      } catch { showToast('Ошибка', 'error'); }
+    },
+  });
 }
 
 // ─── Audit log section (Журнал действий) ──────────────────────────────────
@@ -5492,14 +5735,7 @@ async function loadAuditLogSection(page) {
 
     const total = d.total || 0;
     const pages = Math.ceil(total / 50);
-    const pgEl = document.getElementById('auditlog-pagination');
-    if (pgEl) {
-      pgEl.innerHTML = pages > 1
-        ? Array.from({ length: Math.min(pages, 10) }, (_, i) => i + 1).map(p =>
-            `<button class="pagination-btn${p === _auditSectionPage ? ' active' : ''}" onclick="loadAuditLogSection(${p})">${p}</button>`
-          ).join('')
-        : '';
-    }
+    renderPagination('auditlog-pagination', _auditSectionPage, pages, loadAuditLogSection);
   } catch {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>';
   }
@@ -5575,7 +5811,14 @@ async function loadModerationLog() {
    enforces this, see the endpoint's docstring) — the confirm text says so explicitly since
    this is irreversible. */
 async function clearModerationLog() {
-  if (!confirm('Очистить журнал модерации?\n\nБудут удалены записи кик/мут/рестарт и уже снятые баны.\nАктивные баны и предупреждения игроков затронуты не будут.\n\nДействие необратимо.')) return;
+  showConfirm({
+    title: 'Очистить журнал модерации?',
+    text: 'Будут удалены записи кик/мут/рестарт и уже снятые баны. Активные баны и предупреждения игроков затронуты не будут. Действие необратимо.',
+    okLabel: 'Очистить',
+    onOk: () => _clearModerationLogConfirmed(),
+  });
+}
+async function _clearModerationLogConfirmed() {
   try {
     const res = await fetch(`${API}/admin/moderation-log`, { method: 'DELETE', credentials: 'include', headers: authH() });
     if (!res.ok) throw new Error('request failed');
@@ -5612,16 +5855,23 @@ function renderModerationLog() {
 
 // ─── Reports ──────────────────────────────────────────────────────────────
 let _reportsPage = 1;
+const _reportsSearchDebounced = debounce(() => loadReports(1), 350);
 async function loadReports(page = 1) {
   _reportsPage = page;
-  tableShowSkeleton('reports-table-body', 7);
-  const status = document.getElementById('reports-status-filter').value;
-  const params = new URLSearchParams({ page, per_page: 20, ...(status ? { status } : {}) });
-  const data = await fetch(`${API}/admin/reports?${params}`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => ({ total: 0, items: [] }));
+  tableShowSkeleton('reports-table-body', 8);
+  clearReportsBulk();
   const tbody = document.getElementById('reports-table-body');
-  if (!data.items?.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Жалоб нет</td></tr>'; return; }
+  const status = document.getElementById('reports-status-filter').value;
+  const q = (document.getElementById('reports-search')?.value || '').trim();
+  const params = new URLSearchParams({ page, per_page: 20, ...(status ? { status } : {}), ...(q ? { q } : {}) });
+  let data;
+  try {
+    data = await fetch(`${API}/admin/reports?${params}`, { credentials: 'include', headers: authH() }).then(r => r.json());
+  } catch { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; return; }
+  if (!data.items?.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Жалоб нет</td></tr>'; return; }
   tbody.innerHTML = data.items.map(r => `
     <tr>
+      <td>${r.status === 'pending' ? `<input type="checkbox" class="report-check" data-id="${r.id}" onchange="_onReportCheck()" style="accent-color:var(--accent)">` : ''}</td>
       <td>${r.id}</td>
       <td><span style="font-size:.75rem;background:rgba(150,0,28,0.2);padding:.15rem .4rem;border-radius:.3rem;">${esc(r.target_type)}</span></td>
       <td>${r.target_id}</td>
@@ -5636,9 +5886,33 @@ async function loadReports(page = 1) {
       </td>
     </tr>`).join('');
   const pages = Math.ceil(data.total / 20);
-  document.getElementById('reports-pagination').innerHTML = Array.from({length:pages},(_,i)=>
-    `<button onclick="loadReports(${i+1})" style="padding:.3rem .7rem;border-radius:.4rem;border:1px solid rgba(150,0,28,.3);background:${i+1===page?'rgba(180,0,40,.3)':'rgba(20,0,40,.5)'};color:${i+1===page?'#fca5a5':'var(--muted)'};cursor:pointer;font-size:.78rem;">${i+1}</button>`
-  ).join('');
+  renderPagination('reports-pagination', page, pages, loadReports);
+}
+function toggleSelectAllReports(cb) {
+  document.querySelectorAll('.report-check').forEach(el => { el.checked = cb.checked; });
+  _onReportCheck();
+}
+function clearReportsBulk() {
+  document.querySelectorAll('.report-check').forEach(el => el.checked = false);
+  const sa = document.getElementById('select-all-reports');
+  if (sa) sa.checked = false;
+  _onReportCheck();
+}
+function _onReportCheck() {
+  const ids = [...document.querySelectorAll('.report-check:checked')].map(el => el.dataset.id);
+  const panel = document.getElementById('reports-bulk-panel');
+  const countEl = document.getElementById('reports-bulk-count');
+  if (panel) panel.style.display = ids.length ? 'flex' : 'none';
+  if (countEl) countEl.textContent = `Выбрано: ${ids.length}`;
+}
+async function bulkReviewReports(status) {
+  const ids = [...document.querySelectorAll('.report-check:checked')].map(el => el.dataset.id);
+  if (!ids.length) return;
+  await Promise.all(ids.map(id =>
+    fetch(`${API}/admin/reports/${id}`, { method: 'PATCH', credentials: 'include', headers: authH(), body: JSON.stringify({ status } ) }).catch(() => {})
+  ));
+  showToast(`Обновлено жалоб: ${ids.length}`, 'success');
+  loadReports(_reportsPage);
 }
 async function reviewReport(id, status) {
   await fetch(`${API}/admin/reports/${id}`, { method: 'PATCH', credentials: 'include', headers: authH(), body: JSON.stringify({ status }) });
@@ -5651,13 +5925,20 @@ const EVENT_TYPE_LABELS = {pvp:'PvP',pve:'PvE',social:'Социальное',oth
 const EVENT_STATUS_LABELS = {upcoming:'Предстоящее',active:'Активное',ended:'Завершено',cancelled:'Отменено'};
 const EVENT_STATUS_COLORS = {upcoming:'#c9a04a',active:'#4ade80',ended:'var(--muted)',cancelled:'#f87171'};
 
-async function loadEvents() {
+let _eventsPage = 1;
+async function loadEvents(page = 1) {
+  _eventsPage = page;
   const tbody = document.getElementById('events-tbody');
   if (!tbody) return;
   tableShowSkeleton('events-tbody', 6);
+  // status="" explicitly — GET /api/events defaults to status=upcoming (right for the
+  // public events page), which silently hid active/ended/cancelled events from this
+  // admin list entirely. An admin managing events needs to see all of them.
+  const status = document.getElementById('events-status-filter')?.value ?? '';
   try {
-    const d = await fetch(`${API}/events?per_page=50`, {credentials:'include'}).then(r=>r.json());
+    const d = await fetch(`${API}/events?status=${status}&page=${page}&per_page=20`, {credentials:'include'}).then(r=>r.json());
     const items = d.items||[];
+    renderPagination('events-pagination', page, Math.ceil((d.total||0) / 20), loadEvents);
     if (!items.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);">Нет событий</td></tr>'; return; }
     tbody.innerHTML = items.map(ev => {
       const dt = ev.start_date ? new Date(ev.start_date).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
@@ -5738,9 +6019,13 @@ async function saveEvent() {
 }
 
 async function deleteEvent(id) {
-  if (!confirm('Удалить событие?')) return;
-  await fetch(`${API}/admin/events/${id}`, {method:'DELETE', credentials:'include'});
-  loadEvents();
+  showConfirm({
+    title: 'Удалить событие?',
+    onOk: async () => {
+      await fetch(`${API}/admin/events/${id}`, {method:'DELETE', credentials:'include'});
+      loadEvents();
+    },
+  });
 }
 
 // ─── Points economy: shop catalog (admin) ──────────────────────────────────
@@ -5852,9 +6137,14 @@ async function saveShopItem() {
 }
 
 async function deleteShopItem(id) {
-  if (!confirm('Удалить товар из каталога?')) return;
-  await fetch(`${API}/admin/shop/items/${id}`, {method:'DELETE', credentials:'include', headers:authH()});
-  loadShopCatalog();
+  showConfirm({
+    title: 'Удалить товар из каталога?',
+    text: 'История уже сделанных заказов на этот товар сохранится.',
+    onOk: async () => {
+      await fetch(`${API}/admin/shop/items/${id}`, {method:'DELETE', credentials:'include', headers:authH()});
+      loadShopCatalog();
+    },
+  });
 }
 
 async function grantPoints() {
@@ -5920,29 +6210,33 @@ async function loadShopQueue(page) {
 
     const total = d.total || 0;
     const pages = Math.ceil(total / (d.per_page || 50));
-    const pgEl = document.getElementById('shop-queue-pagination');
-    if (pgEl) {
-      pgEl.innerHTML = pages > 1
-        ? Array.from({ length: Math.min(pages, 10) }, (_, i) => i + 1).map(p =>
-            `<button class="pagination-btn${p === _shopQueuePage ? ' active' : ''}" onclick="loadShopQueue(${p})">${p}</button>`
-          ).join('')
-        : '';
-    }
+    renderPagination('shop-queue-pagination', _shopQueuePage, pages, loadShopQueue);
   } catch { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
 }
 
 async function fulfillRedemption(id) {
-  if (!confirm('Отметить заявку выданной?')) return;
-  const r = await fetch(`${API}/admin/shop/redemptions/${id}/fulfill`, {method:'POST', credentials:'include', headers:authH(), body:JSON.stringify({})});
-  if (r.ok) showToast('Заявка выдана', 'success'); else showToast('Ошибка', 'error');
-  loadShopQueue(_shopQueuePage);
+  showConfirm({
+    title: 'Отметить заявку выданной?',
+    okLabel: 'Выдана',
+    onOk: async () => {
+      const r = await fetch(`${API}/admin/shop/redemptions/${id}/fulfill`, {method:'POST', credentials:'include', headers:authH(), body:JSON.stringify({})});
+      if (r.ok) showToast('Заявка выдана', 'success'); else showToast('Ошибка', 'error');
+      loadShopQueue(_shopQueuePage);
+    },
+  });
 }
 
 async function cancelRedemption(id) {
-  if (!confirm('Отменить заявку и вернуть очки игроку?')) return;
-  const r = await fetch(`${API}/admin/shop/redemptions/${id}/cancel`, {method:'POST', credentials:'include', headers:authH(), body:JSON.stringify({})});
-  if (r.ok) showToast('Заявка отменена, очки возвращены', 'success'); else showToast('Ошибка', 'error');
-  loadShopQueue(_shopQueuePage);
+  showConfirm({
+    title: 'Отменить заявку?',
+    text: 'Очки будут возвращены игроку.',
+    okLabel: 'Отменить заявку',
+    onOk: async () => {
+      const r = await fetch(`${API}/admin/shop/redemptions/${id}/cancel`, {method:'POST', credentials:'include', headers:authH(), body:JSON.stringify({})});
+      if (r.ok) showToast('Заявка отменена, очки возвращены', 'success'); else showToast('Ошибка', 'error');
+      loadShopQueue(_shopQueuePage);
+    },
+  });
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────────
@@ -6100,12 +6394,18 @@ function animateKpi(el, target, duration = 900) {
 
 // ─── Error log ────────────────────────────────────────────────────────────
 let _errorsPage = 1;
+const _errorsSearchDebounced = debounce(() => loadErrors(1), 350);
 async function loadErrors(page = 1) {
   _errorsPage = page;
   tableShowSkeleton('errors-table-body', 5);
-  const data = await fetch(`${API}/admin/errors?page=${page}&per_page=50`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => ({ total: 0, items: [] }));
-  document.getElementById('errors-total').textContent = `Всего: ${data.total}`;
   const tbody = document.getElementById('errors-table-body');
+  const q = (document.getElementById('errors-search')?.value || '').trim();
+  const params = new URLSearchParams({ page, per_page: 50, ...(q ? { q } : {}) });
+  let data;
+  try {
+    data = await fetch(`${API}/admin/errors?${params}`, { credentials: 'include', headers: authH() }).then(r => r.json());
+  } catch { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; return; }
+  document.getElementById('errors-total').textContent = `Всего: ${data.total}`;
   if (!data.items?.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Ошибок нет</td></tr>'; return; }
   tbody.innerHTML = data.items.map(e => `
     <tr>
@@ -6116,9 +6416,7 @@ async function loadErrors(page = 1) {
       <td style="font-size:.72rem;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(e.error||'')}</td>
     </tr>`).join('');
   const pages = Math.ceil(data.total / 50);
-  document.getElementById('errors-pagination').innerHTML = Array.from({length:pages},(_,i)=>
-    `<button onclick="loadErrors(${i+1})" style="padding:.3rem .7rem;border-radius:.4rem;border:1px solid rgba(150,0,28,.3);background:${i+1===page?'rgba(180,0,40,.3)':'rgba(20,0,40,.5)'};color:${i+1===page?'#fca5a5':'var(--muted)'};cursor:pointer;font-size:.78rem;">${i+1}</button>`
-  ).join('');
+  renderPagination('errors-pagination', page, pages, loadErrors);
 }
 </script>
 

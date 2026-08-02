@@ -410,12 +410,17 @@ async def export_bans(
 async def get_error_log(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
+    q: str = Query(""),
     _: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    total = (await db.execute(select(func.count(ErrorLog.id)))).scalar_one()
+    filters = []
+    if q.strip():
+        like = f"%{q.strip()}%"
+        filters.append(or_(ErrorLog.path.ilike(like), ErrorLog.error.ilike(like)))
+    total = (await db.execute(select(func.count(ErrorLog.id)).where(*filters))).scalar_one()
     rows = (await db.execute(
-        select(ErrorLog).order_by(ErrorLog.created_at.desc())
+        select(ErrorLog).where(*filters).order_by(ErrorLog.created_at.desc())
         .offset((page - 1) * per_page).limit(per_page)
     )).scalars().all()
     return {
