@@ -69,12 +69,22 @@
       color: rgba(150,0,28,.55); padding: .6rem 1rem .22rem; margin-top: .15rem;
       border-top: 1px solid rgba(150,0,28,0.1);
       display: flex; align-items: center; gap: .45rem;
+      cursor: pointer; user-select: none;
     }
     .sidebar-group-label::before {
       content: ''; width: 4px; height: 4px; border-radius: 50%;
       background: rgba(180,0,38,.45); flex-shrink: 0;
     }
-    .sidebar-group-label:first-of-type { border-top: none; margin-top: 0; }
+    /* First group in the sidebar gets no top divider/gap — matches the old
+       :first-of-type behavior, but scoped to .sidebar-group wrappers now that each
+       label lives inside its own group container (so :first-of-type on the label
+       itself would've matched every group, not just the first). */
+    .sidebar-group:first-child .sidebar-group-label { border-top: none; margin-top: 0; }
+    .sidebar-group-label > span { flex: 1; }
+    .sidebar-group-caret { flex-shrink: 0; opacity: .7; transition: transform .2s; }
+    .sidebar-group.collapsed .sidebar-group-caret { transform: rotate(-90deg); }
+    .sidebar-group.collapsed .sidebar-btn,
+    .sidebar-group.collapsed > a.sidebar-btn { display: none; }
     .sidebar-badge {
       background: rgba(181,0,42,0.3); border: 1px solid rgba(200,0,45,0.4); color: #fca5a5;
       font-size: .62rem; font-weight: 700; padding: .05rem .42rem; border-radius: 9999px;
@@ -345,10 +355,45 @@
     @media(max-width:900px) { #dash-stats-grid { grid-template-columns:repeat(3,1fr) !important; } }
     @media(max-width:560px) { #dash-stats-grid { grid-template-columns:repeat(2,1fr) !important; } }
 
+    /* ── Mobile sidebar drawer ── mirrors the .mobile-drawer/.mobile-overlay/
+       .nav-burger pattern already used on the public pages (servers.html,
+       clans.html, …/frontend/components.css) — admin.html doesn't load that
+       shared stylesheet (it has its own self-contained inline style block), so
+       the same visual/interaction language is reproduced here rather than
+       pulling in the file. Below this breakpoint the sidebar leaves the document flow
+       (position:fixed) and slides up from the bottom as a sheet, toggled by
+       #admin-nav-burger; above it (desktop) none of this applies and the
+       sidebar renders exactly as before. */
+    .nav-burger {
+      display:none; align-items:center; justify-content:center; width:2.2rem; height:2.2rem;
+      border-radius:.5rem; background:none; border:1px solid rgba(110,0,20,0.35);
+      color:var(--muted); cursor:pointer; transition:all .2s; flex-shrink:0;
+    }
+    .nav-burger:hover { border-color:rgba(180,0,35,0.5); color:var(--text); }
+    #admin-sidebar-overlay {
+      display:none; position:fixed; inset:0; z-index:59; background:rgba(0,0,0,0.65);
+      backdrop-filter:blur(3px); opacity:0; transition:opacity .25s; pointer-events:none;
+    }
+    #admin-sidebar-overlay.open { opacity:1; pointer-events:auto; }
+
     /* ── Mobile admin tables ── */
     @media(max-width:768px) {
+      .nav-burger { display:inline-flex; }
+      #admin-sidebar-overlay { display:block; }
       .sidebar-btn { font-size:.7rem; padding:.6rem .75rem; }
-      aside { width:9rem !important; }
+      aside#admin-sidebar {
+        position:fixed; left:0; right:0; bottom:0; top:auto; z-index:60;
+        width:auto; max-height:82vh;
+        background:rgba(8,0,14,0.98); border-top:1px solid rgba(110,0,20,0.5);
+        backdrop-filter:blur(20px); border-radius:1rem 1rem 0 0;
+        transform:translateY(100%); transition:transform .3s cubic-bezier(.32,.72,0,1);
+        overflow-y:auto; -webkit-overflow-scrolling:touch;
+        padding-bottom:env(safe-area-inset-bottom);
+      }
+      aside#admin-sidebar.mobile-open { transform:translateY(0); }
+      aside#admin-sidebar .glass-card {
+        border:none; box-shadow:none; background:transparent; border-radius:0; backdrop-filter:none;
+      }
       .glass-card table { display:block; overflow-x:auto; -webkit-overflow-scrolling:touch; }
       .section-title { font-size:1rem; }
       #files-grid { grid-template-columns:repeat(auto-fill,minmax(120px,1fr)) !important; }
@@ -359,34 +404,40 @@
       .ql-editor { min-height:220px; padding:1rem 1.1rem; }
       /* Dashboard graph + recent-users stack */
       #section-dashboard [style*="1.3fr 1fr"] { grid-template-columns:1fr !important; }
+
+      /* ── Reports / audit-log / shop-queue tables: card fallback instead of
+         horizontal scroll — same pattern as frontend/bans.html (search that file
+         for "data-label"): thead hidden, each row becomes a card, each cell
+         becomes a label:value block using its data-label attribute (present on
+         every <td> emitted by loadReports()/loadAuditLogSection()/loadShopQueue()). */
+      #section-reports table, #section-auditlog table, #section-shop-queue table { overflow-x:visible; }
+      #section-reports table thead, #section-auditlog table thead, #section-shop-queue table thead { display:none; }
+      #section-reports table tbody tr, #section-auditlog table tbody tr, #section-shop-queue table tbody tr {
+        display:block; background:rgba(14,3,24,0.5); border:1px solid rgba(150,0,28,0.18);
+        border-radius:.7rem; padding:.3rem .8rem; margin:.6rem;
+      }
+      #section-reports table tbody tr:hover td, #section-auditlog table tbody tr:hover td, #section-shop-queue table tbody tr:hover td { background:transparent; }
+      #section-reports table td, #section-auditlog table td, #section-shop-queue table td {
+        display:block; text-align:left;
+        border-bottom:1px solid rgba(150,0,28,0.08); padding:.5rem 0 !important;
+        white-space:normal !important; max-width:none !important;
+        overflow:visible !important; text-overflow:clip !important;
+      }
+      #section-reports table td:last-child, #section-auditlog table td:last-child, #section-shop-queue table td:last-child { border-bottom:none; }
+      #section-reports table td::before, #section-auditlog table td::before, #section-shop-queue table td::before {
+        content:attr(data-label); display:block; color:var(--muted); font-size:.62rem;
+        text-transform:uppercase; letter-spacing:.06em; margin-bottom:.2rem;
+      }
+      /* Rows with no data-label (empty/loading/error placeholder <td colspan>) shouldn't
+         show a blank label line above them. */
+      #section-reports table td:not([data-label])::before,
+      #section-auditlog table td:not([data-label])::before,
+      #section-shop-queue table td:not([data-label])::before { content:none; margin-bottom:0; }
     }
     @media(max-width:560px) {
       .relative.z-10 { flex-direction:column; }
       .relative.z-10.max-w-7xl { padding-top:1.25rem !important; padding-bottom:1.25rem !important; gap:1rem !important; }
-      aside { width:100% !important; }
       .glass-card.rounded-xl.overflow-hidden { border-radius:.5rem; }
-      aside .glass-card { display:flex; flex-direction:row; flex-wrap:wrap; }
-      /* Header logo block + online-status pill are plain <div> siblings of the nav
-         buttons inside .glass-card — force each onto its own full-width row so they
-         sit as a stacked header instead of wrapping into the button flow itself. */
-      aside .glass-card > div:not(.sidebar-group-label) { flex:0 0 100%; width:100%; }
-      /* Section dividers ("Контент", "Сайт", …) only make sense in the vertical desktop
-         list; in the wrapped mobile tab-bar they'd sit inline between buttons as stray
-         text, so hide them here. */
-      .sidebar-group-label { display:none !important; }
-      /* min-width raised to 6rem (~3 per row instead of 4) so each label gets enough
-         width that a single long word ("МЕДИАТЕКА", "НАСТРОЙКИ") fits on one line
-         without breaking — a narrower column left almost no room for the text at all. */
-      .sidebar-btn { flex:1; min-width:6rem; text-align:center; border-left:none !important; border-bottom:2px solid transparent; letter-spacing:.02em; }
-      .sidebar-btn.active { border-bottom-color:var(--accent) !important; }
-      /* Each button's icon+label is an inline `display:flex` (row) span. Two earlier
-         attempts here were wrong: (1) plain nowrap let long single words bleed into
-         neighboring buttons; (2) flex-wrap:wrap + overflow-wrap:anywhere let the text
-         item shrink to ~1 character wide and shattered it into 3-4 tiny fragments
-         instead of wrapping cleanly. Stacking icon-above-label (column) sidesteps both:
-         the label always gets the button's *full* width for normal text layout, same
-         as a standard mobile tab-bar icon+label button. */
-      .sidebar-btn > span:not(.sidebar-badge) { flex-direction:column; flex-wrap:nowrap; justify-content:center; min-width:0; width:100%; overflow-wrap:break-word; }
       /* Section header rows (title + actions) wrap instead of overflowing */
       main .flex.items-center.justify-between { flex-wrap:wrap; gap:.6rem; }
       #section-settings > div:first-child { flex-wrap:wrap; gap:.75rem; }
@@ -464,6 +515,10 @@
 <body>
 <div class="fog"></div>
 
+<!-- Mobile sidebar drawer overlay — click to close, same pattern as the public
+     pages' .mobile-overlay (frontend/components.css). -->
+<div id="admin-sidebar-overlay" onclick="closeSidebarDrawer()"></div>
+
 <!-- NAV -->
 <nav class="glass-nav sticky top-0 z-40 relative">
   <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -481,6 +536,7 @@
       </button>
       <span id="nav-username" class="text-sm" style="color:var(--muted);"></span>
       <button onclick="logout()" class="btn-ghost">Выйти</button>
+      <button id="admin-nav-burger" class="nav-burger" onclick="toggleSidebarDrawer()" aria-label="Меню разделов" title="Меню разделов">☰</button>
     </div>
   </div>
 </nav>
@@ -496,7 +552,7 @@
 <div class="relative z-10 max-w-7xl mx-auto px-4 py-8 flex gap-5">
 
   <!-- SIDEBAR -->
-  <aside style="width:12rem;flex-shrink:0;">
+  <aside id="admin-sidebar" style="width:12rem;flex-shrink:0;">
     <div class="glass-card rounded-xl overflow-hidden">
       <!-- Sidebar header -->
       <div style="padding:.85rem 1rem .75rem;border-bottom:1px solid rgba(150,0,28,.18);display:flex;align-items:center;gap:.6rem;background:linear-gradient(135deg,rgba(150,0,28,.12),rgba(80,0,120,.06));">
@@ -511,41 +567,62 @@
       </div>
       <button id="btn-dashboard" onclick="showSection('dashboard')" class="sidebar-btn active"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Дашборд</span></button>
 
-      <div class="sidebar-group-label">Контент</div>
+      <div class="sidebar-group" data-group-id="content">
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('content')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('content');}"><span>Контент</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       <button id="btn-news"      onclick="showSection('news')"      class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l4 4v10a2 2 0 01-2 2z"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="13" y2="16"/></svg> Новости</span></button>
       <button id="btn-comments"  onclick="showSection('comments')"  class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> Комментарии</span><span id="badge-comments" class="sidebar-badge" style="display:none;"></span></button>
       <button id="btn-events"    onclick="showSection('events')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> События</span></button>
 
-      <div class="sidebar-group-label">Сайт</div>
+      </div>
+
+      <div class="sidebar-group" data-group-id="site">
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('site')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('site');}"><span>Сайт</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       <button id="btn-settings"  onclick="showSection('settings')"  class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> Настройки</span></button>
       <button id="btn-plugin"    onclick="showSection('plugin')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h.01M15 9h.01M9.5 15a3.5 3.5 0 0 0 5 0"/></svg> Плагины</span></button>
       <button id="btn-files"     onclick="showSection('files')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg> Файлы</span></button>
       <button id="btn-media"     onclick="showSection('media')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg> Медиатека</span></button>
 
-      <div class="sidebar-group-label">Люди</div>
+      </div>
+
+      <div class="sidebar-group" data-group-id="people">
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('people')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('people');}"><span>Люди</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       <button id="btn-users"     onclick="showSection('users')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> Пользователи</span><span id="badge-users" class="sidebar-badge" style="display:none;"></span></button>
       <button id="btn-clans"     onclick="showSection('clans')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><use href="/icons.svg#icon-shield"></use></svg> Кланы</span></button>
       <button id="btn-players"   onclick="showSection('players')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Игроки</span></button>
       <button id="btn-resets"    onclick="showSection('resets')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6"/><path d="M15.5 7.5l3 3L22 7l-3-3"/></svg> Сброс паролей</span><span id="badge-resets" class="sidebar-badge" style="display:none;"></span></button>
 
-      <div class="sidebar-group-label">Экономика</div>
+      </div>
+
+      <div class="sidebar-group" data-group-id="economy">
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('economy')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('economy');}"><span>Экономика</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       <button id="btn-shop-catalog" onclick="showSection('shop-catalog')" class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg> Магазин</span></button>
       <button id="btn-shop-queue"   onclick="showSection('shop-queue')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg> Очередь наград</span><span id="badge-shop-queue" class="sidebar-badge" style="display:none;"></span></button>
 
-      <div class="sidebar-group-label">Модерация</div>
+      </div>
+
+      <div class="sidebar-group" data-group-id="moderation">
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('moderation')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('moderation');}"><span>Модерация</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       <button id="btn-reports"   onclick="showSection('reports')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Жалобы</span><span id="badge-reports" class="sidebar-badge" style="display:none;"></span></button>
       <button id="btn-modlog"    onclick="showSection('modlog')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> Журнал модерации</span></button>
       <a href="/bans.html" class="sidebar-btn" style="text-decoration:none;display:flex;"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> Баны и апелляции</span><span id="badge-appeals" class="sidebar-badge" style="display:none;"></span></a>
 
-      <div class="sidebar-group-label">Аналитика</div>
+      </div>
+
+      <div class="sidebar-group" data-group-id="analytics">
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('analytics')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('analytics');}"><span>Аналитика</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       <button id="btn-analytics" onclick="showSection('analytics')" class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Аналитика</span></button>
       <button id="btn-economy" onclick="showSection('economy')" class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10a2.5 2.5 0 0 1 2.5-2h.5a2 2 0 0 1 0 4h-1a2 2 0 0 0 0 4h.5a2.5 2.5 0 0 0 2.5-2"/></svg> Экономика</span></button>
       <button id="btn-backups"   onclick="showSection('backups')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg> Бэкапы</span></button>
 
-      <div class="sidebar-group-label">Система</div>
+      </div>
+
+      <div class="sidebar-group" data-group-id="system">
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('system')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('system');}"><span>Система</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       <button id="btn-log"       onclick="showSection('log')"       class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> Лог</span></button>
       <button id="btn-auditlog"  onclick="showSection('auditlog')"  class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Журнал действий</span></button>
       <button id="btn-errors"    onclick="showSection('errors')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Ошибки</span></button>
+
+      </div>
     </div>
   </aside>
 
@@ -2695,6 +2772,52 @@ async function loadSidebarBadges() {
 }
 loadSidebarBadges();
 
+// ─── Mobile sidebar drawer (<=768px) ────────────────────────────────────────
+// Same interaction language as the public pages' mobNavOpen/.mobile-drawer
+// (frontend/servers.html, frontend/clans.html, …), reimplemented in plain JS
+// here since admin.html doesn't use Alpine.js for the sidebar. Above the
+// breakpoint the CSS never applies .mobile-open, so these are no-ops on desktop.
+function openSidebarDrawer() {
+  document.getElementById('admin-sidebar')?.classList.add('mobile-open');
+  document.getElementById('admin-sidebar-overlay')?.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeSidebarDrawer() {
+  document.getElementById('admin-sidebar')?.classList.remove('mobile-open');
+  document.getElementById('admin-sidebar-overlay')?.classList.remove('open');
+  document.body.style.overflow = '';
+}
+function toggleSidebarDrawer() {
+  const aside = document.getElementById('admin-sidebar');
+  if (aside?.classList.contains('mobile-open')) closeSidebarDrawer();
+  else openSidebarDrawer();
+}
+
+// ─── Sidebar group collapse/expand (Контент / Сайт / Люди / …) ─────────────
+// Persisted in localStorage so a collapsed group stays collapsed across
+// reloads. Default (nothing in localStorage yet) is everything expanded,
+// matching the sidebar's behavior before this feature existed.
+const SIDEBAR_COLLAPSE_KEY = 'admin_sidebar_collapsed_groups';
+function _getCollapsedSidebarGroups() {
+  try { return new Set(JSON.parse(localStorage.getItem(SIDEBAR_COLLAPSE_KEY)) || []); }
+  catch { return new Set(); }
+}
+function toggleSidebarGroup(groupId) {
+  const wrap = document.querySelector(`.sidebar-group[data-group-id="${groupId}"]`);
+  if (!wrap) return;
+  const collapsed = _getCollapsedSidebarGroups();
+  if (wrap.classList.toggle('collapsed')) collapsed.add(groupId);
+  else collapsed.delete(groupId);
+  localStorage.setItem(SIDEBAR_COLLAPSE_KEY, JSON.stringify([...collapsed]));
+}
+function initSidebarGroups() {
+  const collapsed = _getCollapsedSidebarGroups();
+  document.querySelectorAll('.sidebar-group').forEach(g => {
+    if (collapsed.has(g.dataset.groupId)) g.classList.add('collapsed');
+  });
+}
+initSidebarGroups();
+
 // ─── Sections ─────────────────────────────────────────────────────────────
 
 function applyRoleVisibility() {
@@ -2721,6 +2844,7 @@ function showSection(name) {
     showToast('Недостаточно прав для этого раздела', 'error');
     return;
   }
+  closeSidebarDrawer(); // no-op on desktop; on mobile, picking a section closes the drawer
   ['dashboard','news','editor','settings','plugin','users','comments','players','files','log','resets','clans','reports','analytics','economy','backups','errors','media','auditlog','events','modlog','shop-catalog','shop-queue'].forEach(s => {
     const el = document.getElementById(`section-${s}`);
     if (el) {
@@ -4351,16 +4475,16 @@ function renderUsersTable() {
             ? `<span style="color:var(--muted);font-size:.72rem;padding:0 .4rem;">— вы</span>`
             : !canAct
             ? `<span style="color:var(--muted);font-size:.68rem;padding:0 .4rem;" data-tip="Недостаточно прав">—</span>
-                <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" class="act-btn ab" data-tip="Открыть профиль">${_svgLink}</a>`
+                <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" class="act-btn ab" data-tip="Открыть профиль" aria-label="Открыть профиль пользователя ${esc(u.username)}" title="Открыть профиль пользователя">${_svgLink}</a>`
             : `<div style="display:flex;gap:.28rem;align-items:center;">
-                <button class="act-btn ${u.is_active?'ay':'ag'}" data-tip="${u.is_active?'Заблокировать':'Разблокировать'}" onclick="toggleUserActive(${u.id},'${esc(u.username)}',${u.is_active})">${u.is_active?_svgLock:_svgUnlock}</button>
+                <button class="act-btn ${u.is_active?'ay':'ag'}" data-tip="${u.is_active?'Заблокировать':'Разблокировать'}" aria-label="${u.is_active?'Заблокировать':'Разблокировать'} пользователя ${esc(u.username)}" title="${u.is_active?'Заблокировать пользователя':'Разблокировать пользователя'}" onclick="toggleUserActive(${u.id},'${esc(u.username)}',${u.is_active})">${u.is_active?_svgLock:_svgUnlock}</button>
                 ${existingBan
-                  ? `<button class="act-btn ag" data-tip="Разбанить" onclick="unbanUserAction(${existingBan.id},'${esc(u.username)}')">${_svgCheck}</button>`
-                  : `<button class="act-btn ar" data-tip="Забанить" onclick="banUserAction('${esc(u.username)}')">${_svgBan}</button>`
+                  ? `<button class="act-btn ag" data-tip="Разбанить" aria-label="Разбанить пользователя ${esc(u.username)}" title="Разбанить пользователя" onclick="unbanUserAction(${existingBan.id},'${esc(u.username)}')">${_svgCheck}</button>`
+                  : `<button class="act-btn ar" data-tip="Забанить" aria-label="Забанить пользователя ${esc(u.username)}" title="Забанить пользователя" onclick="banUserAction('${esc(u.username)}')">${_svgBan}</button>`
                 }
-                <button class="act-btn ao" data-tip="Сбросить сессии" onclick="revokeUserSessions(${u.id},'${esc(u.username)}')">${_svgKey}</button>
-                <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" class="act-btn ab" data-tip="Открыть профиль">${_svgLink}</a>
-                <button class="act-btn ar" data-tip="Удалить пользователя" onclick="deleteUser(${u.id},'${esc(u.username)}')">${_svgTrash}</button>
+                <button class="act-btn ao" data-tip="Сбросить сессии" aria-label="Сбросить сессии пользователя ${esc(u.username)}" title="Сбросить сессии пользователя" onclick="revokeUserSessions(${u.id},'${esc(u.username)}')">${_svgKey}</button>
+                <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" class="act-btn ab" data-tip="Открыть профиль" aria-label="Открыть профиль пользователя ${esc(u.username)}" title="Открыть профиль пользователя">${_svgLink}</a>
+                <button class="act-btn ar" data-tip="Удалить пользователя" aria-label="Удалить пользователя ${esc(u.username)}" title="Удалить пользователя" onclick="deleteUser(${u.id},'${esc(u.username)}')">${_svgTrash}</button>
                </div>`;
           return `<tr>
             <td><input type="checkbox" class="user-check" data-id="${u.id}" onchange="_onUserCheck()" style="accent-color:var(--accent);${isSelf?'display:none':''}" ${isSelf?'disabled':''}></td>
@@ -5725,11 +5849,11 @@ async function loadAuditLogSection(page) {
       const targetId = item.target_id || '';
       const target = targetType && targetId ? `${targetType} #${targetId}` : (targetType || '—');
       return `<tr>
-        <td style="white-space:nowrap;font-size:.75rem;color:var(--muted);">${dt}</td>
-        <td><span style="font-size:.78rem;">${esc(adminName)}</span></td>
-        <td><code style="font-size:.72rem;background:rgba(40,0,60,.4);padding:.1rem .35rem;border-radius:.3rem;color:#c4b5fd;">${esc(label)}</code></td>
-        <td style="font-size:.72rem;color:var(--muted);">${esc(target)}</td>
-        <td style="font-size:.72rem;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(item.detail || '')}</td>
+        <td data-label="Время" style="white-space:nowrap;font-size:.75rem;color:var(--muted);">${dt}</td>
+        <td data-label="Администратор"><span style="font-size:.78rem;">${esc(adminName)}</span></td>
+        <td data-label="Действие"><code style="font-size:.72rem;background:rgba(40,0,60,.4);padding:.1rem .35rem;border-radius:.3rem;color:#c4b5fd;">${esc(label)}</code></td>
+        <td data-label="Объект" style="font-size:.72rem;color:var(--muted);">${esc(target)}</td>
+        <td data-label="Детали" style="font-size:.72rem;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(item.detail || '')}</td>
       </tr>`;
     }).join('');
 
@@ -5872,13 +5996,13 @@ async function loadReports(page = 1) {
   tbody.innerHTML = data.items.map(r => `
     <tr>
       <td>${r.status === 'pending' ? `<input type="checkbox" class="report-check" data-id="${r.id}" onchange="_onReportCheck()" style="accent-color:var(--accent)">` : ''}</td>
-      <td>${r.id}</td>
-      <td><span style="font-size:.75rem;background:rgba(150,0,28,0.2);padding:.15rem .4rem;border-radius:.3rem;">${esc(r.target_type)}</span></td>
-      <td>${r.target_id}</td>
-      <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.reason)}">${esc(r.reason)}</td>
-      <td><span style="font-size:.72rem;padding:.15rem .5rem;border-radius:.3rem;background:${r.status==='pending'?'rgba(200,150,0,.2)':r.status==='reviewed'?'rgba(0,150,100,.2)':'rgba(100,100,100,.2)'};">${r.status}</span></td>
-      <td style="white-space:nowrap;">${fmtDate(r.created_at)}</td>
-      <td>
+      <td data-label="ID">${r.id}</td>
+      <td data-label="Тип"><span style="font-size:.75rem;background:rgba(150,0,28,0.2);padding:.15rem .4rem;border-radius:.3rem;">${esc(r.target_type)}</span></td>
+      <td data-label="ID объекта">${r.target_id}</td>
+      <td data-label="Причина" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.reason)}">${esc(r.reason)}</td>
+      <td data-label="Статус"><span style="font-size:.72rem;padding:.15rem .5rem;border-radius:.3rem;background:${r.status==='pending'?'rgba(200,150,0,.2)':r.status==='reviewed'?'rgba(0,150,100,.2)':'rgba(100,100,100,.2)'};">${r.status}</span></td>
+      <td data-label="Дата" style="white-space:nowrap;">${fmtDate(r.created_at)}</td>
+      <td data-label="Действия">
         ${r.status === 'pending' ? `
         <button onclick="reviewReport(${r.id},'reviewed')" style="font-size:.72rem;background:rgba(0,150,100,.2);border:1px solid rgba(0,200,130,.3);border-radius:.3rem;padding:.2rem .5rem;color:#6ee7b7;cursor:pointer;margin-right:.25rem;">✓ Рассмотрено</button>
         <button onclick="reviewReport(${r.id},'dismissed')" style="font-size:.72rem;background:rgba(100,100,100,.15);border:1px solid rgba(150,150,150,.2);border-radius:.3rem;padding:.2rem .5rem;color:var(--muted);cursor:pointer;">✗ Отклонить</button>
@@ -6199,12 +6323,12 @@ async function loadShopQueue(page) {
            </div>`
         : `<span style="font-size:.72rem;color:var(--muted);">${esc(r.resolved_by || '')}</span>`;
       return `<tr>
-        <td style="font-size:.78rem;">${esc(r.username || '')}</td>
-        <td style="font-size:.78rem;">${esc(r.item_name_snapshot)}</td>
-        <td style="font-size:.78rem;color:var(--gold);">${r.cost_snapshot}</td>
-        <td><span style="font-size:.72rem;color:${color};font-weight:600;">${SHOP_REDEMPTION_STATUS_LABELS[r.status] || r.status}</span></td>
-        <td style="font-size:.75rem;color:var(--muted);white-space:nowrap;">${dt}</td>
-        <td>${actions}</td>
+        <td data-label="Игрок" style="font-size:.78rem;">${esc(r.username || '')}</td>
+        <td data-label="Товар" style="font-size:.78rem;">${esc(r.item_name_snapshot)}</td>
+        <td data-label="Стоимость" style="font-size:.78rem;color:var(--gold);">${r.cost_snapshot}</td>
+        <td data-label="Статус"><span style="font-size:.72rem;color:${color};font-weight:600;">${SHOP_REDEMPTION_STATUS_LABELS[r.status] || r.status}</span></td>
+        <td data-label="Дата" style="font-size:.75rem;color:var(--muted);white-space:nowrap;">${dt}</td>
+        <td data-label="Действия">${actions}</td>
       </tr>`;
     }).join('');
 
