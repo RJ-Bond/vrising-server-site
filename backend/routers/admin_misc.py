@@ -7,10 +7,10 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_
+from sqlalchemy import select, func, or_, case
 
 from ..database import get_db
-from ..models import User, News, Comment, Setting, AuditLog, PageView, ErrorLog
+from ..models import User, News, Comment, Setting, AuditLog, PageView, ErrorLog, PointsTransaction, ShopRedemption
 from ..auth import get_admin_user, get_moderator_user
 from ..helpers import UPLOAD_DIR
 
@@ -282,6 +282,59 @@ async def get_analytics(
         "top_news": [
             {"slug": r.slug, "title": r.title, "views": r.views, "comment_count": r.comment_count}
             for r in top_news_rows
+        ],
+    }
+
+
+# ─── Points economy dashboard ──────────────────────────────────────────────────
+
+@router.get("/api/admin/economy-stats")
+async def get_economy_stats(
+    days: int = Query(30, ge=7, le=90),
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Points issued vs spent per day (same unit — one axis, a legitimate grouped
+    bar, not the dual-axis anti-pattern) plus the shop's most-redeemed items, for
+    the admin "Экономика" dashboard. PointsTransaction is the append-only ledger
+    (see its model docstring) — delta > 0 is an earn/grant, delta < 0 is a spend/
+    refund-reversal, so day/direction is a straight aggregate over it, no denormalized
+    counter needed."""
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    issued_expr = func.sum(case((PointsTransaction.delta > 0, PointsTransaction.delta), else_=0))
+    spent_expr = func.sum(case((PointsTransaction.delta < 0, -PointsTransaction.delta), else_=0))
+    by_day_rows = (await db.execute(
+        select(
+            func.date(PointsTransaction.created_at).label("day"),
+            issued_expr.label("issued"),
+            spent_expr.label("spent"),
+        )
+        .where(PointsTransaction.created_at >= cutoff)
+        .group_by(func.date(PointsTransaction.created_at))
+        .order_by(func.date(PointsTransaction.created_at).asc())
+    )).all()
+
+    top_items_rows = (await db.execute(
+        select(
+            ShopRedemption.item_name_snapshot,
+            func.count(ShopRedemption.id).label("redemptions"),
+            func.sum(ShopRedemption.cost_snapshot).label("points_spent"),
+        )
+        .where(ShopRedemption.status != "cancelled", ShopRedemption.created_at >= cutoff)
+        .group_by(ShopRedemption.item_name_snapshot)
+        .order_by(func.count(ShopRedemption.id).desc())
+        .limit(10)
+    )).all()
+
+    balance_total = (await db.execute(select(func.sum(User.points_balance)))).scalar_one() or 0
+
+    return {
+        "days": days,
+        "balance_total": balance_total,
+        "by_day": [{"day": r.day, "issued": r.issued or 0, "spent": r.spent or 0} for r in by_day_rows],
+        "top_items": [
+            {"name": r.item_name_snapshot, "redemptions": r.redemptions, "points_spent": r.points_spent or 0}
+            for r in top_items_rows
         ],
     }
 

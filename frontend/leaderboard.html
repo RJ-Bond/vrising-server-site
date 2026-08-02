@@ -370,7 +370,7 @@
     </div>
     <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;">
       <div style="position:relative;flex:1;">
-        <svg style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);opacity:.6;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);opacity:.6;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-search"></use></svg>
         <input id="lb-search" type="text" placeholder="Поиск игрока…" oninput="filterLeaderboard(this.value)"
           style="width:100%;background:rgba(14,5,22,0.85);border:1px solid rgba(110,0,150,0.22);border-radius:.65rem;padding:.62rem 1rem .62rem 2.5rem;color:var(--text);font-size:.88rem;outline:none;transition:border-color .2s;font-family:'Inter',sans-serif;"
           onfocus="this.style.borderColor='rgba(200,0,42,0.45)'" onblur="this.style.borderColor='rgba(110,0,150,0.22)'">
@@ -395,7 +395,7 @@
 </div>
 
 <script src="/alpine.min.js"></script>
-<script src="/common.js?v=10"></script>
+<script src="/common.js?v=11"></script>
 <script>
 const API = '/api';
 const PER_PAGE = 25;

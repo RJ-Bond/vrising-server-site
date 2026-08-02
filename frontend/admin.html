@@ -526,6 +526,7 @@
 
       <div class="sidebar-group-label">Аналитика</div>
       <button id="btn-analytics" onclick="showSection('analytics')" class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Аналитика</span></button>
+      <button id="btn-economy" onclick="showSection('economy')" class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10a2.5 2.5 0 0 1 2.5-2h.5a2 2 0 0 1 0 4h-1a2 2 0 0 0 0 4h.5a2.5 2.5 0 0 0 2.5-2"/></svg> Экономика</span></button>
       <button id="btn-backups"   onclick="showSection('backups')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg> Бэкапы</span></button>
 
       <div class="sidebar-group-label">Система</div>
@@ -2036,10 +2037,10 @@
         </div>
       </div>
 
-      <!-- User registrations chart (simple bar) -->
+      <!-- User registrations chart -->
       <div class="glass-card" style="border-radius:.75rem;padding:1.25rem;margin-bottom:1.25rem;">
         <div style="font-size:.72rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.85rem;">Регистрации за 30 дней</div>
-        <div id="analytics-reg-chart" style="display:flex;align-items:flex-end;gap:2px;height:80px;"></div>
+        <div style="height:100px;position:relative;"><canvas id="analytics-reg-chart"></canvas></div>
         <div style="font-size:.58rem;color:var(--muted);margin-top:.35rem;text-align:right;" id="analytics-reg-total"></div>
       </div>
 
@@ -2051,6 +2052,45 @@
         <table>
           <thead><tr><th>#</th><th>Новость</th><th>Просмотры</th><th>Комментарии</th></tr></thead>
           <tbody id="analytics-top-news"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ECONOMY -->
+    <div id="section-economy" class="hidden">
+      <h2 class="section-title" style="margin-bottom:1.5rem;">Экономика очков</h2>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.85rem;margin-bottom:1.5rem;">
+        <div class="glass-card" style="border-radius:.75rem;padding:1.25rem;text-align:center;">
+          <div style="font-family:'Cinzel',serif;font-size:1.8rem;font-weight:700;color:var(--gold);" id="kpi-econ-balance">—</div>
+          <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.3rem;">Очков в обороте</div>
+        </div>
+      </div>
+
+      <!-- Issued vs spent: same unit (points), one axis — a grouped bar is the
+           correct form here, not a dual-axis chart (see charts.js's renderBarChart
+           doc comment). -->
+      <div class="glass-card" style="border-radius:.75rem;padding:1.25rem;margin-bottom:1.25rem;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;flex-wrap:wrap;gap:.5rem;">
+          <span style="font-size:.72rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;">Начислено vs потрачено</span>
+          <select id="economy-days" onchange="loadEconomyStats()" style="background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:.4rem;color:var(--text);font-size:.75rem;padding:.3rem .5rem;">
+            <option value="7">7 дней</option>
+            <option value="30" selected>30 дней</option>
+            <option value="90">90 дней</option>
+          </select>
+        </div>
+        <div style="height:180px;position:relative;"><canvas id="economy-chart"></canvas></div>
+        <p id="economy-chart-empty" class="text-sm" style="display:none;color:var(--muted);text-align:center;padding:1rem 0;">Нет данных за этот период.</p>
+      </div>
+
+      <!-- Top redeemed items -->
+      <div class="glass-card" style="border-radius:.75rem;overflow:hidden;">
+        <div style="padding:.85rem 1rem;border-bottom:1px solid var(--border);">
+          <span style="font-size:.72rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;">Популярные товары магазина</span>
+        </div>
+        <table>
+          <thead><tr><th>#</th><th>Товар</th><th>Заказов</th><th>Потрачено очков</th></tr></thead>
+          <tbody id="economy-top-items"></tbody>
         </table>
       </div>
     </div>
@@ -2412,8 +2452,8 @@
 <script src="/purify.min.js"></script>
 <script src="/quill.min.js"></script>
 <script src="/chart.min.js"></script>
-<script src="/charts.js?v=1"></script>
-<script src="/common.js?v=10"></script>
+<script src="/charts.js?v=2"></script>
+<script src="/common.js?v=11"></script>
 <script>
 const API = '/api';
 // esc — defined in common.js
@@ -2521,7 +2561,7 @@ const SECTION_MIN_ROLE = {
   dashboard: 'admin', news: 'admin', editor: 'admin', comments: 'moderator',
   events: 'admin', settings: 'admin', plugin: 'admin', files: 'admin', media: 'admin',
   users: 'moderator', clans: 'admin', players: 'moderator', resets: 'admin',
-  reports: 'moderator', analytics: 'admin', backups: 'superadmin',
+  reports: 'moderator', analytics: 'admin', economy: 'admin', backups: 'superadmin',
   log: 'admin', auditlog: 'admin', errors: 'admin', modlog: 'admin',
   'shop-catalog': 'admin', 'shop-queue': 'admin',
 };
@@ -2629,7 +2669,7 @@ function showSection(name) {
     showToast('Недостаточно прав для этого раздела', 'error');
     return;
   }
-  ['dashboard','news','editor','settings','plugin','users','comments','players','files','log','resets','clans','reports','analytics','backups','errors','media','auditlog','events','modlog','shop-catalog','shop-queue'].forEach(s => {
+  ['dashboard','news','editor','settings','plugin','users','comments','players','files','log','resets','clans','reports','analytics','economy','backups','errors','media','auditlog','events','modlog','shop-catalog','shop-queue'].forEach(s => {
     const el = document.getElementById(`section-${s}`);
     if (el) {
       if (s === 'media' || s === 'auditlog' || s === 'events' || s === 'modlog') el.style.display = (s === name ? '' : 'none');
@@ -2659,6 +2699,7 @@ function showSection(name) {
   if (name === 'clans')      loadAdminClans();
   if (name === 'reports')    loadReports(1);
   if (name === 'analytics')  loadAnalytics();
+  if (name === 'economy')    loadEconomyStats();
   if (name === 'backups')    loadBackups();
   if (name === 'errors')     loadErrors(1);
   if (name === 'media')      loadMedia();
@@ -5905,6 +5946,12 @@ async function cancelRedemption(id) {
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────────
+// Shared by the registrations chart and the economy dashboard below — both plot a
+// "YYYY-MM-DD" bucket key from a SQL date()/strftime() grouping, not a timestamp.
+function _shortDate(dateStr) {
+  return new Date(dateStr + 'T00:00:00Z').toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+}
+
 async function loadAnalytics() {
   try {
     const d = await fetch(`${API}/admin/analytics`, {credentials:'include'}).then(r=>r.json());
@@ -5920,13 +5967,9 @@ async function loadAnalytics() {
     const totalEl = document.getElementById('analytics-reg-total');
     if (chartEl && d.users_by_day?.length) {
       const days = d.users_by_day;
-      const maxVal = Math.max(1, ...days.map(dy=>dy.count));
       const total = days.reduce((s,dy)=>s+dy.count,0);
-      chartEl.innerHTML = days.map(day => {
-        const pct = Math.max(4, Math.round((day.count/maxVal)*80));
-        const isToday = day.date === new Date().toISOString().slice(0,10);
-        return `<div style="flex:1;background:${isToday?'rgba(201,160,74,.8)':'rgba(181,0,42,.5)'};border-radius:2px 2px 0 0;height:${pct}px;min-height:2px;transition:opacity .15s;" title="${day.date}: ${day.count} регистраций" onmouseover="this.style.opacity='.7'" onmouseout="this.style.opacity='1'"></div>`;
-      }).join('');
+      const data = days.map(dy => ({ x: _shortDate(dy.date), y: dy.count }));
+      renderBarChart(chartEl, { data, color: '#c9a94a', rgb: '201,169,74' }, { valueLabel: 'регистраций', xTicks: 10 });
       if (totalEl) totalEl.textContent = `Итого за период: ${total} регистраций`;
     }
 
@@ -5944,6 +5987,47 @@ async function loadAnalytics() {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Нет данных</td></tr>';
     }
   } catch(e) { console.error('Analytics error:', e); }
+}
+
+// ─── Points economy dashboard ───────────────────────────────────────────────
+async function loadEconomyStats() {
+  try {
+    const days = document.getElementById('economy-days')?.value || 30;
+    const d = await fetch(`${API}/admin/economy-stats?days=${days}`, { credentials: 'include' }).then(r => r.json());
+
+    const balEl = document.getElementById('kpi-econ-balance');
+    if (balEl) animateKpi(balEl, d.balance_total || 0);
+
+    const chartEl = document.getElementById('economy-chart');
+    const emptyEl = document.getElementById('economy-chart-empty');
+    if (chartEl) {
+      if (d.by_day?.length) {
+        chartEl.style.display = '';
+        if (emptyEl) emptyEl.style.display = 'none';
+        const issued = { label: 'Начислено', data: d.by_day.map(r => ({ x: _shortDate(r.day), y: r.issued })), color: '#22c55e', rgb: '34,197,94' };
+        const spent  = { label: 'Потрачено', data: d.by_day.map(r => ({ x: _shortDate(r.day), y: r.spent })),  color: '#c8002a', rgb: '200,0,42' };
+        renderBarChart(chartEl, [issued, spent], { valueLabel: 'очков', xTicks: 10 });
+      } else {
+        chartEl.style.display = 'none';
+        if (emptyEl) emptyEl.style.display = '';
+      }
+    }
+
+    const tbody = document.getElementById('economy-top-items');
+    if (tbody) {
+      if (d.top_items?.length) {
+        tbody.innerHTML = d.top_items.map((it, i) => `
+          <tr>
+            <td style="color:var(--muted);font-size:.78rem;">${i+1}</td>
+            <td style="font-size:.82rem;">${esc(it.name)}</td>
+            <td style="text-align:center;font-weight:600;">${it.redemptions}</td>
+            <td style="text-align:center;color:var(--muted);">${it.points_spent}</td>
+          </tr>`).join('');
+      } else {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Нет данных</td></tr>';
+      }
+    }
+  } catch(e) { console.error('Economy stats error:', e); }
 }
 
 // ─── Backups ──────────────────────────────────────────────────────────────

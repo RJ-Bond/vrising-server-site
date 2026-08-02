@@ -216,6 +216,12 @@
       <div id="pub-activity-list" style="display:flex;flex-direction:column;gap:.1rem;"></div>
     </div>
 
+    <!-- Playtime trend (shown only once there are ≥2 days of history to diff) -->
+    <div id="pub-trend-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Активность за месяц —</h2>
+      <div style="height:120px;position:relative;"><canvas id="pub-trend-chart"></canvas></div>
+    </div>
+
     <!-- Info -->
     <div class="g-card" style="padding:1.4rem 1.5rem;">
       <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Информация —</h2>
@@ -246,7 +252,9 @@
 
 </div>
 
-<script src="/common.js?v=10"></script>
+<script src="/chart.min.js"></script>
+<script src="/charts.js?v=2"></script>
+<script src="/common.js?v=11"></script>
 <script>
 const API = '/api';
 
@@ -358,6 +366,22 @@ function renderPublicAchievements(u, actData) {
   }).join('');
 }
 
+function renderActivityTrend(rows) {
+  const card = document.getElementById('pub-trend-card');
+  const canvas = document.getElementById('pub-trend-chart');
+  if (!card || !canvas || typeof renderBarChart !== 'function') return;
+  // <2 points means nothing to show yet (see the endpoint's own docstring on why a
+  // single day is dropped rather than shown as a false zero-length bar).
+  if (!rows || rows.length < 2) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const shortDate = (dateStr) => new Date(dateStr + 'T00:00:00Z')
+    .toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+  const data = rows.map(r => ({ x: shortDate(r.date), y: Math.round(r.seconds / 360) / 10 }));
+  renderBarChart(canvas, { data, color: '#c8002a', rgb: '200,0,42' }, {
+    valueLabel: 'ч', valueFormatter: (n) => n.toFixed(1), xTicks: 8,
+  });
+}
+
 function renderPublicActivity(actData) {
   const card = document.getElementById('pub-activity-card');
   const list = document.getElementById('pub-activity-list');
@@ -454,6 +478,15 @@ async function loadUser(){
       try { actData = await fetch(`${API}/users/${encodeURIComponent(username)}/activity`).then(r => r.json()); } catch {}
       renderPublicAchievements(u, actData);
       renderPublicActivity(actData);
+    })();
+
+    // Separate lazy fetch (not part of the main profile payload) — a player with no
+    // playtime history yet just never shows this card, so a slower/failed request
+    // here shouldn't hold up or break the rest of the page.
+    (async () => {
+      let trend = null;
+      try { trend = await fetch(`${API}/users/${encodeURIComponent(username)}/activity-trend`).then(r => r.ok ? r.json() : null); } catch {}
+      renderActivityTrend(trend);
     })();
 
     const statusEl = document.getElementById('user-status');

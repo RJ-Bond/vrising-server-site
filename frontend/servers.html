@@ -231,11 +231,18 @@
     .srv-graph-tooltip b { color:var(--accent); font-size:.88rem; }
     .srv-graph-tooltip span { color:var(--muted); font-size:.62rem; display:block; }
     .srv-heatmap-area { position:relative; }
-    .srv-heatmap { display:flex; align-items:flex-end; gap:2px; height:60px; cursor:crosshair; }
-    .srv-heatbar { flex:1; background:var(--accent); border-radius:2px 2px 0 0; min-height:2px; opacity:.55; transition:opacity .15s; position:relative; }
-    .srv-heatbar:hover { opacity:1; }
-    .srv-heatbar.peak { background:var(--gold); opacity:.95; box-shadow:0 0 8px var(--gold); }
-    .srv-heat-labels { display:flex; justify-content:space-between; font-size:.55rem; color:var(--muted); margin-top:.25rem; margin-bottom:1.25rem; }
+    /* 7 (day) × 24 (hour) matrix — a 26px day-label gutter + 24 equal hour columns.
+       Sequential color (one hue: the server's own accent, opacity-ramped from the
+       dark surface up to full saturation) encodes magnitude — never a rainbow, per
+       the dataviz color rules for a "how much" measure. */
+    .srv-heatgrid { display:grid; grid-template-columns:26px repeat(24,1fr); gap:2px; cursor:crosshair; }
+    .srv-heatgrid-daylabel { font-size:.55rem; color:var(--muted); display:flex; align-items:center; justify-content:flex-end; padding-right:.3rem; }
+    .srv-heatcell { aspect-ratio:1; border-radius:2px; min-height:9px; transition:transform .1s; }
+    .srv-heatcell:hover { transform:scale(1.3); }
+    .srv-heat-labels { display:grid; grid-template-columns:26px repeat(24,1fr); font-size:.55rem; color:var(--muted); margin-top:.3rem; margin-bottom:.6rem; }
+    .srv-heat-labels span { text-align:center; }
+    .srv-heat-legend { display:flex; align-items:center; gap:.4rem; font-size:.56rem; color:var(--muted); margin-bottom:1.25rem; }
+    .srv-heat-legend-bar { flex:0 0 auto; width:90px; height:6px; border-radius:3px; }
 
     .srv-players-list { columns:1; column-gap:1.5rem; }
     @media (min-width:481px) { .srv-players-list { columns:2; } }
@@ -446,9 +453,9 @@
 </div>
 
 <script src="/chart.min.js"></script>
-<script src="/charts.js?v=1"></script>
+<script src="/charts.js?v=2"></script>
 <script src="/alpine.min.js"></script>
-<script src="/common.js?v=10"></script>
+<script src="/common.js?v=11"></script>
 <script>
 const API = '/api';
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
@@ -809,12 +816,19 @@ function srvCardSkeleton(num) {
       <p id="srv-graph-empty-${num}" class="srv-empty" style="display:none;">Нет данных за этот период.</p>
     </div>
     <div id="srv-heatmap-wrap-${num}">
-      <div class="srv-section-title" id="srv-heatmap-title-${num}">Активность по часам (UTC, среднее за 7 дней)</div>
+      <div class="srv-section-title" id="srv-heatmap-title-${num}">Активность по дням и часам (среднее за 7 дней)</div>
       <div class="srv-heatmap-area">
-        <div class="srv-heatmap" id="srv-heatmap-${num}"></div>
+        <div class="srv-heatgrid" id="srv-heatmap-${num}"></div>
         <div class="srv-graph-tooltip" id="srv-heat-tip-${num}" style="display:none;"></div>
       </div>
-      <div class="srv-heat-labels"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
+      <div class="srv-heat-labels">
+        <span></span><span style="grid-column:2;">00</span><span style="grid-column:8;">06</span><span style="grid-column:14;">12</span><span style="grid-column:20;">18</span><span style="grid-column:25;">23</span>
+      </div>
+      <div class="srv-heat-legend">
+        <span>меньше</span>
+        <span class="srv-heat-legend-bar" style="background:linear-gradient(90deg, rgba(var(--accent-rgb),0.08), rgba(var(--accent-rgb),0.93));"></span>
+        <span>больше игроков</span>
+      </div>
     </div>
     <div id="srv-cal-wrap-${num}" style="margin-bottom:1.25rem;">
       <div class="srv-section-title" style="margin-bottom:.5rem;">Аптайм за 28 дней</div>
@@ -1062,11 +1076,31 @@ function filterPlayers(num) {
   }).join('');
 }
 
+function _localHour(date) {
+  const tz = window.__TZ || 'Europe/Moscow';
+  return parseInt(new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hour12: false }).format(date), 10) % 24;
+}
+
+// Collapsed across all days — just "what's typical for this hour", for the single
+// "▲/▼ выше/ниже обычного" comparison below. The full day×hour breakdown lives in
+// computeHeatmapMatrix() above; this stays separate since squashing that matrix's
+// nulls back into an average would need its own weighting logic for no benefit here.
+function computeHourBuckets(snaps) {
+  const sums = Array(24).fill(0);
+  const counts = Array(24).fill(0);
+  snaps.forEach(s => {
+    const h = _localHour(new Date(s.ts * 1000));
+    sums[h] += s.players;
+    counts[h]++;
+  });
+  return sums.map((sum, hour) => ({ hour, count: counts[hour], avg: counts[hour] ? sum / counts[hour] : 0 }));
+}
+
 function updateOnlineContext(num, players, online) {
   const el = document.getElementById(`srv-online-ctx-${num}`);
   if (!el) return;
   if (!online || !_graphData[num] || !_graphData[num].length) { el.textContent = ''; return; }
-  const hour = new Date().getUTCHours();
+  const hour = _localHour(new Date());
   const buckets = computeHourBuckets(_graphData[num]);
   const bucket = buckets[hour];
   if (!bucket || bucket.count < 3) { el.textContent = ''; return; }
@@ -1120,45 +1154,73 @@ function _pluralPlayers(n) {
 const PERIOD_LABELS = { 1: 'сутки', 3: '3 дня', 7: '7 дней' };
 let _heatHoverSetup = {};
 
-function computeHourBuckets(snaps) {
-  const sums = Array(24).fill(0);
-  const counts = Array(24).fill(0);
+const DOW_LABELS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+const _DOW_INDEX = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+
+// 7×24 (day-of-week × hour) matrix in the site's configured local timezone — a
+// previous version of this widget bucketed by UTC hour only (no day axis), which
+// silently mis-assigns anything within a few hours of local midnight to the wrong
+// calendar day for any timezone offset from UTC.
+function computeHeatmapMatrix(snaps) {
+  const tz = window.__TZ || 'Europe/Moscow';
+  const fmt = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', hour: 'numeric', hour12: false });
+  const sums = Array.from({ length: 7 }, () => Array(24).fill(0));
+  const counts = Array.from({ length: 7 }, () => Array(24).fill(0));
   snaps.forEach(s => {
-    const h = new Date(s.ts * 1000).getUTCHours();
-    sums[h] += s.players;
-    counts[h]++;
+    const parts = fmt.formatToParts(new Date(s.ts * 1000));
+    const wd = parts.find(p => p.type === 'weekday')?.value;
+    const dow = _DOW_INDEX[wd];
+    if (dow === undefined) return;
+    // hour12:false can report midnight as "24" in some engines — normalize.
+    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10) % 24;
+    sums[dow][hour] += s.players;
+    counts[dow][hour]++;
   });
-  return sums.map((sum, hour) => ({ hour, count: counts[hour], avg: counts[hour] ? sum / counts[hour] : 0 }));
+  return sums.map((row, dow) => row.map((sum, hour) => ({
+    dow, hour, count: counts[dow][hour],
+    avg: counts[dow][hour] ? sum / counts[dow][hour] : null, // null = no data yet, distinct from a confirmed 0
+  })));
 }
 
 function drawHeatmap(num) {
   const wrap = document.getElementById(`srv-heatmap-wrap-${num}`);
-  const el = document.getElementById(`srv-heatmap-${num}`);
+  const grid = document.getElementById(`srv-heatmap-${num}`);
   const titleEl = document.getElementById(`srv-heatmap-title-${num}`);
-  if (!wrap || !el) return;
+  if (!wrap || !grid) return;
 
   const days = _graphPeriod[num] || 7;
   const cutoff = Date.now() / 1000 - days * 86400;
   const snaps = (_graphData[num] || []).filter(s => s.ts >= cutoff);
-  const buckets = computeHourBuckets(snaps);
+  const matrix = computeHeatmapMatrix(snaps);
+  const cells = matrix.flat();
+  const known = cells.filter(c => c.avg !== null);
 
-  if (!buckets.some(b => b.count > 0)) {
+  if (!known.length) {
     wrap.style.display = 'none';
     return;
   }
   wrap.style.display = '';
-  if (titleEl) titleEl.textContent = `Активность по часам (среднее за ${PERIOD_LABELS[days] || '7 дней'})`;
+  if (titleEl) titleEl.textContent = `Активность по дням и часам (среднее за ${PERIOD_LABELS[days] || '7 дней'})`;
 
-  const max = Math.max(...buckets.map(b => b.avg), 1);
-  const peak = buckets.reduce((best, b) => b.avg > best.avg ? b : best, buckets[0]);
+  const max = Math.max(...known.map(c => c.avg), 1);
   const accentRgb = SERVER_THEMES[num].accentRgb;
 
-  el.innerHTML = buckets.map(b => {
-    const h = Math.max(2, Math.round((b.avg / max) * 60));
-    const isPeak = b.avg > 0 && b.hour === peak.hour;
-    const bg = isPeak ? '' : `background:linear-gradient(180deg, rgb(${accentRgb}), rgba(${accentRgb},0.25));`;
-    return `<div class="srv-heatbar${isPeak ? ' peak' : ''}" data-hour="${b.hour}" data-avg="${b.avg.toFixed(1)}" data-count="${b.count}" style="height:${h}px;${bg}"></div>`;
-  }).join('');
+  // Sequential single-hue ramp (this server's own accent), opacity from a near-
+  // background floor up to full saturation — magnitude only, never a rainbow.
+  const cellBg = (avg) => {
+    if (avg === null) return 'rgba(255,255,255,0.035)';
+    const alpha = 0.08 + (avg / max) * 0.85;
+    return `rgba(${accentRgb},${alpha.toFixed(2)})`;
+  };
+
+  grid.innerHTML = matrix.map((row, dow) =>
+    `<div class="srv-heatgrid-daylabel">${DOW_LABELS[dow]}</div>` +
+    row.map((c) => {
+      const isPeak = c.avg !== null && c.avg === max;
+      const bg = isPeak ? 'var(--gold)' : cellBg(c.avg);
+      return `<div class="srv-heatcell" data-dow="${dow}" data-hour="${c.hour}" data-avg="${c.avg === null ? '' : c.avg.toFixed(1)}" data-count="${c.count}" style="background:${bg};${isPeak ? 'box-shadow:0 0 6px var(--gold);' : ''}"></div>`;
+    }).join('')
+  ).join('');
 
   setupHeatmapHover(num);
 }
@@ -1170,28 +1232,29 @@ function setupHeatmapHover(num) {
   const tip = document.getElementById(`srv-heat-tip-${num}`);
   if (!el || !tip) return;
 
-  const show = (bar) => {
-    if (!bar) { tip.style.display = 'none'; return; }
-    const hour = String(bar.dataset.hour).padStart(2, '0');
-    const avg = parseFloat(bar.dataset.avg);
+  const show = (cell) => {
+    if (!cell || cell.dataset.avg === '') { tip.style.display = 'none'; return; }
+    const hour = String(cell.dataset.hour).padStart(2, '0');
+    const dow = DOW_LABELS[Number(cell.dataset.dow)];
+    const avg = parseFloat(cell.dataset.avg);
     const n = Math.round(avg);
     const isInt = Math.abs(avg - n) < 0.05;
     const m10 = n % 10, m100 = n % 100;
     const word = (!isInt || (m100 >= 11 && m100 <= 14) || m10 >= 5 || m10 === 0)
       ? 'Игроков' : m10 === 1 ? 'Игрок' : 'Игрока';
-    tip.innerHTML = `<b>${bar.dataset.avg}</b> ${word}<span>${hour}:00–${hour}:59</span>`;
+    tip.innerHTML = `<b>${cell.dataset.avg}</b> ${word}<span>${dow}, ${hour}:00–${hour}:59</span>`;
     tip.style.display = 'block';
     const areaRect = el.parentElement.getBoundingClientRect();
-    const barRect = bar.getBoundingClientRect();
-    let left = barRect.left - areaRect.left + barRect.width / 2 - 50;
+    const cellRect = cell.getBoundingClientRect();
+    let left = cellRect.left - areaRect.left + cellRect.width / 2 - 50;
     left = Math.max(0, Math.min(left, areaRect.width - 105));
     tip.style.left = left + 'px';
     tip.style.top = '-46px';
   };
 
-  el.addEventListener('mousemove', e => show(e.target.closest('.srv-heatbar')));
+  el.addEventListener('mousemove', e => show(e.target.closest('.srv-heatcell')));
   el.addEventListener('mouseleave', () => show(null));
-  el.addEventListener('touchstart', e => { const bar = e.target.closest('.srv-heatbar'); if (bar) show(bar); }, { passive: true });
+  el.addEventListener('touchstart', e => { const cell = e.target.closest('.srv-heatcell'); if (cell) show(cell); }, { passive: true });
 }
 
 let _graphData = {};

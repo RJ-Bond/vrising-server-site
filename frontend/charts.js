@@ -9,6 +9,14 @@
 // online } snapshot series (the shape returned by GET /api/monitor/snapshots)
 // as a themed line chart with a gradient fill, offline markers, a themed
 // tooltip and optional dashed wipe-date annotations.
+//
+// renderBarChart(canvas, series, opts) draws one or two categorical bar
+// series ({ x: label, y: number } points) sharing the same dark theme/
+// tooltip styling — added for the admin registrations-per-day chart, the
+// points-economy dashboard (issued vs spent, same unit → one axis, legit
+// grouped bars, not a dual-axis chart), and public per-player activity
+// trends. Bars, not a line, since each x is a discrete category (a day),
+// not a continuously-sampled measurement the way snapshot polling is.
 
 (function () {
   if (typeof Chart === 'undefined') return;
@@ -180,6 +188,104 @@
           },
           y: {
             display: !minimal,
+            beginAtZero: true,
+            grid: { color: 'rgba(255,255,255,0.06)' },
+            ticks: { color: 'rgba(150,130,170,0.6)', font: { size: 9 }, precision: 0, maxTicksLimit: 4 },
+          },
+        },
+      },
+    });
+    return canvas._chart;
+  };
+
+  /**
+   * @param {HTMLCanvasElement} canvas
+   * @param {Array|Object} series - one series or an array of (1-2) series,
+   *   each { data: [{x: string, y: number}], label, color, rgb }. All series
+   *   must share the same x categories (same unit/axis — e.g. "issued" vs
+   *   "spent" points per day), matched by array index, not re-sorted.
+   * @param {Object} [opts]
+   *   - showLegend: bool (default: series.length > 1)
+   *   - xTicks: max number of x-axis ticks (default 8)
+   *   - valueLabel: unit word appended in the tooltip (e.g. "очков", "ч")
+   *   - valueFormatter: (n) => string, overrides the default tooltip number format
+   * @returns {Chart|null} the Chart.js instance, or null if there's no data
+   */
+  window.renderBarChart = function renderBarChart(canvas, series, opts = {}) {
+    if (!canvas || typeof Chart === 'undefined') return null;
+    const list = Array.isArray(series) ? series : [series];
+    const nonEmpty = list.filter((s) => s.data && s.data.length);
+
+    if (canvas._chart) {
+      canvas._chart.destroy();
+      canvas._chart = null;
+    }
+    if (!nonEmpty.length) {
+      canvas.style.display = 'none';
+      return null;
+    }
+    canvas.style.display = 'block';
+
+    const labels = nonEmpty[0].data.map((p) => p.x);
+    const fmtValue = opts.valueFormatter || ((n) => String(n));
+
+    const datasets = nonEmpty.map((s) => {
+      const color = s.color || '#c8002a';
+      const rgb = s.rgb || '200,0,42';
+      return {
+        label: s.label || '',
+        data: s.data.map((p) => p.y),
+        backgroundColor: `rgba(${rgb},0.55)`,
+        hoverBackgroundColor: `rgba(${rgb},0.8)`,
+        borderColor: color,
+        borderWidth: 1,
+        borderRadius: 3,
+        borderSkipped: false,
+        maxBarThickness: 28,
+      };
+    });
+
+    canvas._chart = new Chart(canvas, {
+      type: 'bar',
+      data: { labels, datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: {
+          legend: {
+            display: opts.showLegend !== undefined ? !!opts.showLegend : nonEmpty.length > 1,
+            labels: { color: '#c9bcd6', boxWidth: 10, font: { size: 10 } },
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15,8,20,0.92)',
+            borderColor: 'rgba(200,0,42,0.4)',
+            borderWidth: 1,
+            titleColor: '#ece3f7',
+            bodyColor: '#d4c4e0',
+            padding: 8,
+            displayColors: nonEmpty.length > 1,
+            callbacks: {
+              label: (item) => {
+                const prefix = nonEmpty.length > 1 ? `${item.dataset.label}: ` : '';
+                const unit = opts.valueLabel ? ` ${opts.valueLabel}` : '';
+                return `${prefix}${fmtValue(item.raw)}${unit}`;
+              },
+            },
+          },
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: {
+              color: 'rgba(150,130,170,0.6)',
+              font: { size: 9 },
+              maxTicksLimit: opts.xTicks || 8,
+              maxRotation: 0,
+              autoSkip: true,
+            },
+          },
+          y: {
             beginAtZero: true,
             grid: { color: 'rgba(255,255,255,0.06)' },
             ticks: { color: 'rgba(150,130,170,0.6)', font: { size: 9 }, precision: 0, maxTicksLimit: 4 },

@@ -159,6 +159,38 @@
       release_url: 'https://github.com/RJ-Bond/vrising-server-site/releases/tag/v2026.07.23',
       published_at: iso(2 * 3600 * 1000),
     })],
+    // GET /api/admin/analytics — backend/routers/admin_misc.py's get_analytics().
+    [/\/api\/admin\/analytics(\?.*)?$/, () => {
+      const day = (n) => new Date(now - n * 24 * 3600 * 1000).toISOString().slice(0, 10);
+      return {
+        days: 30, total_views: 4820,
+        by_day: Array.from({ length: 14 }, (_, i) => ({ day: day(13 - i), views: 200 + Math.round(Math.sin(i / 2) * 80), unique: 60 + Math.round(Math.sin(i / 2) * 20) })),
+        top_pages: [{ path: '/', views: 1800 }, { path: '/servers.html', views: 900 }, { path: '/leaderboard.html', views: 650 }],
+        totals: { users: fakeUsers.length, news: 37, comments: 214, active_users_7d: 42 },
+        users_by_day: Array.from({ length: 30 }, (_, i) => ({ date: day(29 - i), count: Math.max(0, Math.round(2 + Math.sin(i / 4) * 2)) })),
+        top_news: [
+          { slug: 'news-1', title: 'Обновление сервера', views: 512, comment_count: 18 },
+          { slug: 'news-2', title: 'Хэллоуин ивент', views: 388, comment_count: 24 },
+        ],
+      };
+    }],
+    // GET /api/admin/economy-stats — backend/routers/admin_misc.py's get_economy_stats().
+    [/\/api\/admin\/economy-stats(\?.*)?$/, () => {
+      const day = (n) => new Date(now - n * 24 * 3600 * 1000).toISOString().slice(0, 10);
+      return {
+        days: 30, balance_total: 18420,
+        by_day: Array.from({ length: 14 }, (_, i) => ({
+          day: day(13 - i),
+          issued: 300 + Math.round(Math.sin(i / 2) * 100),
+          spent: 150 + Math.round(Math.cos(i / 2) * 80),
+        })),
+        top_items: [
+          { name: 'Waypoint Shard', redemptions: 24, points_spent: 1200 },
+          { name: 'Blood Rose Seeds', redemptions: 9, points_spent: 1080 },
+          { name: 'Legendary Weapon Skin', redemptions: 2, points_spent: 1600 },
+        ],
+      };
+    }],
   ];
 
   const realFetch = window.fetch.bind(window);

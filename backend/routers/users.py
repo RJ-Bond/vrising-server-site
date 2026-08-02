@@ -1,5 +1,5 @@
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text
 
 from ..database import get_db
-from ..models import User, PlayerRecord, GameClan, GameClanMember, Comment, Reaction, News
+from ..models import User, PlayerRecord, PlayerRankSnapshot, GameClan, GameClanMember, Comment, Reaction, News
 from ..auth import get_moderator_user, get_admin_user, get_superadmin_user, role_level
 from ..helpers import log_audit, _audit, _fmt_dt
 from ..schemas import UserOut, LinkedAccountOut
@@ -212,6 +212,49 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         "badge_style": user.badge_style or "default",
         "comment_count": comment_count,
     }
+
+
+@router.get("/api/users/{username}/activity-trend")
+async def get_user_activity_trend(
+    username: str,
+    days: int = Query(30, ge=7, le=90),
+    db: AsyncSession = Depends(get_db),
+):
+    """Daily playtime for the last `days` days, derived from PlayerRankSnapshot — a
+    nightly copy of each player's cumulative total_seconds (see the model docstring;
+    it exists today only to compute leaderboard rank deltas). A day's playtime is
+    just that day's total minus the previous day's, summed across every server the
+    player has snapshots on — cumulative counters never reset except on a wipe, so a
+    negative delta (wipe, or a manual admin adjustment) is clamped to 0 rather than
+    shown as negative playtime. Returns [] for a player with fewer than 2 days of
+    snapshots (nothing to diff yet) rather than a single meaningless zero-delta point.
+    """
+    result = await db.execute(
+        select(User).where(User.username == username, User.is_active == True)
+    )
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    lookup_name = user.game_nickname or username
+
+    # One extra day of lookback so the first day *in range* still has a prior-day
+    # baseline to diff against, instead of being dropped or shown as a false 0.
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days + 1)
+    rows = (await db.execute(
+        select(
+            func.date(PlayerRankSnapshot.recorded_at).label("day"),
+            func.sum(PlayerRankSnapshot.total_seconds).label("total"),
+        )
+        .where(PlayerRankSnapshot.player_name == lookup_name, PlayerRankSnapshot.recorded_at >= cutoff)
+        .group_by(func.date(PlayerRankSnapshot.recorded_at))
+        .order_by(func.date(PlayerRankSnapshot.recorded_at).asc())
+    )).all()
+
+    trend = []
+    for prev, cur in zip(rows, rows[1:], strict=False):  # deliberately different lengths — pairwise consecutive-day diff
+        delta = max(0, cur.total - prev.total)
+        trend.append({"date": cur.day, "seconds": delta})
+    return trend
 
 
 # ─── User activity feed ──────────────────────────────────────────────────────

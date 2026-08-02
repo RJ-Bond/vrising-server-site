@@ -103,8 +103,11 @@
     heatmap: Array.from({ length: 24 }, (_, h) => Math.round(5 + 10 * Math.sin((h - 6) / 24 * Math.PI * 2) + 10)),
   });
 
-  const snapshots = (n) => Array.from({ length: 48 }, (_, i) => ({
-    ts: Math.floor((now - (48 - i) * 1800 * 1000) / 1000),
+  // 7 days × every 30min = 336 points — spans a full week (not just the last 24h)
+  // so the servers.html day×hour heatmap actually has more than one row of data to
+  // render, and the 3d/7d period toggle has something to visibly differ on.
+  const snapshots = (n) => Array.from({ length: 336 }, (_, i) => ({
+    ts: Math.floor((now - (336 - i) * 1800 * 1000) / 1000),
     players: Math.max(0, Math.round(n + Math.sin(i / 5) * n * 0.6)),
     online: true, latency_ms: 40 + Math.round(Math.random() * 20),
   }));

@@ -35,6 +35,64 @@ services:
     networks:
       - vrising_net
 
+  # ─── Umami (self-hosted, privacy-friendly analytics) ──────────────────────
+  # Addition alongside the existing PageViewMiddleware/`/api/admin/analytics`
+  # tracker in backend/main.py — not a replacement, both run side by side.
+  # Umami only supports Postgres or MySQL (no SQLite), hence the separate
+  # `umami-db` service below instead of reusing the `web` container's sqlite file.
+  umami-db:
+    image: postgres:16-alpine
+    container_name: vrising_umami_db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=umami
+      - POSTGRES_USER=umami
+      - POSTGRES_PASSWORD=${UMAMI_DB_PASSWORD:-changeme_generate_random_password}
+    volumes:
+      - umami_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U umami -d umami"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - vrising_net
+
+  umami:
+    # postgresql-latest = official image variant built against Postgres (Umami v3
+    # dropped MySQL support). "latest" floats — pin to a specific release tag
+    # (see https://github.com/umami-software/umami/pkgs/container/umami) once this
+    # has actually been deployed once and the version is known-good.
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    container_name: vrising_umami
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql://umami:${UMAMI_DB_PASSWORD:-changeme_generate_random_password}@umami-db:5432/umami
+      - APP_SECRET=${UMAMI_APP_SECRET:-changeme_generate_random_32chars}
+      # Serves the app under /analytics/ so nginx can reverse-proxy it at the same
+      # origin as the main site (see nginx/nginx-ssl.conf) instead of needing a new
+      # subdomain + its own DNS record + its own certbot cert. Umami documents this
+      # env var specifically for reverse-proxy-under-a-subpath deployments; without
+      # it, the app's own asset/API URLs are absolute at "/" and won't match the
+      # /analytics/ location block. See docs/umami-setup.md.
+      - BASE_PATH=/analytics
+      - DISABLE_TELEMETRY=1
+    depends_on:
+      umami-db:
+        condition: service_healthy
+    healthcheck:
+      # Unverified against a live deploy (no server access from here) — BASE_PATH
+      # should prefix every app route including this one, but confirm after first
+      # deploy and adjust the path if the container reports unhealthy.
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/analytics/api/heartbeat || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      - vrising_net
+
   nginx:
     image: nginx:1.25-alpine
     container_name: vrising_nginx
@@ -56,6 +114,7 @@ services:
 
 volumes:
   db_data:
+  umami_db_data:
   letsencrypt_data:
     name: vrising_letsencrypt
   certbot_webroot:

@@ -39,6 +39,32 @@ if (SENTRY_DSN) {
   document.head.appendChild(_sentryScript);
 }
 
+// ─── Optional Umami analytics (frontend) ───────────────────────────────────
+// Off by default: UMAMI_WEBSITE_ID is empty, so this whole block is a total no-op —
+// no extra script fetch, no network call. This is a self-hosted Umami instance (see
+// the `umami`/`umami-db` services in docker-compose.yml + docs/umami-setup.md),
+// reached at /analytics/ on this same origin via nginx — it's an ADDITION alongside
+// the existing custom page-view tracker (PageViewMiddleware / `/api/admin/analytics`
+// in backend/main.py), not a replacement; that code is untouched and out of scope.
+//
+// Unlike Sentry's vendored SDK, Umami's tracker script can't be vendored as a static
+// file here: it's served BY the Umami container itself and needs to phone home to
+// that same origin, so it's fetched live from /analytics/script.js — only once
+// UMAMI_WEBSITE_ID is actually filled in.
+//
+// To enable: after the `umami` service has been deployed and its first-run setup
+// done (see docs/umami-setup.md), log into Umami's own admin UI, add this site as a
+// website, and paste its generated Website ID below.
+const UMAMI_WEBSITE_ID = ''; // e.g. '94db1cb1-74f4-4a40-ad6c-962362670409'
+
+if (UMAMI_WEBSITE_ID) {
+  const _umamiScript = document.createElement('script');
+  _umamiScript.defer = true;
+  _umamiScript.src = '/analytics/script.js';
+  _umamiScript.setAttribute('data-website-id', UMAMI_WEBSITE_ID);
+  document.head.appendChild(_umamiScript);
+}
+
 // Inject shared styles once: toast animation + a keyboard-focus ring (a11y).
 // :focus-visible shows only on keyboard navigation (not mouse clicks), so it
 // adds an accessible focus indicator without affecting pointer users.
@@ -306,7 +332,7 @@ function _statusInfo(iso) {
       <div id="gs-modal" style="position:absolute;top:15%;left:50%;transform:translateX(-50%);width:100%;max-width:540px;padding:0 1rem;box-sizing:border-box;">
         <div style="background:rgba(10,2,18,0.98);border:1px solid rgba(150,0,28,0.4);border-radius:1rem;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.8);">
           <div style="display:flex;align-items:center;gap:.75rem;padding:.85rem 1.1rem;border-bottom:1px solid rgba(110,0,150,0.18);">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted,#9488a8)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted,#9488a8)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><use href="/icons.svg#icon-search"></use></svg>
             <input id="gs-input" type="text" placeholder="Поиск игроков, новостей, кланов…"
               style="flex:1;background:none;border:none;outline:none;color:#e2d8f0;font-size:.92rem;font-family:'Inter',sans-serif;" autocomplete="off"/>
             <kbd style="font-size:.62rem;color:#9488a8;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:.3rem;padding:.1rem .4rem;flex-shrink:0;">Esc</kbd>

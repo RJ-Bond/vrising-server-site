@@ -286,7 +286,7 @@
          of servers) — see renderActiveBansServerFilterOptions(). -->
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin:.9rem 0 1rem;">
       <div style="position:relative;flex:1 1 240px;max-width:340px;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;"><use href="/icons.svg#icon-search"></use></svg>
         <input id="active-bans-search" class="search-input" type="text" placeholder="Поиск по нику..." style="padding-left:2.4rem;" oninput="renderActiveBans()" />
       </div>
       <select id="active-bans-server-filter" class="search-input" style="flex:0 1 220px;" onchange="renderActiveBans()">
@@ -396,7 +396,7 @@
 </div>
 
 <script src="/alpine.min.js"></script>
-<script src="/common.js?v=10"></script>
+<script src="/common.js?v=11"></script>
 <script>
 const API = '/api';
 
