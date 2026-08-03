@@ -150,10 +150,59 @@
       display:block;
       animation:online-pulse 2.2s ease-in-out infinite;
     }
+    /* is_online === false (explicit, not unknown/null) — a synced clan member who is
+       currently offline. Distinct from "no dot at all" (is_online null = unknown). */
+    .lb-online-dot.show.offline {
+      background:#6b7280; animation:none; box-shadow:none;
+    }
     @keyframes online-pulse {
       0%,100% { box-shadow:0 0 0 0 rgba(46,230,155,0.7), 0 0 5px #2ee69b; }
       55%      { box-shadow:0 0 0 5px rgba(46,230,155,0),  0 0 5px #2ee69b; }
     }
+
+    /* ── Clan chip (matches clans.html .server-pill visual language) ── */
+    .lb-clan-chip {
+      display:inline-flex; align-items:center; font-size:.6rem; font-weight:600;
+      padding:.1rem .4rem; border-radius:.3rem; background:rgba(110,0,150,0.14);
+      border:1px solid rgba(110,0,150,0.3); color:#c4b5fd; white-space:nowrap;
+      text-decoration:none; max-width:8rem; overflow:hidden; text-overflow:ellipsis;
+      transition:background .15s, border-color .15s;
+    }
+    a.lb-clan-chip:hover { background:rgba(110,0,150,0.24); border-color:rgba(110,0,150,0.5); }
+
+    /* ── Streak badge — small fun accent, not clutter ── */
+    .lb-streak-badge {
+      font-size:.62rem; font-weight:700; color:#ffb347;
+      background:rgba(255,140,0,0.12); border:1px solid rgba(255,140,0,0.3);
+      border-radius:.4rem; padding:.03rem .32rem; white-space:nowrap; line-height:1.4;
+    }
+
+    /* ── Combat power (matches clans.html powerHtml()) ── */
+    .lb-power { font-size:.62rem; color:var(--muted); white-space:nowrap; flex-shrink:0; }
+
+    /* ── Filter chips (verified-only / my-clan-only) ── */
+    .lb-filter-chip {
+      background:var(--panel); border:1px solid rgba(255,255,255,0.1); color:var(--muted);
+      border-radius:.5rem; padding:.4rem .8rem; font-size:.72rem; font-weight:600;
+      cursor:pointer; transition:all .15s; font-family:'Inter',sans-serif; white-space:nowrap;
+    }
+    .lb-filter-chip:hover { color:var(--text); border-color:rgba(200,0,40,0.3); }
+    .lb-filter-chip.active { background:linear-gradient(135deg,#7a001c,var(--crimson)); color:#fff; border-color:transparent; }
+
+    /* ── Per-row expandable trend chart ── */
+    .lb-expand-btn {
+      background:none; border:none; color:var(--muted); cursor:pointer; padding:.2rem .35rem;
+      font-size:.7rem; flex-shrink:0; transition:color .15s, transform .2s; line-height:1;
+    }
+    .lb-expand-btn:hover { color:var(--text); }
+    .lb-expand-btn.open { color:var(--gold); transform:rotate(90deg); }
+    .lb-trend-wrap {
+      padding:.6rem .5rem 1rem; border-bottom:1px solid rgba(255,255,255,0.06);
+      animation:fade-up .25s ease both;
+    }
+    .lb-trend-title { font-size:.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:.4rem; }
+    .lb-trend-canvas-wrap { height:110px; position:relative; }
+    .lb-trend-loading, .lb-trend-empty { font-size:.72rem; color:var(--muted); text-align:center; padding:1rem 0; }
 
     .lb-name-col { flex:1; min-width:0; }
     .lb-name { font-family:'Philosopher',serif; font-size:.92rem; color:#ece3f7; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
@@ -363,17 +412,22 @@
         <button class="lb-toggle-btn active" data-period="all"   onclick="setPeriod('all',this)">Всё время</button>
         <button class="lb-toggle-btn"        data-period="month" onclick="setPeriod('month',this)">Месяц</button>
         <button class="lb-toggle-btn"        data-period="week"  onclick="setPeriod('week',this)">Неделя</button>
+        <button class="lb-toggle-btn"        data-period="day"   onclick="setPeriod('day',this)">Сутки</button>
       </div>
     </div>
-    <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:1rem;">
+    <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem;">
       <div style="position:relative;flex:1;">
         <svg style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);opacity:.6;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-search"></use></svg>
-        <input id="lb-search" type="text" placeholder="Поиск игрока…" oninput="filterLeaderboard(this.value)"
+        <input id="lb-search" type="text" placeholder="Поиск игрока…" oninput="filterLeaderboard()"
           style="width:100%;background:rgba(14,5,22,0.85);border:1px solid rgba(110,0,150,0.22);border-radius:.65rem;padding:.62rem 1rem .62rem 2.5rem;color:var(--text);font-size:.88rem;outline:none;transition:border-color .2s;font-family:'Inter',sans-serif;"
           onfocus="this.style.borderColor='rgba(200,0,42,0.45)'" onblur="this.style.borderColor='rgba(110,0,150,0.22)'">
       </div>
       <button class="lb-find-me-btn" id="lb-find-me" onclick="findMe()"
               style="display:none;" data-tip="Перейти к своей строке">📍 Найти себя</button>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;">
+      <button class="lb-filter-chip" id="lb-verified-filter" onclick="toggleVerifiedFilter()">✔ Только подтверждённые</button>
+      <button class="lb-filter-chip" id="lb-myclan-filter" onclick="toggleMyClanFilter()" style="display:none;">🏰 Только мой клан</button>
     </div>
     <div id="lb-col-header" style="display:flex;align-items:center;gap:.9rem;padding:.2rem .5rem .35rem;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;border-bottom:1px solid rgba(255,255,255,0.05);margin-bottom:.2rem;">
       <span style="width:2.2rem;flex-shrink:0;"></span>
@@ -391,6 +445,8 @@
   </div>
 </div>
 
+<script src="/chart.min.js"></script>
+<script src="/charts.js?v=2"></script>
 <script src="/alpine.min.js"></script>
 <script src="/common.js?v=11"></script>
 <script>
@@ -402,9 +458,24 @@ let _onlineNames = new Set();
 let _searchTimer = null;
 let _fetchBarTimer = null;
 let _meUsername = (function() { const u = (typeof getUser === 'function' ? getUser() : null); return u ? (u.username || '') : ''; })();
+// Filters: verified-only is purely client-side over already-fetched rows; my-clan-only
+// needs a server-side refetch with clan_id (see loadLeaderboard()) since it's a filter
+// on the underlying dataset, not just the currently-visible page.
+let _verifiedOnly = false;
+let _clanOnly = false;
+let _myClanId = null;
+// Expandable per-row trend chart — only one row open at a time (keeps this lightweight).
+let _expandedPlayer = null;
 
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
 // getUser, esc, nameGradient — defined in common.js
+/* ── RU pluralization (same shape as clans.html's local copy — not in common.js) ── */
+function pluralRu(n, one, few, many) {
+  const mod10 = n % 10, mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  return many;
+}
 
 /* ③ Fetch progress bar */
 function showFetchBar() {
@@ -463,10 +534,42 @@ function activityBadge(lastSeen) {
   return '';
 }
 
+// Same thresholds/icons as user.html's PUB_ACHIEVEMENTS hours10/hours100/hours1000 tiers
+// (36000/360000/3600000 seconds), so the two pages always agree — shows only the
+// highest tier currently reached, not every tier earned along the way.
 function achievementBadge(totalSeconds) {
-  if (totalSeconds >= 1800000) return '<span class="lb-badge" title="500+ часов на сервере">💀</span>';
-  if (totalSeconds >= 360000)  return '<span class="lb-badge" title="100+ часов на сервере">🏆</span>';
+  const s = totalSeconds || 0;
+  if (s >= 3600000) return '<span class="lb-badge" title="1000+ часов на сервере — легенда сервера">🏆</span>';
+  if (s >= 360000)  return '<span class="lb-badge" title="100+ часов на сервере">⚔</span>';
+  if (s >= 36000)   return '<span class="lb-badge" title="10+ часов на сервере">⏱</span>';
   return '';
+}
+
+// Streak badge — 🔥 + consecutive-days count, same number the in-game plugin already
+// tells the player via its connect message. Fun accent, not a data-dense tile.
+function streakBadge(streakDays) {
+  if (!streakDays || streakDays <= 0) return '';
+  const d = pluralRu(streakDays, 'день', 'дня', 'дней');
+  return `<span class="lb-streak-badge" title="Играет ${streakDays} ${d} подряд">🔥 ${streakDays}</span>`;
+}
+
+// Combat power — visual language matches clans.html's powerHtml() exactly (same icons/
+// rounding/format), hidden entirely (not "—") when both are null.
+function powerHtml(physicalPower, spellPower) {
+  if (physicalPower == null && spellPower == null) return '';
+  const parts = [];
+  if (physicalPower != null) parts.push(`⚔ ${Math.round(physicalPower)}`);
+  if (spellPower != null) parts.push(`🔮 ${Math.round(spellPower)}`);
+  return `<span class="lb-power" title="Физическая / магическая мощь">${parts.join(' · ')}</span>`;
+}
+
+// Clan chip — links to clans.html's existing ?clan=<id> deep link (opens that clan's
+// detail modal directly) so it visually + functionally connects to the clans page.
+function clanChipHtml(clanId, clanName) {
+  if (!clanName) return '';
+  return clanId
+    ? `<a href="/clans.html?clan=${clanId}" class="lb-clan-chip" onclick="event.stopPropagation()" title="${esc(clanName)}">${esc(clanName)}</a>`
+    : `<span class="lb-clan-chip" title="${esc(clanName)}">${esc(clanName)}</span>`;
 }
 
 function applySiteBackground(bg) {
@@ -516,6 +619,7 @@ function applySiteBackground(bg) {
       if (ml) ml.style.display = 'none';
       loadNotifications();
       setInterval(loadNotifications, 60000);
+      resolveMyClan(_meUsername);
     } else {
       localStorage.removeItem('user'); sessionStorage.removeItem('user');
       localStorage.removeItem('token'); sessionStorage.removeItem('token');
@@ -558,6 +662,39 @@ function setMetric(metric, btn) {
     ? 'Рейтинг по балансу очков'
     : 'Рейтинг по суммарному времени в игре';
   document.getElementById('lb-search').value = '';
+  updateFilterVisibility();
+  loadLeaderboard();
+}
+// Points is a single global balance, not per-clan/per-verification-session — hide the
+// verified/my-clan filter chips in that mode (same reasoning as the server/period toggles).
+function updateFilterVisibility() {
+  const isPoints = _metric === 'points';
+  const vBtn = document.getElementById('lb-verified-filter');
+  const cBtn = document.getElementById('lb-myclan-filter');
+  if (vBtn) vBtn.style.display = isPoints ? 'none' : '';
+  if (cBtn) cBtn.style.display = (!isPoints && _myClanId) ? '' : 'none';
+}
+async function resolveMyClan(username) {
+  if (!username) return;
+  try {
+    const d = await fetch(`${API}/users/${encodeURIComponent(username)}`).then(r => r.ok ? r.json() : null);
+    if (d && d.clan && d.clan.id) {
+      _myClanId = d.clan.id;
+      updateFilterVisibility();
+    }
+  } catch {}
+}
+function toggleVerifiedFilter() {
+  _verifiedOnly = !_verifiedOnly;
+  document.getElementById('lb-verified-filter').classList.toggle('active', _verifiedOnly);
+  applyFilters();
+}
+function toggleMyClanFilter() {
+  _clanOnly = !_clanOnly;
+  document.getElementById('lb-myclan-filter').classList.toggle('active', _clanOnly);
+  _page = 1;
+  // My-clan is a dataset filter (which players exist at all), not just a display
+  // filter over the current page — needs a refetch with clan_id, unlike verified-only.
   loadLeaderboard();
 }
 function setServer(num, btn) {
@@ -580,16 +717,27 @@ function onSearchInput() {
   _searchTimer = setTimeout(() => { _page = 1; loadLeaderboard(); }, 350);
 }
 
-function filterLeaderboard(query) {
-  const q = (query || '').toLowerCase().trim();
-  if (!q) { renderRows(_allPlayers); return; }
-  const filtered = _allPlayers.filter(p => (p.player_name || '').toLowerCase().includes(q));
+// Combines the search box text with the verified-only chip — both are purely
+// client-side over the already-fetched _allPlayers (my-clan-only instead triggers a
+// refetch in loadLeaderboard(), since it changes which players exist at all).
+function getFilteredPlayers() {
+  const q = (document.getElementById('lb-search')?.value || '').toLowerCase().trim();
+  let list = _allPlayers;
+  if (q) list = list.filter(p => (p.player_name || '').toLowerCase().includes(q));
+  if (_verifiedOnly) list = list.filter(p => p.verified === true);
+  return list;
+}
+function applyFilters() {
+  const filtered = getFilteredPlayers();
   if (!filtered.length) {
     const list = document.getElementById('lb-list');
     if (list) list.innerHTML = '<div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.85rem;">Не найдено</div>';
   } else {
     renderRows(filtered);
   }
+}
+function filterLeaderboard() {
+  applyFilters();
 }
 
 function renderPodium(top3) {
@@ -669,8 +817,16 @@ function renderRows(players) {
     const podiumCls = rank <= 3 ? ` rank-${rank}` : '';
     const medal    = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
     const name     = p.player_name || 'Аноним';
-    const isOnline = _onlineNames.has(name);
+    // is_online is null/undefined for players outside a synced clan (unknown — never
+    // shown as offline) vs explicit true/false for tracked clan members. The Steam A2S
+    // online-names set (game-agnostic, works for everyone) takes priority when it says
+    // online; an explicit false only produces the dim "offline" dot, never a red one.
+    const pluginOnline    = p.is_online;
+    const isOnline        = _onlineNames.has(name) || pluginOnline === true;
+    const isExplicitOffline = !isOnline && pluginOnline === false;
+    const onlineDotCls    = isOnline ? ' show' : (isExplicitOffline ? ' show offline' : '');
     const isMe     = _meUsername && _meUsername === name;
+    const isExpanded = _expandedPlayer === name;
     const grad     = nameGradient(name);
     const avatarHtml = p.avatar_url
       ? `<img class="lb-avatar" src="${esc(p.avatar_url)}" alt="" loading="lazy">`
@@ -682,6 +838,9 @@ function renderRows(players) {
       ? `<span class="lb-last-session">посл. сессия: ${fmtPlaytime(p.last_duration)}</span>` : '';
     const badge    = activityBadge(p.last_seen) + achievementBadge(p.total_seconds);
     const meBadge  = isMe ? `<span style="font-size:.5rem;font-weight:700;padding:.1rem .35rem;background:rgba(200,0,42,0.2);border:1px solid rgba(200,0,42,0.4);color:#fca5a5;border-radius:9999px;vertical-align:middle;margin-left:.4rem;">Вы</span>` : '';
+    const streakHtml = streakBadge(p.streak_days);
+    const clanHtml   = clanChipHtml(p.clan_id, p.clan_name);
+    const powerHtmlStr = powerHtml(p.physical_power, p.spell_power);
     const barPct   = Math.round((p.metricValue / maxMetric) * 100);
     const barColor = rank === 1 ? '#ffd54a' : rank === 2 ? 'rgba(214,214,232,0.7)' : rank === 3 ? '#e0a361' : 'rgba(160,0,40,0.55)';
     let rankDeltaHtml = '';
@@ -691,21 +850,78 @@ function renderRows(players) {
       const tip   = isUp ? `Поднялся на ${absN} мест за неделю` : `Опустился на ${absN} мест за неделю`;
       rankDeltaHtml = `<span class="lb-rank-delta ${isUp ? 'up' : 'down'}" data-tip="${tip}">${isUp ? '▲' : '▼'}${absN}</span>`;
     }
-    return `<div class="lb-row${isMe ? ' me' : ''}${podiumCls}" data-username="${esc(name)}" onclick="location.href='/user.html?u='+encodeURIComponent(this.dataset.username)" style="cursor:pointer;animation:fade-up .35s ease both;animation-delay:${Math.min(i * 25, 300)}ms;">
+    const rowHtml = `<div class="lb-row${isMe ? ' me' : ''}${podiumCls}" data-username="${esc(name)}" onclick="location.href='/user.html?u='+encodeURIComponent(this.dataset.username)" style="cursor:pointer;animation:fade-up .35s ease both;animation-delay:${Math.min(i * 25, 300)}ms;">
       <span class="lb-rank ${rankCls}" style="animation:rank-in .4s ease both;animation-delay:${i * 30}ms;">${medal ? `<span class="lb-medal">${medal}</span>` : rank}${rankDeltaHtml}</span>
-      <span class="lb-avatar-wrap">${avatarHtml}<span class="lb-online-dot${isOnline ? ' show' : ''}"></span></span>
+      <span class="lb-avatar-wrap">${avatarHtml}<span class="lb-online-dot${onlineDotCls}"></span></span>
       <span class="lb-name-col">
-        <div style="display:flex;align-items:center;gap:.3rem;">
+        <div style="display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;">
           <span class="lb-name">${esc(name)}</span>
-          ${meBadge}${badge}
+          ${streakHtml}${clanHtml}${meBadge}${badge}
         </div>
         ${lastSession}
         <div class="lb-progress" data-tip="${barPct}% от лидера сервера"><div class="lb-progress-fill" style="width:${barPct}%;background:${barColor};"></div></div>
       </span>
+      ${powerHtmlStr}
       <span class="lb-time">${fmtMetric(p.metricValue)}${p.verified ? `<span class="lb-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>` : ''}</span>
       <span class="lb-seen">${relativeDate(p.last_seen)}</span>
+      <button class="lb-expand-btn${isExpanded ? ' open' : ''}" onclick="event.stopPropagation();toggleTrendRow(this)" data-tip="Активность за 14 дней" aria-label="Показать активность за 14 дней">▶</button>
     </div>`;
+    const trendHtml = isExpanded ? `<div class="lb-trend-wrap">
+      <div class="lb-trend-title">Активность за 14 дней — ${esc(name)}</div>
+      <div class="lb-trend-canvas-wrap"><canvas id="lb-trend-canvas"></canvas><div class="lb-trend-loading">Загрузка…</div></div>
+    </div>` : '';
+    return rowHtml + trendHtml;
   }).join('');
+  if (_expandedPlayer) loadTrendChart(_expandedPlayer);
+}
+
+/* ── Expandable per-row trend chart ──────────────────────────────────────── */
+function fmtTrendDate(dateStr) {
+  const d = new Date(`${dateStr}T00:00:00`);
+  if (isNaN(d.getTime())) return dateStr;
+  return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+}
+function trendMessage(text) {
+  const wrap = document.querySelector('.lb-trend-canvas-wrap');
+  if (wrap) wrap.innerHTML = `<div class="lb-trend-empty">${esc(text)}</div>`;
+}
+// Only one row can be expanded at a time (renderRows() enforces this via
+// _expandedPlayer), so the trend canvas/status elements use static IDs rather than
+// per-row ones — simpler, and there's never more than one instance in the DOM.
+async function toggleTrendRow(btn) {
+  const row = btn.closest('.lb-row');
+  if (!row) return;
+  const name = row.dataset.username;
+  _expandedPlayer = (_expandedPlayer === name) ? null : name;
+  applyFilters();
+}
+async function loadTrendChart(playerName) {
+  const canvas = document.getElementById('lb-trend-canvas');
+  if (!canvas) return;
+  try {
+    const data = await fetch(`${API}/leaderboard/trend?player_name=${encodeURIComponent(playerName)}&server=${_server}&days=14`).then(r => r.json());
+    // Row may have collapsed/re-rendered while this fetch was in flight.
+    if (_expandedPlayer !== playerName || !document.getElementById('lb-trend-canvas')) return;
+    if (!Array.isArray(data) || !data.some(d => (d.seconds || 0) > 0)) {
+      trendMessage('Нет активности за последние 14 дней');
+      return;
+    }
+    const series = {
+      data: data.map(d => ({ x: fmtTrendDate(d.date), y: Math.round((d.seconds || 0) / 60) })),
+      color: '#c8002a', rgb: '200,0,42',
+    };
+    if (typeof window.renderBarChart === 'function') {
+      // Clear the "Загрузка…" placeholder — it's a sibling of the canvas, not a
+      // container renderBarChart() manages, so it's never removed on its own.
+      const loadingEl = document.querySelector('.lb-trend-loading');
+      if (loadingEl) loadingEl.remove();
+      window.renderBarChart(document.getElementById('lb-trend-canvas'), series, { xTicks: 7, valueLabel: 'мин' });
+    } else {
+      trendMessage('График недоступен');
+    }
+  } catch {
+    if (_expandedPlayer === playerName) trendMessage('Ошибка загрузки графика');
+  }
 }
 
 async function loadLeaderboard() {
@@ -727,8 +943,12 @@ async function loadLeaderboard() {
         total_seconds: 0, last_seen: null, last_duration: 0, verified: false, rank_delta: null,
       }));
     } else {
+      // clan_id only applies when the "Только мой клан" chip is on AND we've resolved
+      // the logged-in user's clan — refetches the underlying dataset rather than
+      // filtering client-side, since the current page's rows may not even be clanmates.
+      const clanParam = (_clanOnly && _myClanId) ? `&clan_id=${_myClanId}` : '';
       const [pItems] = await Promise.all([
-        fetch(`${API}/leaderboard?server=${_server}&period=${_period}&page=${_page}&per_page=${PER_PAGE}`).then(r => r.json()),
+        fetch(`${API}/leaderboard?server=${_server}&period=${_period}&page=${_page}&per_page=${PER_PAGE}${clanParam}`).then(r => r.json()),
         loadOnlineStatus(),
       ]);
       items = pItems.map(p => ({ ...p, metricValue: p.total_seconds }));
@@ -738,6 +958,8 @@ async function loadLeaderboard() {
         list.innerHTML = emptyState('📜','Конец списка','Больше игроков нет на этой странице');
       } else if (isPoints) {
         list.innerHTML = emptyState('💎','Таблица пуста','Пока никто не заработал очки — играйте, чтобы попасть в рейтинг');
+      } else if (_clanOnly && _myClanId) {
+        list.innerHTML = emptyState('🏰','В клане пока никого нет','Статистика по вашему клану ещё не накопилась');
       } else if (_period !== 'all') {
         list.innerHTML = emptyState('📅','Нет данных за период','Попробуйте выбрать «Всё время»');
       } else {
@@ -747,13 +969,11 @@ async function loadLeaderboard() {
     } else {
       const offset = (_page - 1) * PER_PAGE;
       _allPlayers = items.map((p, i) => ({...p, _rank: offset + i + 1}));
-      renderRows(_allPlayers);
+      // Re-applies the search text + verified-only chip on top of the freshly fetched page.
+      applyFilters();
       // Render podium for top 3 (only on page 1)
       if (_page === 1) renderPodium(_allPlayers.slice(0, 3));
       else { const s = document.getElementById('lb-podium'); if (s) s.style.display = 'none'; }
-      // Re-apply any active search filter
-      const searchVal = document.getElementById('lb-search').value;
-      if (searchVal) filterLeaderboard(searchVal);
     }
     // update stats tiles
     const onlineEl = document.getElementById('lb-stat-online-val');
@@ -761,7 +981,7 @@ async function loadLeaderboard() {
     const periodEl = document.getElementById('lb-stat-period-val');
     if (onlineEl) onlineEl.textContent = isPoints ? '—' : (_onlineNames.size > 0 ? _onlineNames.size : '0');
     if (leaderEl && items.length) leaderEl.textContent = items[0].player_name || '—';
-    if (periodEl) periodEl.textContent = isPoints ? 'Всё время' : (_period === 'week' ? 'Неделя' : _period === 'month' ? 'Месяц' : 'Всё время');
+    if (periodEl) periodEl.textContent = isPoints ? 'Всё время' : (_period === 'week' ? 'Неделя' : _period === 'month' ? 'Месяц' : _period === 'day' ? 'Сутки' : 'Всё время');
     pag.style.display = (items.length === PER_PAGE || _page > 1) ? 'flex' : 'none';
     document.getElementById('lb-page-label').textContent = `Стр. ${_page}`;
     document.getElementById('lb-prev').disabled = _page <= 1;

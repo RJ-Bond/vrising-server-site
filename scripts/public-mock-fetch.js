@@ -73,15 +73,42 @@
     total: 3,
   };
 
+  // PlayerRecordOut (backend/schemas.py) gained clan_id/clan_name/physical_power/
+  // spell_power/is_online/streak_days this session — ALL nullable, so most rows below
+  // are explicit null/0 (a player outside a synced clan), with a handful of rows
+  // populated to exercise every rendered state: clan chip + online dot (row 0), clan
+  // chip + explicit-offline grey dot (row 1), a second clan (row 2, tests the chip
+  // doesn't hardcode one clan), a streak with no clan (row 3), a big streak number
+  // (row 9), and row 0's total_seconds bumped past the 1000h tier so the achievement
+  // badge's top icon (🏆, same as user.html's hours1000) is visible somewhere too.
+  const CLAN_ID    = [1, 1, 2, null, null, null, null, null, null, null, null, null];
+  const CLAN_NAME  = ['Кровавые Клыки', 'Кровавые Клыки', 'Ночная Стража', null, null, null, null, null, null, null, null, null];
+  const PHYS_POWER = [812.5, 705.0, 590.4, null, null, null, null, null, null, null, null, null];
+  const SPELL_POWER = [640.2, 512.8, 480.1, null, null, null, null, null, null, null, null, null];
+  const IS_ONLINE  = [true, false, true, null, null, null, null, null, null, null, null, null];
+  const STREAK_DAYS = [12, 3, 0, 7, 0, 0, 5, 0, 0, 21, 0, 0];
   const leaderboardPage = (server) => Array.from({ length: 12 }, (_, i) => ({
     id: i + 1, server_num: server, player_name: ['Vortigern', 'Shadowfang', 'Dracarys', 'buhalovna', 'Nightshade', 'Emberclaw', 'Grimwald', 'Ashlynn', 'Malakor', 'Seraphine', 'Thornwick', 'Ravenna'][i],
-    total_seconds: Math.max(600, 500000 - i * 38000), last_seen: iso(i * 3600 * 1000),
+    total_seconds: i === 0 ? 3700000 : Math.max(600, 500000 - i * 38000), last_seen: iso(i * 3600 * 1000),
     last_duration: 3600 + i * 120, session_count: 40 - i, avatar_url: null,
     rank_delta: [3, -1, 0, 2, null, -4, 1, 0, null, 5, -2, 0][i],
     // PlayerRecordOut.verified (backend/schemas.py) — True once a real /api/plugin/sessions
     // report claimed this row; mixed here so the preview shows both badge states.
     verified: i % 2 === 0,
+    clan_id: CLAN_ID[i], clan_name: CLAN_NAME[i],
+    physical_power: PHYS_POWER[i], spell_power: SPELL_POWER[i],
+    is_online: IS_ONLINE[i], streak_days: STREAK_DAYS[i],
   }));
+
+  // GET /api/leaderboard/trend?player_name=X&server=N&days=14 — per-player daily
+  // playtime feeding leaderboard.html's expandable row trend chart (renderBarChart()).
+  // A couple of zero-second days are included so the "no bar" rendering is exercised too.
+  const leaderboardTrend = (days) => Array.from({ length: days }, (_, i) => {
+    const daysAgo = days - 1 - i;
+    const dateStr = new Date(now - daysAgo * 24 * 3600 * 1000).toISOString().slice(0, 10);
+    const seconds = i % 5 === 0 ? 0 : Math.max(0, Math.round(1800 + Math.sin(i / 2) * 1500 + i * 60));
+    return { date: dateStr, seconds };
+  });
 
   // PointsLeaderboardEntryOut shape (backend/schemas.py) — GET /api/leaderboard/points,
   // the leaderboard.html "💎 Очки" toggle. Global per-account balance, not per-server.
@@ -181,6 +208,7 @@
     [/\/api\/clans(\?|$)/, () => clans],
     [/\/api\/events/, () => events],
     [/\/api\/leaderboard\/points/, () => pointsLeaderboardPage()],
+    [/\/api\/leaderboard\/trend/, (url) => { const m = url.match(/days=(\d+)/); return leaderboardTrend(m ? Number(m[1]) : 14); }],
     [/\/api\/leaderboard/, (url) => leaderboardPage(url.includes('server=2') ? 2 : 1)],
     [/\/api\/monitor\/status2/, () => ({ enabled: true, ...monitorStatus('[RU] Just-Skill.Ru | Brutal PvE', 6, '127.0.0.1', 27017) })],
     [/\/api\/monitor\/status$/, () => monitorStatus('[RU] Just-Skill.Ru | Standart PvE', 14, '127.0.0.1', 27016)],
