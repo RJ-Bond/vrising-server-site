@@ -30,7 +30,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
-  <link rel="stylesheet" href="/theme.css?v=3" />
+  <link rel="stylesheet" href="/theme.css?v=4" />
   <link rel="stylesheet" href="/index.css?v=5" />
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#06000f">
@@ -273,15 +273,11 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
         <span>FAQ</span>
       </a>
-      <a id="nav-profile-link" href="/profile.html" class="nav-link-item hidden">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><use href="/icons.svg#icon-user"></use></svg>
-        <span>Профиль</span>
-      </a>
-      <a id="nav-login-link" href="/login.html" class="nav-link-item">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><use href="/icons.svg#icon-lock"></use></svg>
-        <span id="nav-link-label">Войти</span>
-      </a>
     </nav>
+    <!-- No "Войти"/"Профиль" item here — the header's own Войти/Выйти (top-right)
+         already covers logged-out, and the user card just above (#nav-user-card)
+         already covers logged-in profile/logout access. Having a third copy in
+         this flat list was pure duplication, not an alternate path to anything. -->
 
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:1.1rem;"></div>
 

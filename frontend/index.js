@@ -223,12 +223,6 @@ function toggleDrawer() {
       const createBtn = document.getElementById('news-create-btn');
       if (createBtn) createBtn.style.display = 'flex';
     }
-    document.getElementById('nav-profile-link').classList.remove('hidden');
-    // sidebar nav: replace "Войти" with "Выйти"
-    const lnk = document.getElementById('nav-login-link');
-    lnk.href = '#'; lnk.onclick = (e) => { e.preventDefault(); doLogout(); };
-    document.getElementById('nav-link-label').textContent = 'Выйти';
-
     // show user card
     const card = document.getElementById('nav-user-card');
     const avatarWrap = document.getElementById('nav-user-avatar-wrap');
@@ -252,11 +246,6 @@ function toggleDrawer() {
         if (sinceEl) sinceEl.textContent = `с ${fmtDate(u.created_at)}`;
         document.getElementById('nav-user-since').style.display = 'flex';
       }
-      // hide duplicate nav links — card now handles profile & logout
-      const profileLink = document.getElementById('nav-profile-link');
-      if (profileLink) profileLink.style.display = 'none';
-      const loginLink = document.getElementById('nav-login-link');
-      if (loginLink) loginLink.style.display = 'none';
     }
   }
   // Show cached user immediately for snappy UI

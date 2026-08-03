@@ -645,29 +645,33 @@
           <div id="dash-users" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Пользователи</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('news')" title="Перейти к новостям" style="border-top:2px solid rgba(200,0,42,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('news')" title="Перейти к новостям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">📰</div>
-          <div id="dash-news" style="font-size:1.75rem;font-family:'Cinzel',serif;color:#c8002a;line-height:1;">—</div>
+          <div id="dash-news" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Новости</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('comments')" title="Перейти к комментариям" style="border-top:2px solid rgba(153,85,238,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('comments')" title="Перейти к комментариям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">💬</div>
-          <div id="dash-comments" style="font-size:1.75rem;font-family:'Cinzel',serif;color:#9955ee;line-height:1;">—</div>
+          <div id="dash-comments" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Комментарии</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('files')" title="Перейти к файлам" style="border-top:2px solid rgba(96,192,240,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('files')" title="Перейти к файлам" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">📁</div>
-          <div id="dash-files" style="font-size:1.75rem;font-family:'Cinzel',serif;color:#60c0f0;line-height:1;">—</div>
+          <div id="dash-files" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Файлы</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('users')" title="Активные за 7 дней" style="border-top:2px solid rgba(45,212,191,.3);position:relative;overflow:hidden;">
+        <!-- Unlike the four plain inventory counts above (all --gold now — they're
+             just counts, no good/bad state to signal, see theme.css's status-token
+             comment), these two actually represent state: green = a healthy
+             activity signal, yellow = a pending queue the admin may need to act on. -->
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('users')" title="Активные за 7 дней" style="border-top:2px solid rgba(34,197,94,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">⚡</div>
-          <div id="dash-new7" style="font-size:1.75rem;font-family:'Cinzel',serif;color:#2dd4bf;line-height:1;">—</div>
+          <div id="dash-new7" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--green);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Активны 7 дней</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('resets')" title="Перейти к сбросу паролей" style="border-top:2px solid rgba(251,191,36,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('resets')" title="Перейти к сбросу паролей" style="border-top:2px solid rgba(255,207,92,.35);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">🔑</div>
-          <div id="dash-resets" style="font-size:1.75rem;font-family:'Cinzel',serif;color:#fbbf24;line-height:1;">—</div>
+          <div id="dash-resets" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--yellow);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Сброс паролей</div>
         </div>
       </div>

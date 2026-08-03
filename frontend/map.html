@@ -18,8 +18,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
-  <link rel="stylesheet" href="/theme.css?v=3" />
-  <link rel="stylesheet" href="/components.css?v=2" />
+  <link rel="stylesheet" href="/theme.css?v=4" />
+  <link rel="stylesheet" href="/components.css?v=3" />
   <style>
     /* Base tokens in /theme.css; overrides below for this page's lighter surfaces/text. */
     :root {
@@ -38,15 +38,10 @@
       background-attachment:fixed;
       font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh;
     }
-    /* nav + tooltips + base: /components.css */
-
-    .g-card {
-      background:var(--card); border:1px solid var(--border);
-      border-radius:.875rem; backdrop-filter:blur(16px) saturate(1.2);
-      box-shadow:0 4px 24px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.04);
-      position:relative; padding:1.2rem;
-    }
-    .g-card { animation:fade-up .4s ease both; }
+    /* nav + tooltips + base + .g-card: /components.css. No ::before accent
+       line here (unlike most other pages) — deliberately opted out. */
+    .g-card { padding:1.2rem; animation:fade-up .4s ease both; }
+    .g-card::before { content:none; }
 
     .region-grid { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
     @media (max-width:600px) { .region-grid { grid-template-columns:1fr; } }
