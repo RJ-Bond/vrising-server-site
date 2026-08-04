@@ -87,3 +87,17 @@ body::before { content:''; position:fixed; inset:0; z-index:0; pointer-events:no
 .badge-info    { background: rgba(124,58,237,0.14); border-color: rgba(124,58,237,0.35); color: #c4b5fd; }
 .badge-gold    { background: rgba(201,169,74,0.14); border-color: rgba(201,169,74,0.35); color: var(--gold); }
 .badge-neutral { background: rgba(148,136,168,0.12); border-color: rgba(148,136,168,0.25); color: var(--muted); }
+
+/* ── Shared loading-skeleton shimmer — was independently copy-pasted (same
+   gradient/size, only the @keyframes name differed: "shimmer" vs
+   "skel-shimmer") into bans.html and clans.html. servers.html/leaderboard.html/
+   shop.html each have their own deliberately-different variant (different
+   colors/timing/easing to match that page's own palette or a bigger card
+   shape) and are NOT consolidated here — only the two that were byte-for-byte
+   identical. ── */
+@keyframes skel-shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
+.skel {
+  border-radius: .45rem; height: .75rem;
+  background: linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.04) 75%);
+  background-size: 200% 100%; animation: skel-shimmer 1.5s infinite;
+}

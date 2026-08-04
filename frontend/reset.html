@@ -58,6 +58,22 @@
     .invalid-msg { text-align:center; padding:1.5rem 0; }
     .invalid-msg svg { display:block; margin:0 auto .75rem; color:#fca5a5; }
     .invalid-msg p { color:#fca5a5; font-size:.88rem; }
+    /* ── Page footnote (below the card: home link + tiny site line) ── */
+    .page-back-link {
+      display:block; text-align:center; margin-top:1.1rem;
+      font-size:.76rem; color:var(--muted);
+      text-decoration:none; letter-spacing:.03em;
+      transition:color .18s;
+    }
+    .page-back-link:hover { color:var(--text); }
+    .page-footnote {
+      margin-top:.55rem; display:flex; align-items:center; justify-content:center; gap:.5rem;
+      font-size:.66rem; color:rgba(148,136,168,0.45); letter-spacing:.05em;
+    }
+    .footnote-discord {
+      color:rgba(148,136,168,0.45); text-decoration:none; transition:color .18s;
+    }
+    .footnote-discord:hover { color:var(--muted); }
     .pw-strength { margin-top:.4rem; }
     .pw-strength-bar { height:4px; background:rgba(255,255,255,.08); border-radius:2px; overflow:hidden; }
     .pw-strength-fill { height:100%; border-radius:2px; transition:width .3s,background .3s; width:0; }
@@ -117,6 +133,12 @@
       <a href="/login.html" class="back-link">← Вернуться ко входу</a>
     </form>
   </div>
+
+  <a href="/" class="page-back-link">← На главную</a>
+  <div class="page-footnote">
+    <span id="footnote-site"></span>
+    <a id="footnote-discord" href="#" target="_blank" rel="noopener noreferrer" class="footnote-discord" style="display:none;">· Discord</a>
+  </div>
 </div>
 
 <script>
@@ -149,6 +171,13 @@ const token = new URLSearchParams(location.search).get('token');
     const title = (d.site_title || 'V Rising').trim();
     document.title = `Сброс пароля — ${title}`;
     document.getElementById('site-logo').textContent = title;
+    const footnoteSite = document.getElementById('footnote-site');
+    if (footnoteSite) footnoteSite.textContent = title;
+    const discord = (d.discord_url || '').trim();
+    if (discord) {
+      const footnoteDiscord = document.getElementById('footnote-discord');
+      if (footnoteDiscord) { footnoteDiscord.href = discord; footnoteDiscord.style.display = 'inline'; }
+    }
   } catch {}
 })();
 

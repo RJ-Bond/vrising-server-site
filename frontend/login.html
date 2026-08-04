@@ -249,6 +249,24 @@
     .back-link { display:block; text-align:center; margin-top:.85rem; font-size:.74rem; color:var(--muted); cursor:pointer; background:none; border:none; font-family:inherit; transition:color .18s; width:100%; }
     .back-link:hover { color:var(--text); }
 
+    /* ── Page footnote (below the card: home link + tiny site line) ── */
+    .auth-stack { width:100%; max-width:420px; display:flex; flex-direction:column; align-items:center; }
+    .page-back-link {
+      display:block; margin-top:1.1rem;
+      font-size:.76rem; color:var(--muted);
+      text-decoration:none; letter-spacing:.03em;
+      transition:color .18s;
+    }
+    .page-back-link:hover { color:var(--text); }
+    .page-footnote {
+      margin-top:.55rem; display:flex; align-items:center; gap:.5rem;
+      font-size:.66rem; color:rgba(148,136,168,0.45); letter-spacing:.05em;
+    }
+    .footnote-discord {
+      color:rgba(148,136,168,0.45); text-decoration:none; transition:color .18s;
+    }
+    .footnote-discord:hover { color:var(--muted); }
+
     /* ── Submit button ── */
     .btn-primary {
       width: 100%; margin-top: .25rem;
@@ -333,6 +351,7 @@
 </nav>
 
 <div class="page-center">
+  <div class="auth-stack">
   <div class="auth-card">
     <span class="corner corner-tl">✦</span>
     <span class="corner corner-tr">✦</span>
@@ -492,6 +511,13 @@
       <button type="button" class="back-link" onclick="switchTab('login')">← Вернуться ко входу</button>
     </form>
   </div>
+
+  <a href="/" class="page-back-link">← На главную</a>
+  <div class="page-footnote">
+    <span id="footnote-site"></span>
+    <a id="footnote-discord" href="#" target="_blank" rel="noopener noreferrer" class="footnote-discord" style="display:none;">· Discord</a>
+  </div>
+  </div>
 </div>
 
 <script>
@@ -545,6 +571,13 @@ const STAFF_ROLES = ['moderator', 'admin', 'superadmin'];
     const title = (d.site_title || 'V Rising').trim();
     document.title = `Вход — ${title}`;
     document.getElementById('card-title').textContent = title;
+    const footnoteSite = document.getElementById('footnote-site');
+    if (footnoteSite) footnoteSite.textContent = title;
+    const discord = (d.discord_url || '').trim();
+    if (discord) {
+      const footnoteDiscord = document.getElementById('footnote-discord');
+      if (footnoteDiscord) { footnoteDiscord.href = discord; footnoteDiscord.style.display = 'inline'; }
+    }
     if (d.bg_image_url) {
       const bg = document.getElementById('bg-layer');
       bg.style.backgroundImage = `url('${d.bg_image_url}')`;

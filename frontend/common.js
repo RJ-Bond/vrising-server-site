@@ -275,6 +275,36 @@ function _statusInfo(iso) {
   return { dot:'#374151', label:`Был ${d} ${w} назад`, color:'#4b3f5c', glow:'' };
 }
 
+/* Skip-to-content link — visually hidden until keyboard-focused (standard
+   pattern), jumps to the page's main heading. Self-injecting so every page
+   gets one without editing each file's <body> markup individually — same
+   approach as the back-to-top button below. Targets the first <main>/
+   [role=main] if present, else the first <h1> (every content page has
+   exactly one; login/reset skip this gracefully since they have neither and
+   there's very little to skip past on those anyway). */
+(function() {
+  function _init() {
+    const target = document.querySelector('main, [role="main"], h1');
+    if (!target) return;
+    if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
+
+    const link = document.createElement('a');
+    link.href = '#';
+    link.textContent = 'Перейти к содержимому';
+    link.style.cssText = 'position:fixed;top:-3rem;left:.75rem;z-index:99999;background:#0e0516;color:#f0e8ff;border:1px solid rgba(200,0,40,0.6);border-radius:.4rem;padding:.6rem 1rem;font-size:.85rem;font-family:Inter,sans-serif;font-weight:600;text-decoration:none;transition:top .15s;';
+    link.addEventListener('focus', () => { link.style.top = '.75rem'; });
+    link.addEventListener('blur', () => { link.style.top = '-3rem'; });
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      target.focus({ preventScroll: true });
+      target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+    document.body.prepend(link);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _init);
+  else _init();
+})();
+
 /* Back-to-top button — self-contained, works on any page */
 (function() {
   let _btn = null, _visible = false;

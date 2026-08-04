@@ -106,20 +106,13 @@
     .btn-danger:hover { background:rgba(150,0,20,0.4); }
     .btn-danger:disabled { opacity:.5; cursor:default; }
 
-    .badge-permanent {
-      background:rgba(150,0,20,0.18); border:1px solid rgba(220,40,60,0.35); color:#fca5a5;
-      font-size:.68rem; font-weight:700; padding:.18rem .55rem; border-radius:9999px; letter-spacing:.03em;
-    }
     .remaining { font-family:'Consolas','Courier New',monospace; font-size:.82rem; color:#f0b74a; }
 
-    /* ── "новый" pill + left-edge accent for bans placed within the last 24h (see
+    /* ── Left-edge accent for bans placed within the last 24h (see
        renderActiveBans()/activeBanRowHtml() — computed client-side from banned_at,
-       same pattern as the _unbanAtDate countdown below). ── */
-    .badge-new {
-      background:rgba(201,169,74,0.16); border:1px solid rgba(201,169,74,0.4); color:var(--gold);
-      font-size:.6rem; font-weight:700; padding:.14rem .45rem; border-radius:9999px; letter-spacing:.03em;
-      margin-left:.5rem; vertical-align:middle; white-space:nowrap;
-    }
+       same pattern as the _unbanAtDate countdown below). The "новый" pill itself now
+       uses the shared .badge/.badge-gold component (components.css) instead of a
+       one-off class — see nameCell in activeBanRowHtml(). ── */
     .ban-row-new td:first-child { box-shadow:inset 3px 0 0 0 rgba(201,169,74,0.6); }
 
     /* ── Profile link for banned players who have a linked site account (see
@@ -136,12 +129,8 @@
        matching only, not real backend data). ── */
     .reason-dot { display:inline-block; width:.5rem; height:.5rem; border-radius:50%; margin-right:.4rem; vertical-align:middle; }
 
-    @keyframes skel-shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
-    .skel {
-      display:inline-block; border-radius:.35rem; height:.7rem; width:70%;
-      background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.04) 75%);
-      background-size:200% 100%; animation:skel-shimmer 1.5s infinite;
-    }
+    /* base .skel/@keyframes skel-shimmer: /components.css */
+    .skel { display:inline-block; border-radius:.35rem; height:.7rem; width:70%; }
 
     .game-bans-empty { text-align:center; padding:3rem 1rem; }
 
@@ -568,12 +557,12 @@ function tickActiveBanCountdowns() {
 function activeBanRowHtml(b) {
   const remainingHtml = b.unban_at
     ? `<span class="remaining" id="active-ban-remaining-${b.id}">…</span>`
-    : `<span class="badge-permanent">Навсегда</span>`;
+    : `<span class="badge badge-danger">Навсегда</span>`;
   const isNew = !!b.banned_at && (Date.now() - new Date(b.banned_at).getTime()) < 24 * 60 * 60 * 1000;
   const nameHtml = b.linked_username
     ? `<a class="ban-profile-link" href="/user.html?u=${encodeURIComponent(b.linked_username)}" title="Открыть профиль ${esc(b.linked_username)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-user"></use></svg>${esc(b.character_name)}</a>`
     : esc(b.character_name);
-  const nameCell = `${nameHtml}${isNew ? '<span class="badge-new">новый</span>' : ''}`;
+  const nameCell = `${nameHtml}${isNew ? '<span class="badge badge-gold" style="margin-left:.5rem;vertical-align:middle;">новый</span>' : ''}`;
   const actionCell = _activeBansIsAdmin
     ? `<td data-label="Действия" style="display:flex;gap:.4rem;flex-wrap:wrap;"><button class="btn-danger" onclick="unbanActiveBan(${b.id}, this)">Разбанить</button>${b.steam_id ? modLogHistoryLinkHtml(b.steam_id) : ''}</td>`
     : '';
@@ -582,7 +571,7 @@ function activeBanRowHtml(b) {
     <td data-label="Сервер" style="color:var(--muted);">${esc(banServerLabel(b))}</td>
     <td data-label="Осталось">${remainingHtml}</td>
     <td data-label="Кто забанил" style="color:var(--muted);">${esc(b.admin_name)}</td>
-    <td data-label="Причина" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(b.reason)}">${reasonBadgeHtml(b.reason)}${esc(b.reason)}</td>
+    <td data-label="Причина" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" data-tip="${esc(b.reason)}">${reasonBadgeHtml(b.reason)}${esc(b.reason)}</td>
     ${actionCell}
   </tr>`;
 }
@@ -756,7 +745,7 @@ function activeBanHistoryRowHtml(b) {
     <td data-label="Сервер" style="color:var(--muted);">${esc(banServerLabel(b))}</td>
     <td data-label="Снят" style="color:var(--muted);white-space:nowrap;">${fmtDate(b.unbanned_at)}</td>
     <td data-label="Кто забанил" style="color:var(--muted);">${esc(b.admin_name)}</td>
-    <td data-label="Причина" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(b.reason)}">${reasonBadgeHtml(b.reason)}${esc(b.reason)}</td>
+    <td data-label="Причина" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" data-tip="${esc(b.reason)}">${reasonBadgeHtml(b.reason)}${esc(b.reason)}</td>
     <td data-label="Действия">${modLogHistoryLinkHtml(b.steam_id)}</td>
   </tr>`;
 }

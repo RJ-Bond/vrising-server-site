@@ -2476,7 +2476,15 @@ async function loadTeam() {
 
       const titleHtml = `<div style="margin-top:.28rem;">${_renderAdminBadge(u)}</div>`;
 
-      return `<div class="team-card" style="background:rgba(12,3,20,0.72);border:1px solid rgba(110,0,28,0.28);border-radius:.85rem;padding:.85rem .65rem .7rem;text-align:center;transition:all .22s;position:relative;overflow:hidden;"
+      // Grid is always 2 columns (below) — an odd team size otherwise leaves the
+      // last card alone on its own half-empty row. Centering it at the same
+      // width as a normal card (not stretched full-width, which would look like
+      // a different kind of element) reads as an intentional "odd one out"
+      // instead of a layout glitch.
+      const isLastOdd = data.length > 1 && data.length % 2 !== 0 && i === data.length - 1;
+      const lastOddStyle = isLastOdd ? 'grid-column:1/-1;max-width:calc(50% - .275rem);margin:0 auto;' : '';
+
+      return `<div class="team-card" style="${lastOddStyle}background:rgba(12,3,20,0.72);border:1px solid rgba(110,0,28,0.28);border-radius:.85rem;padding:.85rem .65rem .7rem;text-align:center;transition:all .22s;position:relative;overflow:hidden;"
         onmouseover="this.style.borderColor='rgba(180,0,42,0.55)';this.style.boxShadow='0 0 22px rgba(130,0,30,0.22),inset 0 0 14px rgba(100,0,20,0.07)';this.style.background='rgba(16,4,26,0.88)'"
         onmouseout="this.style.borderColor='rgba(110,0,28,0.28)';this.style.boxShadow='';this.style.background='rgba(12,3,20,0.72)'">
         <div style="position:absolute;top:0;left:20%;right:20%;height:1px;background:linear-gradient(90deg,transparent,rgba(200,0,42,0.3),transparent);"></div>

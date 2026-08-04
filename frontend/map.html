@@ -59,6 +59,22 @@
     .region-tier.end    { background:rgba(124,58,237,0.16); border:1px solid rgba(124,58,237,0.45); color:#b794f6; }
     .region-desc { font-size:.8rem; color:var(--muted); line-height:1.55; }
 
+    /* ── Click-to-expand region detail (same interaction idea as faq.html's
+       .faq-item, adapted: whole card toggles, arrow lives in the head next
+       to the tier badge, detail panel is measured via JS scrollHeight like
+       toggleFaq() does). ── */
+    .region-card { cursor:pointer; transition:border-color .25s, box-shadow .25s; }
+    .region-card:hover { border-color:rgba(200,0,42,0.28); }
+    .region-card.open { border-color:rgba(200,0,42,0.4); box-shadow:0 0 18px rgba(130,0,22,0.1),-2px 0 10px rgba(130,0,22,0.07); }
+    .region-arrow { color:var(--gold); transition:transform .25s; flex-shrink:0; }
+    .region-card.open .region-arrow { transform:rotate(180deg); }
+    .region-more {
+      max-height:0; overflow:hidden; transition:max-height .3s ease;
+      font-size:.76rem; color:var(--muted); line-height:1.6;
+    }
+    .region-more-inner { padding-top:.65rem; margin-top:.6rem; border-top:1px dashed rgba(255,255,255,0.12); }
+    .region-more-label { color:var(--gold); font-weight:600; }
+
     .note-box {
       font-size:.76rem; color:var(--muted); background:var(--panel); border:1px solid rgba(255,255,255,0.1);
       border-radius:.6rem; padding:.85rem 1rem; margin-bottom:1.5rem; line-height:1.6;
@@ -126,76 +142,124 @@
 
   <div class="region-grid">
 
-    <div class="g-card">
+    <div class="g-card region-card" id="region-1" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(1)" onkeydown="onRegionKey(event,1)">
       <div class="region-head">
         <span class="region-icon">🌲</span>
         <span class="region-name">Farbane Woods</span>
         <span class="region-tier low">Старт</span>
+        <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <p class="region-desc">Стартовый регион почти всех персонажей. Леса, болота и первые поселения бандитов — здесь добывается базовый материал и проходятся первые боссы V крови.</p>
+      <div class="region-more" id="region-more-1"><div class="region-more-inner">
+        <span class="region-more-label">Снаряжение:</span> достаточно базового, добытого в первые часы.<br>
+        <span class="region-more-label">Ландшафт:</span> смешанные леса, болота, руины людских поселений и бандитские лагеря.<br>
+        <span class="region-more-label">Боссы:</span> первые V Blood здесь дают чертежи для стартового вампирского снаряжения и первых построек замка.
+      </div></div>
     </div>
 
-    <div class="g-card">
+    <div class="g-card region-card" id="region-2" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(2)" onkeydown="onRegionKey(event,2)">
       <div class="region-head">
         <span class="region-icon">🌾</span>
         <span class="region-name">Dunley Farmlands</span>
         <span class="region-tier mid">Средний</span>
+        <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <p class="region-desc">Фермерские земли с мельницами и церквями. Местные жители и охотники на нежить становятся серьёзнее — пригодится защита от серебра.</p>
+      <div class="region-more" id="region-more-2"><div class="region-more-inner">
+        <span class="region-more-label">Снаряжение:</span> желательна базовая защита от серебра — здесь оно встречается заметно чаще, чем в Farbane.<br>
+        <span class="region-more-label">Ландшафт:</span> открытые поля, мельницы, фермы и небольшие церкви.<br>
+        <span class="region-more-label">Боссы:</span> охотники на нежить организованы лучше — держитесь укрытий и избегайте открытых полей днём.
+      </div></div>
     </div>
 
-    <div class="g-card">
+    <div class="g-card region-card" id="region-3" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(3)" onkeydown="onRegionKey(event,3)">
       <div class="region-head">
         <span class="region-icon">⛪</span>
         <span class="region-name">Silverlight Hills</span>
         <span class="region-tier mid">Средний</span>
+        <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <p class="region-desc">Святые холмы паладинов. Серебряное оружие наносит вампирам повышенный урон — заходите подготовленными и избегайте света без укрытия.</p>
+      <div class="region-more" id="region-more-3"><div class="region-more-inner">
+        <span class="region-more-label">Снаряжение:</span> максимально доступное сопротивление серебру, надёжное укрытие от солнца в пути.<br>
+        <span class="region-more-label">Ландшафт:</span> холмы, паладинские заставы и святые постройки.<br>
+        <span class="region-more-label">Боссы:</span> один из самых опасных регионов этого уровня — высокая концентрация серебряного и святого урона.
+      </div></div>
     </div>
 
-    <div class="g-card">
+    <div class="g-card region-card" id="region-4" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(4)" onkeydown="onRegionKey(event,4)">
       <div class="region-head">
         <span class="region-icon">☠️</span>
         <span class="region-name">Cursed Forest</span>
         <span class="region-tier high">Опасно</span>
+        <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <p class="region-desc">Заражённый чумой лес. Враги наносят урон ядом и порчей — без сопротивления к чуме лучше не задерживаться надолго.</p>
+      <div class="region-more" id="region-more-4"><div class="region-more-inner">
+        <span class="region-more-label">Снаряжение:</span> сопротивление яду/чуме крайне желательно перед долгим пребыванием.<br>
+        <span class="region-more-label">Ландшафт:</span> мёртвые деревья, топи и заражённые чумой поселения.<br>
+        <span class="region-more-label">Боссы:</span> урон гниением и порчей стакается — не задерживайтесь в очагах заражения без резиста.
+      </div></div>
     </div>
 
-    <div class="g-card">
+    <div class="g-card region-card" id="region-5" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(5)" onkeydown="onRegionKey(event,5)">
       <div class="region-head">
         <span class="region-icon">🏔️</span>
         <span class="region-name">Hallowed Mountains</span>
         <span class="region-tier high">Опасно</span>
+        <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <p class="region-desc">Заснеженные горы со священными орденами. Сильные противники и суровый климат — нужна тёплая экипировка и серьёзное снаряжение.</p>
+      <div class="region-more" id="region-more-5"><div class="region-more-inner">
+        <span class="region-more-label">Снаряжение:</span> сопротивление холоду и высокий общий уровень защиты.<br>
+        <span class="region-more-label">Ландшафт:</span> заснеженные пики, ледяные пещеры и укреплённые лагеря священных орденов.<br>
+        <span class="region-more-label">Боссы:</span> один из самых высоких показателей урона на базовой карте — соло без подготовки крайне рискованно.
+      </div></div>
     </div>
 
-    <div class="g-card">
+    <div class="g-card region-card" id="region-6" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(6)" onkeydown="onRegionKey(event,6)">
       <div class="region-head">
         <span class="region-icon">⚙️</span>
         <span class="region-name">Gloomrot</span>
         <span class="region-tier high">Опасно</span>
+        <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <p class="region-desc">Индустриальный регион с огнестрельным оружием и техникой. Враги бьют издалека — укрытия и мобильность решают больше, чем броня.</p>
+      <div class="region-more" id="region-more-6"><div class="region-more-inner">
+        <span class="region-more-label">Снаряжение:</span> мобильность и укрытия важнее чистой брони — урон в основном дальний.<br>
+        <span class="region-more-label">Ландшафт:</span> заводы, электростанции и промзоны северной и южной частей региона.<br>
+        <span class="region-more-label">Боссы:</span> противники применяют огнестрельное оружие и технику — бой на открытом пространстве опасен.
+      </div></div>
     </div>
 
-    <div class="g-card">
+    <div class="g-card region-card" id="region-7" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(7)" onkeydown="onRegionKey(event,7)">
       <div class="region-head">
         <span class="region-icon">🏰</span>
         <span class="region-name">Brighthaven</span>
         <span class="region-tier end">Эндгейм</span>
+        <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <p class="region-desc">Город паладинов поздней игры — плотная застройка, сильные гарнизоны и одни из самых опасных охотников на вампиров во всём Вардоране.</p>
+      <div class="region-more" id="region-more-7"><div class="region-more-inner">
+        <span class="region-more-label">Снаряжение:</span> топовое снаряжение поздней игры и стабильный доступ к качественной крови.<br>
+        <span class="region-more-label">Ландшафт:</span> плотная городская застройка с патрулями и укреплёнными гарнизонами.<br>
+        <span class="region-more-label">Боссы:</span> заходить стоит подготовленной группой — плотность и сила противников здесь одни из самых высоких.
+      </div></div>
     </div>
 
-    <div class="g-card">
+    <div class="g-card region-card" id="region-8" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(8)" onkeydown="onRegionKey(event,8)">
       <div class="region-head">
         <span class="region-icon">🩸</span>
         <span class="region-name">Руины и подземелья</span>
         <span class="region-tier end">Эндгейм</span>
+        <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <p class="region-desc">Разбросанные по карте подземелья, крипты и руины с уникальным лутом и боссами V крови — основной источник прогрессии в позднем эндгейме.</p>
+      <div class="region-more" id="region-more-8"><div class="region-more-inner">
+        <span class="region-more-label">Снаряжение:</span> зависит от конкретного подземелья — от среднего уровня до полностью эндгеймного.<br>
+        <span class="region-more-label">Ландшафт:</span> крипты, катакомбы и руины, разбросанные по всей карте, а не сосредоточенные в одном регионе.<br>
+        <span class="region-more-label">Боссы:</span> здесь встречаются уникальные V Blood и чертежи, отсутствующие на открытой карте.
+      </div></div>
     </div>
 
   </div>
@@ -204,6 +268,22 @@
 <script>
 const API = '/api';
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
+
+function toggleRegion(i) {
+  const card = document.getElementById(`region-${i}`);
+  const more = document.getElementById(`region-more-${i}`);
+  if (!card || !more) return;
+  const isOpen = card.classList.contains('open');
+  card.classList.toggle('open', !isOpen);
+  card.setAttribute('aria-expanded', String(!isOpen));
+  more.style.maxHeight = !isOpen ? more.scrollHeight + 'px' : '0';
+}
+function onRegionKey(e, i) {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    toggleRegion(i);
+  }
+}
 
 function applySiteBackground(bg) {
   bg = (bg || '').trim();

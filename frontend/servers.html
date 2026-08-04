@@ -269,6 +269,14 @@
       .glass-nav > div { padding:.6rem 1rem !important; }
       /* Prevent iOS Safari zoom-on-focus for the player-compare search input. */
       input, textarea, select { font-size:16px !important; }
+      /* Heatmap: the day-of-week gutter and hour ticks are the legibility
+         bottleneck at narrow widths, not the cells themselves (the hour axis
+         already shows only 5 of 24 ticks). Bump text size only — the 26px
+         gutter column must stay in sync between .srv-heatgrid and
+         .srv-heat-labels or the hour ticks drift out from under their cells. */
+      .srv-heatgrid-daylabel { font-size:.68rem; font-weight:600; }
+      .srv-heat-labels { font-size:.64rem; }
+      .srv-heatcell { min-height:11px; }
     }
     @media (max-width:400px) {
       .srv-header-zone { padding:.9rem .9rem .8rem; }
@@ -428,7 +436,7 @@
   </div>
 
   <div id="compare-btn-wrap" style="text-align:center;margin-bottom:1rem;display:none;">
-    <button id="compare-toggle" onclick="toggleCompare()" style="background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.3);color:var(--muted);border-radius:.5rem;padding:.4rem 1rem;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='rgba(160,0,200,0.6)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(110,0,150,0.3)';this.style.color='var(--muted)'">
+    <button id="compare-toggle" onclick="toggleCompare()" aria-pressed="false" style="background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.3);color:var(--muted);border-radius:.5rem;padding:.4rem 1rem;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='rgba(160,0,200,0.6)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(110,0,150,0.3)';this.style.color='var(--muted)'">
       ⚡ Сравнить серверы
     </button>
   </div>
@@ -773,7 +781,7 @@ function srvCardSkeleton(num) {
     <div class="srv-record" id="srv-record-${num}" style="display:none;"></div>
     <div class="srv-connect-row" id="srv-connect-${num}" style="display:none;">
       <button class="srv-connect-btn" onclick="connectServer(${num})">Подключиться через ${STEAM_ICON_SVG}</button>
-      <button class="srv-copy-btn" onclick="copyServerAddr(${num},this)">📋 IP</button>
+      <button class="srv-copy-btn" onclick="copyServerAddr(${num},this)" aria-label="Скопировать IP-адрес сервера">📋 IP</button>
     </div>
     <div class="srv-metrics">
       <div class="srv-metric">
@@ -802,12 +810,12 @@ function srvCardSkeleton(num) {
     <div class="srv-graph-card">
       <div class="srv-graph-head">
         <div class="srv-section-title" style="margin-bottom:0;">Онлайн</div>
-        <div class="srv-period-toggle" id="srv-period-${num}">
-          <button class="srv-period-btn" data-period="1" onclick="setGraphPeriod(${num},1,this)">24ч</button>
-          <button class="srv-period-btn" data-period="3" onclick="setGraphPeriod(${num},3,this)">3д</button>
-          <button class="srv-period-btn active" data-period="7" onclick="setGraphPeriod(${num},7,this)">7д</button>
+        <div class="srv-period-toggle" id="srv-period-${num}" role="tablist" aria-label="Период графика онлайна">
+          <button class="srv-period-btn" data-period="1" role="tab" aria-selected="false" onclick="setGraphPeriod(${num},1,this)">24ч</button>
+          <button class="srv-period-btn" data-period="3" role="tab" aria-selected="false" onclick="setGraphPeriod(${num},3,this)">3д</button>
+          <button class="srv-period-btn active" data-period="7" role="tab" aria-selected="true" onclick="setGraphPeriod(${num},7,this)">7д</button>
         </div>
-        <button id="srv-zoom-reset-${num}" onclick="resetGraphZoom(${num})" style="display:none;font-size:.6rem;color:var(--crimson);background:none;border:none;cursor:pointer;padding:.2rem .4rem;">✕ Сбросить</button>
+        <button id="srv-zoom-reset-${num}" onclick="resetGraphZoom(${num})" aria-label="Сбросить масштаб графика" style="display:none;font-size:.6rem;color:var(--crimson);background:none;border:none;cursor:pointer;padding:.2rem .4rem;">✕ Сбросить</button>
       </div>
       <div class="srv-graph-wrap" style="height:145px;">
         <canvas id="srv-graph-${num}" style="display:block;"></canvas>
@@ -1279,7 +1287,11 @@ function setGraphPeriod(num, days, btn) {
   const resetBtn = document.getElementById(`srv-zoom-reset-${num}`);
   if (resetBtn) resetBtn.style.display = 'none';
   const wrap = document.getElementById(`srv-period-${num}`);
-  if (wrap) wrap.querySelectorAll('.srv-period-btn').forEach(b => b.classList.toggle('active', b === btn));
+  if (wrap) wrap.querySelectorAll('.srv-period-btn').forEach(b => {
+    const selected = b === btn;
+    b.classList.toggle('active', selected);
+    b.setAttribute('aria-selected', selected ? 'true' : 'false');
+  });
   drawGraph(num);
   drawHeatmap(num);
 }
@@ -1505,6 +1517,7 @@ function toggleCompare() {
   _compareMode = !_compareMode;
   const btn = document.getElementById('compare-toggle');
   const card = document.getElementById('compare-card');
+  btn.setAttribute('aria-pressed', _compareMode ? 'true' : 'false');
   if (_compareMode) {
     btn.style.borderColor = 'rgba(160,0,200,0.7)';
     btn.style.color = '#c4b5fd';

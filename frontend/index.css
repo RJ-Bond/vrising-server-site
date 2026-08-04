@@ -40,6 +40,24 @@
       border-bottom: 1px solid rgba(110,0,20,0.35);
       backdrop-filter: blur(14px);
     }
+    /* Desktop nav links — every other page (servers/leaderboard/clans/map/bans/
+       shop/faq) shows these in its top bar; the homepage previously only had the
+       left sidebar for navigation, a different paradigm from every other page.
+       Copied from components.css's .nav-links/.topnav-link (index.html doesn't
+       load that shared file, keeping this page's own index.css self-contained
+       like its local .glass-nav copy above already does) — hidden below 900px
+       since the sidebar itself already collapses into the hamburger-driven
+       .left-panel drawer at that width, which still reaches every one of these
+       links plus more (user card, community links). */
+    .nav-links { display:flex; align-items:center; gap:.3rem; flex-wrap:wrap; }
+    .topnav-link {
+      font-size:.78rem; font-weight:600; color:var(--muted); text-decoration:none;
+      padding:.4rem .75rem; border-radius:.5rem; border:1px solid transparent; transition:all .2s;
+      background:none; cursor:pointer; font-family:'Inter',sans-serif;
+    }
+    .topnav-link:hover { color:var(--text); background:rgba(150,0,28,0.12); border-color:rgba(160,0,35,0.35); }
+    .topnav-link.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
+    @media (max-width:900px) { .nav-links { display:none; } }
 
     /* ── Hero ── */
     .hero {

@@ -182,13 +182,7 @@
       display:flex; align-items:center; justify-content:center; font-size:.8rem; font-weight:700; color:#fff;
     }
 
-    /* ── Shimmer skeleton ── */
-    @keyframes shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
-    .skel {
-      border-radius:.45rem; height:.75rem;
-      background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.04) 75%);
-      background-size:200% 100%; animation:shimmer 1.5s infinite;
-    }
+    /* .skel/@keyframes skel-shimmer: /components.css */
 
     /* ── Empty state ── */
     .clans-empty { text-align:center; padding:4rem 1rem; }
@@ -257,10 +251,19 @@
   <!-- Summary tiles -->
   <div id="clan-stats-row" style="display:flex;gap:.6rem;margin-bottom:1.25rem;"></div>
 
-  <!-- Search -->
-  <div class="clan-search-wrap" style="margin-bottom:1.25rem;">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input id="clan-search" class="clan-search-input" type="text" placeholder="Поиск по названию клана…" oninput="filterCards()">
+  <!-- Search + sort -->
+  <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+    <div class="clan-search-wrap" style="flex:1;min-width:200px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="clan-search" class="clan-search-input" type="text" placeholder="Поиск по названию клана…" oninput="filterCards()">
+    </div>
+    <!-- Sort toggle — reuses the per-server .clan-toggle/.clan-toggle-btn visual pattern.
+         Default stays "По участникам" (server-provided order, untouched); "По мощи" sorts
+         client-side by summed member_preview physical_power+spell_power. -->
+    <div class="clan-toggle" id="clan-sort-toggle">
+      <button class="clan-toggle-btn active" data-sort="members" onclick="setSort('members',this)">По участникам</button>
+      <button class="clan-toggle-btn" data-sort="power" onclick="setSort('power',this)">По мощи</button>
+    </div>
   </div>
 
   <!-- Loading skeletons -->
@@ -588,9 +591,20 @@ function basesMapSvg(bases) {
     const title = esc(`Ур. ${b.level}, X ${b.min_x}..${b.max_x}, Z ${b.min_z}..${b.max_z}`);
     return `<rect x="${x.toFixed(1)}" y="${z.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${fill}" stroke="${stroke}" stroke-width="1"><title>${title}</title></rect>`;
   }).join('');
+  // On-chart axis ticks — min/max X along the bottom edge, min/max Z along the left
+  // edge, sitting in the same PAD margin reserved for the plot area itself so they
+  // never overlap the drawn rects. Kept to just the four extremes (no full ruler/grid)
+  // so a viewer can read the span directly off the chart instead of only the caption
+  // below it. Muted to match the rest of the page's low-contrast label color.
+  const axisTicks = `
+    <text x="${PAD}" y="${H - 3}" font-size="8" style="fill:var(--muted)">${minX}</text>
+    <text x="${W - PAD}" y="${H - 3}" font-size="8" text-anchor="end" style="fill:var(--muted)">${maxX}</text>
+    <text x="3" y="${PAD + 7}" font-size="8" style="fill:var(--muted)">${minZ}</text>
+    <text x="3" y="${H - PAD - 2}" font-size="8" style="fill:var(--muted)">${maxZ}</text>
+  `;
   return `
     <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:.6rem 0 .3rem;">Расположение баз</div>
-    <svg width="100%" viewBox="0 0 ${W} ${H}" style="background:var(--panel);border:1px solid var(--border);border-radius:.5rem;display:block;">${rects}</svg>
+    <svg width="100%" viewBox="0 0 ${W} ${H}" style="background:var(--panel);border:1px solid var(--border);border-radius:.5rem;display:block;">${rects}${axisTicks}</svg>
     <div style="font-size:.58rem;color:var(--muted);opacity:.6;margin-top:.25rem;">Схема территории клана (масштаб относительный, не привязан к карте мира) · X ${minX}..${maxX} · Z ${minZ}..${maxZ}</div>
   `;
 }
@@ -691,12 +705,39 @@ function setServerFilter(num) {
   filterCards();
 }
 
+/* ── Sort mode (members = default server order, power = client-side sort) ── */
+let _sortMode = 'members';
+
+/* ── Total clan power — sums physical_power+spell_power across each clan's
+   member_preview (the only per-member data GET /api/clans returns for the list
+   view; the full member list with everyone's power lives behind the per-clan
+   detail endpoint). Missing values (e.g. UnlinkedWanderer accounts that never
+   picked a character, so have no StoredPowerStats yet) count as 0 rather than
+   excluding the member entirely. ── */
+function clanPower(clan) {
+  const preview = clan.member_preview || [];
+  return preview.reduce((s, m) => s + (m.physical_power || 0) + (m.spell_power || 0), 0);
+}
+
+function setSort(mode, btn) {
+  _sortMode = mode;
+  document.querySelectorAll('#clan-sort-toggle .clan-toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
+  filterCards();
+}
+
+/* Only reorders for the 'power' mode — 'members' (default) is left exactly as the
+   server returned it, so default behavior is byte-for-byte unchanged. */
+function sortedClans(list) {
+  if (_sortMode !== 'power') return list;
+  return list.slice().sort((a, b) => clanPower(b) - clanPower(a));
+}
+
 /* ── Filter cards by server + search query ── */
 function filterCards() {
   const q = (document.getElementById('clan-search').value || '').trim().toLowerCase();
   let list = serverFilteredClans();
   if (q) list = list.filter(c => (c.name || '').toLowerCase().includes(q));
-  renderGrid(list);
+  renderGrid(sortedClans(list));
 }
 
 /* ── Load clans ── */

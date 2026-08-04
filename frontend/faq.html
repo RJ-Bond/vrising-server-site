@@ -57,15 +57,26 @@
       padding:.2rem;display:none;transition:color .15s;
     }
     .faq-search-clear:hover { color:var(--text); }
-    /* ── Category label ── */
+    /* ── Category label (collapsible) ── */
     .faq-cat-label {
       font-family:'Cinzel',serif;font-size:.56rem;letter-spacing:.16em;color:rgba(200,0,42,0.5);
       text-transform:uppercase;margin:1.25rem 0 .5rem;
       display:flex;align-items:center;gap:.55rem;
+      cursor:pointer;user-select:none;border-radius:.3rem;
     }
-    .faq-cat-label:first-child { margin-top:0; }
+    .faq-cat-group:first-child .faq-cat-label { margin-top:0; }
     .faq-cat-label::before { content:'';flex-shrink:0;width:14px;height:1px;background:linear-gradient(90deg,transparent,rgba(200,0,42,0.32)); }
     .faq-cat-label::after  { content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(200,0,42,0.18),transparent); }
+    .faq-cat-arrow { color:var(--gold);flex-shrink:0;transition:transform .25s; transform:rotate(180deg); }
+    .faq-cat-group.collapsed .faq-cat-arrow { transform:rotate(0deg); }
+    /* Grid-based collapse: sizes to the natural height of its content at every
+       instant (rather than a JS-computed px snapshot), so it stays correct
+       even while a question nested inside is itself mid-animation. */
+    .faq-cat-body-wrap {
+      display:grid; grid-template-rows:1fr; transition:grid-template-rows .3s ease;
+    }
+    .faq-cat-group.collapsed .faq-cat-body-wrap { grid-template-rows:0fr; }
+    .faq-cat-body { overflow:hidden; min-height:0; }
     /* ── FAQ items ── */
     .faq-item {
       background:var(--card); border:1px solid var(--border); border-radius:.75rem;
@@ -296,6 +307,10 @@ const FAQ = [
 })();
 
 let _faqQ = '';
+// Category collapse state, keyed by category name — persists across
+// re-renders (search typing/clearing) so a user's collapse choice sticks.
+// Empty by default: every category starts expanded (least disruptive).
+const _collapsedCats = new Set();
 
 function renderFaq(filter) {
   filter = (filter !== undefined ? filter : _faqQ).toLowerCase().trim();
@@ -310,13 +325,28 @@ function renderFaq(filter) {
 
   let html = '';
   let total = 0;
+  let catIndex = 0;
 
   for (const [cat, items] of Object.entries(cats)) {
     const visible = filter
       ? items.filter(it => it.q.toLowerCase().includes(filter) || it.a.toLowerCase().includes(filter))
       : items;
     if (!visible.length) continue;
-    if (!filter) html += `<div class="faq-cat-label">${cat}</div>`;
+    // Category grouping/collapsing only applies to the unfiltered view — a
+    // search always renders a flat list of matches (existing behaviour), so
+    // a collapsed category can never hide a search match: there's nothing to
+    // auto-expand because nothing is collapsed in this view in the first place.
+    if (!filter) {
+      const collapsed = _collapsedCats.has(cat);
+      const bodyId = `faq-catbody-${catIndex}`;
+      html += `
+        <div class="faq-cat-group${collapsed ? ' collapsed' : ''}" data-cat="${cat}">
+          <div class="faq-cat-label" role="button" tabindex="0" aria-expanded="${collapsed ? 'false' : 'true'}" aria-controls="${bodyId}" onclick="toggleFaqCat(this)" onkeydown="onFaqCatKeydown(event, this)">
+            <span class="faq-cat-label-text">${cat}</span>
+            <svg class="faq-cat-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="faq-cat-body-wrap"><div class="faq-cat-body" id="${bodyId}">`;
+    }
     visible.forEach((item, ci) => {
       const delay = (total + ci) * 40;
       html += `
@@ -331,6 +361,10 @@ function renderFaq(filter) {
           <div class="faq-a">${item.a}</div>
         </div>`;
     });
+    if (!filter) {
+      html += `</div></div></div>`;
+      catIndex++;
+    }
     total += visible.length;
   }
 
@@ -353,6 +387,24 @@ function toggleFaq(i) {
   el.classList.toggle('open', !isOpen);
   const a = el.querySelector('.faq-a');
   a.style.maxHeight = !isOpen ? a.scrollHeight + 24 + 'px' : '0';
+}
+
+function toggleFaqCat(labelEl) {
+  const group = labelEl.closest('.faq-cat-group');
+  if (!group) return;
+  const collapsed = group.classList.toggle('collapsed');
+  labelEl.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  const cat = group.dataset.cat;
+  if (collapsed) _collapsedCats.add(cat);
+  else _collapsedCats.delete(cat);
+}
+
+function onFaqCatKeydown(e, labelEl) {
+  // Same activation keys as native buttons: Enter and Space toggle.
+  if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+    e.preventDefault();
+    toggleFaqCat(labelEl);
+  }
 }
 
 function onFaqSearch(val) {
