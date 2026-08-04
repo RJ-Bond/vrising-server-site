@@ -2579,6 +2579,38 @@
         </div>
       </div>
 
+      <!-- Nickname-change config (spend side — the plugin's .nick chat command) -->
+      <div class="s-row" style="grid-template-columns:1fr;">
+        <div class="s-card">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(150,0,28,.18);border:1px solid rgba(180,0,40,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e05575" stroke-width="1.8"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+            </div>
+            <div>
+              <h2>Смена ника за очки</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Игровая команда .nick — тратит очки на смену имени персонажа</p>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+            <div class="s-field">
+              <label>Стоимость (очков)</label>
+              <div class="s-field-row">
+                <input id="setting-nickname_change_cost" type="number" min="0" class="dark-input" placeholder="100">
+                <button class="s-save-btn" onclick="saveSetting('nickname_change_cost')">Сохранить</button>
+              </div>
+            </div>
+            <div class="s-field">
+              <label>Кулдаун (дней)</label>
+              <div class="s-field-row">
+                <input id="setting-nickname_change_cooldown_days" type="number" min="0" class="dark-input" placeholder="7">
+                <button class="s-save-btn" onclick="saveSetting('nickname_change_cooldown_days')">Сохранить</button>
+              </div>
+            </div>
+          </div>
+          <p class="s-desc" style="margin-top:.5rem;">Доступно только привязанным к сайту аккаунтам (.login). Списания видны в истории очков игрока и в этой же вкладке.</p>
+        </div>
+      </div>
+
       <!-- Item editor modal -->
       <div id="shop-item-editor-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
         <div style="max-width:560px;margin:3rem auto;background:var(--card);border:1px solid var(--border);border-radius:1rem;padding:2rem;box-shadow:0 16px 64px rgba(0,0,0,0.7);">
@@ -4609,6 +4641,7 @@ function renderUsersTable() {
   const now = Date.now();
 
   el.innerHTML = `
+    <div style="overflow-x:auto;">
     <table>
       <thead><tr><th><input type="checkbox" class="site-checkbox" id="select-all-users" onchange="toggleSelectAll(this)" aria-label="Выбрать всех пользователей"></th>${sortTh('id','ID')}${sortTh('username','Имя')}${sortTh('email','Email')}${sortTh('role','Роль')}<th>Статус</th>${sortTh('last_active_at','Активность')}${sortTh('created_at','Дата')}<th>Действия</th></tr></thead>
       <tbody>
@@ -4666,7 +4699,8 @@ function renderUsersTable() {
           </tr>`;
         }).join('')}
       </tbody>
-    </table>`;
+    </table>
+    </div>`;
   if (footer) {
     footer.style.display = 'block';
     footer.textContent = users.length < _allUsers.length
@@ -6371,7 +6405,7 @@ async function loadEconomyConfig() {
     const settings = await fetch(`${API}/admin/settings`, {credentials:'include', headers:authH()}).then(r => r.json());
     const map = {};
     settings.forEach(s => { map[s.key] = s.value; });
-    ['points_per_minute_playtime', 'points_streak_bonus', 'points_streak_min_days'].forEach(key => {
+    ['points_per_minute_playtime', 'points_streak_bonus', 'points_streak_min_days', 'nickname_change_cost', 'nickname_change_cooldown_days'].forEach(key => {
       const el = document.getElementById(`setting-${key}`);
       if (el && map[key] !== undefined) el.value = map[key];
     });

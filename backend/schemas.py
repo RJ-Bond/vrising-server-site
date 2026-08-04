@@ -683,6 +683,15 @@ class PluginConnectStreakIn(BaseModel):
     server_num: int = 1
 
 
+class PluginNicknameChangeIn(BaseModel):
+    """Body for POST /api/plugin/nickname-change — sent by the plugin's ".nick <name>" chat
+    command. The site is the sole authority on cost/cooldown/points; the plugin only writes
+    the new name into the game's ECS User.CharacterName after this call reports ok=true."""
+    steam_id: str
+    new_nickname: str
+    server_num: int = 1
+
+
 class PluginClanMemberIn(BaseModel):
     steam_id: str
     character_name: str

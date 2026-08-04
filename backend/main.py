@@ -200,6 +200,9 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="points_per_minute_playtime", value="1"),
         Setting(key="points_streak_bonus", value="10"),
         Setting(key="points_streak_min_days", value="2"),
+        # Points economy — spend side, the plugin's ".nick <name>" chat command.
+        Setting(key="nickname_change_cost", value="100"),
+        Setting(key="nickname_change_cooldown_days", value="7"),
     ]
     for s in default_settings:
         existing = await db.execute(select(Setting).where(Setting.key == s.key))

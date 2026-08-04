@@ -5,12 +5,12 @@ from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, delete, or_
+from sqlalchemy import select, func, delete, or_, update
 
 from ..database import get_db
 from ..models import (
     User, Setting, PlayerRecord, PluginHeartbeat, GameClan, GameClanMember, GameClanBase,
-    Announcement, ServerMessageTemplate, ScheduledRestart, PlayerDailyActivity,
+    Announcement, ServerMessageTemplate, ScheduledRestart, PlayerDailyActivity, PointsTransaction,
 )
 from ..auth import get_password_hash, verify_password
 from ..rate_limit import limiter
@@ -19,6 +19,7 @@ from ..helpers import (
     _site_timezone,
     _get_points_config,
     _award_points,
+    _get_nickname_change_config,
     _fmt_dt_z,
     _schedule_restart,
     _cancel_restart,
@@ -34,6 +35,7 @@ from ..schemas import (
     PluginScheduleRestartIn,
     PluginCancelRestartIn,
     PluginConnectStreakIn,
+    PluginNicknameChangeIn,
 )
 
 router = APIRouter()
@@ -603,6 +605,101 @@ async def plugin_connect_streak(
             await db.commit()
 
     return {"streak_days": streak_days}
+
+
+# ─── Nickname change (plugin, spends points) ────────────────────────────────────
+# Backs the plugin's ".nick <name>" chat command (VcfIntegration.cs). The site is the
+# sole authority on validation/cost/cooldown/points — the plugin only writes the new
+# name into the game's ECS User.CharacterName component (and replies to the player)
+# after this call reports ok=true, so a crashed/retried plugin call can never grant a
+# free rename or double-charge independently of what actually got spent here.
+# \w is unicode-aware in Python 3 (matches Cyrillic letters/digits/underscore too), so
+# this already allows RU/EN names — just space and hyphen added on top.
+_NICK_ALLOWED_RE = re.compile(r"^[\w \-]{2,24}$")
+_NICK_RESERVED = {
+    "admin", "administrator", "moderator", "mod", "system", "console", "gm", "root", "op",
+    "администратор", "модератор", "модер", "система",
+}
+
+
+@router.post("/api/plugin/nickname-change")
+@limiter.limit("20/minute")
+async def plugin_nickname_change(
+    request: Request,
+    body: PluginNicknameChangeIn,
+    db: AsyncSession = Depends(get_db),
+    _key: None = Depends(_require_plugin_key),
+):
+    """Response is always 200 with {"ok": bool, ...} rather than an HTTP error status —
+    the plugin relays the Russian "message" straight to the player's chat either way, no
+    error-code table to keep in sync on the C# side. On success: {"ok": true,
+    "new_nickname": str, "cost": int, "balance": int}. On failure: {"ok": false, "error":
+    "invalid_name"|"reserved_name"|"not_linked"|"cooldown"|"insufficient_points",
+    "message": str}."""
+    new_name = (body.new_nickname or "").strip()
+    # \w already matches digits/underscore; the charset is deliberately narrow — no
+    # "<", ">", "[", "]" etc, since this game's chat/name rendering parses <color=..>
+    # tags, and a raw player-supplied name is exactly the kind of input that shouldn't
+    # be able to inject markup other players' clients will render.
+    if not _NICK_ALLOWED_RE.match(new_name):
+        return {"ok": False, "error": "invalid_name",
+                "message": "Имя должно быть 2-24 символа: буквы, цифры, пробел, - и _"}
+    if new_name.lower() in _NICK_RESERVED:
+        return {"ok": False, "error": "reserved_name", "message": "Это имя зарезервировано."}
+
+    user_res = await db.execute(select(User).where(User.steam_id == body.steam_id))
+    user = user_res.scalar_one_or_none()
+    if user is None:
+        return {"ok": False, "error": "not_linked",
+                "message": "Аккаунт не привязан к сайту — используйте .login"}
+
+    cfg = await _get_nickname_change_config(db)
+
+    last_res = await db.execute(
+        select(PointsTransaction.created_at)
+        .where(PointsTransaction.user_id == user.id, PointsTransaction.reason == "nickname_change")
+        .order_by(PointsTransaction.created_at.desc()).limit(1)
+    )
+    last_change = last_res.scalar_one_or_none()
+    if last_change is not None:
+        if last_change.tzinfo is None:
+            last_change = last_change.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        next_allowed = last_change + timedelta(days=cfg["cooldown_days"])
+        if now < next_allowed:
+            days_left = max(1, (next_allowed - now).days + 1)
+            return {"ok": False, "error": "cooldown",
+                    "message": f"Следующая смена ника будет доступна через {days_left} дн."}
+
+    # Atomic conditional UPDATE (not _award_points, which its own docstring says isn't
+    # concurrency-safe for a spend) — same pattern as POST /api/shop/redeem in
+    # points_shop.py, so two racing .nick calls for the same player can't overdraft.
+    cost = cfg["cost"]
+    # Snapshot the balance before the UPDATE attempt — db.rollback() below expires every
+    # ORM object in the session, so touching user.points_balance afterward would trigger
+    # an implicit lazy-refresh outside the request's greenlet context and raise
+    # sqlalchemy.exc.MissingGreenlet instead of the message we actually want to send.
+    balance_before = user.points_balance
+    result = await db.execute(
+        update(User).where(User.id == user.id, User.points_balance >= cost)
+        .values(points_balance=User.points_balance - cost)
+    )
+    if result.rowcount == 0:
+        await db.rollback()
+        return {"ok": False, "error": "insufficient_points",
+                "message": f"Недостаточно очков: нужно {cost}, у вас {balance_before}"}
+
+    fresh_res = await db.execute(select(User.points_balance).where(User.id == user.id))
+    fresh_balance = fresh_res.scalar_one()
+
+    old_display = user.game_nickname or user.username
+    db.add(PointsTransaction(
+        user_id=user.id, delta=-cost, balance_after=fresh_balance,
+        reason="nickname_change", detail=f"{old_display} -> {new_name}"[:256],
+        created_at=datetime.utcnow(),
+    ))
+    await db.commit()
+    return {"ok": True, "new_nickname": new_name, "cost": cost, "balance": fresh_balance}
 
 
 # ─── Scheduled server restart ──────────────────────────────────────────────────

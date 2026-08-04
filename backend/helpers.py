@@ -195,6 +195,28 @@ async def _get_points_config(db: AsyncSession) -> dict:
     }
 
 
+async def _get_nickname_change_config(db: AsyncSession) -> dict:
+    """Reads the ".nick" command's cost/cooldown Settings (admin.html's "Смена ника за
+    очки" economy card). Cooldown has no dedicated column — it's derived from the most
+    recent PointsTransaction row with reason="nickname_change" for that user instead, see
+    POST /api/plugin/nickname-change."""
+    res = await db.execute(select(Setting).where(Setting.key.in_(
+        ["nickname_change_cost", "nickname_change_cooldown_days"]
+    )))
+    vals = {s.key: s.value for s in res.scalars().all()}
+
+    def _to_int(v, default):
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return default
+
+    return {
+        "cost": _to_int(vals.get("nickname_change_cost"), 100),
+        "cooldown_days": _to_int(vals.get("nickname_change_cooldown_days"), 7),
+    }
+
+
 async def _send_reset_email(to_email: str, reset_url: str) -> bool:
     host = os.getenv("SMTP_HOST", "").strip()
     if not host:
