@@ -205,6 +205,23 @@
     /* ── Scheduled badge ── */
     .badge-scheduled { background:rgba(30,60,0,0.3); border:1px solid rgba(90,160,0,0.4); color:#bef264; font-size:.65rem; padding:.15rem .5rem; border-radius:9999px; }
 
+    /* ── Users table extras: avatar circle, "new" badge, search-match highlight,
+       click-to-copy email icon. (A sticky <thead> was tried here too but Chrome
+       mis-stacks position:sticky <th> against this table's border-collapse:collapse
+       — the first row painted on top of the header instead of the header
+       staying put. Not worth fighting a table-layout quirk for a "nice to have",
+       so it stays a normal scrolling header.) ── */
+    .user-avatar {
+      width: 1.85rem; height: 1.85rem; border-radius: 50%; flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: .68rem; font-weight: 700; color: #fff; object-fit: cover;
+    }
+    .badge-new { background: rgba(0,120,220,0.2); border: 1px solid rgba(60,150,255,0.4); color: #7dd3fc; font-size: .58rem; font-weight: 700; padding: .1rem .42rem; border-radius: 9999px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+    mark.hl { background: rgba(201,169,74,0.4); color: inherit; border-radius: .2rem; padding: 0 .1rem; }
+    .email-copy-btn { background: none; border: none; color: var(--muted); cursor: pointer; padding: .15rem; display: inline-flex; opacity: .55; transition: opacity .15s, color .15s; vertical-align: middle; }
+    .email-copy-btn:hover { opacity: 1; color: var(--gold); }
+    .email-copy-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; opacity: 1; }
+
     /* ── Quill dark theme ── */
     .ql-toolbar.ql-snow {
       background: rgba(8,0,16,0.95) !important;
@@ -434,26 +451,29 @@
       /* Dashboard graph + recent-users stack */
       #section-dashboard [style*="1.3fr 1fr"] { grid-template-columns:1fr !important; }
 
-      /* ── Reports / audit-log / shop-queue tables: card fallback instead of
-         horizontal scroll — same pattern as frontend/bans.html (search that file
-         for "data-label"): thead hidden, each row becomes a card, each cell
+      /* ── Reports / audit-log / shop-queue / users tables: card fallback instead
+         of horizontal scroll — same pattern as frontend/bans.html (search that
+         file for "data-label"): thead hidden, each row becomes a card, each cell
          becomes a label:value block using its data-label attribute (present on
-         every <td> emitted by loadReports()/loadAuditLogSection()/loadShopQueue()). */
-      #section-reports table, #section-auditlog table, #section-shop-queue table { overflow-x:visible; }
-      #section-reports table thead, #section-auditlog table thead, #section-shop-queue table thead { display:none; }
-      #section-reports table tbody tr, #section-auditlog table tbody tr, #section-shop-queue table tbody tr {
+         every <td> emitted by loadReports()/loadAuditLogSection()/loadShopQueue()/
+         renderUsersTable()). Users has more columns than the others (checkbox,
+         avatar+name, email, role select, status, last-active, date, actions) so
+         this is what actually fixes it clipping instead of just scrolling. */
+      #section-reports table, #section-auditlog table, #section-shop-queue table, #section-users table { overflow-x:visible; }
+      #section-reports table thead, #section-auditlog table thead, #section-shop-queue table thead, #section-users table thead { display:none; }
+      #section-reports table tbody tr, #section-auditlog table tbody tr, #section-shop-queue table tbody tr, #section-users table tbody tr {
         display:block; background:rgba(14,3,24,0.5); border:1px solid rgba(150,0,28,0.18);
         border-radius:.7rem; padding:.3rem .8rem; margin:.6rem;
       }
-      #section-reports table tbody tr:hover td, #section-auditlog table tbody tr:hover td, #section-shop-queue table tbody tr:hover td { background:transparent; }
-      #section-reports table td, #section-auditlog table td, #section-shop-queue table td {
+      #section-reports table tbody tr:hover td, #section-auditlog table tbody tr:hover td, #section-shop-queue table tbody tr:hover td, #section-users table tbody tr:hover td { background:transparent; }
+      #section-reports table td, #section-auditlog table td, #section-shop-queue table td, #section-users table td {
         display:block; text-align:left;
         border-bottom:1px solid rgba(150,0,28,0.08); padding:.5rem 0 !important;
         white-space:normal !important; max-width:none !important;
         overflow:visible !important; text-overflow:clip !important;
       }
-      #section-reports table td:last-child, #section-auditlog table td:last-child, #section-shop-queue table td:last-child { border-bottom:none; }
-      #section-reports table td::before, #section-auditlog table td::before, #section-shop-queue table td::before {
+      #section-reports table td:last-child, #section-auditlog table td:last-child, #section-shop-queue table td:last-child, #section-users table td:last-child { border-bottom:none; }
+      #section-reports table td::before, #section-auditlog table td::before, #section-shop-queue table td::before, #section-users table td::before {
         content:attr(data-label); display:block; color:var(--muted); font-size:.62rem;
         text-transform:uppercase; letter-spacing:.06em; margin-bottom:.2rem;
       }
@@ -461,7 +481,12 @@
          show a blank label line above them. */
       #section-reports table td:not([data-label])::before,
       #section-auditlog table td:not([data-label])::before,
-      #section-shop-queue table td:not([data-label])::before { content:none; margin-bottom:0; }
+      #section-shop-queue table td:not([data-label])::before,
+      #section-users table td:not([data-label])::before { content:none; margin-bottom:0; }
+      /* Users row is click-anywhere-to-open (see openUserQuickView) — its action
+         buttons/checkbox/role-select already stopPropagation, but the row itself
+         needs to actually look interactive here too. */
+      #section-users table tbody tr { cursor:pointer; }
     }
     @media(max-width:560px) {
       .relative.z-10 { flex-direction:column; }
@@ -1987,20 +2012,23 @@
       <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h1 class="section-title">Пользователи</h1>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
-          <input id="users-search" type="text" class="dark-input" placeholder="Поиск по имени или email…" style="width:auto;max-width:220px;font-size:.82rem;padding:.4rem .7rem;" oninput="renderUsersTable()">
-          <select id="users-role-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="renderUsersTable()">
+          <input id="users-search" type="text" class="dark-input" placeholder="Поиск по имени или email…" style="width:auto;max-width:220px;font-size:.82rem;padding:.4rem .7rem;" oninput="_usersPage=1;renderUsersTable()">
+          <select id="users-role-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="_usersPage=1;renderUsersTable()">
             <option value="">Все роли</option>
             <option value="user">Игрок</option>
             <option value="moderator">Модератор</option>
             <option value="admin">Админ</option>
             <option value="superadmin">Суперадмин</option>
           </select>
-          <select id="users-status-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="renderUsersTable()">
+          <select id="users-status-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="_usersPage=1;renderUsersTable()">
             <option value="">Все статусы</option>
             <option value="active">Активен</option>
             <option value="blocked">Заблокирован</option>
           </select>
-          <a href="/api/admin/export/users" class="btn-ghost" style="font-size:.75rem;" download>⬇ CSV</a>
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.78rem;color:var(--muted);text-transform:none;letter-spacing:0;cursor:pointer;margin:0;white-space:nowrap;">
+            <input type="checkbox" id="users-online-filter" class="site-checkbox" onchange="_usersPage=1;renderUsersTable()"> Только онлайн
+          </label>
+          <button id="users-csv-btn" onclick="exportUsersCsv()" class="btn-ghost" style="font-size:.75rem;" data-tip="Если выбраны пользователи — экспорт только выбранных">⬇ CSV</button>
         </div>
       </div>
       <!-- Bulk panel -->
@@ -2014,7 +2042,10 @@
       <div id="users-table" class="glass-card rounded-xl overflow-hidden">
         <p class="p-6" style="color:var(--muted);font-size:.85rem;">Загрузка...</p>
       </div>
-      <div id="users-count-footer" class="table-foot" style="display:none;"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:.75rem;flex-wrap:wrap;gap:.5rem;">
+        <div id="users-count-footer" class="table-foot" style="display:none;"></div>
+        <div id="users-pagination" class="flex gap-2"></div>
+      </div>
     </div>
 
     <!-- CLANS -->
@@ -2987,6 +3018,7 @@ document.addEventListener('keydown', e => {
   if (typeof closeEventEditor === 'function') closeEventEditor();
   if (typeof closeShopItemEditor === 'function') closeShopItemEditor();
   if (typeof closeTemplates === 'function') closeTemplates();
+  if (typeof closeUserQv === 'function') closeUserQv();
 });
 
 // ─── Quick nav (Ctrl+K) ─────────────────────────────────────────────────────
@@ -4411,6 +4443,111 @@ let _allUsers = [];
 let _usersSort = { field: 'created_at', dir: -1 };
 let _onlinePlayers = new Set();
 let _allBans = [];
+let _usersPage = 1;
+const _usersPageSize = 15;
+
+// Steam-linked accounts get an auto-generated placeholder email at signup
+// (steam_<steamid>@vrising.local — never actually used for contact) that just
+// wastes column width shown in full; real password-signup emails pass through
+// untouched. Used for both table/modal display and CSV export.
+function fmtEmail(email) {
+  const m = /^steam_(\d+)@vrising\.local$/.exec(email || '');
+  return m ? `steam@${m[1]}` : (email || '');
+}
+
+function _usersHashHue(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return h % 360;
+}
+function userAvatarHtml(u, size, fontSize) {
+  size = size || '1.85rem'; fontSize = fontSize || '.68rem';
+  if (u.avatar_url) return `<img src="${esc(u.avatar_url)}" alt="" class="user-avatar" style="width:${size};height:${size};">`;
+  const hue = _usersHashHue(u.username || String(u.id));
+  const initial = (u.username || '?').trim().charAt(0).toUpperCase();
+  return `<span class="user-avatar" style="width:${size};height:${size};font-size:${fontSize};background:hsl(${hue},55%,32%);">${esc(initial)}</span>`;
+}
+// Wraps the first case-insensitive match of q in <mark> — matches against the
+// raw (unescaped) string first so the match position isn't thrown off by any
+// &/</>/" that esc() would have expanded, then escapes each split separately.
+function _usersHighlight(text, q) {
+  text = text || '';
+  if (!q) return esc(text);
+  const idx = text.toLowerCase().indexOf(q.toLowerCase());
+  if (idx === -1) return esc(text);
+  return esc(text.slice(0, idx)) + '<mark class="hl">' + esc(text.slice(idx, idx + q.length)) + '</mark>' + esc(text.slice(idx + q.length));
+}
+
+function copyUserEmail(email) {
+  navigator.clipboard.writeText(email).then(() => {
+    showToast('Email скопирован', 'success');
+  }).catch(() => showToast('Не удалось скопировать', 'error'));
+}
+
+const _svgLock    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-lock"></use></svg>`;
+const _svgUnlock  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-unlock"></use></svg>`;
+const _svgBan     = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
+const _svgCheck   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-check-circle"></use></svg>`;
+const _svgKey     = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6"/><path d="M15.5 7.5l3 3L22 7l-3-3"/></svg>`;
+const _svgLink    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
+const _svgTrash   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
+
+// Backend requires target role level < actor's own level for ban/revoke/delete
+// (see role_level() checks in toggle_active/delete_user/revoke_user_sessions) —
+// mirror that here so moderators/admins don't see buttons that will just 403.
+// Shared by the table row and the quick-view modal (openUserQuickView).
+function buildUserActionsHtml(u, currentUser) {
+  const isSelf = u.id === currentUser?.id;
+  if (isSelf) return `<span style="color:var(--muted);font-size:.72rem;padding:0 .4rem;">— вы</span>`;
+  const canAct = roleLevel(u.role) < roleLevel(window.__MY_ROLE);
+  if (!canAct) {
+    return `<span style="color:var(--muted);font-size:.68rem;padding:0 .4rem;" data-tip="Недостаточно прав">—</span>
+      <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" class="act-btn ab" data-tip="Открыть профиль" aria-label="Открыть профиль пользователя ${esc(u.username)}" title="Открыть профиль пользователя">${_svgLink}</a>`;
+  }
+  const existingBan = _allBans.find(b => b.player_name === u.username);
+  return `<div style="display:flex;gap:.28rem;align-items:center;">
+      <button class="act-btn ${u.is_active?'ay':'ag'}" data-tip="${u.is_active?'Заблокировать':'Разблокировать'}" aria-label="${u.is_active?'Заблокировать':'Разблокировать'} пользователя ${esc(u.username)}" title="${u.is_active?'Заблокировать пользователя':'Разблокировать пользователя'}" onclick="toggleUserActive(${u.id},'${esc(u.username)}',${u.is_active})">${u.is_active?_svgLock:_svgUnlock}</button>
+      ${existingBan
+        ? `<button class="act-btn ag" data-tip="Разбанить" aria-label="Разбанить пользователя ${esc(u.username)}" title="Разбанить пользователя" onclick="unbanUserAction(${existingBan.id},'${esc(u.username)}')">${_svgCheck}</button>`
+        : `<button class="act-btn ar" data-tip="Забанить" aria-label="Забанить пользователя ${esc(u.username)}" title="Забанить пользователя" onclick="banUserAction('${esc(u.username)}')">${_svgBan}</button>`
+      }
+      <button class="act-btn ao" data-tip="Сбросить сессии" aria-label="Сбросить сессии пользователя ${esc(u.username)}" title="Сбросить сессии пользователя" onclick="revokeUserSessions(${u.id},'${esc(u.username)}')">${_svgKey}</button>
+      <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" class="act-btn ab" data-tip="Открыть профиль" aria-label="Открыть профиль пользователя ${esc(u.username)}" title="Открыть профиль пользователя">${_svgLink}</a>
+      <button class="act-btn ar" data-tip="Удалить пользователя" aria-label="Удалить пользователя ${esc(u.username)}" title="Удалить пользователя" onclick="deleteUser(${u.id},'${esc(u.username)}')">${_svgTrash}</button>
+     </div>`;
+}
+
+function openUserQuickView(id) {
+  const u = _allUsers.find(x => x.id === id);
+  if (!u) return;
+  const currentUser = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
+  document.getElementById('userqv-avatar').innerHTML = userAvatarHtml(u, '3.1rem', '1.2rem');
+  document.getElementById('userqv-username').textContent = u.username;
+  const roleStyle = {
+    user:       'background:rgba(30,30,60,.2);border:1px solid rgba(80,80,150,.3);color:var(--muted);',
+    moderator:  'background:rgba(0,90,140,.2);border:1px solid rgba(0,140,210,.4);color:#7dd3fc;',
+    admin:      'background:rgba(180,0,30,.2);border:1px solid rgba(220,0,40,.4);color:#f87171;',
+    superadmin: 'background:rgba(150,0,200,.2);border:1px solid rgba(190,0,240,.45);color:#e0a3ff;',
+  }[u.role] || 'background:rgba(30,30,60,.2);border:1px solid rgba(80,80,150,.3);color:var(--muted);';
+  document.getElementById('userqv-role').innerHTML = `<span style="${roleStyle}font-size:.65rem;font-weight:700;padding:.15rem .5rem;border-radius:9999px;">${esc(ROLE_LABELS[u.role] || u.role)}</span>`;
+  document.getElementById('userqv-email').textContent = fmtEmail(u.email);
+  const isOnline = _onlinePlayers.has(u.username.toLowerCase());
+  document.getElementById('userqv-status').innerHTML = u.is_active
+    ? (isOnline ? '<span style="color:#86efac;">Онлайн</span>' : '<span style="color:#86efac;">Активен</span>')
+    : '<span style="color:#f87171;">Заблокирован</span>';
+  const info = _statusInfo(u.last_active_at);
+  document.getElementById('userqv-lastactive').innerHTML = `<span style="color:${info.color};">${esc(info.label)}</span>`;
+  document.getElementById('userqv-created').textContent = fmtDate(u.created_at);
+  document.getElementById('userqv-actions').innerHTML = buildUserActionsHtml(u, currentUser);
+  const m = document.getElementById('userqv-modal');
+  m.style.display = 'flex';
+  requestAnimationFrame(() => { m.style.opacity = '1'; });
+}
+function closeUserQv() {
+  const m = document.getElementById('userqv-modal');
+  m.style.opacity = '0';
+  m.style.display = 'none';
+}
 
 async function loadUsers() {
   const res = await fetch(`${API}/admin/users`, { credentials: 'include', headers: authH() });
@@ -4437,39 +4574,48 @@ function sortUsersBy(field) {
 function renderUsersTable() {
   const currentUser = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
   const el = document.getElementById('users-table');
+  const pager = document.getElementById('users-pagination');
   const q = (document.getElementById('users-search')?.value || '').trim().toLowerCase();
   const roleFilter = document.getElementById('users-role-filter')?.value || '';
   const statusFilter = document.getElementById('users-status-filter')?.value || '';
+  const onlineOnly = document.getElementById('users-online-filter')?.checked || false;
   let users = _allUsers;
-  if (q) users = users.filter(u => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+  if (q) users = users.filter(u => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || fmtEmail(u.email).toLowerCase().includes(q));
   if (roleFilter) users = users.filter(u => (u.role || 'user') === roleFilter);
   if (statusFilter === 'active') users = users.filter(u => u.is_active);
   else if (statusFilter === 'blocked') users = users.filter(u => !u.is_active);
+  if (onlineOnly) users = users.filter(u => _onlinePlayers.has(u.username.toLowerCase()));
 
   const { field, dir } = _usersSort;
   users = [...users].sort((a, b) => {
     let av = a[field], bv = b[field];
-    if (field === 'created_at') { av = new Date(av); bv = new Date(bv); }
+    if (field === 'created_at' || field === 'last_active_at') { av = av ? new Date(av) : new Date(0); bv = bv ? new Date(bv) : new Date(0); }
     if (typeof av === 'string') av = av.toLowerCase();
     if (typeof bv === 'string') bv = bv.toLowerCase();
     return av < bv ? -1 * dir : av > bv ? 1 * dir : 0;
   });
 
   const footer = document.getElementById('users-count-footer');
-  if (!_allUsers.length) { el.innerHTML = '<p class="p-6" style="color:var(--muted);">Пользователей нет.</p>'; if (footer) footer.style.display='none'; return; }
-  if (!users.length) { el.innerHTML = '<p class="p-6" style="color:var(--muted);">Ничего не найдено.</p>'; if (footer) footer.style.display='none'; return; }
+  if (!_allUsers.length) { el.innerHTML = '<p class="p-6" style="color:var(--muted);">Пользователей нет.</p>'; if (footer) footer.style.display='none'; if (pager) pager.innerHTML=''; return; }
+  if (!users.length) { el.innerHTML = '<p class="p-6" style="color:var(--muted);">Ничего не найдено.</p>'; if (footer) footer.style.display='none'; if (pager) pager.innerHTML=''; return; }
+
+  const totalPages = Math.max(1, Math.ceil(users.length / _usersPageSize));
+  if (_usersPage > totalPages) _usersPage = totalPages;
+  if (_usersPage < 1) _usersPage = 1;
+  const pageUsers = users.slice((_usersPage - 1) * _usersPageSize, _usersPage * _usersPageSize);
 
   const sortArrow = f => _usersSort.field === f ? (_usersSort.dir === 1 ? ' ▲' : ' ▼') : '';
   const sortTh = (f, label) => `<th onclick="sortUsersBy('${f}')" style="cursor:pointer;user-select:none;">${label}${sortArrow(f)}</th>`;
+  const now = Date.now();
 
   el.innerHTML = `
     <table>
-      <thead><tr><th><input type="checkbox" class="site-checkbox" id="select-all-users" onchange="toggleSelectAll(this)" aria-label="Выбрать всех пользователей"></th>${sortTh('id','ID')}${sortTh('username','Имя')}${sortTh('email','Email')}${sortTh('role','Роль')}<th>Статус</th>${sortTh('created_at','Дата')}<th>Действия</th></tr></thead>
+      <thead><tr><th><input type="checkbox" class="site-checkbox" id="select-all-users" onchange="toggleSelectAll(this)" aria-label="Выбрать всех пользователей"></th>${sortTh('id','ID')}${sortTh('username','Имя')}${sortTh('email','Email')}${sortTh('role','Роль')}<th>Статус</th>${sortTh('last_active_at','Активность')}${sortTh('created_at','Дата')}<th>Действия</th></tr></thead>
       <tbody>
-        ${users.map(u => {
+        ${pageUsers.map(u => {
           const isSelf = u.id === currentUser?.id;
           const isOnline = _onlinePlayers.has(u.username.toLowerCase());
-          const existingBan = _allBans.find(b => b.player_name === u.username);
+          const isNew = !!u.created_at && (now - new Date(u.created_at).getTime()) < 24 * 3600 * 1000;
 
           const _roleBadgeStyle = {
             user:       'background:rgba(30,30,60,.2);border:1px solid rgba(80,80,150,.3);color:var(--muted);',
@@ -4481,7 +4627,7 @@ function renderUsersTable() {
           // Role changes are superadmin-only (PUT /api/admin/users/{id}/role) — everyone
           // else sees the same badge read-only, matching what the backend will let them do.
           const roleBadge = meetsRole('superadmin') && !isSelf
-            ? `<select class="dark-input users-role-edit" style="width:auto;font-size:.72rem;padding:.2rem .4rem;" onchange="setUserRole(${u.id},'${esc(u.username)}','${u.role}',this)">
+            ? `<select class="dark-input users-role-edit" style="width:auto;font-size:.72rem;padding:.2rem .4rem;" onclick="event.stopPropagation()" onchange="setUserRole(${u.id},'${esc(u.username)}','${u.role}',this)">
                 ${Object.keys(ROLE_LABELS).map(r => `<option value="${r}"${r===u.role?' selected':''}>${ROLE_LABELS[r]}</option>`).join('')}
                </select>`
             : roleBadgeStatic;
@@ -4492,42 +4638,31 @@ function renderUsersTable() {
           const activeBadge = u.is_active
             ? `<span style="background:rgba(0,60,10,.2);border:1px solid rgba(0,130,30,.3);color:#86efac;font-size:.62rem;font-weight:700;padding:.1rem .42rem;border-radius:9999px;">Актив</span>`
             : `<span style="background:rgba(100,0,10,.2);border:1px solid rgba(180,0,25,.35);color:#f87171;font-size:.62rem;font-weight:700;padding:.1rem .42rem;border-radius:9999px;">Заблок</span>`;
+          const lastActiveInfo = _statusInfo(u.last_active_at);
+          const lastActiveHtml = `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;color:${lastActiveInfo.color};white-space:nowrap;"><span style="width:.4rem;height:.4rem;border-radius:50%;background:${lastActiveInfo.dot};box-shadow:${lastActiveInfo.glow};flex-shrink:0;"></span>${esc(lastActiveInfo.label)}</span>`;
 
-          const _svgLock    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-lock"></use></svg>`;
-          const _svgUnlock  = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-unlock"></use></svg>`;
-          const _svgBan     = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>`;
-          const _svgCheck   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-check-circle"></use></svg>`;
-          const _svgKey     = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6"/><path d="M15.5 7.5l3 3L22 7l-3-3"/></svg>`;
-          const _svgLink    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
-          const _svgTrash   = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
-          // Backend requires target role level < actor's own level for ban/revoke/delete
-          // (see role_level() checks in toggle_active/delete_user/revoke_user_sessions) —
-          // mirror that here so moderators/admins don't see buttons that will just 403.
-          const canAct = roleLevel(u.role) < roleLevel(window.__MY_ROLE);
-          const actionsHtml = isSelf
-            ? `<span style="color:var(--muted);font-size:.72rem;padding:0 .4rem;">— вы</span>`
-            : !canAct
-            ? `<span style="color:var(--muted);font-size:.68rem;padding:0 .4rem;" data-tip="Недостаточно прав">—</span>
-                <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" class="act-btn ab" data-tip="Открыть профиль" aria-label="Открыть профиль пользователя ${esc(u.username)}" title="Открыть профиль пользователя">${_svgLink}</a>`
-            : `<div style="display:flex;gap:.28rem;align-items:center;">
-                <button class="act-btn ${u.is_active?'ay':'ag'}" data-tip="${u.is_active?'Заблокировать':'Разблокировать'}" aria-label="${u.is_active?'Заблокировать':'Разблокировать'} пользователя ${esc(u.username)}" title="${u.is_active?'Заблокировать пользователя':'Разблокировать пользователя'}" onclick="toggleUserActive(${u.id},'${esc(u.username)}',${u.is_active})">${u.is_active?_svgLock:_svgUnlock}</button>
-                ${existingBan
-                  ? `<button class="act-btn ag" data-tip="Разбанить" aria-label="Разбанить пользователя ${esc(u.username)}" title="Разбанить пользователя" onclick="unbanUserAction(${existingBan.id},'${esc(u.username)}')">${_svgCheck}</button>`
-                  : `<button class="act-btn ar" data-tip="Забанить" aria-label="Забанить пользователя ${esc(u.username)}" title="Забанить пользователя" onclick="banUserAction('${esc(u.username)}')">${_svgBan}</button>`
-                }
-                <button class="act-btn ao" data-tip="Сбросить сессии" aria-label="Сбросить сессии пользователя ${esc(u.username)}" title="Сбросить сессии пользователя" onclick="revokeUserSessions(${u.id},'${esc(u.username)}')">${_svgKey}</button>
-                <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" class="act-btn ab" data-tip="Открыть профиль" aria-label="Открыть профиль пользователя ${esc(u.username)}" title="Открыть профиль пользователя">${_svgLink}</a>
-                <button class="act-btn ar" data-tip="Удалить пользователя" aria-label="Удалить пользователя ${esc(u.username)}" title="Удалить пользователя" onclick="deleteUser(${u.id},'${esc(u.username)}')">${_svgTrash}</button>
-               </div>`;
-          return `<tr>
-            <td><input type="checkbox" class="site-checkbox user-check" data-id="${u.id}" onchange="_onUserCheck()" aria-label="Выбрать пользователя ${esc(u.username)}" style="${isSelf?'display:none':''}" ${isSelf?'disabled':''}></td>
-            <td style="color:var(--muted);">${u.id}</td>
-            <td><a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" style="font-weight:600;color:var(--text);text-decoration:none;transition:color .15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'" data-tip="Открыть профиль">${esc(u.username)}</a></td>
-            <td style="color:var(--muted);font-size:.78rem;">${esc(u.email)}</td>
-            <td>${roleBadge}</td>
-            <td><div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;">${onlineDot}${activeBadge}</div></td>
-            <td style="color:var(--muted);font-size:.78rem;">${fmtDate(u.created_at)}</td>
-            <td>${actionsHtml}</td>
+          const actionsHtml = buildUserActionsHtml(u, currentUser);
+
+          return `<tr onclick="openUserQuickView(${u.id})">
+            <td onclick="event.stopPropagation()"><input type="checkbox" class="site-checkbox user-check" data-id="${u.id}" onchange="_onUserCheck()" aria-label="Выбрать пользователя ${esc(u.username)}" style="${isSelf?'display:none':''}" ${isSelf?'disabled':''}></td>
+            <td data-label="ID" style="color:var(--muted);">${u.id}</td>
+            <td data-label="Имя">
+              <div style="display:flex;align-items:center;gap:.55rem;">
+                ${userAvatarHtml(u)}
+                <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;min-width:0;">
+                  <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-weight:600;color:var(--text);text-decoration:none;transition:color .15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'" data-tip="Открыть профиль">${_usersHighlight(u.username, q)}</a>
+                  ${isNew ? `<span class="badge-new">Новый</span>` : ''}
+                </div>
+              </div>
+            </td>
+            <td data-label="Email" style="color:var(--muted);font-size:.78rem;">
+              <span>${_usersHighlight(fmtEmail(u.email), q)}</span><button type="button" class="email-copy-btn" onclick="event.stopPropagation();copyUserEmail('${esc(u.email)}')" data-tip="Скопировать email" aria-label="Скопировать email пользователя ${esc(u.username)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+            </td>
+            <td data-label="Роль" onclick="event.stopPropagation()">${roleBadge}</td>
+            <td data-label="Статус"><div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;">${onlineDot}${activeBadge}</div></td>
+            <td data-label="Активность">${lastActiveHtml}</td>
+            <td data-label="Дата" style="color:var(--muted);font-size:.78rem;">${fmtDate(u.created_at)}</td>
+            <td data-label="Действия" onclick="event.stopPropagation()">${actionsHtml}</td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -4538,25 +4673,40 @@ function renderUsersTable() {
       ? `Показано ${users.length} из ${_allUsers.length} пользователей`
       : `Всего: ${_allUsers.length} пользователей`;
   }
+  renderPagination('users-pagination', _usersPage, totalPages, (p) => { _usersPage = p; renderUsersTable(); });
 }
 
 function exportUsersCsv() {
   if (!_allUsers.length) return;
-  const q = (document.getElementById('users-search')?.value || '').trim().toLowerCase();
-  const roleFilter   = document.getElementById('users-role-filter')?.value   || '';
-  const statusFilter = document.getElementById('users-status-filter')?.value || '';
-  let users = _allUsers;
-  if (q) users = users.filter(u => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
-  if (roleFilter) users = users.filter(u => (u.role || 'user') === roleFilter);
-  if (statusFilter === 'active') users = users.filter(u => u.is_active);
-  else if (statusFilter === 'blocked') users = users.filter(u => !u.is_active);
+  // If any rows are checked, export just those (bulk-select "export selected"),
+  // otherwise fall back to whatever the current search/role/status/online
+  // filters are showing — matches how the CSV button's data-tip explains it.
+  const checkedIds = _getCheckedUserIds();
+  let users;
+  if (checkedIds.length) {
+    const idSet = new Set(checkedIds);
+    users = _allUsers.filter(u => idSet.has(u.id));
+  } else {
+    const q = (document.getElementById('users-search')?.value || '').trim().toLowerCase();
+    const roleFilter   = document.getElementById('users-role-filter')?.value   || '';
+    const statusFilter = document.getElementById('users-status-filter')?.value || '';
+    const onlineOnly = document.getElementById('users-online-filter')?.checked || false;
+    users = _allUsers;
+    if (q) users = users.filter(u => u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
+    if (roleFilter) users = users.filter(u => (u.role || 'user') === roleFilter);
+    if (statusFilter === 'active') users = users.filter(u => u.is_active);
+    else if (statusFilter === 'blocked') users = users.filter(u => !u.is_active);
+    if (onlineOnly) users = users.filter(u => _onlinePlayers.has(u.username.toLowerCase()));
+  }
+  if (!users.length) { showToast('Нет пользователей для экспорта', 'error'); return; }
   const rows = [['ID','Имя','Email','Роль','Статус','Зарегистрирован']];
-  users.forEach(u => rows.push([u.id, u.username, u.email, u.role, u.is_active ? 'Активен' : 'Заблокирован', u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : '']));
+  users.forEach(u => rows.push([u.id, u.username, fmtEmail(u.email), u.role, u.is_active ? 'Активен' : 'Заблокирован', u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : '']));
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8'}));
   a.download = `users_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
+  showToast(checkedIds.length ? `Экспортировано выбранных: ${users.length}` : `Экспортировано: ${users.length}`, 'success');
 }
 
 // Role changes are superadmin-only (see backend/auth.py get_superadmin_user on
@@ -5627,7 +5777,7 @@ function copyResetLink(btn, url) {
 // exists by the time showSection('modlog') -> loadModerationLog() reads it, a few lines
 // down in this same top-to-bottom script.
 let _modlogSteamIdFilter = null;
-const TAB_SECTION_MAP = { 'moderation-log': 'modlog' };
+const TAB_SECTION_MAP = { 'moderation-log': 'modlog', 'users': 'users' };
 const _deepLinkParams = new URLSearchParams(window.location.search);
 const _deepLinkSteamId = _deepLinkParams.get('steam_id');
 if (_deepLinkSteamId) _modlogSteamIdFilter = _deepLinkSteamId;
@@ -6594,6 +6744,28 @@ async function loadErrors(page = 1) {
       <p id="preview-summary" style="color:var(--muted);font-size:.9rem;margin-bottom:1.5rem;line-height:1.6;border-left:2px solid rgba(181,0,42,.5);padding-left:.85rem;"></p>
       <div id="preview-content" class="ql-editor" style="padding:0;min-height:0;pointer-events:none;"></div>
     </div>
+  </div>
+</div>
+
+<!-- User quick-view modal -->
+<div id="userqv-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;">
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);" onclick="closeUserQv()"></div>
+  <div style="position:relative;background:rgba(14,5,22,0.97);border:1px solid rgba(180,0,35,0.4);border-radius:1rem;padding:1.75rem;max-width:400px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.7),0 0 32px rgba(180,0,35,0.15);">
+    <button onclick="closeUserQv()" aria-label="Закрыть" style="position:absolute;top:.85rem;right:.85rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;padding:.2rem;">✕</button>
+    <div style="display:flex;align-items:center;gap:.85rem;margin-bottom:1.1rem;">
+      <div id="userqv-avatar"></div>
+      <div style="min-width:0;">
+        <div id="userqv-username" style="font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;color:#e0c8d8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+        <div id="userqv-role" style="margin-top:.3rem;"></div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.6rem;font-size:.82rem;margin-bottom:1.35rem;padding:.9rem 1rem;background:rgba(8,0,16,.5);border-radius:.6rem;border:1px solid rgba(150,0,28,.15);">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;"><span style="color:var(--muted);">Email</span><span id="userqv-email" style="text-align:right;word-break:break-all;"></span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;"><span style="color:var(--muted);">Статус</span><span id="userqv-status"></span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;"><span style="color:var(--muted);">Активность</span><span id="userqv-lastactive"></span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;"><span style="color:var(--muted);">Регистрация</span><span id="userqv-created" style="color:var(--muted);"></span></div>
+    </div>
+    <div id="userqv-actions" style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:center;"></div>
   </div>
 </div>
 

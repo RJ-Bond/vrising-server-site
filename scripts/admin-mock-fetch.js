@@ -85,16 +85,32 @@
   ];
 
   // UserOut shape (backend/schemas.py) — auth/me and admin/users both return this.
-  const userOut = (i, username, role) => ({
-    id: i, username, email: `${username.toLowerCase().replace(/\s+/g, '')}@example.com`,
-    role, is_active: true, created_at: iso(i * 36 * 3600 * 1000), avatar_url: null,
+  // Steam-linked signups get a placeholder steam_<steamid>@vrising.local email
+  // (see backend's OAuth flow) — most fake users use that shape so previews
+  // actually exercise admin.html's fmtEmail() "steam@<id>" display, not just
+  // the rarer real-email path (last one, kept as an @example.com address).
+  const userOut = (i, username, role, opts = {}) => ({
+    id: i, username,
+    email: opts.realEmail || `steam_7656119${(8000000000 + i * 137).toString().padStart(10, '0')}@vrising.local`,
+    role, is_active: opts.blocked ? false : true, created_at: iso((opts.hoursAgo ?? i * 36) * 3600 * 1000),
+    avatar_url: opts.avatar_url ?? null,
     cover_url: null, rules_accepted_at: iso(i * 36 * 3600 * 1000), game_nickname: null,
-    admin_title: role === 'admin' ? 'Основатель' : null, last_active_at: iso(600000),
+    admin_title: role === 'admin' ? 'Основатель' : null, last_active_at: iso((opts.lastActiveMinAgo ?? 5) * 60000),
     badge_icon_url: null, badge_style: 'default', totp_enabled: false, bio: null,
   });
   const fakeUsers = [
     userOut(1, 'RJ Bond', 'admin'),
     ...['buhalovna', 'Shadowfang', 'Dracarys', 'Vortigern', 'Nightshade', 'Emberclaw', 'Grimwald'].map((n, i) => userOut(i + 2, n, 'user')),
+    userOut(9, 'MoonlitFang', 'user', { hoursAgo: 6, lastActiveMinAgo: 2 }),
+    userOut(10, 'IronVeil', 'user', { lastActiveMinAgo: 40 }),
+    userOut(11, 'Cassandra', 'moderator', { lastActiveMinAgo: 300, avatar_url: '/icon-vrising.png' }),
+    userOut(12, 'Ravensworth', 'user', { lastActiveMinAgo: 4000 }),
+    userOut(13, 'buhalovna_alt', 'user', { blocked: true, lastActiveMinAgo: 20000, realEmail: 'buhalovna.alt@example.com' }),
+    userOut(14, 'Thornbeard', 'user', { lastActiveMinAgo: 90 }),
+    userOut(15, 'Sylvaine', 'user', { lastActiveMinAgo: 15 }),
+    userOut(16, 'Warcry88', 'user', { lastActiveMinAgo: 600 }),
+    userOut(17, 'Duskrider', 'user', { lastActiveMinAgo: 3 }),
+    userOut(18, 'Frostbyte', 'user', { lastActiveMinAgo: 1200 }),
   ];
 
   // /api/monitor/status(2) shape (backend/main.py) — plain dict, not a Pydantic model.
