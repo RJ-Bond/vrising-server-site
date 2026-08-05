@@ -1187,6 +1187,42 @@
           </div>
 
           <div class="s-field">
+            <label>Питч «почему наш сервер» (главная)</label>
+            <div class="s-field-row">
+              <input id="setting-home_pitch" type="text" class="dark-input" placeholder="PvE, честные рейты, активная админ-команда 24/7" maxlength="200">
+              <button class="s-save-btn" onclick="saveSetting('home_pitch')">Сохранить</button>
+            </div>
+            <p class="s-desc">Короткое описание особенностей сервера на главной. Оставьте пустым — блок не показывается.</p>
+          </div>
+
+          <div class="s-field">
+            <label>Дата запуска сервера</label>
+            <div class="s-field-row">
+              <input id="setting-site_launched_date" type="date" class="dark-input">
+              <button class="s-save-btn" onclick="saveSetting('site_launched_date')">Сохранить</button>
+            </div>
+            <p class="s-desc">Используется для «работаем уже N лет» на главной. Оставьте пустым — не показывается.</p>
+          </div>
+
+          <div class="s-field">
+            <label>Отзывы сообщества (JSON)</label>
+            <div class="s-field-row" style="align-items:flex-start;">
+              <textarea id="setting-home_testimonials" class="dark-input" rows="4" style="font-family:monospace;font-size:.72rem;" placeholder='[{"author":"Игрок1","text":"Отличный сервер!"}]'></textarea>
+              <button class="s-save-btn" onclick="saveSetting('home_testimonials')">Сохранить</button>
+            </div>
+            <p class="s-desc">Массив объектов {"author","text"}. Пусто/[] — блок на главной не показывается. Добавляйте только реальные отзывы игроков.</p>
+          </div>
+
+          <div class="s-field">
+            <label>Галерея скриншотов (JSON)</label>
+            <div class="s-field-row" style="align-items:flex-start;">
+              <textarea id="setting-home_gallery" class="dark-input" rows="3" style="font-family:monospace;font-size:.72rem;" placeholder='["https://.../shot1.jpg","https://.../shot2.jpg"]'></textarea>
+              <button class="s-save-btn" onclick="saveSetting('home_gallery')">Сохранить</button>
+            </div>
+            <p class="s-desc">Массив URL картинок (загрузите их через «Медиатека», затем вставьте ссылки сюда). Пусто/[] — блок не показывается.</p>
+          </div>
+
+          <div class="s-field">
             <label>Фоновое изображение</label>
             <div class="s-field-row" style="margin-bottom:.5rem;">
               <input id="setting-bg_image_url" type="text" class="dark-input" placeholder="https://example.com/bg.jpg">
@@ -3391,7 +3427,7 @@ async function submitEditor() {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
-const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','hero_logo_url','hero_subtitle','favicon_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','plugin_api_key','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time','maintenance_start_time','maintenance_fallback_image','nav_hidden'];
+const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','hero_logo_url','hero_subtitle','favicon_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','plugin_api_key','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time','maintenance_start_time','maintenance_fallback_image','nav_hidden','home_pitch','home_testimonials','home_gallery','site_launched_date'];
 let _settingsBaseline = {};
 
 // Client-side filter over the existing .s-card blocks — cheaper and safer than
@@ -5690,6 +5726,7 @@ const _ALLOWED_SETTING_KEYS = new Set([
   'event_active','event_title','event_text','event_color',
   'rules','https_domain','https_email','timezone','time_format','date_format',
   'rcon_password','rcon_port',
+  'home_pitch','home_testimonials','home_gallery','site_launched_date',
 ]);
 
 async function importSettings(input) {

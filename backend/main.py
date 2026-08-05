@@ -51,11 +51,11 @@ from slowapi.middleware import SlowAPIMiddleware
 # (e.g. _track_players writes Leaderboard data from inside what's filed as "Monitor").
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, text, update
+from sqlalchemy import select, delete, text, update, func
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, PlayerRecord, ServerSnapshot, PageView, ErrorLog, RevokedToken, Event, PlayerRankSnapshot, PluginHeartbeat, Announcement
+from .models import Base, User, News, Setting, PlayerRecord, ServerSnapshot, PageView, ErrorLog, RevokedToken, Event, PlayerRankSnapshot, PluginHeartbeat, Announcement, GameClan, GameClanMember
 from .rate_limit import limiter
 from .helpers import (
     BACKUP_DIR,
@@ -196,6 +196,13 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="maintenance_status_updates", value="[]"),
         Setting(key="maintenance_history", value="[]"),
         Setting(key="nav_hidden", value="[]"),
+        # Homepage content — all optional, empty by default so a fresh install's
+        # homepage doesn't show fabricated placeholder testimonials/screenshots. See
+        # frontend/index.html's rendering of GET /api/settings/public's home_* keys.
+        Setting(key="home_pitch", value=""),
+        Setting(key="home_testimonials", value="[]"),  # [{"author":"...","text":"..."}]
+        Setting(key="home_gallery", value="[]"),  # ["https://.../img1.jpg", ...]
+        Setting(key="site_launched_date", value=""),  # "YYYY-MM-DD", optional
         # Points economy — earning rates, tunable by an admin on the Economy tab
         # (not exposed on /api/settings/public: admin-only tuning, no anonymous use).
         Setting(key="points_per_minute_playtime", value="1"),
@@ -489,6 +496,35 @@ app.include_router(admin_settings.router)
 app.include_router(admin_system.router)
 app.include_router(admin_misc.router)
 app.include_router(moderation.router)
+
+
+# ─── Homepage trust stats ───────────────────────────────────────────────────
+# Backs the homepage's "sколько всего игроков"/"часов наиграно"/"топ клан" blocks —
+# all real, computed from actual data (no fabricated numbers): registered accounts,
+# summed PlayerRecord.total_seconds (same source servers.html/leaderboard already
+# use), and whichever GameClan currently has the most members (game-synced roster,
+# not the old unused Clan model — see GameClan's own docstring).
+
+@app.get("/api/homepage-stats")
+async def get_homepage_stats(db: AsyncSession = Depends(get_db)):
+    total_users = (await db.execute(select(func.count(User.id)).where(User.is_active == True))).scalar_one()
+    total_seconds = (await db.execute(select(func.sum(PlayerRecord.total_seconds)))).scalar_one() or 0
+
+    top_clan = None
+    member_counts = (await db.execute(
+        select(GameClanMember.clan_id, func.count(GameClanMember.id).label("cnt"))
+        .group_by(GameClanMember.clan_id).order_by(func.count(GameClanMember.id).desc()).limit(1)
+    )).first()
+    if member_counts:
+        clan = (await db.execute(select(GameClan).where(GameClan.id == member_counts.clan_id))).scalar_one_or_none()
+        if clan:
+            top_clan = {"name": clan.name, "member_count": member_counts.cnt}
+
+    return {
+        "total_users": total_users,
+        "total_hours": round(total_seconds / 3600),
+        "top_clan": top_clan,
+    }
 
 
 # ─── Version ────────────────────────────────────────────────────────────────

@@ -14,6 +14,27 @@
     "image": "https://v.just-skill.ru/uploads/og-default.png"
   }
   </script>
+  <!-- No SearchAction here on purpose — this site's search (Ctrl+K, common.js) is a
+       JS overlay with no server-rendered results URL a search engine could actually
+       link into, so a SearchAction target would point at a page that doesn't filter
+       anything: a broken result for whoever clicked it, not a real feature. -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Just-Skill.Ru",
+    "url": "https://v.just-skill.ru"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Главная", "item": "https://v.just-skill.ru/" }
+    ]
+  }
+  </script>
   <meta id="meta-description" name="description" content="Just-Skill.Ru — русскоязычное сообщество серверов V Rising. Новости, статус серверов, лидерборд игроков, кланы, карта и правила." />
   <meta name="keywords" content="V Rising сервер, V Rising русский сервер, Just-Skill, игровое сообщество, V Rising PvP, V Rising PvE" />
   <link rel="canonical" href="https://v.just-skill.ru/" />
@@ -31,7 +52,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
   <link rel="stylesheet" href="/theme.css?v=4" />
-  <link rel="stylesheet" href="/index.css?v=7" />
+  <link rel="stylesheet" href="/index.css?v=8" />
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#06000f">
   <meta name="mobile-web-app-capable" content="yes">
@@ -105,8 +126,12 @@
           <div id="dm-inbox-list" style="max-height:320px;overflow-y:auto;"></div>
         </div>
       </div>
-      <a id="nav-login" href="/login.html" class="btn-sm">Войти</a>
-      <button id="nav-logout" class="hidden pg-btn" style="font-size:.75rem;" onclick="doLogout()">Выйти</button>
+      <a id="nav-login" href="/login.html" class="btn-sm" data-i18n-ru="Войти" data-i18n-en="Log in">Войти</a>
+      <button id="nav-logout" class="hidden pg-btn" style="font-size:.75rem;" onclick="doLogout()" data-i18n-ru="Выйти" data-i18n-en="Log out">Выйти</button>
+      <button id="lang-toggle-btn" onclick="toggleLanguage()" title="English UI (site content stays Russian)"
+        style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;padding:0 .5rem;height:2rem;font-size:.7rem;font-weight:700;letter-spacing:.05em;cursor:pointer;color:#9488a8;transition:all .2s;"
+        onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
+        onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">EN</button>
     </div>
   </div>
 </nav>
@@ -145,16 +170,28 @@
 
   <!-- Content -->
   <div class="hero-content">
-    <h1 id="hero-title" class="hero-title" style="position:relative;z-index:1;"></h1>
+    <!-- Static fallback text (matches loadSiteSettings()'s own 'V RISING' default) so
+         the page's largest above-the-fold text has real content on first paint —
+         previously empty until GET /api/settings/public resolved, making this <h1>
+         (the likely LCP element) render blank-then-pop-in instead of just appearing.
+         JS overwrites it once the real site_title/hero_logo_url loads, same as before. -->
+    <h1 id="hero-title" class="hero-title" style="position:relative;z-index:1;">V RISING</h1>
     <div id="hero-subtitle" style="display:none;position:relative;z-index:1;font-family:'Philosopher',serif;font-size:.95rem;letter-spacing:.08em;color:var(--muted);margin-top:-.6rem;"></div>
     <div class="hero-divider" style="position:relative;z-index:1;"></div>
     <div id="hero-status" style="display:none;margin-bottom:.2rem;"></div>
     <div id="hero-status2" style="display:none;"></div>
     <div class="hero-connect" style="margin-top:.85rem;position:relative;z-index:2;">
-      <a href="https://store.steampowered.com/app/1604030/V_Rising/" target="_blank" rel="noopener noreferrer" class="connect-btn">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.497 1.009 2.452-.397.957-1.494 1.411-2.455 1.015zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.252 0-2.265-1.014-2.265-2.265z"/></svg>
-        Купить: V Rising
-      </a>
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center;">
+        <a href="https://store.steampowered.com/app/1604030/V_Rising/" target="_blank" rel="noopener noreferrer" class="connect-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><path d="M11.979 0C5.678 0 .511 4.86.022 11.037l6.432 2.658c.545-.371 1.203-.59 1.912-.59.063 0 .125.004.188.006l2.861-4.142V8.91c0-2.495 2.028-4.524 4.524-4.524 2.494 0 4.524 2.031 4.524 4.527s-2.03 4.525-4.524 4.525h-.105l-4.076 2.911c0 .052.004.105.004.159 0 1.875-1.515 3.396-3.39 3.396-1.635 0-3.016-1.173-3.331-2.727L.436 15.27C1.862 20.307 6.486 24 11.979 24c6.627 0 11.999-5.373 11.999-12S18.605 0 11.979 0zM7.54 18.21l-1.473-.61c.262.543.714.999 1.314 1.25 1.297.539 2.793-.076 3.332-1.375.263-.63.264-1.319.005-1.949s-.75-1.121-1.377-1.383c-.624-.26-1.29-.249-1.878-.03l1.523.63c.956.4 1.409 1.497 1.009 2.452-.397.957-1.494 1.411-2.455 1.015zm11.415-9.303c0-1.662-1.353-3.015-3.015-3.015-1.665 0-3.015 1.353-3.015 3.015 0 1.665 1.35 3.015 3.015 3.015 1.663 0 3.015-1.35 3.015-3.015zm-5.273-.005c0-1.252 1.013-2.266 2.265-2.266 1.249 0 2.266 1.014 2.266 2.266 0 1.251-1.017 2.265-2.266 2.265-1.252 0-2.265-1.014-2.265-2.265z"/></svg>
+          <span data-i18n-ru="Купить: V Rising" data-i18n-en="Buy: V Rising">Купить: V Rising</span>
+        </a>
+        <a id="hero-join-btn" href="/login.html" class="hero-join-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-user"></use></svg>
+          <span id="hero-join-btn-label" data-i18n-ru="Присоединиться к сообществу" data-i18n-en="Join the community">Присоединиться к сообществу</span>
+        </a>
+      </div>
+      <div id="home-pitch" style="display:none;position:relative;z-index:1;font-size:.8rem;color:var(--muted);max-width:520px;text-align:center;margin-top:.15rem;line-height:1.5;"></div>
     </div>
   </div>
 
@@ -214,18 +251,50 @@
   </div>
 </div>
 
+<!-- ══ TRUST STATS ══════════════════════════════════════════════════════════ -->
+<!-- Real, computed numbers (GET /api/homepage-stats) — no fabricated figures.
+     Hidden entirely if there's nothing meaningful to show (0 users etc.). -->
+<div id="home-stats-bar" style="display:none;max-width:1280px;margin:1.25rem auto 0;padding:0 1.25rem;">
+  <div class="g-panel" style="display:flex;flex-wrap:wrap;gap:1.5rem;justify-content:center;padding:1rem 1.5rem;border-radius:.875rem;position:relative;">
+    <div id="home-stat-users" style="display:none;text-align:center;">
+      <div class="home-stat-val" id="home-stat-users-val">—</div>
+      <div class="home-stat-lbl" data-i18n-ru="игроков зарегистрировано" data-i18n-en="registered players">игроков зарегистрировано</div>
+    </div>
+    <div id="home-stat-hours" style="display:none;text-align:center;">
+      <div class="home-stat-val" id="home-stat-hours-val">—</div>
+      <div class="home-stat-lbl" data-i18n-ru="часов наиграно" data-i18n-en="hours played">часов наиграно</div>
+    </div>
+    <div id="home-stat-years" style="display:none;text-align:center;">
+      <div class="home-stat-val" id="home-stat-years-val">—</div>
+      <div class="home-stat-lbl" data-i18n-ru="лет с нами" data-i18n-en="years running">лет с нами</div>
+    </div>
+    <div id="home-stat-clan" style="display:none;text-align:center;">
+      <div class="home-stat-val" id="home-stat-clan-val">—</div>
+      <div class="home-stat-lbl" data-i18n-ru="клан недели" data-i18n-en="clan of the week">клан недели</div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MAIN ══════════════════════════════════════════════════════════════════ -->
 <div class="main-grid" style="max-width:1280px;margin:2rem auto;padding:0 1.25rem;display:flex;gap:1.25rem;align-items:flex-start;">
 
   <!-- ── LEFT: Navigation ── -->
-  <aside class="side-panel left-panel g-panel" style="width:230px;border-radius:.875rem;padding:1.25rem;flex-shrink:0;">
+  <aside class="side-panel left-panel g-panel" id="left-panel" style="width:230px;border-radius:.875rem;padding:1.25rem;flex-shrink:0;transition:width .2s;">
     <span class="corner-tl">✦</span><span class="corner-tr">✦</span>
     <span class="corner-bl">✦</span><span class="corner-br">✦</span>
 
     <!-- Drawer close (mobile only) -->
     <button onclick="toggleDrawer()" id="drawer-close" aria-label="Закрыть меню" style="display:none;position:absolute;top:.75rem;right:.75rem;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1;z-index:2;padding:.25rem;">✕</button>
 
-    <h2 style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;text-align:center;">— Навигация —</h2>
+    <!-- Compact-mode toggle (desktop only — see index.css's @media hiding it below
+         the same width the mobile drawer takes over at) — for a returning visitor
+         who doesn't need the full labelled nav every visit. State persists in
+         localStorage; hidden on first-ever visit's default (expanded) state. -->
+    <button onclick="toggleLeftPanelCompact()" id="left-panel-compact-btn" aria-label="Свернуть навигацию" data-tip="Свернуть/развернуть" title="Свернуть/развернуть навигацию" style="position:absolute;top:.75rem;right:.75rem;background:none;border:1px solid rgba(150,0,28,0.25);border-radius:.35rem;width:1.6rem;height:1.6rem;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;z-index:2;transition:color .15s,border-color .15s;">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+    </button>
+
+    <h2 id="left-panel-title" data-i18n-ru="— Навигация —" data-i18n-en="— Navigation —" style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;text-align:center;">— Навигация —</h2>
 
     <!-- User card (shown when logged in) -->
     <div id="nav-user-card" class="nav-user-card" style="display:none;">
@@ -308,7 +377,7 @@
 
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:1.1rem;"></div>
 
-    <h3 style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;text-align:center;">— Сообщество —</h3>
+    <h3 data-i18n-ru="— Сообщество —" data-i18n-en="— Community —" style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;text-align:center;">— Сообщество —</h3>
 
     <div style="display:flex;flex-direction:column;gap:.4rem;">
       <a id="discord-btn" href="#" target="_blank" rel="noopener noreferrer" class="discord-btn" style="display:none;">
@@ -337,7 +406,7 @@
 
     <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:1.1rem 0;"></div>
 
-    <h3 style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.65rem;text-align:center;">— На сайте —</h3>
+    <h3 data-i18n-ru="— На сайте —" data-i18n-en="— On the site —" style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.65rem;text-align:center;">— На сайте —</h3>
 
     <!-- Total count -->
     <div style="text-align:center;margin-bottom:.6rem;">
@@ -366,7 +435,7 @@
   <main id="news-section" style="flex:1;min-width:0;min-height:55vh;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;margin-bottom:.75rem;">
       <div style="display:flex;align-items:center;gap:.65rem;">
-        <h2 style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;">— Новости —</h2>
+        <h2 data-i18n-ru="— Новости —" data-i18n-en="— News —" style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;">— Новости —</h2>
         <button id="news-create-btn" onclick="openNewsEditor()" style="display:none;
           background:linear-gradient(135deg,rgba(120,0,20,0.5),rgba(80,0,10,0.35));
           border:1px solid rgba(190,0,35,0.4); border-radius:.5rem;
@@ -482,15 +551,37 @@
       <div style="font-size:.65rem;font-weight:700;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:.55rem;">История вайпов</div>
       <div id="wipe-history-list" style="display:flex;flex-direction:column;gap:.3rem;"></div>
     </div>
+
+    <!-- Screenshot gallery — admin.html's "Галерея скриншотов" setting, hidden until
+         the site owner actually adds real screenshots (no stock/placeholder images). -->
+    <div id="home-gallery-wrap" style="display:none;margin-top:1.5rem;">
+      <h2 data-i18n-ru="— Скриншоты сервера —" data-i18n-en="— Server screenshots —" style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;">— Скриншоты сервера —</h2>
+      <div id="home-gallery-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.6rem;"></div>
+    </div>
+
+    <!-- Community testimonials — admin.html's "Отзывы сообщества" setting, hidden
+         until the site owner adds real player quotes. -->
+    <div id="home-testimonials-wrap" style="display:none;margin-top:1.5rem;">
+      <h2 data-i18n-ru="— Отзывы сообщества —" data-i18n-en="— Community reviews —" style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;">— Отзывы сообщества —</h2>
+      <div id="home-testimonials-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;"></div>
+    </div>
   </main>
 
   <!-- ── RIGHT: Server Chronicle ── -->
-  <aside class="side-panel right-panel g-panel" style="width:300px;border-radius:.875rem;padding:1.25rem;flex-shrink:0;">
+  <aside class="side-panel right-panel g-panel" id="right-panel" style="width:300px;border-radius:.875rem;padding:1.25rem;flex-shrink:0;">
     <span class="corner-tl">✦</span><span class="corner-tr">✦</span>
     <span class="corner-bl">✦</span><span class="corner-br">✦</span>
 
+    <!-- Quick-jump — this panel stacks monitoring + team + Discord and can get long;
+         hidden by JS unless there's actually more than one section to jump to. -->
+    <div id="right-panel-jumplinks" style="display:none;justify-content:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.85rem;font-size:.62rem;">
+      <a href="#right-panel" style="color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Сервера</a>
+      <a href="#team-section" id="jumplink-team" style="display:none;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Команда</a>
+      <a href="#discord-widget-wrap" id="jumplink-discord" style="display:none;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Discord</a>
+    </div>
+
     <!-- Server 1 -->
-    <h2 style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.85rem;text-align:center;">— Мониторинг серверов —</h2>
+    <h2 data-i18n-ru="— Мониторинг серверов —" data-i18n-en="— Server monitoring —" style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.85rem;text-align:center;">— Мониторинг серверов —</h2>
 
     <div id="left-status" style="margin-bottom:.75rem;">
       <div style="width:100%;height:3rem;border-radius:.5rem;background:rgba(110,0,20,0.1);animation:pulse 2s ease-in-out infinite;"></div>
@@ -533,7 +624,7 @@
     <!-- Team section -->
     <div id="team-section" style="display:none;margin-top:1.1rem;">
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.85rem;"></div>
-      <h3 style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;text-align:center;">— Наша команда —</h3>
+      <h3 data-i18n-ru="— Наша команда —" data-i18n-en="— Our team —" style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;text-align:center;">— Наша команда —</h3>
       <div id="team-list" style="display:flex;flex-direction:column;gap:.6rem;"></div>
     </div>
 
@@ -554,6 +645,27 @@
 
 <!-- ══ TOAST ══════════════════════════════════════════════════════════════════ -->
 <div id="toast-container"></div>
+
+<!-- ══ PRIVACY NOTICE ═══════════════════════════════════════════════════════ -->
+<!-- The site tracks page views for its own analytics (backend page_views table /
+     optional self-hosted Umami) and sets a session cookie on login — a lightweight
+     one-time notice rather than a full cookie-preferences dialog, since there's no
+     third-party ad tracking to actually opt in/out of piece by piece. -->
+<div id="privacy-notice-banner" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:997;background:rgba(8,0,14,0.97);border-top:1px solid rgba(150,0,28,0.35);backdrop-filter:blur(10px);padding:.85rem 1.25rem;">
+  <div style="max-width:900px;margin:0 auto;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;justify-content:center;">
+    <p style="font-size:.78rem;color:var(--muted);flex:1;min-width:220px;margin:0;">Сайт использует cookie для авторизации и собирает обезличенную статистику посещений.</p>
+    <button onclick="dismissPrivacyNotice()" style="flex-shrink:0;font-size:.75rem;font-weight:700;background:linear-gradient(135deg,#6a001a,#a00022);border:none;border-radius:.5rem;padding:.4rem 1rem;color:#fff;cursor:pointer;">Понятно</button>
+  </div>
+</div>
+
+<!-- ══ PWA INSTALL PROMPT ═══════════════════════════════════════════════════ -->
+<!-- Hidden unless the browser actually fires beforeinstallprompt (manifest.json was
+     already linked but nothing on the page ever surfaced an install option). -->
+<div id="pwa-install-banner" style="display:none;position:fixed;left:1rem;bottom:1.5rem;z-index:998;max-width:280px;background:rgba(10,2,18,0.95);border:1px solid rgba(150,0,28,0.4);border-radius:.75rem;padding:.85rem 1rem;box-shadow:0 8px 32px rgba(0,0,0,0.6);backdrop-filter:blur(10px);">
+  <button onclick="dismissPwaInstallBanner()" aria-label="Закрыть" style="position:absolute;top:.4rem;right:.5rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;line-height:1;padding:.15rem;">✕</button>
+  <p style="font-size:.78rem;color:var(--text);margin-bottom:.6rem;padding-right:1rem;">Установите Just-Skill.Ru как приложение — быстрый доступ с рабочего стола/главного экрана.</p>
+  <button onclick="triggerPwaInstall()" style="font-size:.75rem;font-weight:700;background:linear-gradient(135deg,#6a001a,#a00022);border:none;border-radius:.5rem;padding:.4rem .9rem;color:#fff;cursor:pointer;">Установить</button>
+</div>
 
 <!-- ══ MODAL NAV ARROWS ═══════════════════════════════════════════════════════ -->
 <button id="modal-prev" onclick="navigateModal(-1)"
@@ -718,7 +830,7 @@
 <script src="/anime.min.js"></script>
 <script src="/anim.js?v=1"></script>
 <script src="/common.js?v=12"></script>
-<script src="/index.js?v=12"></script>
+<script src="/index.js?v=13"></script>
 <div id="ow-hover-card"></div>
 
 <!-- ══ NEWS EDITOR MODAL ══════════════════════════════════════════════════════ -->

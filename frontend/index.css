@@ -691,6 +691,37 @@
       box-shadow:0 0 55px rgba(230,0,48,0.75),0 0 22px rgba(200,0,40,0.4),inset 0 0 30px rgba(150,0,32,0.3);
       border-color:rgba(240,0,55,0.85); transform:translateY(-2px);
     }
+    /* Secondary hero CTA — ghost variant of .connect-btn, for "join the site" rather
+       than "buy the game" (a visitor who already owns/plays V Rising still has no
+       reason to make a site account otherwise — nothing in the hero pointed at it). */
+    .hero-join-btn {
+      display:inline-flex; align-items:center; gap:.5rem;
+      padding:.68rem 1.5rem; border-radius:.7rem;
+      background:rgba(20,5,35,0.35); border:1px solid rgba(150,0,28,0.4);
+      color:var(--text); font-family:'Cinzel',serif; font-size:.8rem; font-weight:700;
+      letter-spacing:.08em; text-transform:uppercase; cursor:pointer;
+      transition:all .25s; backdrop-filter:blur(6px); text-decoration:none;
+    }
+    .hero-join-btn:hover { border-color:rgba(201,169,74,0.6); color:var(--gold); transform:translateY(-2px); }
+
+    /* ── Left nav compact mode (index.js's toggleLeftPanelCompact) — icon-only rail
+       for a returning visitor who doesn't need the full labelled nav every time.
+       Only the nav links + section titles collapse; the user card and "online"
+       widget stay as-is (still useful at a glance, not worth hiding). ── */
+    .left-panel.compact { width:70px !important; }
+    .left-panel.compact .nav-link-item { justify-content:center; padding:.55rem; }
+    .left-panel.compact .nav-link-item span { display:none; }
+    .left-panel.compact #left-panel-title,
+    .left-panel.compact h3 { display:none; }
+    .left-panel.compact .discord-btn, .left-panel.compact .max-btn { justify-content:center; padding:.55rem; }
+    .left-panel.compact .discord-btn > :not(svg), .left-panel.compact .max-btn > :not(svg) { display:none; }
+    #left-panel-compact-btn:hover { color:var(--gold); border-color:rgba(201,169,74,0.5); }
+    .left-panel.compact #left-panel-compact-btn svg { transform:rotate(180deg); }
+    @media (max-width:640px) { #left-panel-compact-btn { display:none; } }
+
+    /* ── Trust stats bar ── */
+    .home-stat-val { font-family:'Cinzel',serif; font-size:1.5rem; font-weight:700; color:var(--gold); line-height:1; }
+    .home-stat-lbl { font-size:.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:.3rem; }
     .copy-ip-btn {
       display:inline-flex; align-items:center; gap:.4rem;
       padding:.27rem .8rem; border-radius:9999px;

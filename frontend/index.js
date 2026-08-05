@@ -185,6 +185,97 @@ function toggleDrawer() {
   overlay.classList.toggle('open', isOpen);
 }
 
+// Subtle scroll-linked parallax on the hero — stars drift slower than the castle
+// silhouette, matching depth (a real "layers" cue instead of the whole hero just
+// scrolling as one flat image). Skipped for prefers-reduced-motion; a rAF-throttled
+// scroll listener since this fires on every scroll tick.
+if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  const _starsEl = document.querySelector('.stars');
+  const _castleEl = document.querySelector('.castle-wrap');
+  if (_starsEl || _castleEl) {
+    let _parallaxTicking = false;
+    window.addEventListener('scroll', () => {
+      if (_parallaxTicking) return;
+      _parallaxTicking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        if (_starsEl) _starsEl.style.transform = `translateY(${y * 0.15}px)`;
+        if (_castleEl) _castleEl.style.transform = `translate(-50%, ${y * 0.3}px)`;
+        _parallaxTicking = false;
+      });
+    }, { passive: true });
+  }
+}
+
+// ── Privacy notice ───────────────────────────────────────────────────────────
+if (localStorage.getItem('_privacyNoticeSeen') !== '1') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const banner = document.getElementById('privacy-notice-banner');
+    if (banner) banner.style.display = 'block';
+  });
+}
+function dismissPrivacyNotice() {
+  const banner = document.getElementById('privacy-notice-banner');
+  if (banner) banner.style.display = 'none';
+  localStorage.setItem('_privacyNoticeSeen', '1');
+}
+
+// ── PWA install prompt ──────────────────────────────────────────────────────
+let _pwaDeferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  _pwaDeferredPrompt = e;
+  if (localStorage.getItem('_pwaInstallDismissed') === '1') return;
+  const banner = document.getElementById('pwa-install-banner');
+  if (banner) banner.style.display = 'block';
+});
+async function triggerPwaInstall() {
+  if (!_pwaDeferredPrompt) return;
+  _pwaDeferredPrompt.prompt();
+  await _pwaDeferredPrompt.userChoice;
+  _pwaDeferredPrompt = null;
+  dismissPwaInstallBanner();
+}
+function dismissPwaInstallBanner() {
+  const banner = document.getElementById('pwa-install-banner');
+  if (banner) banner.style.display = 'none';
+  localStorage.setItem('_pwaInstallDismissed', '1');
+}
+window.addEventListener('appinstalled', () => { _pwaDeferredPrompt = null; });
+
+function toggleLeftPanelCompact() {
+  const panel = document.getElementById('left-panel');
+  if (!panel) return;
+  const compact = panel.classList.toggle('compact');
+  localStorage.setItem('_leftPanelCompact', compact ? '1' : '0');
+  const btn = document.getElementById('left-panel-compact-btn');
+  if (btn) btn.setAttribute('aria-label', compact ? 'Развернуть навигацию' : 'Свернуть навигацию');
+}
+// Applied before the panel's own entrance animation runs, so a returning visitor
+// with compact mode saved never sees a flash of the full labelled nav first.
+if (localStorage.getItem('_leftPanelCompact') === '1') {
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('left-panel')?.classList.add('compact');
+  });
+}
+
+// ── Language toggle (UI chrome only — news/pitch/testimonials/settings text
+//    is admin-authored Russian and is NOT machine-translated by this toggle) ──
+function _applyI18n() {
+  const lang = localStorage.getItem('_lang') === 'en' ? 'en' : 'ru';
+  document.querySelectorAll('[data-i18n-ru]').forEach(el => {
+    el.textContent = lang === 'en' ? el.dataset.i18nEn : el.dataset.i18nRu;
+  });
+  const btn = document.getElementById('lang-toggle-btn');
+  if (btn) btn.textContent = lang === 'en' ? 'RU' : 'EN';
+}
+function toggleLanguage() {
+  const next = localStorage.getItem('_lang') === 'en' ? 'ru' : 'en';
+  localStorage.setItem('_lang', next);
+  _applyI18n();
+}
+document.addEventListener('DOMContentLoaded', _applyI18n);
+
 (() => {
   // ── Active nav link ─────────────────────────────────────────────────────
   const path = window.location.pathname;
@@ -202,6 +293,16 @@ function toggleDrawer() {
     document.getElementById('nav-username').classList.remove('hidden');
     document.getElementById('nav-login').classList.add('hidden');
     document.getElementById('nav-logout').classList.remove('hidden');
+    const heroJoinBtn = document.getElementById('hero-join-btn');
+    if (heroJoinBtn) {
+      heroJoinBtn.href = '/profile.html';
+      const label = document.getElementById('hero-join-btn-label');
+      if (label) {
+        label.dataset.i18nRu = 'Мой профиль';
+        label.dataset.i18nEn = 'My profile';
+        _applyI18n();
+      }
+    }
     const dmWrap = document.getElementById('dm-bell-wrap');
     if (dmWrap) dmWrap.style.display = '';
     const notifWrap = document.getElementById('notif-bell-wrap');
@@ -2074,7 +2175,7 @@ async function loadSiteSettings() {
 
     const heroTitleEl = document.getElementById('hero-title');
     if (heroLogo) {
-      heroTitleEl.innerHTML = `<img src="${heroLogo}" alt="${esc(title)}" style="max-width:100%;max-height:6.5rem;object-fit:contain;display:block;margin:0 auto;filter:drop-shadow(0 4px 24px rgba(0,0,0,0.6));" onerror="this.parentElement.textContent='${esc(title)}'">`;
+      heroTitleEl.innerHTML = `<img src="${heroLogo}" alt="${esc(title)}" fetchpriority="high" style="max-width:100%;max-height:6.5rem;object-fit:contain;display:block;margin:0 auto;filter:drop-shadow(0 4px 24px rgba(0,0,0,0.6));" onerror="this.parentElement.textContent='${esc(title)}'">`;
     } else {
       heroTitleEl.textContent = title;
     }
@@ -2084,6 +2185,38 @@ async function loadSiteSettings() {
       if (heroSubtitle) { heroSubEl.textContent = heroSubtitle; heroSubEl.style.display = ''; }
       else { heroSubEl.style.display = 'none'; heroSubEl.textContent = ''; }
     }
+    // "Why this server" pitch — admin-editable, hidden entirely when empty (no
+    // fabricated default text; see admin.html's "Питч «почему наш сервер»" field).
+    const pitchEl = document.getElementById('home-pitch');
+    if (pitchEl) {
+      const pitch = (d.home_pitch || '').trim();
+      if (pitch) { pitchEl.textContent = pitch; pitchEl.style.display = ''; }
+      else { pitchEl.style.display = 'none'; }
+    }
+    // Gallery + testimonials — both admin-editable JSON, both stay hidden when empty
+    // rather than showing placeholder/fabricated content (see admin.html's own
+    // "только реальные отзывы" note next to the testimonials field).
+    try {
+      const gallery = JSON.parse(d.home_gallery || '[]');
+      if (Array.isArray(gallery) && gallery.length) {
+        document.getElementById('home-gallery-grid').innerHTML = gallery.slice(0, 12).map(url => `
+          <a href="${esc(url)}" target="_blank" rel="noopener" style="display:block;border-radius:.6rem;overflow:hidden;border:1px solid rgba(150,0,28,0.25);aspect-ratio:4/3;">
+            <img src="${esc(url)}" alt="Скриншот сервера" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s;" onmouseover="this.style.transform='scale(1.06)'" onmouseout="this.style.transform=''">
+          </a>`).join('');
+        document.getElementById('home-gallery-wrap').style.display = '';
+      }
+    } catch {}
+    try {
+      const testimonials = JSON.parse(d.home_testimonials || '[]');
+      if (Array.isArray(testimonials) && testimonials.length) {
+        document.getElementById('home-testimonials-grid').innerHTML = testimonials.slice(0, 9).map(t => `
+          <div class="g-panel" style="padding:1rem 1.1rem;border-radius:.7rem;">
+            <p style="font-size:.82rem;color:var(--text);line-height:1.55;font-style:italic;">«${esc(t.text || '')}»</p>
+            <p style="font-size:.72rem;color:var(--gold);margin-top:.6rem;font-weight:600;">— ${esc(t.author || 'Игрок')}</p>
+          </div>`).join('');
+        document.getElementById('home-testimonials-wrap').style.display = '';
+      }
+    } catch {}
     const fullTitle = title + ' — ' + tagline;
     document.title = fullTitle;
     const descMeta = document.getElementById('meta-description');
@@ -2134,6 +2267,7 @@ async function loadSiteSettings() {
       if (wrap && frame) {
         frame.src = `https://discord.com/widget?id=${encodeURIComponent(discordServerId)}&theme=dark`;
         wrap.style.display = '';
+        _showRightPanelJumplink('jumplink-discord');
       }
     }
 
@@ -2407,6 +2541,7 @@ document.querySelectorAll('.g-panel').forEach((p, i) => {
 });
 
 loadSiteSettings();
+loadHomepageStats();
 loadVersion();
 loadStatus();
 loadStatus2();
@@ -2426,6 +2561,48 @@ loadWipeHistory();
 let _teamLoaded = false;
 loadTeam();
 setInterval(loadTeam, 10000);
+
+// ── Trust stats bar ─────────────────────────────────────────────────────────
+// Real numbers only (GET /api/homepage-stats + site_launched_date setting) — the
+// whole bar and each individual stat stay hidden rather than showing a fabricated
+// or zero-value placeholder.
+async function loadHomepageStats() {
+  try {
+    const [stats, settings] = await Promise.all([
+      fetch(`${API}/homepage-stats`).then(r => r.ok ? r.json() : null),
+      window.getSettings?.() ?? fetch(`${API}/settings/public`).then(r => r.json()),
+    ]);
+    if (!stats) return;
+    const bar = document.getElementById('home-stats-bar');
+    let shown = false;
+
+    if (stats.total_users > 0) {
+      document.getElementById('home-stat-users-val').textContent = stats.total_users.toLocaleString('ru-RU');
+      document.getElementById('home-stat-users').style.display = '';
+      shown = true;
+    }
+    if (stats.total_hours > 0) {
+      document.getElementById('home-stat-hours-val').textContent = stats.total_hours.toLocaleString('ru-RU');
+      document.getElementById('home-stat-hours').style.display = '';
+      shown = true;
+    }
+    const launched = (settings?.site_launched_date || '').trim();
+    if (launched) {
+      const years = (Date.now() - new Date(launched).getTime()) / (365.25 * 24 * 3600 * 1000);
+      if (years >= 0.5) {
+        document.getElementById('home-stat-years-val').textContent = years < 1 ? '< 1' : Math.floor(years);
+        document.getElementById('home-stat-years').style.display = '';
+        shown = true;
+      }
+    }
+    if (stats.top_clan) {
+      document.getElementById('home-stat-clan-val').textContent = stats.top_clan.name;
+      document.getElementById('home-stat-clan').style.display = '';
+      shown = true;
+    }
+    if (shown && bar) bar.style.display = '';
+  } catch {}
+}
 
 // ── Team ────────────────────────────────────────────────────────────────────
 async function loadTeam() {
@@ -2487,8 +2664,20 @@ async function loadTeam() {
     }).join('');
     list.style.cssText = `display:grid;grid-template-columns:repeat(${data.length === 1 ? '1' : '2'},1fr);gap:.55rem;`;
     wrap.style.display = '';
+    _showRightPanelJumplink('jumplink-team');
     if (firstLoad && window.animateEntrance) animateEntrance('#team-list .team-card', { distance: 12, stagger: 80 });
   } catch {}
+}
+
+// Reveals one quick-jump link (+ the bar itself) in the right sidebar — see
+// #right-panel-jumplinks. Called from wherever a section it points at actually
+// becomes visible (team roster loaded, Discord widget configured), so the bar never
+// shows a dead link to an empty/hidden section.
+function _showRightPanelJumplink(linkId) {
+  const link = document.getElementById(linkId);
+  if (link) link.style.display = 'inline-block';
+  const bar = document.getElementById('right-panel-jumplinks');
+  if (bar) bar.style.display = 'flex';
 }
 
 // ── Direct Messages ──────────────────────────────────────────────────────────
