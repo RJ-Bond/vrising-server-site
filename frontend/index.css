@@ -706,13 +706,16 @@
 
     /* ── Left nav compact mode (index.js's toggleLeftPanelCompact) — icon-only rail
        for a returning visitor who doesn't need the full labelled nav every time.
-       Only the nav links + section titles collapse; the user card and "online"
-       widget stay as-is (still useful at a glance, not worth hiding). Desktop-only
-       (min-width:769px guard) — below that the panel becomes the mobile slide-out
-       drawer (see the 768px block further down), which already has its own
-       full-width/full-label rules; without this guard `.left-panel.compact`'s
-       higher selector specificity would win over those and leave a returning
-       visitor's saved compact preference wrongly shrinking the mobile drawer too. ── */
+       Desktop-only (min-width:769px guard) — below that the panel becomes the
+       mobile slide-out drawer (see the 768px block further down), which already
+       has its own full-width/full-label rules; without this guard
+       `.left-panel.compact`'s higher selector specificity would win over those
+       and leave a returning visitor's saved compact preference wrongly shrinking
+       the mobile drawer too.
+       The logged-in user card (avatar/name/role-badge/join-date/action-icons)
+       also has to collapse here — it was originally left full-width on the
+       assumption a name+badge would just wrap, but at 70px it actually overflows
+       past the panel's edge instead (the badge has no wrap-safe width limit). ── */
     @media (min-width:769px) {
       .left-panel.compact { width:70px !important; }
       .left-panel.compact .nav-link-item { justify-content:center; padding:.55rem; }
@@ -721,6 +724,11 @@
       .left-panel.compact h3 { display:none; }
       .left-panel.compact .discord-btn, .left-panel.compact .max-btn { justify-content:center; padding:.55rem; }
       .left-panel.compact .discord-btn > :not(svg), .left-panel.compact .max-btn > :not(svg) { display:none; }
+      .left-panel.compact .nav-user-card-top { justify-content:center; }
+      .left-panel.compact .nav-user-card-namecol { display:none; }
+      .left-panel.compact .nav-user-card-bottom { justify-content:center; border-top:none; padding-top:0; margin-top:.4rem; }
+      .left-panel.compact #nav-user-since { display:none; }
+      .left-panel.compact .nav-user-card-actions { flex-direction:column; gap:.35rem; }
     }
     #left-panel-compact-btn:hover { color:var(--gold); border-color:rgba(201,169,74,0.5); }
     .left-panel.compact #left-panel-compact-btn svg { transform:rotate(180deg); }
