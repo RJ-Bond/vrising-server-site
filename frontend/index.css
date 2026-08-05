@@ -721,7 +721,13 @@
        assumption a name+badge would just wrap, but at 70px it actually overflows
        past the panel's edge instead (the badge has no wrap-safe width limit). ── */
     @media (min-width:1025px) {
-      .left-panel.compact { width:70px !important; padding:2.5rem .55rem .55rem !important; }
+      /* z-index here matters more than it looks: .g-panel sets backdrop-filter,
+         which creates its own stacking context, so a tooltip's z-index:999
+         (further below) only wins against OTHER content inside .left-panel —
+         against the news column sitting right next to it, the whole panel
+         (tooltip included) paints in plain DOM order, i.e. underneath, cutting
+         every tooltip off wherever it happens to overlap that column. */
+      .left-panel.compact { width:70px !important; padding:2.5rem .55rem .55rem !important; z-index:50; }
       /* Reclaiming the outer padding (1.25rem → .55rem) is what actually buys
          room for readable icons/avatar at 70px total width — box-sizing:border-box
          means padding eats into that budget directly. Top padding stays much
