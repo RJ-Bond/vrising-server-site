@@ -22,9 +22,15 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
 COOKIE_NAME = "vrising_token"
 
 if SECRET_KEY == _DEFAULT_KEY:
-    logger.warning(
-        "SECRET_KEY is set to the default value — JWT tokens are insecure! "
-        "Set a random SECRET_KEY in your .env file."
+    # Used to only log a warning and keep running — a misconfigured deploy (.env
+    # missing/not loaded) would silently sign every JWT with a key anyone can read in
+    # this repo's own source. Refusing to start is the same fail-fast this repo already
+    # uses elsewhere (e.g. ALLOWED_ORIGINS below). Tests set a real (non-default, non-
+    # secret) SECRET_KEY in conftest.py before any backend module is imported.
+    raise RuntimeError(
+        "SECRET_KEY не задан или равен небезопасному значению по умолчанию. "
+        "Установите случайный SECRET_KEY в .env перед запуском "
+        "(SECRET_KEY is unset or the insecure default — set a random SECRET_KEY in .env)."
     )
 
 bearer_scheme = HTTPBearer(auto_error=False)

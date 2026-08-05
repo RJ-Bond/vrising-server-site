@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, update
 
@@ -9,6 +9,7 @@ from ..database import get_db
 from ..models import User, PointsTransaction, ShopItem, ShopRedemption
 from ..auth import get_admin_user, get_current_user
 from ..helpers import _audit, _award_points
+from ..rate_limit import limiter
 from ..schemas import (
     ShopItemCreate,
     ShopItemUpdate,
@@ -249,7 +250,9 @@ async def list_shop_items_public(
 
 
 @router.post("/api/shop/redeem", response_model=ShopRedemptionOut, status_code=201)
+@limiter.limit("10/minute")
 async def redeem_shop_item(
+    request: Request,
     body: ShopRedeemIn,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

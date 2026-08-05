@@ -20,6 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 # ─── Router split status ──────────────────────────────────────────────────────
 # The split into backend/routers/*.py went further than this comment used to claim —
@@ -102,10 +103,19 @@ logger = logging.getLogger(__name__)
 # not a candidate for full trace sampling.
 _sentry_dsn = os.getenv("SENTRY_DSN")
 if _sentry_dsn:
+    # environment/release let Sentry group and filter issues by deploy — without them
+    # every error from every environment/version lands in one undifferentiated stream,
+    # so there's no way to tell "still happening on the latest deploy" from "already
+    # fixed two releases ago". release reads the same live VERSION file GET /api/version
+    # already serves (bumped on every release, see that endpoint's own comment).
+    _version_file = Path("/opt/vrising-site/VERSION")
+    _release = _version_file.read_text().strip() if _version_file.exists() else None
     sentry_sdk.init(
         dsn=_sentry_dsn,
         integrations=[FastApiIntegration()],
         traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+        environment=os.getenv("ENVIRONMENT", "production"),
+        release=_release,
     )
     logger.info("Sentry error monitoring enabled")
 
@@ -307,6 +317,12 @@ async def lifespan(app: FastAPI):
             "CREATE INDEX IF NOT EXISTS ix_game_clan_bases_clan ON game_clan_bases(clan_id)",
             # ─── .warn auto-escalation "once per threshold crossing" state ─────────
             "CREATE TABLE IF NOT EXISTS warn_escalation_state (steam_id VARCHAR(32) PRIMARY KEY, last_escalation_count INTEGER NOT NULL DEFAULT 0)",
+            # ─── Missing indexes on columns actually filtered/joined on elsewhere ──
+            # (Comment.news_id/Message.*/PointsTransaction.user_id etc. above already
+            # have theirs — these three were genuinely never indexed.)
+            "CREATE INDEX IF NOT EXISTS ix_comments_author ON comments(author_id)",
+            "CREATE INDEX IF NOT EXISTS ix_polls_news_id ON polls(news_id)",
+            "CREATE INDEX IF NOT EXISTS ix_poll_votes_option ON poll_votes(option_id)",
         ]:
             try:
                 await conn.execute(text(stmt))
@@ -363,9 +379,27 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="V Rising Server Site", version="1.0.0", lifespan=lifespan)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# Applies rate_limit.py's default_limits to every route that has no @limiter.limit of
+# its own — without this middleware, default_limits is inert and only the handful of
+# routes with an explicit decorator were ever actually rate-limited (most routers had
+# none at all: admin_misc, admin_settings, admin_system, clans, events, leaderboard,
+# notifications, points_shop, server_admin, users, wipes).
+app.add_middleware(SlowAPIMiddleware)
 
 _raw_origins = os.getenv("ALLOWED_ORIGINS", "*")
 _origins = [o.strip() for o in _raw_origins.split(",")] if _raw_origins != "*" else ["*"]
+# allow_origins=["*"] + allow_credentials=True is a combination no real browser will
+# ever actually honor (the CORS spec forbids a wildcard origin alongside credentials),
+# so silently starting in this state just means every cross-origin request quietly
+# fails for real clients while looking "configured" — fail fast instead, same as
+# SECRET_KEY above. docker-compose.yml already sets a real ALLOWED_ORIGINS default;
+# this only bites a bare `uvicorn backend.main:app` run with no .env loaded.
+if _origins == ["*"]:
+    raise RuntimeError(
+        "ALLOWED_ORIGINS не задан. Укажите список разрешённых origin через запятую в .env "
+        "(ALLOWED_ORIGINS is unset — set a comma-separated origin list in .env; "
+        "wildcard '*' can't be combined with credentialed requests)."
+    )
 
 app.add_middleware(
     CORSMiddleware,

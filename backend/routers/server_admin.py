@@ -1,7 +1,7 @@
 import re
 
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -9,6 +9,7 @@ from ..database import get_db
 from ..models import User, ServerMessageTemplate, ServerApiKey, ScheduledRestart
 from ..auth import get_admin_user
 from ..helpers import _audit, _fmt_dt_z, _schedule_restart, _cancel_restart
+from ..rate_limit import limiter
 from ..schemas import (
     ServerMessageTemplateOut,
     ServerMessageTemplateUpdate,
@@ -139,7 +140,9 @@ class AdminScheduleRestartBody(BaseModel):
 
 
 @router.post("/api/admin/servers/{server_num}/restart")
+@limiter.limit("5/minute")
 async def schedule_restart_admin(
+    request: Request,
     server_num: int,
     body: AdminScheduleRestartBody,
     current_user: User = Depends(get_admin_user),

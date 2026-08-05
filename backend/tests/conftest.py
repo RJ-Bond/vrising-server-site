@@ -8,10 +8,29 @@ from pathlib import Path
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT))
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+# backend/auth.py refuses to start if SECRET_KEY is still the insecure placeholder
+# default — same "must run before any backend module import" reasoning as above.
+os.environ.setdefault("SECRET_KEY", "test-only-secret-key-not-for-production-use")
+# backend/main.py refuses to start with ALLOWED_ORIGINS unset (wildcard + credentials
+# can't work in any real browser) — same reasoning.
+os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost")
 
+import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker  # noqa: E402
 from backend.models import Base  # noqa: E402
+from backend.rate_limit import limiter  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter():
+    """slowapi's Limiter keys by client IP (get_remote_address) in an in-memory store
+    that's process-global, not per-test — every test client request in this same
+    pytest run shares one IP, so without this a test late in the suite can fail from a
+    quota an earlier, unrelated test already spent (see default_limits / @limiter.limit
+    added across backend/routers/*.py and rate_limit.py)."""
+    limiter.reset()
+    yield
 
 
 @pytest_asyncio.fixture

@@ -19,6 +19,11 @@ cd "$(dirname "$0")/.."
 # dir here so the check means the same thing on every platform, CI included.
 export UPLOAD_DIR="$(mktemp -d)/uploads"
 export BACKUP_DIR="$(mktemp -d)/backups"
+# backend.auth / backend.main now refuse to start with the placeholder SECRET_KEY or an
+# unset ALLOWED_ORIGINS (see their own comments) — this is an import-only smoke check,
+# not a real deploy, so give it throwaway values same as backend/tests/conftest.py does.
+export SECRET_KEY="${SECRET_KEY:-check-only-secret-key-not-for-production-use}"
+export ALLOWED_ORIGINS="${ALLOWED_ORIGINS:-http://localhost}"
 uv run --python 3.12 --with-requirements requirements.txt python -c "
 import backend.main, backend.models, backend.schemas, backend.auth, backend.database, backend.monitor
 print('backend modules import cleanly')

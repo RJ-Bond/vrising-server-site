@@ -222,7 +222,7 @@ class Comment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     news_id = Column(Integer, ForeignKey("news.id", ondelete="CASCADE"), nullable=False)
-    author_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    author_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     content = Column(Text, nullable=False)
     parent_id = Column(Integer, ForeignKey("comments.id", ondelete="CASCADE"), nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
@@ -323,7 +323,7 @@ class Report(Base):
 class Poll(Base):
     __tablename__ = "polls"
     id = Column(Integer, primary_key=True, index=True)
-    news_id = Column(Integer, ForeignKey("news.id", ondelete="CASCADE"), nullable=False)
+    news_id = Column(Integer, ForeignKey("news.id", ondelete="CASCADE"), nullable=False, index=True)
     question = Column(String(256), nullable=False)
     multiple = Column(Boolean, default=False, nullable=False)
     ends_at = Column(DateTime, nullable=True)
@@ -343,7 +343,7 @@ class PollVote(Base):
     __tablename__ = "poll_votes"
     id = Column(Integer, primary_key=True, index=True)
     poll_id = Column(Integer, ForeignKey("polls.id", ondelete="CASCADE"), nullable=False)
-    option_id = Column(Integer, ForeignKey("poll_options.id", ondelete="CASCADE"), nullable=False)
+    option_id = Column(Integer, ForeignKey("poll_options.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
     __table_args__ = (UniqueConstraint("poll_id", "user_id", name="uq_poll_vote"),)

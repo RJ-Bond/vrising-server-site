@@ -81,25 +81,39 @@ async def messages_inbox(current_user: User = Depends(get_current_user), db: Asy
         .order_by(func.max(Message.id).desc())
     )
     rows = (await db.execute(partner_ids_q)).all()
+    if not rows:
+        return []
+
+    # Previously one SELECT per partner for the User row, one per last Message, and one
+    # COUNT per unread tally — N+1 three times over for an inbox with N conversations.
+    # Batched into 3 total queries (partners, last messages, unread counts-by-partner)
+    # regardless of how many conversations there are.
+    partner_ids = [row.partner_id for row in rows]
+    last_msg_ids = [row.last_msg_id for row in rows]
+
+    partners_res = await db.execute(select(User).where(User.id.in_(partner_ids)))
+    partners_by_id = {u.id: u for u in partners_res.scalars().all()}
+
+    msgs_res = await db.execute(select(Message).where(Message.id.in_(last_msg_ids)))
+    last_msg_by_id = {m.id: m for m in msgs_res.scalars().all()}
+
+    unread_res = await db.execute(
+        select(Message.sender_id, func.count())
+        .where(
+            Message.sender_id.in_(partner_ids),
+            Message.recipient_id == current_user.id,
+            Message.read == False,
+        )
+        .group_by(Message.sender_id)
+    )
+    unread_by_partner = dict(unread_res.all())
 
     conversations = []
     for row in rows:
-        partner_id = row.partner_id
-        last_msg_id = row.last_msg_id
-        partner_res = await db.execute(select(User).where(User.id == partner_id))
-        partner = partner_res.scalar_one_or_none()
+        partner = partners_by_id.get(row.partner_id)
         if partner is None:
             continue
-        msg_res = await db.execute(select(Message).where(Message.id == last_msg_id))
-        last_msg = msg_res.scalar_one_or_none()
-        unread_res = await db.execute(
-            select(func.count()).where(
-                Message.sender_id == partner_id,
-                Message.recipient_id == current_user.id,
-                Message.read == False,
-            )
-        )
-        unread = unread_res.scalar_one() or 0
+        last_msg = last_msg_by_id.get(row.last_msg_id)
         conversations.append({
             "partner": {"id": partner.id, "username": partner.username, "avatar_url": partner.avatar_url},
             "last_message": {
@@ -108,7 +122,7 @@ async def messages_inbox(current_user: User = Depends(get_current_user), db: Asy
                 "sender_id": last_msg.sender_id,
                 "created_at": last_msg.created_at.isoformat(),
             } if last_msg else None,
-            "unread": unread,
+            "unread": unread_by_partner.get(row.partner_id, 0),
         })
     return conversations
 
