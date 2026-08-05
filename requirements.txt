@@ -10,10 +10,10 @@ httpx==0.28.1
 pydantic[email]==2.13.4
 pydantic-settings==2.14.2
 slowapi==0.1.10
-aiosmtplib>=3.0
-pyotp>=2.9.0
-tzdata>=2024.1
-Pillow>=10.3.0
+aiosmtplib>=5.1.2
+pyotp>=2.10.0
+tzdata>=2026.3
+Pillow>=12.3.0
 alembic==1.19.0
 sentry-sdk[fastapi]==2.66.1
 # Web Push (VAPID signing + aes128gcm payload encryption for the browser Push API).
