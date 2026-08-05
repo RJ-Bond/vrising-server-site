@@ -198,7 +198,18 @@
     ],
   };
 
+  // SearchResultOut shape (backend/routers/search.py) — GET /api/search?q=, backing
+  // the Ctrl+K global search dropdown (frontend/common.js openGlobalSearch()). One
+  // canned result per category so the dropdown's three grouped sections + snippet
+  // text are all visible regardless of what the operator types.
+  const searchResults = [
+    { type: 'player', title: 'Vortigern', url: '/user.html?u=Vortigern', snippet: 'superadmin' },
+    { type: 'news', title: 'Обновление сервера 1.2', url: '/?news=obnovlenie-servera-1-2', snippet: 'Список изменений и исправлений в последнем патче.' },
+    { type: 'clan', title: 'Кровавые Клыки', url: '/clans.html?clan=1', snippet: 'Старейший клан сервера. Ищем активных игроков для рейдов.' },
+  ];
+
   const routes = [
+    [/\/api\/search(\?|$)/, () => searchResults],
     [/\/api\/settings\/public$/, () => settingsPublic],
     [/\/api\/auth\/me$/, () => null], // anonymous visitor — handled as 401 below
     [/\/api\/team/, () => team],
