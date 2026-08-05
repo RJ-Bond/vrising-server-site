@@ -383,7 +383,12 @@ const ROLE_ORDER = { admin: 0, moder: 1, user: 2 };
 function _owAnimCount(el, to) {
   if (!el) return;
   const from = parseInt(el.textContent) || 0;
-  if (from === to) return;
+  // Bail-early still has to write the real value: el starts as the static "–"
+  // placeholder, which parses to NaN → 0 via the fallback above. If the actual
+  // count is also 0, from===to here and returning without touching textContent
+  // left "–" on screen forever instead of "0" (this is why guest count looked
+  // permanently stuck at "–" whenever nobody anonymous was online).
+  if (from === to) { el.textContent = to; return; }
   const dur = 350, t0 = performance.now();
   const tick = now => {
     const p = Math.min((now - t0) / dur, 1);

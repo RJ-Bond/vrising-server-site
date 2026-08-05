@@ -721,18 +721,39 @@
        assumption a name+badge would just wrap, but at 70px it actually overflows
        past the panel's edge instead (the badge has no wrap-safe width limit). ── */
     @media (min-width:1025px) {
-      .left-panel.compact { width:70px !important; }
-      .left-panel.compact .nav-link-item { justify-content:center; padding:.55rem; }
+      .left-panel.compact { width:70px !important; padding:.55rem !important; }
+      /* Reclaiming the outer padding (1.25rem → .55rem) is what actually buys
+         room for readable icons/avatar at 70px total width — box-sizing:border-box
+         means padding eats into that budget directly. */
+      .left-panel.compact .nav-link-item { justify-content:center; padding:.5rem; border-radius:.4rem; }
       .left-panel.compact .nav-link-item span { display:none; }
       .left-panel.compact #left-panel-title,
       .left-panel.compact h3 { display:none; }
-      .left-panel.compact .discord-btn, .left-panel.compact .max-btn { justify-content:center; padding:.55rem; }
+      .left-panel.compact .discord-btn, .left-panel.compact .max-btn { justify-content:center; padding:.5rem; }
       .left-panel.compact .discord-btn > :not(svg), .left-panel.compact .max-btn > :not(svg) { display:none; }
       .left-panel.compact .nav-user-card-top { justify-content:center; }
       .left-panel.compact .nav-user-card-namecol { display:none; }
       .left-panel.compact .nav-user-card-bottom { justify-content:center; border-top:none; padding-top:0; margin-top:.4rem; }
       .left-panel.compact #nav-user-since { display:none; }
-      .left-panel.compact .nav-user-card-actions { flex-direction:column; gap:.35rem; }
+      .left-panel.compact .nav-user-card-actions { flex-direction:column; gap:.4rem; }
+      .left-panel.compact .nav-user-avatar,
+      .left-panel.compact .nav-user-initial { width:34px; height:34px; font-size:.85rem; }
+      /* More breathing room between icons, plus a divider ahead of the nav list
+         so the toggle/avatar area, navigation, and social links read as distinct
+         groups instead of one unbroken column of icons. */
+      .left-panel.compact nav { gap:.5rem !important; border-top:1px solid rgba(150,0,28,.18); padding-top:.6rem; margin-top:.3rem; }
+      .left-panel.compact .social-links-wrap { gap:.5rem !important; }
+      /* Icons default to a single muted tone instead of each link's own accent
+         color (was a "rainbow" of unrelated colors with nothing to explain why) —
+         full color only returns on hover, as an affordance rather than noise. */
+      .left-panel.compact .nav-link-item svg { stroke:var(--muted); transition:stroke .15s,transform .15s; }
+      .left-panel.compact .nav-link-item:hover svg { stroke:var(--gold); transform:scale(1.15); }
+      .left-panel.compact .nav-link-item:hover { background:rgba(201,169,74,.1); }
+      /* Custom [data-tip] tooltips (components.css/index.css) default to opening
+         above the element, centered — inside a narrow vertical rail that overlaps
+         the icon sitting right above it. Open to the right instead, vertically
+         centered on the icon, so nothing gets covered. */
+      .left-panel.compact [data-tip]::after { bottom:auto; left:calc(100% + 8px); top:50%; transform:translateY(-50%); }
       /* "Who's online" list — same overflow problem as the user card: the row's
          avatar+username link, since-badge and DM button are all full-size, and
          the sparkline SVG has a fixed 176px width, so a 70px rail just clips
@@ -745,6 +766,12 @@
       .left-panel.compact .ow-group-hdr,
       .left-panel.compact #ow-peak,
       .left-panel.compact #ow-sparkline { display:none; }
+      /* With the name/badge gone, the avatar is the row's only remaining content
+         — worth sizing up from 1.5rem so it actually reads as a person rather
+         than a dot, and giving it the same online-status ring as the hover card. */
+      .left-panel.compact .online-avatar,
+      .left-panel.compact .online-avatar-ph { width:1.7rem; height:1.7rem; }
+      .left-panel.compact .online-user-row { padding:.3rem; }
     }
     #left-panel-compact-btn:hover { color:var(--gold); border-color:rgba(201,169,74,0.5); }
     .left-panel.compact #left-panel-compact-btn svg { transform:rotate(180deg); }
