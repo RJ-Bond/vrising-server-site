@@ -39,7 +39,6 @@ from slowapi.middleware import SlowAPIMiddleware
 # routers" plan for rationale — mostly background-task coupling, not scope creep):
 #   - Version / SEO (sitemap.xml, rss.xml, news-embed prerender, Google verification)
 #   - Setup wizard (first-run only)
-#   - AI chat ("Управляющий замком", optional Anthropic integration)
 #   - Presence ("who's online" ping/stream) and server Monitor (A2S polling, history/
 #     snapshots) — coupled via the _track_players background task, which also feeds
 #     Leaderboard
@@ -78,7 +77,6 @@ from .schemas import (
     UserOut,
     TokenOut,
     SetupComplete,
-    ChatRequest,
     PluginHeartbeatOut,
     AnnouncementCreate,
     AnnouncementUpdate,
@@ -122,13 +120,6 @@ if _sentry_dsn:
 # Repo root is bind-mounted read/write at /opt/vrising-site (see docker-compose.yml) for
 # the deploy/update endpoints; reused here to serve frontend/index.html for news-embed.
 _INDEX_HTML_PATH = "/opt/vrising-site/frontend/index.html"
-
-OVERSEER_PROMPT = """Ты — Тёмный Управляющий Замком, древний вампирский дух, хранитель этого сервера V Rising.
-Твоя задача — помогать игрокам: отвечать на вопросы об игровом сервере, правилах, механиках V Rising, событиях.
-Стиль: готический, величественный, слегка таинственный. Обращайся к игрокам как «смертный», «странник» или по имени.
-Отвечай на языке вопроса (русский или английский). Максимум 3–4 предложения. Будь полезным и по делу.
-Если не знаешь конкретных данных сервера — говори об этом честно, но оставайся в образе."""
-
 
 async def _migrate_admin_role_tiers(db: AsyncSession):
     """One-time: promote every pre-existing role="admin" account to "superadmin".
@@ -755,47 +746,6 @@ async def setup_complete(body: SetupComplete, response: Response, db: AsyncSessi
     token = create_access_token({"sub": str(admin.id)})
     _set_auth_cookie(response, token)
     return TokenOut(access_token=token, user=UserOut.model_validate(admin))
-
-
-# ─── Castle Overseer Chat ────────────────────────────────────────────────────
-
-@app.post("/api/chat")
-@limiter.limit("20/minute")
-async def castle_overseer_chat(request: Request, body: ChatRequest):
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        raise HTTPException(status_code=503, detail="Управляющий замком сейчас недоступен. Добавьте ANTHROPIC_API_KEY в .env")
-    try:
-        from anthropic import AsyncAnthropic
-        client = AsyncAnthropic(api_key=api_key)
-        messages = [
-            {"role": h.role, "content": h.content}
-            for h in body.history[-10:]
-            if h.role in ("user", "assistant")
-        ]
-        messages.append({"role": "user", "content": body.message})
-
-        async def generate():
-            try:
-                async with client.messages.stream(
-                    model="claude-haiku-4-5-20251001",
-                    max_tokens=512,
-                    system=OVERSEER_PROMPT,
-                    messages=messages,
-                ) as stream:
-                    async for text in stream.text_stream:
-                        yield f"data: {json.dumps({'text': text})}\n\n"
-            except Exception as e:
-                yield f"data: {json.dumps({'error': str(e)})}\n\n"
-            yield "data: [DONE]\n\n"
-
-        return StreamingResponse(
-            generate(),
-            media_type="text/event-stream",
-            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-        )
-    except ImportError as e:
-        raise HTTPException(status_code=503, detail="Библиотека anthropic не установлена") from e
 
 
 @app.get("/api/admin/plugin-status", response_model=list[PluginHeartbeatOut])

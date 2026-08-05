@@ -9,7 +9,6 @@ requests==2.34.2
 httpx==0.28.1
 pydantic[email]==2.13.4
 pydantic-settings==2.14.2
-anthropic==0.120.2
 slowapi==0.1.10
 aiosmtplib>=3.0
 pyotp>=2.9.0

@@ -1,6 +1,6 @@
 from datetime import datetime
 from html.parser import HTMLParser
-from typing import Literal, Optional
+from typing import Optional
 from pydantic import BaseModel, EmailStr, field_validator
 import re
 
@@ -615,16 +615,6 @@ class PaginatedComments(BaseModel):
     total: int
     page: int
     pages: int
-
-
-class ChatHistoryItem(BaseModel):
-    role: Literal["user", "assistant"]
-    content: str
-
-
-class ChatRequest(BaseModel):
-    message: str
-    history: list[ChatHistoryItem] = []
 
 
 class ForgotPasswordRequest(BaseModel):

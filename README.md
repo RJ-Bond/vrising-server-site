@@ -16,7 +16,6 @@
 | Rate limiting | slowapi |
 | Email (восстановление пароля и др.) | aiosmtplib (опционально, через SMTP) |
 | Frontend | HTML5, Tailwind CSS (локальный статический билд), Vanilla JS, Canvas 2D (графики) |
-| ИИ-чат | Anthropic API ("Управляющий замком", опционально) |
 | Игровая интеграция | Компаньон-плагин BepInEx (`vrising-bepinex-plugin`) — X-Plugin-Key HTTP API |
 | Мониторинг серверов | Steam A2S_INFO (UDP) |
 | Reverse Proxy | Nginx (+ опционально HTTPS через Let's Encrypt) |
@@ -33,7 +32,6 @@
 - Лента новостей: пагинация, теги, закреплённые посты, реакции, комментарии (с ответами и реакциями на комментарии), опросы, прикреплённые к новости, модальное окно с полным текстом
 - Индикатор "кто сейчас на сайте" (presence, `/api/online`)
 - Колокольчик уведомлений (ответы на комментарии, упоминания) и виджет личных сообщений — для авторизованных пользователей
-- Опциональный ИИ-чат «Управляющий замком» (Anthropic API)
 - Боковая навигация на все разделы сайта
 
 ### Сервера (`servers.html`)
@@ -204,13 +202,13 @@ cp .env.example .env
 
 ```env
 SECRET_KEY=замените_на_случайную_строку_32_символа
+ALLOWED_ORIGINS=https://ваш-домен.ru
 DATABASE_URL=sqlite+aiosqlite:////data/vrising.db
 VRISING_SERVER_IP=127.0.0.1
 VRISING_SERVER_PORT=27016
-ANTHROPIC_API_KEY=опционально_для_чата_управляющий_замком
 ```
 
-При необходимости `docker-compose.yml` дополнительно поддерживает (не обязательны, есть значения по умолчанию): `ALLOWED_ORIGINS` (CORS), `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`SMTP_FROM` (для писем восстановления пароля).
+`SECRET_KEY` и `ALLOWED_ORIGINS` обязательны — приложение откажется стартовать без них (небезопасный JWT-ключ по умолчанию и wildcard-CORS с credentials всё равно не работают ни в одном браузере). При необходимости `docker-compose.yml` дополнительно поддерживает (не обязательны, есть значения по умолчанию): `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`SMTP_FROM` (для писем восстановления пароля).
 
 **4. Запустите проект**
 
@@ -336,7 +334,6 @@ vrising-server-site/
 | Профили | `GET /api/users/{username}`, `/users/{username}/activity`, `POST /api/profile/bio`\|`cover`\|`badge-icon`, `GET /api/team` | Публичный / User |
 | Уведомления и сообщения | `GET /api/notifications`, `POST /notifications/read-all`, `POST /api/messages`, `GET /messages/inbox`, `/messages/with/{username}` | User |
 | Жалобы | `POST /api/reports`, `GET/PATCH /api/admin/reports` | User / Moderator |
-| ИИ-чат | `POST /api/chat` | User |
 | Игровой плагин (X-Plugin-Key) | `GET /api/plugin/status`, `POST /plugin/register`\|`login`\|`heartbeat`\|`sessions`\|`connect-streak`, `GET /plugin/wipe-info`\|`playtime`\|`restart-status`, `POST /plugin/warn`\|`ban`\|`unban`\|`clans/sync`\|`schedule-restart` | Плагин (ключ) |
 | Админ: контент | `GET/POST/PUT/DELETE /api/admin/news`, `/admin/comments`, `/admin/upload`, `/admin/uploads`, `/admin/media` | Admin |
 | Админ: пользователи | `GET /api/admin/users`, `PUT /api/admin/users/{id}/role`, `/toggle-active`, `/revoke-sessions`, `/unlink-steam`, `DELETE` | Moderator / Admin |
