@@ -451,33 +451,35 @@ function _statusInfo(iso) {
     return d;
   }
 
-  /* Main search */
+  /* Main search — GET /api/search?q= (backend/routers/search.py) returns a single
+     flat list of {type:"news"|"player"|"clan", title, url, snippet}, already capped
+     per category server-side. Used to be three separate fetches to /api/users,
+     /api/news, /api/clans (each with its own ?search= param and its own response
+     shape to normalise) — consolidated into one round-trip. */
   async function _doSearch(q) {
     if (q.length < 2) { _showPlaceholder(); return; }
     _showSpinner();
 
-    const fetches = [
-      fetch(`/api/users?search=${encodeURIComponent(q)}&limit=5`).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch(`/api/news?search=${encodeURIComponent(q)}&per_page=5`).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch(`/api/clans?search=${encodeURIComponent(q)}&limit=5`).then(r => r.ok ? r.json() : null).catch(() => null),
-    ];
+    let items;
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+      const body = res.ok ? await res.json() : [];
+      items = Array.isArray(body) ? body : [];
+    } catch (e) {
+      items = [];
+    }
 
-    const [usersRes, newsRes, clansRes] = await Promise.all(fetches);
-
-    /* Normalise to arrays. GET /api/news returns {items,total,page,pages} (PaginatedNews),
-       not {news:[...]} — this used to read the wrong key and silently show zero results. */
-    const users  = Array.isArray(usersRes)       ? usersRes       : (usersRes  && Array.isArray(usersRes.users))  ? usersRes.users  : [];
-    const news   = Array.isArray(newsRes)        ? newsRes        : (newsRes   && Array.isArray(newsRes.items))   ? newsRes.items   : [];
-    const clans  = Array.isArray(clansRes)       ? clansRes       : (clansRes  && Array.isArray(clansRes.clans))  ? clansRes.clans  : [];
+    const players = items.filter(i => i.type === 'player');
+    const news    = items.filter(i => i.type === 'news');
+    const clans   = items.filter(i => i.type === 'clan');
 
     _results.innerHTML = '';
     let total = 0;
 
-    if (users.length) {
+    if (players.length) {
       _results.appendChild(_catHeader('Игроки'));
-      users.forEach(u => {
-        const sub = u.role && u.role !== 'user' ? u.role : (u.playtime ? `${u.playtime} ч` : '');
-        _results.appendChild(_item(`/user.html?u=${encodeURIComponent(u.username || u.name || '')}`, '👤', u.username || u.name || '', sub));
+      players.forEach(p => {
+        _results.appendChild(_item(p.url, '👤', p.title || '', p.snippet || ''));
         total++;
       });
     }
@@ -485,9 +487,7 @@ function _statusInfo(iso) {
     if (news.length) {
       _results.appendChild(_catHeader('Новости'));
       news.forEach(n => {
-        const sub = n.published_at || n.created_at ? fmtDate(n.published_at || n.created_at) : '';
-        const slug = n.slug || n.id || '';
-        _results.appendChild(_item(`/?news=${encodeURIComponent(slug)}`, '📰', n.title || '', sub));
+        _results.appendChild(_item(n.url, '📰', n.title || '', n.snippet || ''));
         total++;
       });
     }
@@ -495,9 +495,7 @@ function _statusInfo(iso) {
     if (clans.length) {
       _results.appendChild(_catHeader('Кланы'));
       clans.forEach(c => {
-        const label = (c.tag ? `[${c.tag}] ` : '') + (c.name || '');
-        const sub   = c.member_count != null ? `${c.member_count} участников` : '';
-        _results.appendChild(_item('/clans.html', '🛡', label, sub));
+        _results.appendChild(_item(c.url, '🛡', c.title || '', c.snippet || ''));
         total++;
       });
     }
