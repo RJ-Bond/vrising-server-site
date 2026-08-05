@@ -378,47 +378,47 @@
 <!-- NAV -->
 <div class="mobile-overlay" :class="{ open: mobNavOpen }" @click="mobNavOpen = false"></div>
 <div class="mobile-drawer" :class="{ open: mobNavOpen }">
-  <a href="/">🏠 Главная</a>
-  <a href="/servers.html">🖥️ Сервера</a>
-  <a href="/leaderboard.html">🏆 Игроки</a>
-  <a href="/clans.html">🛡️ Кланы</a>
-  <a href="/bans.html">🚫 Баны</a>
-  <a href="/shop.html">🛒 Магазин</a>
-  <a href="/map.html">🗺️ Карта</a>
+  <a href="/" data-i18n-ru="🏠 Главная" data-i18n-en="🏠 Home">🏠 Главная</a>
+  <a href="/servers.html" data-i18n-ru="🖥️ Сервера" data-i18n-en="🖥️ Servers">🖥️ Сервера</a>
+  <a href="/leaderboard.html" data-i18n-ru="🏆 Игроки" data-i18n-en="🏆 Players">🏆 Игроки</a>
+  <a href="/clans.html" data-i18n-ru="🛡️ Кланы" data-i18n-en="🛡️ Clans">🛡️ Кланы</a>
+  <a href="/bans.html" data-i18n-ru="🚫 Баны" data-i18n-en="🚫 Bans">🚫 Баны</a>
+  <a href="/shop.html" data-i18n-ru="🛒 Магазин" data-i18n-en="🛒 Shop">🛒 Магазин</a>
+  <a href="/map.html" data-i18n-ru="🗺️ Карта" data-i18n-en="🗺️ Map">🗺️ Карта</a>
   <a href="/faq.html">❓ FAQ</a>
-  <a href="/events.html">📅 События</a>
-  <a href="/profile.html">👤 Профиль</a>
-  <a href="#" onclick="openGlobalSearch();return false;">🔍 Поиск</a>
+  <a href="/events.html" data-i18n-ru="📅 События" data-i18n-en="📅 Events">📅 События</a>
+  <a href="/profile.html" data-i18n-ru="👤 Профиль" data-i18n-en="👤 Profile">👤 Профиль</a>
+  <a href="#" onclick="openGlobalSearch();return false;" data-i18n-ru="🔍 Поиск" data-i18n-en="🔍 Search">🔍 Поиск</a>
 </div>
 <nav class="glass-nav">
   <div style="max-width:1000px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);"></a>
     <div class="nav-links">
-      <a href="/" class="topnav-link">🏠 Главная</a>
-      <a href="/servers.html" class="topnav-link">🖥️ Сервера</a>
-      <a href="/leaderboard.html" class="topnav-link">🏆 Игроки</a>
-      <a href="/clans.html" class="topnav-link">🛡️ Кланы</a>
-      <a href="/bans.html" class="topnav-link">🚫 Баны</a>
-      <a href="/shop.html" class="topnav-link">🛒 Магазин</a>
+      <a href="/" class="topnav-link" data-i18n-ru="🏠 Главная" data-i18n-en="🏠 Home">🏠 Главная</a>
+      <a href="/servers.html" class="topnav-link" data-i18n-ru="🖥️ Сервера" data-i18n-en="🖥️ Servers">🖥️ Сервера</a>
+      <a href="/leaderboard.html" class="topnav-link" data-i18n-ru="🏆 Игроки" data-i18n-en="🏆 Players">🏆 Игроки</a>
+      <a href="/clans.html" class="topnav-link" data-i18n-ru="🛡️ Кланы" data-i18n-en="🛡️ Clans">🛡️ Кланы</a>
+      <a href="/bans.html" class="topnav-link" data-i18n-ru="🚫 Баны" data-i18n-en="🚫 Bans">🚫 Баны</a>
+      <a href="/shop.html" class="topnav-link" data-i18n-ru="🛒 Магазин" data-i18n-en="🛒 Shop">🛒 Магазин</a>
       <div class="nav-dropdown">
-        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)">Ещё ▾</button>
+        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)" data-i18n-ru="Ещё ▾" data-i18n-en="More ▾">Ещё ▾</button>
         <div class="nav-dropdown-menu">
-          <a href="/map.html" class="nav-dropdown-item">🗺️ Карта</a>
+          <a href="/map.html" class="nav-dropdown-item" data-i18n-ru="🗺️ Карта" data-i18n-en="🗺️ Map">🗺️ Карта</a>
           <a href="/faq.html" class="nav-dropdown-item">❓ FAQ</a>
-          <a href="/events.html" class="nav-dropdown-item">📅 События</a>
+          <a href="/events.html" class="nav-dropdown-item" data-i18n-ru="📅 События" data-i18n-en="📅 Events">📅 События</a>
         </div>
       </div>
-      <button type="button" class="nav-icon-btn" onclick="openGlobalSearch()" aria-label="Поиск по сайту" data-tip="Поиск (Ctrl+K)">
+      <button type="button" class="nav-icon-btn" onclick="openGlobalSearch()" aria-label="Поиск по сайту" data-tip="Поиск (Ctrl+K)" data-i18n-aria-ru="Поиск по сайту" data-i18n-aria-en="Site search">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-search"></use></svg>
       </button>
       <div id="nav-profile-link" class="nav-dropdown" style="display:none;">
-        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)">👤 Профиль ▾</button>
+        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)" data-i18n-ru="👤 Профиль ▾" data-i18n-en="👤 Profile ▾">👤 Профиль ▾</button>
         <div class="nav-dropdown-menu">
-          <a href="/profile.html" class="nav-dropdown-item">Мой профиль</a>
-          <a href="#" class="nav-dropdown-item" onclick="logout();return false;">Выйти</a>
+          <a href="/profile.html" class="nav-dropdown-item" data-i18n-ru="Мой профиль" data-i18n-en="My profile">Мой профиль</a>
+          <a href="#" class="nav-dropdown-item" onclick="logout();return false;" data-i18n-ru="Выйти" data-i18n-en="Log out">Выйти</a>
         </div>
       </div>
-      <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
+      <a id="nav-login-link" href="/login.html" class="topnav-link" data-i18n-ru="Войти" data-i18n-en="Log in">Войти</a>
     </div>
     <div id="notif-bell-wrap" style="position:relative;display:none;">
       <button id="notif-bell-btn" onclick="toggleNotifPanel()"
@@ -430,13 +430,17 @@
       </button>
       <div id="notif-panel" style="display:none;position:absolute;top:calc(100% + .5rem);right:0;width:300px;background:rgba(10,2,18,0.98);border:1px solid rgba(150,0,28,0.3);border-radius:.75rem;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:200;overflow:hidden;">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:.65rem 1rem;border-bottom:1px solid rgba(150,0,28,0.15);">
-          <span style="font-size:.75rem;font-weight:600;color:#e2d8f0;">Уведомления</span>
-          <button onclick="markAllNotifRead()" style="font-size:.65rem;color:#9488a8;background:none;border:none;cursor:pointer;">Прочитать все</button>
+          <span style="font-size:.75rem;font-weight:600;color:#e2d8f0;" data-i18n-ru="Уведомления" data-i18n-en="Notifications">Уведомления</span>
+          <button onclick="markAllNotifRead()" style="font-size:.65rem;color:#9488a8;background:none;border:none;cursor:pointer;" data-i18n-ru="Прочитать все" data-i18n-en="Mark all read">Прочитать все</button>
         </div>
         <div id="notif-list" style="max-height:320px;overflow-y:auto;"></div>
       </div>
     </div>
-    <button class="nav-burger" @click="mobNavOpen = !mobNavOpen" aria-label="Меню">☰</button>
+    <button id="lang-toggle-btn" onclick="toggleLanguage()" title="English UI (site content stays Russian)"
+      style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;padding:0 .5rem;height:2rem;font-size:.7rem;font-weight:700;letter-spacing:.05em;cursor:pointer;color:#9488a8;transition:all .2s;"
+      onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
+      onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">EN</button>
+    <button class="nav-burger" @click="mobNavOpen = !mobNavOpen" aria-label="Меню" data-i18n-aria-ru="Меню" data-i18n-aria-en="Menu">☰</button>
   </div>
 </nav>
 
@@ -444,20 +448,20 @@
   <div style="text-align:center;margin-bottom:1.75rem;">
     <div style="display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:.5rem;">
       <span style="height:1px;width:36px;background:linear-gradient(90deg,transparent,var(--gold));"></span>
-      <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;">Мониторинг серверов</h1>
+      <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;" data-i18n-ru="Мониторинг серверов" data-i18n-en="Server monitoring">Мониторинг серверов</h1>
       <span style="height:1px;width:36px;background:linear-gradient(90deg,var(--gold),transparent);"></span>
     </div>
-    <p style="font-size:.8rem;color:var(--muted);">Статус, онлайн игроков и активность за последние 7 дней</p>
+    <p style="font-size:.8rem;color:var(--muted);" data-i18n-ru="Статус, онлайн игроков и активность за последние 7 дней" data-i18n-en="Status, online players and activity over the last 7 days">Статус, онлайн игроков и активность за последние 7 дней</p>
   </div>
 
   <div id="compare-btn-wrap" style="text-align:center;margin-bottom:1rem;display:none;">
-    <button id="compare-toggle" onclick="toggleCompare()" aria-pressed="false" style="background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.3);color:var(--muted);border-radius:.5rem;padding:.4rem 1rem;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='rgba(160,0,200,0.6)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(110,0,150,0.3)';this.style.color='var(--muted)'">
+    <button id="compare-toggle" onclick="toggleCompare()" aria-pressed="false" style="background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.3);color:var(--muted);border-radius:.5rem;padding:.4rem 1rem;font-size:.75rem;font-weight:600;cursor:pointer;transition:all .2s;" onmouseover="this.style.borderColor='rgba(160,0,200,0.6)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='rgba(110,0,150,0.3)';this.style.color='var(--muted)'" data-i18n-ru="⚡ Сравнить серверы" data-i18n-en="⚡ Compare servers">
       ⚡ Сравнить серверы
     </button>
   </div>
   <div id="compare-card" class="g-card" style="display:none;--accent:#9955ee;--accent-rgb:153,85,238;margin-bottom:1.5rem;">
     <div class="srv-header-zone" style="padding:1rem 1.5rem .9rem;">
-      <div style="font-family:'Philosopher',serif;font-weight:700;font-size:1rem;color:#ece3f7;">Сравнение серверов</div>
+      <div style="font-family:'Philosopher',serif;font-weight:700;font-size:1rem;color:#ece3f7;" data-i18n-ru="Сравнение серверов" data-i18n-en="Server comparison">Сравнение серверов</div>
     </div>
     <div class="g-card-body">
       <div class="srv-graph-wrap" style="height:150px;">
@@ -470,7 +474,7 @@
     </div>
   </div>
   <div id="servers-wrap" style="display:flex;flex-direction:column;gap:1.5rem;">
-    <p style="color:var(--muted);text-align:center;font-size:.85rem;">Загрузка…</p>
+    <p style="color:var(--muted);text-align:center;font-size:.85rem;" data-i18n-ru="Загрузка…" data-i18n-en="Loading…">Загрузка…</p>
   </div>
 </div>
 

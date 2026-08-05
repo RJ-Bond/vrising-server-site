@@ -314,17 +314,17 @@
 <!-- ⑥ Mobile drawer -->
 <div class="mobile-overlay" :class="{ open: mobNavOpen }" @click="mobNavOpen = false"></div>
 <div class="mobile-drawer" :class="{ open: mobNavOpen }">
-  <a href="/">🏠 Главная</a>
-  <a href="/servers.html">🖥️ Сервера</a>
-  <a href="/leaderboard.html">🏆 Игроки</a>
-  <a href="/clans.html">🛡️ Кланы</a>
-  <a href="/bans.html">🚫 Баны</a>
-  <a href="/shop.html">🛒 Магазин</a>
-  <a href="/map.html">🗺️ Карта</a>
+  <a href="/" data-i18n-ru="🏠 Главная" data-i18n-en="🏠 Home">🏠 Главная</a>
+  <a href="/servers.html" data-i18n-ru="🖥️ Сервера" data-i18n-en="🖥️ Servers">🖥️ Сервера</a>
+  <a href="/leaderboard.html" data-i18n-ru="🏆 Игроки" data-i18n-en="🏆 Players">🏆 Игроки</a>
+  <a href="/clans.html" data-i18n-ru="🛡️ Кланы" data-i18n-en="🛡️ Clans">🛡️ Кланы</a>
+  <a href="/bans.html" data-i18n-ru="🚫 Баны" data-i18n-en="🚫 Bans">🚫 Баны</a>
+  <a href="/shop.html" data-i18n-ru="🛒 Магазин" data-i18n-en="🛒 Shop">🛒 Магазин</a>
+  <a href="/map.html" data-i18n-ru="🗺️ Карта" data-i18n-en="🗺️ Map">🗺️ Карта</a>
   <a href="/faq.html">❓ FAQ</a>
-  <a href="/events.html">📅 События</a>
-  <a href="/profile.html">👤 Профиль</a>
-  <a href="#" onclick="openGlobalSearch();return false;">🔍 Поиск</a>
+  <a href="/events.html" data-i18n-ru="📅 События" data-i18n-en="📅 Events">📅 События</a>
+  <a href="/profile.html" data-i18n-ru="👤 Профиль" data-i18n-en="👤 Profile">👤 Профиль</a>
+  <a href="#" onclick="openGlobalSearch();return false;" data-i18n-ru="🔍 Поиск" data-i18n-en="🔍 Search">🔍 Поиск</a>
 </div>
 
 <!-- NAV -->
@@ -332,31 +332,31 @@
   <div class="nav-inner">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);"></a>
     <div class="nav-links">
-      <a href="/" class="topnav-link">🏠 Главная</a>
-      <a href="/servers.html" class="topnav-link">🖥️ Сервера</a>
-      <a href="/leaderboard.html" class="topnav-link">🏆 Игроки</a>
-      <a href="/clans.html" class="topnav-link">🛡️ Кланы</a>
-      <a href="/bans.html" class="topnav-link">🚫 Баны</a>
-      <a href="/shop.html" class="topnav-link">🛒 Магазин</a>
+      <a href="/" class="topnav-link" data-i18n-ru="🏠 Главная" data-i18n-en="🏠 Home">🏠 Главная</a>
+      <a href="/servers.html" class="topnav-link" data-i18n-ru="🖥️ Сервера" data-i18n-en="🖥️ Servers">🖥️ Сервера</a>
+      <a href="/leaderboard.html" class="topnav-link" data-i18n-ru="🏆 Игроки" data-i18n-en="🏆 Players">🏆 Игроки</a>
+      <a href="/clans.html" class="topnav-link" data-i18n-ru="🛡️ Кланы" data-i18n-en="🛡️ Clans">🛡️ Кланы</a>
+      <a href="/bans.html" class="topnav-link" data-i18n-ru="🚫 Баны" data-i18n-en="🚫 Bans">🚫 Баны</a>
+      <a href="/shop.html" class="topnav-link" data-i18n-ru="🛒 Магазин" data-i18n-en="🛒 Shop">🛒 Магазин</a>
       <div class="nav-dropdown">
-        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)">Ещё ▾</button>
+        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)" data-i18n-ru="Ещё ▾" data-i18n-en="More ▾">Ещё ▾</button>
         <div class="nav-dropdown-menu">
-          <a href="/map.html" class="nav-dropdown-item">🗺️ Карта</a>
+          <a href="/map.html" class="nav-dropdown-item" data-i18n-ru="🗺️ Карта" data-i18n-en="🗺️ Map">🗺️ Карта</a>
           <a href="/faq.html" class="nav-dropdown-item">❓ FAQ</a>
-          <a href="/events.html" class="nav-dropdown-item">📅 События</a>
+          <a href="/events.html" class="nav-dropdown-item" data-i18n-ru="📅 События" data-i18n-en="📅 Events">📅 События</a>
         </div>
       </div>
-      <button type="button" class="nav-icon-btn" onclick="openGlobalSearch()" aria-label="Поиск по сайту" data-tip="Поиск (Ctrl+K)">
+      <button type="button" class="nav-icon-btn" onclick="openGlobalSearch()" aria-label="Поиск по сайту" data-tip="Поиск (Ctrl+K)" data-i18n-aria-ru="Поиск по сайту" data-i18n-aria-en="Site search">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-search"></use></svg>
       </button>
       <div id="nav-profile-link" class="nav-dropdown" style="display:none;">
-        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)">👤 Профиль ▾</button>
+        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)" data-i18n-ru="👤 Профиль ▾" data-i18n-en="👤 Profile ▾">👤 Профиль ▾</button>
         <div class="nav-dropdown-menu">
-          <a href="/profile.html" class="nav-dropdown-item">Мой профиль</a>
-          <a href="#" class="nav-dropdown-item" onclick="logout();return false;">Выйти</a>
+          <a href="/profile.html" class="nav-dropdown-item" data-i18n-ru="Мой профиль" data-i18n-en="My profile">Мой профиль</a>
+          <a href="#" class="nav-dropdown-item" onclick="logout();return false;" data-i18n-ru="Выйти" data-i18n-en="Log out">Выйти</a>
         </div>
       </div>
-      <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
+      <a id="nav-login-link" href="/login.html" class="topnav-link" data-i18n-ru="Войти" data-i18n-en="Log in">Войти</a>
     </div>
     <div id="notif-bell-wrap" style="position:relative;display:none;">
       <button id="notif-bell-btn" onclick="toggleNotifPanel()"
@@ -368,13 +368,17 @@
       </button>
       <div id="notif-panel" style="display:none;position:absolute;top:calc(100% + .5rem);right:0;width:300px;background:rgba(10,2,18,0.98);border:1px solid rgba(150,0,28,0.3);border-radius:.75rem;box-shadow:0 8px 32px rgba(0,0,0,0.6);z-index:200;overflow:hidden;">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:.65rem 1rem;border-bottom:1px solid rgba(150,0,28,0.15);">
-          <span style="font-size:.75rem;font-weight:600;color:#e2d8f0;">Уведомления</span>
-          <button onclick="markAllNotifRead()" style="font-size:.65rem;color:#9488a8;background:none;border:none;cursor:pointer;">Прочитать все</button>
+          <span style="font-size:.75rem;font-weight:600;color:#e2d8f0;" data-i18n-ru="Уведомления" data-i18n-en="Notifications">Уведомления</span>
+          <button onclick="markAllNotifRead()" style="font-size:.65rem;color:#9488a8;background:none;border:none;cursor:pointer;" data-i18n-ru="Прочитать все" data-i18n-en="Mark all read">Прочитать все</button>
         </div>
         <div id="notif-list" style="max-height:320px;overflow-y:auto;"></div>
       </div>
     </div>
-    <button class="nav-burger" @click="mobNavOpen = !mobNavOpen" aria-label="Меню">
+    <button id="lang-toggle-btn" onclick="toggleLanguage()" title="English UI (site content stays Russian)"
+      style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;padding:0 .5rem;height:2rem;font-size:.7rem;font-weight:700;letter-spacing:.05em;cursor:pointer;color:#9488a8;transition:all .2s;"
+      onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
+      onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">EN</button>
+    <button class="nav-burger" @click="mobNavOpen = !mobNavOpen" aria-label="Меню" data-i18n-aria-ru="Меню" data-i18n-aria-en="Menu">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
   </div>
@@ -384,16 +388,16 @@
   <div style="text-align:center;margin-bottom:1.75rem;">
     <div style="display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:.5rem;">
       <span style="height:1px;width:36px;background:linear-gradient(90deg,transparent,var(--gold));"></span>
-      <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;">Игроки</h1>
+      <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;" data-i18n-ru="Игроки" data-i18n-en="Players">Игроки</h1>
       <span style="height:1px;width:36px;background:linear-gradient(90deg,var(--gold),transparent);"></span>
     </div>
-    <p style="font-size:.8rem;color:var(--muted);" id="lb-subtitle">Рейтинг по суммарному времени в игре</p>
+    <p style="font-size:.8rem;color:var(--muted);" id="lb-subtitle" data-i18n-ru="Рейтинг по суммарному времени в игре" data-i18n-en="Ranked by total time played">Рейтинг по суммарному времени в игре</p>
   </div>
 
   <div style="display:flex;justify-content:center;margin-bottom:.85rem;">
     <div class="lb-toggle" id="lb-metric-toggle">
-      <button class="lb-toggle-btn active" data-metric="playtime" onclick="setMetric('playtime',this)">⏱ Время в игре</button>
-      <button class="lb-toggle-btn"        data-metric="points"   onclick="setMetric('points',this)">💎 Очки</button>
+      <button class="lb-toggle-btn active" data-metric="playtime" onclick="setMetric('playtime',this)" data-i18n-ru="⏱ Время в игре" data-i18n-en="⏱ Time played">⏱ Время в игре</button>
+      <button class="lb-toggle-btn"        data-metric="points"   onclick="setMetric('points',this)" data-i18n-ru="💎 Очки" data-i18n-en="💎 Points">💎 Очки</button>
     </div>
   </div>
 
@@ -401,17 +405,17 @@
     <div class="lb-stat-tile" id="lb-stat-online">
       <div class="lb-stat-icon">🟢</div>
       <div class="lb-stat-val" id="lb-stat-online-val">—</div>
-      <div class="lb-stat-label">Онлайн сейчас</div>
+      <div class="lb-stat-label" data-i18n-ru="Онлайн сейчас" data-i18n-en="Online now">Онлайн сейчас</div>
     </div>
     <div class="lb-stat-tile" id="lb-stat-leader">
       <div class="lb-stat-icon">🏆</div>
       <div class="lb-stat-val lb-stat-leader-name" id="lb-stat-leader-val">—</div>
-      <div class="lb-stat-label" id="lb-stat-leader-label">Лидер сервера</div>
+      <div class="lb-stat-label" id="lb-stat-leader-label" data-i18n-ru="Лидер сервера" data-i18n-en="Server leader">Лидер сервера</div>
     </div>
     <div class="lb-stat-tile">
       <div class="lb-stat-icon">📅</div>
-      <div class="lb-stat-val" id="lb-stat-period-val">Всё время</div>
-      <div class="lb-stat-label">Период</div>
+      <div class="lb-stat-val" id="lb-stat-period-val" data-i18n-ru="Всё время" data-i18n-en="All time">Всё время</div>
+      <div class="lb-stat-label" data-i18n-ru="Период" data-i18n-en="Period">Период</div>
     </div>
   </div>
 
@@ -425,10 +429,10 @@
         <button class="lb-toggle-btn" data-server="2" onclick="setServer(2,this)" id="lb-server2-btn" style="display:none;">Сервер 2</button>
       </div>
       <div class="lb-toggle" id="lb-period-toggle">
-        <button class="lb-toggle-btn active" data-period="all"   onclick="setPeriod('all',this)">Всё время</button>
-        <button class="lb-toggle-btn"        data-period="month" onclick="setPeriod('month',this)">Месяц</button>
-        <button class="lb-toggle-btn"        data-period="week"  onclick="setPeriod('week',this)">Неделя</button>
-        <button class="lb-toggle-btn"        data-period="day"   onclick="setPeriod('day',this)">Сутки</button>
+        <button class="lb-toggle-btn active" data-period="all"   onclick="setPeriod('all',this)" data-i18n-ru="Всё время" data-i18n-en="All time">Всё время</button>
+        <button class="lb-toggle-btn"        data-period="month" onclick="setPeriod('month',this)" data-i18n-ru="Месяц" data-i18n-en="Month">Месяц</button>
+        <button class="lb-toggle-btn"        data-period="week"  onclick="setPeriod('week',this)" data-i18n-ru="Неделя" data-i18n-en="Week">Неделя</button>
+        <button class="lb-toggle-btn"        data-period="day"   onclick="setPeriod('day',this)" data-i18n-ru="Сутки" data-i18n-en="Day">Сутки</button>
       </div>
     </div>
     <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem;">
@@ -436,27 +440,28 @@
         <svg style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);opacity:.6;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-search"></use></svg>
         <input id="lb-search" type="text" placeholder="Поиск игрока…" oninput="filterLeaderboard()"
           style="width:100%;background:rgba(14,5,22,0.85);border:1px solid rgba(110,0,150,0.22);border-radius:.65rem;padding:.62rem 1rem .62rem 2.5rem;color:var(--text);font-size:.88rem;outline:none;transition:border-color .2s;font-family:'Inter',sans-serif;"
-          onfocus="this.style.borderColor='rgba(200,0,42,0.45)'" onblur="this.style.borderColor='rgba(110,0,150,0.22)'">
+          onfocus="this.style.borderColor='rgba(200,0,42,0.45)'" onblur="this.style.borderColor='rgba(110,0,150,0.22)'"
+          data-i18n-ph-ru="Поиск игрока…" data-i18n-ph-en="Search players…">
       </div>
       <button class="lb-find-me-btn" id="lb-find-me" onclick="findMe()"
-              style="display:none;" data-tip="Перейти к своей строке">📍 Найти себя</button>
+              style="display:none;" data-tip="Перейти к своей строке" data-i18n-ru="📍 Найти себя" data-i18n-en="📍 Find me">📍 Найти себя</button>
     </div>
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;">
-      <button class="lb-filter-chip" id="lb-verified-filter" onclick="toggleVerifiedFilter()">✔ Только подтверждённые</button>
-      <button class="lb-filter-chip" id="lb-myclan-filter" onclick="toggleMyClanFilter()" style="display:none;">🏰 Только мой клан</button>
+      <button class="lb-filter-chip" id="lb-verified-filter" onclick="toggleVerifiedFilter()" data-i18n-ru="✔ Только подтверждённые" data-i18n-en="✔ Verified only">✔ Только подтверждённые</button>
+      <button class="lb-filter-chip" id="lb-myclan-filter" onclick="toggleMyClanFilter()" style="display:none;" data-i18n-ru="🏰 Только мой клан" data-i18n-en="🏰 My clan only">🏰 Только мой клан</button>
     </div>
     <div id="lb-col-header" style="display:flex;align-items:center;gap:.9rem;padding:.2rem .5rem .35rem;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;border-bottom:1px solid rgba(255,255,255,0.05);margin-bottom:.2rem;">
       <span style="width:2.2rem;flex-shrink:0;"></span>
       <span style="width:2rem;flex-shrink:0;"></span>
-      <span style="flex:1;">Игрок</span>
-      <span style="flex-shrink:0;" id="lb-col-value">Время</span>
-      <span class="lb-col-seen" style="min-width:5.5rem;text-align:right;flex-shrink:0;">Последний вход</span>
+      <span style="flex:1;" data-i18n-ru="Игрок" data-i18n-en="Player">Игрок</span>
+      <span style="flex-shrink:0;" id="lb-col-value" data-i18n-ru="Время" data-i18n-en="Time">Время</span>
+      <span class="lb-col-seen" style="min-width:5.5rem;text-align:right;flex-shrink:0;" data-i18n-ru="Последний вход" data-i18n-en="Last seen">Последний вход</span>
     </div>
     <div id="lb-list"></div>
     <div class="lb-pagination" id="lb-pagination" style="display:none;">
-      <button class="lb-page-btn" id="lb-prev" onclick="changePage(-1)">← Назад</button>
+      <button class="lb-page-btn" id="lb-prev" onclick="changePage(-1)" data-i18n-ru="← Назад" data-i18n-en="← Back">← Назад</button>
       <span class="lb-page-label" id="lb-page-label">Стр. 1</span>
-      <button class="lb-page-btn" id="lb-next" onclick="changePage(1)">Вперёд →</button>
+      <button class="lb-page-btn" id="lb-next" onclick="changePage(1)" data-i18n-ru="Вперёд →" data-i18n-en="Next →">Вперёд →</button>
     </div>
   </div>
 </div>
@@ -485,6 +490,10 @@ let _expandedPlayer = null;
 
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
 // getUser, esc, nameGradient — defined in common.js
+// Small local i18n helper for strings this page rewrites at runtime (page label, metric
+// toggle, server-name fallback) — _applyI18n() in common.js only handles static
+// data-i18n-ru/-en markup, not text a script reassigns afterwards.
+function _t(ru, en) { return localStorage.getItem('_lang') === 'en' ? en : ru; }
 /* ── RU pluralization (same shape as clans.html's local copy — not in common.js) ── */
 function pluralRu(n, one, few, many) {
   const mod10 = n % 10, mod100 = n % 100;
@@ -654,7 +663,7 @@ function applySiteBackground(bg) {
     const title = (d.site_title || 'V Rising').trim();
     document.title = `${title} — Игроки`;
     applySiteBackground(d.bg_image_url);
-    document.getElementById('lb-server1-btn').textContent = (d.server_name || '').trim() || 'Сервер 1';
+    document.getElementById('lb-server1-btn').textContent = (d.server_name || '').trim() || _t('Сервер 1', 'Server 1');
     const srv2Name = (d.server2_name || '').trim();
     if (srv2Name) {
       const btn2 = document.getElementById('lb-server2-btn');
@@ -672,11 +681,11 @@ function setMetric(metric, btn) {
   // — not per-server, not time-bucketed — so the server/period toggles don't apply.
   document.getElementById('lb-server-toggle').style.display = isPoints ? 'none' : '';
   document.getElementById('lb-period-toggle').style.display = isPoints ? 'none' : '';
-  document.getElementById('lb-col-value').textContent = isPoints ? 'Очки' : 'Время';
-  document.getElementById('lb-stat-leader-label').textContent = isPoints ? 'Лидер по очкам' : 'Лидер сервера';
+  document.getElementById('lb-col-value').textContent = isPoints ? _t('Очки', 'Points') : _t('Время', 'Time');
+  document.getElementById('lb-stat-leader-label').textContent = isPoints ? _t('Лидер по очкам', 'Points leader') : _t('Лидер сервера', 'Server leader');
   document.getElementById('lb-subtitle').textContent = isPoints
-    ? 'Рейтинг по балансу очков'
-    : 'Рейтинг по суммарному времени в игре';
+    ? _t('Рейтинг по балансу очков', 'Ranked by points balance')
+    : _t('Рейтинг по суммарному времени в игре', 'Ranked by total time played');
   document.getElementById('lb-search').value = '';
   updateFilterVisibility();
   loadLeaderboard();
@@ -971,15 +980,15 @@ async function loadLeaderboard() {
     }
     if (!items.length) {
       if (_page > 1) {
-        list.innerHTML = emptyState('📜','Конец списка','Больше игроков нет на этой странице');
+        list.innerHTML = emptyState('📜', _t('Конец списка', 'End of list'), _t('Больше игроков нет на этой странице', 'No more players on this page'));
       } else if (isPoints) {
-        list.innerHTML = emptyState('💎','Таблица пуста','Пока никто не заработал очки — играйте, чтобы попасть в рейтинг');
+        list.innerHTML = emptyState('💎', _t('Таблица пуста', 'Table is empty'), _t('Пока никто не заработал очки — играйте, чтобы попасть в рейтинг', 'No one has earned points yet — play to make the rankings'));
       } else if (_clanOnly && _myClanId) {
-        list.innerHTML = emptyState('🏰','В клане пока никого нет','Статистика по вашему клану ещё не накопилась');
+        list.innerHTML = emptyState('🏰', _t('В клане пока никого нет', 'No one in the clan yet'), _t('Статистика по вашему клану ещё не накопилась', 'Stats for your clan haven’t accumulated yet'));
       } else if (_period !== 'all') {
-        list.innerHTML = emptyState('📅','Нет данных за период','Попробуйте выбрать «Всё время»');
+        list.innerHTML = emptyState('📅', _t('Нет данных за период', 'No data for this period'), _t('Попробуйте выбрать «Всё время»', 'Try selecting “All time”'));
       } else {
-        list.innerHTML = emptyState('🏹','Таблица пуста','На этом сервере статистика ещё не накоплена');
+        list.innerHTML = emptyState('🏹', _t('Таблица пуста', 'Table is empty'), _t('На этом сервере статистика ещё не накоплена', 'Stats for this server haven’t accumulated yet'));
       }
       renderPodium([]);
     } else {
@@ -997,13 +1006,13 @@ async function loadLeaderboard() {
     const periodEl = document.getElementById('lb-stat-period-val');
     if (onlineEl) onlineEl.textContent = isPoints ? '—' : (_onlineNames.size > 0 ? _onlineNames.size : '0');
     if (leaderEl && items.length) leaderEl.textContent = items[0].player_name || '—';
-    if (periodEl) periodEl.textContent = isPoints ? 'Всё время' : (_period === 'week' ? 'Неделя' : _period === 'month' ? 'Месяц' : _period === 'day' ? 'Сутки' : 'Всё время');
+    if (periodEl) periodEl.textContent = isPoints ? _t('Всё время', 'All time') : (_period === 'week' ? _t('Неделя', 'Week') : _period === 'month' ? _t('Месяц', 'Month') : _period === 'day' ? _t('Сутки', 'Day') : _t('Всё время', 'All time'));
     pag.style.display = (items.length === PER_PAGE || _page > 1) ? 'flex' : 'none';
-    document.getElementById('lb-page-label').textContent = `Стр. ${_page}`;
+    document.getElementById('lb-page-label').textContent = `${_t('Стр.', 'Page')} ${_page}`;
     document.getElementById('lb-prev').disabled = _page <= 1;
     document.getElementById('lb-next').disabled = items.length < PER_PAGE;
   } catch {
-    list.innerHTML = emptyState('⚠','Ошибка загрузки','Не удалось получить данные — попробуйте обновить страницу');
+    list.innerHTML = emptyState('⚠', _t('Ошибка загрузки', 'Loading error'), _t('Не удалось получить данные — попробуйте обновить страницу', 'Failed to load data — try refreshing the page'));
   } finally {
     hideFetchBar();
   }

@@ -667,3 +667,37 @@ async function logout() {
   localStorage.removeItem('token'); sessionStorage.removeItem('token');
   window.location.href = '/login.html';
 }
+
+// ── Language toggle (UI chrome only — news/pitch/testimonials/settings text is
+//    admin-authored Russian and is NOT machine-translated by this toggle). Moved here
+//    from index.js (was homepage-only) so the mechanism and the '_lang' preference are
+//    shared site-wide: any page can opt in by adding data-i18n-ru/data-i18n-en
+//    attributes on translatable static text and a #lang-toggle-btn element in its nav.
+//    Pages with neither are unaffected — querySelectorAll finds nothing and the button
+//    lookup is null-guarded. ──
+function _applyI18n() {
+  const lang = localStorage.getItem('_lang') === 'en' ? 'en' : 'ru';
+  document.querySelectorAll('[data-i18n-ru]').forEach(el => {
+    el.textContent = lang === 'en' ? el.dataset.i18nEn : el.dataset.i18nRu;
+  });
+  document.querySelectorAll('[data-i18n-ph-ru]').forEach(el => {
+    el.placeholder = lang === 'en' ? el.dataset.i18nPhEn : el.dataset.i18nPhRu;
+  });
+  document.querySelectorAll('[data-i18n-title-ru]').forEach(el => {
+    el.title = lang === 'en' ? el.dataset.i18nTitleEn : el.dataset.i18nTitleRu;
+  });
+  document.querySelectorAll('[data-i18n-aria-ru]').forEach(el => {
+    el.setAttribute('aria-label', lang === 'en' ? el.dataset.i18nAriaEn : el.dataset.i18nAriaRu);
+  });
+  document.documentElement.lang = lang;
+  document.querySelectorAll('#lang-toggle-btn').forEach(btn => {
+    btn.textContent = lang === 'en' ? 'RU' : 'EN';
+  });
+}
+function toggleLanguage() {
+  const next = localStorage.getItem('_lang') === 'en' ? 'ru' : 'en';
+  localStorage.setItem('_lang', next);
+  _applyI18n();
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _applyI18n);
+else _applyI18n();
