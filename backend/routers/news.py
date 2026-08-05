@@ -19,7 +19,7 @@ from ..database import get_db
 from ..models import User, News, Comment, PageView, Reaction, RevokedToken, CommentReaction, Notification, Setting
 from ..auth import get_admin_user, get_current_user, is_at_least, SECRET_KEY, ALGORITHM, COOKIE_NAME
 from ..rate_limit import limiter
-from ..helpers import _audit, _send_notification_email
+from ..helpers import _audit, _send_notification_email, send_push
 from ..schemas import (
     PaginatedNews,
     NewsListOut,
@@ -318,6 +318,12 @@ async def add_comment(
                 }, ensure_ascii=False)
             ))
             await db.commit()
+            asyncio.create_task(send_push(
+                parent_c.author_id,
+                "Новый ответ на комментарий",
+                f"{current_user.username}: {body.content[:100]}",
+                f"/?news={slug}&comment={comment.id}",
+            ))
             # Send email notification
             parent_user = await db.get(User, parent_c.author_id)
             if parent_user and parent_user.email:
@@ -350,6 +356,7 @@ async def add_comment(
         mentioned_res = await db.execute(
             select(User).where(func.lower(User.username).in_([n.lower() for n in mentioned_names]), User.is_active == True)
         )
+        notified_mention_ids = []
         for mentioned_user in mentioned_res.scalars().all():
             if mentioned_user.id in skip_id:
                 continue
@@ -364,7 +371,15 @@ async def add_comment(
                     "preview": body.content[:100],
                 }, ensure_ascii=False),
             ))
+            notified_mention_ids.append(mentioned_user.id)
         await db.commit()
+        for notified_id in notified_mention_ids:
+            asyncio.create_task(send_push(
+                notified_id,
+                "Вас упомянули",
+                f"{current_user.username}: {body.content[:100]}",
+                f"/?news={slug}&comment={comment.id}",
+            ))
 
     return {
         "id": comment.id,

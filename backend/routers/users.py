@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 from datetime import datetime, timedelta, timezone
@@ -11,7 +12,7 @@ from sqlalchemy import select, func, text, or_
 from ..database import get_db
 from ..models import User, PlayerRecord, PlayerRankSnapshot, GameClan, GameClanMember, Comment, Reaction, News, PlayerDailyActivity, Notification
 from ..auth import get_moderator_user, get_admin_user, get_superadmin_user, role_level
-from ..helpers import log_audit, _audit, _fmt_dt, _award_points
+from ..helpers import log_audit, _audit, _fmt_dt, _award_points, send_push
 from ..schemas import UserOut, LinkedAccountOut
 
 router = APIRouter()
@@ -410,6 +411,9 @@ async def bulk_user_action(
 
     await log_audit(db, current_user, f"bulk_{body.action}", f"ids={body.user_ids} affected={affected}")
     await db.commit()
+    if body.action == "grant_points":
+        for u in rows:
+            asyncio.create_task(send_push(u.id, "Начислены очки", f"{body.points:+d} очков", "/profile.html"))
     return {"affected": affected}
 
 

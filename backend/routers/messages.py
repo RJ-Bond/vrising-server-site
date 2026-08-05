@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Optional
 
@@ -9,7 +10,7 @@ from sqlalchemy import select, func
 from ..database import get_db
 from ..models import User, Message, Notification
 from ..auth import get_current_user, get_admin_user
-from ..helpers import _audit
+from ..helpers import _audit, send_push
 from ..rate_limit import limiter
 from ..schemas import strip_html_tags
 
@@ -63,6 +64,12 @@ async def send_message(
         }, ensure_ascii=False),
     ))
     await db.commit()
+    asyncio.create_task(send_push(
+        recipient.id,
+        "Новое сообщение",
+        f"{current_user.username}: {msg.content[:100]}",
+        f"/?dm={current_user.username}",
+    ))
     return {
         "id": msg.id,
         "sender": current_user.username,
@@ -117,6 +124,13 @@ async def broadcast_message(
     await _audit(db, current_user.id, "broadcast.send", target_type="broadcast", target_id=None,
                  detail=f"{len(recipients)} получателей ({body.role or 'все'}): {content[:100]}")
     await db.commit()
+    for recipient in recipients:
+        asyncio.create_task(send_push(
+            recipient.id,
+            "Сообщение от администрации",
+            f"{current_user.username}: {content[:100]}",
+            f"/?dm={current_user.username}",
+        ))
     return {"sent": len(recipients)}
 
 

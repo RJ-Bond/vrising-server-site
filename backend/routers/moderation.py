@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import io
 import json
@@ -13,7 +14,7 @@ from ..database import get_db
 from ..models import User, Ban, Warning, BanAppeal, ModerationLogEntry, WarnEscalationState, Notification
 from ..auth import get_admin_user, get_superadmin_user
 from ..rate_limit import limiter
-from ..helpers import _require_plugin_key, _fmt_dt_z, _force_unban, _audit, _get_server_names, _get_linked_usernames
+from ..helpers import _require_plugin_key, _fmt_dt_z, _force_unban, _audit, _get_server_names, _get_linked_usernames, send_push
 from ..schemas import (
     PluginWarnIn,
     PluginBanIn,
@@ -487,6 +488,13 @@ async def resolve_ban_appeal(
             data=json.dumps({"approved": body.approve, "admin_response": body.admin_response or ""}, ensure_ascii=False),
         ))
     await db.commit()
+    if linked_user is not None:
+        asyncio.create_task(send_push(
+            linked_user.id,
+            "Апелляция рассмотрена",
+            "Апелляция одобрена, бан снят" if body.approve else "Апелляция отклонена",
+            "/profile.html",
+        ))
     return {"success": True}
 
 

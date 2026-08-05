@@ -295,6 +295,25 @@ class Notification(Base):
     __table_args__ = (Index("ix_notifications_user", "user_id", "read"),)
 
 
+class PushSubscription(Base):
+    """One row per browser/device the user has opted into Web Push on (see POST
+    /api/push/subscribe in backend/routers/notifications.py). endpoint/p256dh/auth are
+    exactly the three fields of the PushSubscription.toJSON() the frontend gets back
+    from `registration.pushManager.subscribe()` — endpoint is the push service URL
+    (unique per browser+device+site, so it doubles as the natural upsert key), p256dh/
+    auth are the subscriber's public key + auth secret used to encrypt the payload
+    (see send_push() in helpers.py). Not tied 1:1 to a session/JWT — a user can be
+    subscribed on several devices at once, all of which get pushed to."""
+    __tablename__ = "push_subscriptions"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    endpoint = Column(String(512), unique=True, nullable=False)
+    p256dh = Column(String(255), nullable=False)
+    auth = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    __table_args__ = (Index("ix_push_subscriptions_user", "user_id"),)
+
+
 class Message(Base):
     __tablename__ = "messages"
     id = Column(Integer, primary_key=True, index=True)

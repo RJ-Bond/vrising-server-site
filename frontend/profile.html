@@ -514,6 +514,17 @@
       </div>
     </div>
 
+    <!-- Web Push -->
+    <div id="push-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Push-уведомления —</h2>
+      <div id="push-status" style="font-size:.82rem;color:var(--muted);margin-bottom:.85rem;">Загрузка…</div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+        <button id="push-enable-btn" onclick="enablePush()" class="btn" style="font-size:.75rem;display:none;">Включить push-уведомления</button>
+        <button id="push-disable-btn" onclick="disablePush()" class="btn btn-ghost" style="font-size:.75rem;display:none;">Отключить</button>
+      </div>
+      <div id="push-msg" style="font-size:.75rem;margin-top:.4rem;display:none;"></div>
+    </div>
+
   </div><!-- /tab-panel-security -->
 
   <!-- TAB: Очки — points ledger + own redemption history, see
@@ -1041,6 +1052,7 @@ async function loadProfile() {
     applyCoverUrl(u.cover_url);
     loadActivity(u.username);
     _initTwoFACard(u.totp_enabled || false);
+    initPushCard();
     document.getElementById('profile-name').textContent  = u.username;
     document.getElementById('profile-email').textContent = u.email;
 
@@ -1502,6 +1514,109 @@ async function disableTwoFA() {
     show('2FA отключена', true);
     setTimeout(() => _initTwoFACard(false), 1500);
   } catch { show('Ошибка соединения', false); }
+}
+
+// ── Push notifications ──────────────────────────────────────────────────────
+// Opt-in Web Push: subscribe() registers this browser/device with the backend (see
+// POST /api/push/subscribe in backend/routers/notifications.py); send_push() in
+// backend/helpers.py then fans out to it alongside every in-app Notification. Status
+// is read straight from the browser's own PushManager subscription, not a server flag
+// — matches what "Отключить" in this browser would actually undo.
+function _urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+async function initPushCard() {
+  const statusEl = document.getElementById('push-status');
+  const enableBtn = document.getElementById('push-enable-btn');
+  const disableBtn = document.getElementById('push-disable-btn');
+  if (!statusEl) return;
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    statusEl.textContent = 'Push-уведомления не поддерживаются этим браузером';
+    enableBtn.style.display = 'none';
+    disableBtn.style.display = 'none';
+    return;
+  }
+  if (Notification.permission === 'denied') {
+    statusEl.innerHTML = '<span style="color:#f87171;">✘ Уведомления заблокированы</span> — разрешите их в настройках браузера для этого сайта';
+    enableBtn.style.display = 'none';
+    disableBtn.style.display = 'none';
+    return;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      statusEl.innerHTML = '<span style="color:#4ade80;">✔ Push-уведомления включены</span> на этом устройстве';
+      enableBtn.style.display = 'none';
+      disableBtn.style.display = '';
+    } else {
+      statusEl.textContent = 'Получайте уведомления об ответах, сообщениях и других событиях, даже когда сайт закрыт';
+      enableBtn.style.display = '';
+      disableBtn.style.display = 'none';
+    }
+  } catch {
+    statusEl.textContent = 'Не удалось проверить статус push-уведомлений';
+    enableBtn.style.display = '';
+    disableBtn.style.display = 'none';
+  }
+}
+
+async function enablePush() {
+  const msg = document.getElementById('push-msg');
+  const show = (t, ok) => { msg.textContent=t; msg.style.color=ok?'#4ade80':'#f87171'; msg.style.display=''; };
+  try {
+    const keyRes = await fetch(`${API}/push/vapid-public-key`, {credentials:'include'});
+    const keyData = await keyRes.json().catch(()=>({}));
+    if (!keyData.public_key) return show('Push-уведомления не настроены на сервере', false);
+
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return show('Разрешение на уведомления не выдано', false);
+
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(keyData.public_key),
+      });
+    }
+    const subJson = sub.toJSON();
+    const res = await fetch(`${API}/push/subscribe`, {
+      method: 'POST', credentials: 'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({endpoint: subJson.endpoint, keys: subJson.keys}),
+    });
+    if (!res.ok) return show('Ошибка сохранения подписки', false);
+    show('Push-уведомления включены!', true);
+    initPushCard();
+  } catch {
+    show('Ошибка соединения', false);
+  }
+}
+
+async function disablePush() {
+  const msg = document.getElementById('push-msg');
+  const show = (t, ok) => { msg.textContent=t; msg.style.color=ok?'#4ade80':'#f87171'; msg.style.display=''; };
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      await fetch(`${API}/push/subscribe`, {
+        method: 'DELETE', credentials: 'include',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({endpoint: sub.endpoint}),
+      });
+      await sub.unsubscribe();
+    }
+    show('Push-уведомления отключены', true);
+    initPushCard();
+  } catch {
+    show('Ошибка соединения', false);
+  }
 }
 
 loadProfile();

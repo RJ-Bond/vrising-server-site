@@ -2,6 +2,8 @@
 router modules (backend/routers/*.py) can import them without importing main.py itself
 (which would be circular once main.py imports the routers). Pure relocation — no logic
 changes; see the "Split backend/main.py into routers" plan for the rationale."""
+import asyncio
+import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -12,11 +14,12 @@ from pathlib import Path
 from typing import Optional
 from fastapi import Depends, HTTPException, Request, Response
 from PIL import Image
+from pywebpush import webpush, WebPushException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 
 from .database import get_db
-from .models import User, AuditLog, ServerApiKey, Setting, PointsTransaction, Ban, PluginHeartbeat, ScheduledRestart
+from .models import User, AuditLog, ServerApiKey, Setting, PointsTransaction, Ban, PluginHeartbeat, ScheduledRestart, PushSubscription
 from .auth import COOKIE_NAME
 
 logger = logging.getLogger(__name__)
@@ -278,6 +281,90 @@ async def _send_notification_email(to_email: str, subject: str, body_text: str, 
     except Exception as e:
         logger.error("Failed to send notification email: %s", e)
         return False
+
+
+# ─── Web Push ─────────────────────────────────────────────────────────────────
+# VAPID keypair identifies this server to push services (browser vendors), not any one
+# user — same keypair for every subscription. Generate with `python scripts/generate_vapid_keys.py`
+# (prints an env-ready private/public pair), store the private half server-side only
+# (VAPID_PRIVATE_KEY), and expose the public half to the frontend via
+# GET /api/push/vapid-public-key (see backend/routers/notifications.py) for
+# `pushManager.subscribe({applicationServerKey: ...})`. Unset VAPID_PRIVATE_KEY = push
+# silently disabled (send_push() no-ops), same "off by default, no crash" posture as
+# SENTRY_DSN.
+VAPID_PRIVATE_KEY = os.getenv("VAPID_PRIVATE_KEY", "")
+VAPID_PUBLIC_KEY = os.getenv("VAPID_PUBLIC_KEY", "")
+# "sub" claim of the VAPID JWT — must be a mailto: or https: URL identifying the
+# sender, per RFC 8292. Push services (e.g. Mozilla's) may use it to contact the
+# operator about a misbehaving sender; it is not shown to end users.
+VAPID_CLAIMS_SUB = os.getenv("VAPID_CLAIMS_SUB", "mailto:admin@example.com")
+
+
+async def send_push(user_id: int, title: str, body: str, url: str = "/") -> None:
+    """Best-effort Web Push fan-out to every device the user has subscribed on (see
+    PushSubscription in models.py) — always ALONGSIDE the in-app `Notification` row
+    callers already `db.add()`, never a replacement for it. Must never raise: a
+    misconfigured/unset VAPID key, a network hiccup, or an expired subscription would
+    otherwise turn a like/reply/points-grant into a 500 for the *acting* user, who has
+    nothing to do with the *recipient's* push setup. Expired/unregistered subscriptions
+    (push service replies 404/410) are pruned so a dead endpoint doesn't get retried
+    forever; anything else is logged and swallowed.
+
+    Deliberately opens its own DB session (via database.AsyncSessionLocal, looked up on
+    the module at call time so tests that monkeypatch it — see conftest.py's db_engine
+    fixture — still take effect) rather than accepting the caller's `db` as a parameter.
+    Every call site fires this via `asyncio.create_task(send_push(...))` so a slow/
+    unreachable push service can't add latency to the user-facing request; reusing the
+    request's own AsyncSession from a detached task would race its teardown (FastAPI
+    closes it right after the endpoint returns, which can happen before the task gets a
+    turn on the event loop).
+    """
+    if not VAPID_PRIVATE_KEY:
+        return  # push not configured on this deployment
+    from . import database
+
+    try:
+        async with database.AsyncSessionLocal() as db:
+            res = await db.execute(select(PushSubscription).where(PushSubscription.user_id == user_id))
+            subs = res.scalars().all()
+            if not subs:
+                return
+
+            payload = json.dumps({"title": title, "body": body, "url": url}, ensure_ascii=False)
+            stale_ids = []
+            for sub in subs:
+                try:
+                    # pywebpush's webpush() is a blocking (requests-based) call — run it
+                    # off the event loop thread so one slow/unreachable push service
+                    # can't stall every other coroutine on this worker.
+                    await asyncio.to_thread(
+                        webpush,
+                        subscription_info={
+                            "endpoint": sub.endpoint,
+                            "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
+                        },
+                        data=payload,
+                        vapid_private_key=VAPID_PRIVATE_KEY,
+                        vapid_claims={"sub": VAPID_CLAIMS_SUB},
+                        ttl=86400,
+                        timeout=10,
+                    )
+                except WebPushException as e:
+                    status_code = getattr(e.response, "status_code", None)
+                    if status_code in (404, 410):
+                        stale_ids.append(sub.id)
+                    else:
+                        logger.warning("send_push: webpush failed for user %s (status %s): %s", user_id, status_code, e)
+                except Exception:
+                    logger.warning("send_push: unexpected error pushing to user %s", user_id, exc_info=True)
+
+            if stale_ids:
+                await db.execute(delete(PushSubscription).where(PushSubscription.id.in_(stale_ids)))
+                await db.commit()
+    except Exception:
+        # Catches session-open/query/commit failures above — same "never break the
+        # caller" contract as the per-subscription try/except inside the loop.
+        logger.warning("send_push: unexpected error sending to user %s", user_id, exc_info=True)
 
 
 # ─── Game Plugin Integration ──────────────────────────────────────────────────
