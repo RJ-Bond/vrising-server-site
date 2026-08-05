@@ -706,17 +706,21 @@
 
     /* ── Left nav compact mode (index.js's toggleLeftPanelCompact) — icon-only rail
        for a returning visitor who doesn't need the full labelled nav every time.
-       Desktop-only (min-width:769px guard) — below that the panel becomes the
-       mobile slide-out drawer (see the 768px block further down), which already
-       has its own full-width/full-label rules; without this guard
-       `.left-panel.compact`'s higher selector specificity would win over those
-       and leave a returning visitor's saved compact preference wrongly shrinking
-       the mobile drawer too.
+       Desktop-only (min-width:1025px guard) — at or below 1024px the layout
+       already stacks main-grid into a single column with `.side-panel{width:
+       100%!important}` (see that block further down), and at 768px the panel
+       additionally becomes the mobile slide-out drawer with its own full-width/
+       full-label rules; without this guard `.left-panel.compact`'s higher
+       selector specificity would win over either of those and leave a returning
+       visitor's saved compact preference wrongly shrinking the stacked/drawer
+       layout to a squashed 70px column instead of the intended full-width row
+       (this happened once already at the 768px boundary — same bug, different
+       breakpoint the first fix didn't account for).
        The logged-in user card (avatar/name/role-badge/join-date/action-icons)
        also has to collapse here — it was originally left full-width on the
        assumption a name+badge would just wrap, but at 70px it actually overflows
        past the panel's edge instead (the badge has no wrap-safe width limit). ── */
-    @media (min-width:769px) {
+    @media (min-width:1025px) {
       .left-panel.compact { width:70px !important; }
       .left-panel.compact .nav-link-item { justify-content:center; padding:.55rem; }
       .left-panel.compact .nav-link-item span { display:none; }
@@ -734,8 +738,10 @@
     .left-panel.compact #left-panel-compact-btn svg { transform:rotate(180deg); }
     /* !important needed here: the button has an inline style="display:flex" (see
        index.html), which without !important would always win over this rule
-       regardless of the media query — the button silently never hid on mobile. */
-    @media (max-width:768px) { #left-panel-compact-btn { display:none !important; } }
+       regardless of the media query — the button silently never hid on mobile.
+       1024px to match the compact-mode guard above — no point showing a toggle
+       that no longer has any visual effect once the panel is stacked full-width. */
+    @media (max-width:1024px) { #left-panel-compact-btn { display:none !important; } }
 
     /* ── Trust stats bar ── */
     .home-stat-val { font-family:'Cinzel',serif; font-size:1.5rem; font-weight:700; color:var(--gold); line-height:1; }
