@@ -1,5 +1,7 @@
+import json
 import re
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -7,9 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text, or_
 
 from ..database import get_db
-from ..models import User, PlayerRecord, PlayerRankSnapshot, GameClan, GameClanMember, Comment, Reaction, News, PlayerDailyActivity
+from ..models import User, PlayerRecord, PlayerRankSnapshot, GameClan, GameClanMember, Comment, Reaction, News, PlayerDailyActivity, Notification
 from ..auth import get_moderator_user, get_admin_user, get_superadmin_user, role_level
-from ..helpers import log_audit, _audit, _fmt_dt
+from ..helpers import log_audit, _audit, _fmt_dt, _award_points
 from ..schemas import UserOut, LinkedAccountOut
 
 router = APIRouter()
@@ -361,7 +363,8 @@ async def get_user_activity(username: str, db: AsyncSession = Depends(get_db)):
 
 class BulkUserAction(BaseModel):
     user_ids: list[int]
-    action: str  # "ban", "unban", "delete"
+    action: str  # "ban", "unban", "delete", "grant_points"
+    points: Optional[int] = None  # required for "grant_points" — may be negative (correction)
 
 
 @router.post("/api/admin/users/bulk")
@@ -370,12 +373,14 @@ async def bulk_user_action(
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if body.action not in ("ban", "unban", "delete"):
+    if body.action not in ("ban", "unban", "delete", "grant_points"):
         raise HTTPException(400, "Invalid action")
     if not body.user_ids:
         raise HTTPException(400, "No user IDs provided")
     if len(body.user_ids) > 100:
         raise HTTPException(400, "Too many users (max 100)")
+    if body.action == "grant_points" and not body.points:
+        raise HTTPException(400, "points is required for grant_points")
 
     candidates = (await db.execute(
         select(User).where(User.id.in_(body.user_ids))
@@ -395,7 +400,50 @@ async def bulk_user_action(
         elif body.action == "delete":
             await db.delete(u)
             affected += 1
+        elif body.action == "grant_points":
+            await _award_points(db, u, body.points, "admin_adjust", "bulk grant")
+            db.add(Notification(
+                user_id=u.id, type="points_grant",
+                data=json.dumps({"delta": body.points, "reason": "admin_adjust", "note": "bulk grant"}, ensure_ascii=False),
+            ))
+            affected += 1
 
     await log_audit(db, current_user, f"bulk_{body.action}", f"ids={body.user_ids} affected={affected}")
+    await db.commit()
+    return {"affected": affected}
+
+
+class BulkRoleChange(BaseModel):
+    user_ids: list[int]
+    role: str
+
+
+@router.post("/api/admin/users/bulk-role")
+async def bulk_role_change(
+    body: BulkRoleChange,
+    current_user: User = Depends(get_superadmin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Separate endpoint (not folded into /bulk above) because single-user role change
+    is superadmin-only (PUT /api/admin/users/{id}/role, get_superadmin_user) while the
+    other bulk actions are plain-admin — folding this in would have meant either
+    loosening role-change to admins or tightening ban/unban/delete to superadmins,
+    both real behavior changes to existing endpoints, not just an addition."""
+    if body.role not in ("user", "moderator", "admin", "superadmin"):
+        raise HTTPException(400, "Invalid role")
+    if not body.user_ids:
+        raise HTTPException(400, "No user IDs provided")
+    if len(body.user_ids) > 100:
+        raise HTTPException(400, "Too many users (max 100)")
+
+    candidates = (await db.execute(select(User).where(User.id.in_(body.user_ids)))).scalars().all()
+    rows = [u for u in candidates if u.id != current_user.id and role_level(u.role) < role_level(current_user.role)]
+
+    affected = 0
+    for u in rows:
+        u.role = body.role
+        affected += 1
+
+    await log_audit(db, current_user, "bulk_role_change", f"ids={body.user_ids} role={body.role} affected={affected}")
     await db.commit()
     return {"affected": affected}

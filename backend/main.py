@@ -253,7 +253,7 @@ async def lifespan(app: FastAPI):
             "CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY, reporter_id INTEGER REFERENCES users(id) ON DELETE SET NULL, target_type VARCHAR(32) NOT NULL, target_id INTEGER NOT NULL, reason VARCHAR(512) NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'pending', admin_note TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, reviewed_at DATETIME)",
             "CREATE TABLE IF NOT EXISTS polls (id INTEGER PRIMARY KEY, news_id INTEGER REFERENCES news(id) ON DELETE CASCADE, question VARCHAR(256) NOT NULL, multiple BOOLEAN NOT NULL DEFAULT 0, ends_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
             "CREATE TABLE IF NOT EXISTS poll_options (id INTEGER PRIMARY KEY, poll_id INTEGER REFERENCES polls(id) ON DELETE CASCADE, text VARCHAR(256) NOT NULL)",
-            "CREATE TABLE IF NOT EXISTS poll_votes (id INTEGER PRIMARY KEY, poll_id INTEGER REFERENCES polls(id) ON DELETE CASCADE, option_id INTEGER REFERENCES poll_options(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(poll_id, user_id))",
+            "CREATE TABLE IF NOT EXISTS poll_votes (id INTEGER PRIMARY KEY, poll_id INTEGER REFERENCES polls(id) ON DELETE CASCADE, option_id INTEGER REFERENCES poll_options(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(poll_id, option_id, user_id))",
             "CREATE TABLE IF NOT EXISTS page_views (id INTEGER PRIMARY KEY, path VARCHAR(256) NOT NULL, ip_hash VARCHAR(64), created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
             "CREATE INDEX IF NOT EXISTS ix_page_views_date ON page_views(created_at)",
             "CREATE TABLE IF NOT EXISTS error_logs (id INTEGER PRIMARY KEY, path VARCHAR(256) NOT NULL, method VARCHAR(8) NOT NULL DEFAULT 'GET', status_code INTEGER NOT NULL, error TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
@@ -328,6 +328,35 @@ async def lifespan(app: FastAPI):
                 await conn.execute(text(stmt))
             except Exception:
                 pass  # column already exists
+
+        # One-time fixup: poll_votes' UNIQUE constraint used to be (poll_id, user_id)
+        # instead of (poll_id, option_id, user_id), so a multiple=True poll's second
+        # option insert for one vote hit an IntegrityError (see PollVote's own
+        # docstring). SQLite can't ALTER a UNIQUE constraint in place, so this rebuilds
+        # the table under the fixed schema — a no-op once run once (checked via
+        # sqlite_master's stored CREATE TABLE text) or if the table was just created
+        # fresh above (already the fixed constraint in that case, so this never
+        # matches). Safe to copy every row as-is: the OLD constraint made a same-
+        # (poll_id, user_id) duplicate impossible to have ever been inserted.
+        row = (await conn.execute(text(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='poll_votes'"
+        ))).scalar_one_or_none()
+        if row and "UNIQUE(poll_id, user_id)" in row:
+            await conn.execute(text("ALTER TABLE poll_votes RENAME TO poll_votes_old"))
+            await conn.execute(text(
+                "CREATE TABLE poll_votes (id INTEGER PRIMARY KEY, "
+                "poll_id INTEGER REFERENCES polls(id) ON DELETE CASCADE, "
+                "option_id INTEGER REFERENCES poll_options(id) ON DELETE CASCADE, "
+                "user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, "
+                "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, "
+                "UNIQUE(poll_id, option_id, user_id))"
+            ))
+            await conn.execute(text(
+                "INSERT INTO poll_votes (id, poll_id, option_id, user_id, created_at) "
+                "SELECT id, poll_id, option_id, user_id, created_at FROM poll_votes_old"
+            ))
+            await conn.execute(text("DROP TABLE poll_votes_old"))
+            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_poll_votes_option ON poll_votes(option_id)"))
     async with AsyncSession(engine, expire_on_commit=False) as db:
         await _seed_defaults(db)
         await _migrate_admin_role_tiers(db)

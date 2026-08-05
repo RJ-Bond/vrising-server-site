@@ -340,13 +340,21 @@ class PollOption(Base):
 
 
 class PollVote(Base):
+    """One row per (poll, option, voter) — NOT one row per (poll, voter), since a
+    multiple=True poll needs to store more than one option per voter. The unique
+    constraint used to be just (poll_id, user_id), which made a second option insert
+    for the same multi-select vote hit an IntegrityError (see main.py's migration
+    block for the one-time table rebuild fixing already-deployed DBs). The
+    application-level "already voted" check in POST .../vote (one query, before any
+    insert) is what actually prevents re-voting — this constraint is just a last-line
+    guard against a double-submit race inserting the same option twice."""
     __tablename__ = "poll_votes"
     id = Column(Integer, primary_key=True, index=True)
     poll_id = Column(Integer, ForeignKey("polls.id", ondelete="CASCADE"), nullable=False)
     option_id = Column(Integer, ForeignKey("poll_options.id", ondelete="CASCADE"), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    __table_args__ = (UniqueConstraint("poll_id", "user_id", name="uq_poll_vote"),)
+    __table_args__ = (UniqueConstraint("poll_id", "option_id", "user_id", name="uq_poll_vote"),)
 
 
 class PageView(Base):

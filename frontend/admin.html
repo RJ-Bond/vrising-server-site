@@ -2029,6 +2029,7 @@
             <input type="checkbox" id="users-online-filter" class="site-checkbox" onchange="_usersPage=1;renderUsersTable()"> Только онлайн
           </label>
           <button id="users-csv-btn" onclick="exportUsersCsv()" class="btn-ghost" style="font-size:.75rem;" data-tip="Если выбраны пользователи — экспорт только выбранных">⬇ CSV</button>
+          <button onclick="openBroadcastModal()" class="btn-ghost" style="font-size:.75rem;" data-tip="Отправить сообщение всем игрокам или по роли">📢 Рассылка</button>
         </div>
       </div>
       <!-- Bulk panel -->
@@ -2037,6 +2038,14 @@
         <button onclick="executeBulk('ban')" style="font-size:.75rem;background:rgba(200,80,0,.2);border:1px solid rgba(200,100,0,.3);border-radius:.35rem;padding:.3rem .65rem;color:#fdba74;cursor:pointer;">🚫 Заблокировать</button>
         <button onclick="executeBulk('unban')" style="font-size:.75rem;background:rgba(0,150,80,.15);border:1px solid rgba(0,180,100,.25);border-radius:.35rem;padding:.3rem .65rem;color:#6ee7b7;cursor:pointer;">✅ Разблокировать</button>
         <button onclick="executeBulk('delete')" style="font-size:.75rem;background:rgba(180,0,28,.2);border:1px solid rgba(200,0,40,.3);border-radius:.35rem;padding:.3rem .65rem;color:#fca5a5;cursor:pointer;">🗑 Удалить</button>
+        <button onclick="bulkGrantPointsPrompt()" style="font-size:.75rem;background:rgba(201,169,74,.15);border:1px solid rgba(201,169,74,.35);border-radius:.35rem;padding:.3rem .65rem;color:var(--gold);cursor:pointer;">✦ Начислить очки</button>
+        <select id="bulk-role-select" style="display:none;font-size:.75rem;background:rgba(150,0,200,.15);border:1px solid rgba(190,0,240,.3);border-radius:.35rem;padding:.3rem .5rem;color:#e0a3ff;cursor:pointer;" onchange="bulkRoleChangePrompt(this)">
+          <option value="" selected disabled>Роль →</option>
+          <option value="user">Игрок</option>
+          <option value="moderator">Модератор</option>
+          <option value="admin">Админ</option>
+          <option value="superadmin">Суперадмин</option>
+        </select>
         <button onclick="clearBulk()" style="font-size:.72rem;background:none;border:none;color:var(--muted);cursor:pointer;margin-left:auto;">✕ Снять выделение</button>
       </div>
       <div id="users-table" class="glass-card rounded-xl overflow-hidden">
@@ -3051,6 +3060,7 @@ document.addEventListener('keydown', e => {
   if (typeof closeShopItemEditor === 'function') closeShopItemEditor();
   if (typeof closeTemplates === 'function') closeTemplates();
   if (typeof closeUserQv === 'function') closeUserQv();
+  if (typeof closeBroadcastModal === 'function') closeBroadcastModal();
 });
 
 // ─── Quick nav (Ctrl+K) ─────────────────────────────────────────────────────
@@ -4581,6 +4591,42 @@ function closeUserQv() {
   m.style.display = 'none';
 }
 
+function openBroadcastModal() {
+  document.getElementById('broadcast-role').value = '';
+  document.getElementById('broadcast-content').value = '';
+  const m = document.getElementById('broadcast-modal');
+  m.style.display = 'flex';
+}
+function closeBroadcastModal() {
+  document.getElementById('broadcast-modal').style.display = 'none';
+}
+async function sendBroadcast() {
+  const role = document.getElementById('broadcast-role').value;
+  const content = document.getElementById('broadcast-content').value.trim();
+  if (!content) { showToast('Введите текст сообщения', 'error'); return; }
+  const roleLabel = role ? (ROLE_LABELS[role] || role) : 'всем активным пользователям';
+  showConfirm({
+    title: 'Отправить рассылку?',
+    text: `Сообщение будет отправлено как личное каждому получателю (${roleLabel}). Отменить после отправки нельзя.`,
+    icon: '📢', okLabel: 'Отправить',
+    onOk: async () => {
+      const btn = document.getElementById('broadcast-send-btn');
+      const res = await fetch(`${API}/admin/broadcast`, {
+        method: 'POST', credentials: 'include', headers: authH(),
+        body: JSON.stringify({ content, role: role || null }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        showToast(`Отправлено: ${d.sent}`, 'success');
+        closeBroadcastModal();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.detail || 'Ошибка отправки', 'error');
+      }
+    },
+  });
+}
+
 async function loadUsers() {
   const res = await fetch(`${API}/admin/users`, { credentials: 'include', headers: authH() });
   if (!res.ok) { handleAuth(res); return; }
@@ -5864,9 +5910,13 @@ function _onUserCheck() {
   const ids = _getCheckedUserIds();
   const panel = document.getElementById('bulk-panel');
   const countEl = document.getElementById('bulk-count');
+  const roleSel = document.getElementById('bulk-role-select');
   if (ids.length > 0) {
     panel.style.display = 'flex';
     countEl.textContent = `Выбрано: ${ids.length}`;
+    // Bulk role-change hits a superadmin-only endpoint (same tier as the single-user
+    // role dropdown elsewhere in this table) — hide it for anyone who'd just get a 403.
+    if (roleSel) roleSel.style.display = meetsRole('superadmin') ? '' : 'none';
   } else {
     panel.style.display = 'none';
   }
@@ -5901,6 +5951,60 @@ async function executeBulk(action) {
         loadUsers();
       } else {
         showToast('Ошибка выполнения операции', 'error');
+      }
+    },
+  });
+}
+
+function bulkGrantPointsPrompt() {
+  const ids = _getCheckedUserIds();
+  if (!ids.length) return;
+  const raw = prompt(`Сколько очков начислить каждому из ${ids.length} выбранных? (можно отрицательное число — коррекция)`);
+  if (raw === null) return;
+  const points = parseInt(raw, 10);
+  if (!points || Number.isNaN(points)) { showToast('Введите ненулевое число', 'error'); return; }
+  showConfirm({
+    title: `Начислить ${points > 0 ? '+' : ''}${points} очков?`,
+    text: `Будет применено сразу ко всем ${ids.length} выбранным аккаунтам.`,
+    icon: '✦', okLabel: 'Начислить',
+    onOk: async () => {
+      const r = await fetch(`${API}/admin/users/bulk`, {
+        method: 'POST', credentials: 'include', headers: authH(),
+        body: JSON.stringify({ user_ids: ids, action: 'grant_points', points }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        showToast(`Начислено: ${d.affected} пользователям`, 'success');
+        clearBulk();
+        loadUsers();
+      } else {
+        showToast('Ошибка начисления', 'error');
+      }
+    },
+  });
+}
+
+function bulkRoleChangePrompt(selectEl) {
+  const role = selectEl.value;
+  const ids = _getCheckedUserIds();
+  selectEl.value = '';
+  if (!role || !ids.length) return;
+  showConfirm({
+    title: `Изменить роль на «${ROLE_LABELS[role] || role}»?`,
+    text: `Будет применено сразу ко всем ${ids.length} выбранным аккаунтам. Пользователи с ролью выше вашей или вы сами затронуты не будут.`,
+    icon: '🛡', okLabel: 'Изменить',
+    onOk: async () => {
+      const r = await fetch(`${API}/admin/users/bulk-role`, {
+        method: 'POST', credentials: 'include', headers: authH(),
+        body: JSON.stringify({ user_ids: ids, role }),
+      });
+      if (r.ok) {
+        const d = await r.json();
+        showToast(`Роль изменена: ${d.affected} пользователям`, 'success');
+        clearBulk();
+        loadUsers();
+      } else {
+        showToast('Ошибка изменения роли', 'error');
       }
     },
   });
@@ -6800,6 +6904,34 @@ async function loadErrors(page = 1) {
       <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;"><span style="color:var(--muted);">Регистрация</span><span id="userqv-created" style="color:var(--muted);"></span></div>
     </div>
     <div id="userqv-actions" style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:center;"></div>
+  </div>
+</div>
+
+<!-- Broadcast modal -->
+<div id="broadcast-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;">
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);" onclick="closeBroadcastModal()"></div>
+  <div style="position:relative;background:rgba(14,5,22,0.97);border:1px solid rgba(180,0,35,0.4);border-radius:1rem;padding:1.75rem;max-width:420px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.7),0 0 32px rgba(180,0,35,0.15);">
+    <button onclick="closeBroadcastModal()" aria-label="Закрыть" style="position:absolute;top:.85rem;right:.85rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;padding:.2rem;">✕</button>
+    <h3 style="font-family:'Cinzel',serif;font-size:.95rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;margin-bottom:1.1rem;">📢 Массовая рассылка</h3>
+    <div class="s-field">
+      <label>Кому</label>
+      <select id="broadcast-role" class="dark-input">
+        <option value="">Все активные пользователи</option>
+        <option value="user">Только «Игрок»</option>
+        <option value="moderator">Только «Модератор»</option>
+        <option value="admin">Только «Админ»</option>
+        <option value="superadmin">Только «Суперадмин»</option>
+      </select>
+    </div>
+    <div class="s-field" style="margin-top:.75rem;">
+      <label>Сообщение</label>
+      <textarea id="broadcast-content" class="dark-input" rows="4" maxlength="2000" placeholder="Текст сообщения…" style="resize:vertical;"></textarea>
+    </div>
+    <p style="font-size:.72rem;color:var(--muted);margin-top:.5rem;">Придёт каждому получателю как личное сообщение от вас.</p>
+    <div style="display:flex;gap:.65rem;justify-content:flex-end;margin-top:1.25rem;">
+      <button onclick="closeBroadcastModal()" style="background:rgba(40,10,60,0.6);border:1px solid rgba(110,0,150,0.3);border-radius:.55rem;padding:.5rem 1.2rem;color:#9488a8;font-size:.8rem;cursor:pointer;">Отмена</button>
+      <button id="broadcast-send-btn" onclick="sendBroadcast()" style="background:linear-gradient(135deg,#7a0015,#b8001e);border:none;border-radius:.55rem;padding:.5rem 1.4rem;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;box-shadow:0 0 16px rgba(180,0,30,0.45);">Отправить</button>
+    </div>
   </div>
 </div>
 

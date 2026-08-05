@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,7 +7,7 @@ from sqlalchemy import select, func
 
 from ..database import get_db
 from ..models import User, News, Poll, PollOption, PollVote
-from ..auth import get_admin_user, get_current_user
+from ..auth import get_admin_user, get_current_user, get_optional_user
 from ..rate_limit import limiter
 from ..schemas import PollCreate
 
@@ -45,8 +46,8 @@ async def create_poll(
 @router.get("/api/news/{slug}/poll")
 async def get_poll(
     slug: str,
-    request: Request,
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     news = (await db.execute(select(News).where(News.slug == slug))).scalar_one_or_none()
     if not news:
@@ -63,17 +64,18 @@ async def get_poll(
     vote_map = {r.option_id: r.cnt for r in vote_rows}
     total_votes = sum(vote_map.values())
 
-    # get user voted options
+    # get user voted options — get_optional_user (a real FastAPI dependency, unlike
+    # calling get_current_user as a plain function used to be here) resolves both
+    # Bearer and cookie auth correctly and returns None for anonymous callers instead
+    # of raising, so this used to silently always see user_voted=[] regardless of
+    # auth method (the direct call left `credentials` as the unresolved Depends(...)
+    # sentinel object, .credentials on it threw, and the try/except swallowed it).
     user_voted: list[int] = []
-    try:
-        current_user = await get_current_user(request=request, db=db)
-        if current_user:
-            uv = (await db.execute(
-                select(PollVote.option_id).where(PollVote.poll_id == poll.id, PollVote.user_id == current_user.id)
-            )).scalars().all()
-            user_voted = list(uv)
-    except Exception:
-        pass
+    if current_user:
+        uv = (await db.execute(
+            select(PollVote.option_id).where(PollVote.poll_id == poll.id, PollVote.user_id == current_user.id)
+        )).scalars().all()
+        user_voted = list(uv)
 
     return {
         "id": poll.id,

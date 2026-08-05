@@ -1,8 +1,11 @@
+import csv
+import io
 import json
 from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Query
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
 
@@ -576,6 +579,47 @@ async def get_moderation_log(
     return {
         "log": [{**e, "created_at": _fmt_dt_z(e["created_at"])} for e in entries]
     }
+
+
+@router.get("/api/admin/export/moderation-log")
+async def export_moderation_log(
+    server_num: Optional[int] = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    """CSV counterpart to GET /api/admin/moderation-log above — same merge of
+    Ban/Warning/ModerationLogEntry (so warnings ARE covered here, just not as their own
+    separate export), but unlimited rather than capped at `limit` since an export is
+    meant to be the complete record, not a page of it."""
+    entries = (await get_moderation_log(limit=1_000_000, server_num=server_num, db=db, _=None))["log"]
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["action", "server_num", "admin_name", "target_name", "target_steam_id", "details", "created_at"])
+    for e in entries:
+        w.writerow([e["action"], e["server_num"], e["admin_name"], e["target_name"], e["target_steam_id"], e["details"], e["created_at"]])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]), media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=moderation_log.csv"},
+    )
+
+
+@router.get("/api/admin/export/appeals")
+async def export_appeals(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    rows = (await db.execute(select(BanAppeal).order_by(BanAppeal.created_at.desc()))).scalars().all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["id", "steam_id", "character_name", "status", "message", "admin_name", "admin_response", "created_at", "resolved_at"])
+    for a in rows:
+        w.writerow([a.id, a.steam_id, a.character_name, a.status, a.message, a.admin_name, a.admin_response, a.created_at, a.resolved_at])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]), media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=appeals.csv"},
+    )
 
 
 @router.delete("/api/admin/moderation-log")

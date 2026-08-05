@@ -8,7 +8,8 @@ from sqlalchemy import select, func
 
 from ..database import get_db
 from ..models import User, Message, Notification
-from ..auth import get_current_user
+from ..auth import get_current_user, get_admin_user
+from ..helpers import _audit
 from ..rate_limit import limiter
 from ..schemas import strip_html_tags
 
@@ -69,6 +70,54 @@ async def send_message(
         "content": msg.content,
         "created_at": msg.created_at.isoformat(),
     }
+
+
+class BroadcastBody(BaseModel):
+    content: str
+    role: Optional[str] = None  # None = every active user; else "user"|"moderator"|"admin"|"superadmin"
+
+    @field_validator("content")
+    @classmethod
+    def content_not_empty(cls, v: str) -> str:
+        v = strip_html_tags(v).strip()
+        if not v:
+            raise ValueError("Сообщение не может быть пустым")
+        if len(v) > 2000:
+            raise ValueError("Максимум 2000 символов")
+        return v
+
+
+@router.post("/api/admin/broadcast", status_code=201)
+async def broadcast_message(
+    body: BroadcastBody,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Sends body.content as a DM (same Message/Notification path as a normal 1:1
+    message — appears in the recipient's inbox, triggers the same notif-bell entry)
+    from the admin to every active user, optionally filtered to one role. There was
+    previously no way to reach more than one player at a time short of a per-user DM
+    loop by hand. A plain per-recipient insert loop, not a background job — fine at
+    this site's real user count; would need rethinking well before that stopped being
+    true."""
+    q = select(User).where(User.is_active == True, User.id != current_user.id)
+    if body.role:
+        q = q.where(User.role == body.role)
+    recipients = (await db.execute(q)).scalars().all()
+    if not recipients:
+        raise HTTPException(400, "Нет получателей")
+
+    content = body.content.strip()
+    for recipient in recipients:
+        db.add(Message(sender_id=current_user.id, recipient_id=recipient.id, content=content))
+        db.add(Notification(
+            user_id=recipient.id, type="message",
+            data=json.dumps({"from_username": current_user.username, "preview": content[:100]}, ensure_ascii=False),
+        ))
+    await _audit(db, current_user.id, "broadcast.send", target_type="broadcast", target_id=None,
+                 detail=f"{len(recipients)} получателей ({body.role or 'все'}): {content[:100]}")
+    await db.commit()
+    return {"sent": len(recipients)}
 
 
 @router.get("/api/messages/unread-count")
