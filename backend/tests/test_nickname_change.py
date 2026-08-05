@@ -3,7 +3,7 @@ chat command. The endpoint is the sole authority on validation/cost/cooldown/poi
 always returns 200 with {"ok": bool, ...} (never an HTTP error status for a business-rule
 rejection) so the plugin can relay "message" straight to chat. See the "Nickname change
 (plugin, spends points)" section in backend/routers/plugin_integration.py."""
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import select

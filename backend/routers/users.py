@@ -29,7 +29,7 @@ async def list_users(
 @router.put("/api/admin/users/{user_id}/role")
 async def change_role(
     user_id: int,
-    role: str = Query(..., regex="^(user|moderator|admin|superadmin)$"),
+    role: str = Query(..., pattern="^(user|moderator|admin|superadmin)$"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_superadmin_user),
 ):
