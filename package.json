@@ -5,9 +5,14 @@
   "devDependencies": {
     "eslint": "^10.8.0",
     "@eslint/js": "^10.0.1",
-    "globals": "^17.8.0"
+    "globals": "^17.8.0",
+    "playwright": "^1.62.1",
+    "pixelmatch": "^7.2.0",
+    "pngjs": "^7.0.0"
   },
   "scripts": {
-    "lint": "eslint frontend"
+    "lint": "eslint frontend",
+    "visual-regression": "node scripts/visual-regression.mjs",
+    "visual-regression:update": "node scripts/visual-regression.mjs --update"
   }
 }

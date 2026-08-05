@@ -17,3 +17,5 @@ frontend/.admin_mock*
 frontend/.nav_sim.js
 frontend/.index_nav_sim.html
 uv.lock
+.visual-regression-out/
+test-results/

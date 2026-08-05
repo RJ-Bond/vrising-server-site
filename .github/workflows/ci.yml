@@ -5,6 +5,10 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  # Lets a maintainer manually regenerate the visual-regression baselines (see
+  # the update-visual-baselines job below) from an actual ubuntu-latest runner,
+  # instead of trusting PNGs rendered on a dev machine's OS/font stack.
+  workflow_dispatch:
 
 jobs:
   backend:
@@ -35,6 +39,56 @@ jobs:
         run: npm ci
       - name: Lint (eslint) frontend/*.js
         run: bash scripts/lint_frontend.sh
+      # Visual regression: screenshots index/leaderboard/clans at desktop (1280)
+      # + mobile (390) against the committed baselines in
+      # .github/visual-baselines/, using mocked API responses (see
+      # scripts/public-mock-fetch.js) so the check doesn't need a live backend.
+      # Deliberately a HARD FAIL (not warn-only) — baselines are committed as
+      # of this workflow's introduction, so a failure here means a real pixel
+      # difference against ground truth, not an absent baseline. See
+      # scripts/visual-regression.mjs for the threshold, how to update a
+      # baseline after an intentional visual change, and a note on the
+      # Windows-vs-Linux font-rendering risk for the very first baseline set.
+      - name: Install Playwright browser (Chromium)
+        run: npx playwright install --with-deps chromium
+      - name: Visual regression (screenshot diff vs committed baselines)
+        run: node scripts/visual-regression.mjs
+      - name: Upload visual-regression diff artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: visual-regression-diffs
+          path: .visual-regression-out/
+          retention-days: 14
+
+  # Manual-only (workflow_dispatch) job to regenerate the visual-regression
+  # baselines FROM an actual ubuntu-latest runner — the same OS/font stack CI
+  # itself renders with on every push, unlike a baseline generated on a dev's
+  # Windows/macOS machine (font hinting/anti-aliasing differs enough between
+  # OSes to cause noisy false-positive diffs; see scripts/visual-regression.mjs).
+  # Run via the Actions tab ("Run workflow") after a real visual change, or to
+  # replace the initial dev-machine-generated baselines with CI-native ones.
+  # Deliberately does NOT auto-commit — downloads as a build artifact for a
+  # human to inspect and commit, matching this repo's manual-review-before-
+  # merge convention (same reasoning as the disabled auto-release job above).
+  update-visual-baselines:
+    name: Update visual-regression baselines (manual)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/visual-regression.mjs --update
+      - uses: actions/upload-artifact@v4
+        with:
+          name: visual-baselines
+          path: .github/visual-baselines/*.png
+          retention-days: 14
 
   # Every push to master that passes both jobs above gets an automatic semver tag
   # (vMAJOR.MINOR.PATCH, PATCH auto-incremented — see "Compute next version" below
