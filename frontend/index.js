@@ -259,22 +259,10 @@ if (localStorage.getItem('_leftPanelCompact') === '1') {
   });
 }
 
-// ── Language toggle (UI chrome only — news/pitch/testimonials/settings text
-//    is admin-authored Russian and is NOT machine-translated by this toggle) ──
-function _applyI18n() {
-  const lang = localStorage.getItem('_lang') === 'en' ? 'en' : 'ru';
-  document.querySelectorAll('[data-i18n-ru]').forEach(el => {
-    el.textContent = lang === 'en' ? el.dataset.i18nEn : el.dataset.i18nRu;
-  });
-  const btn = document.getElementById('lang-toggle-btn');
-  if (btn) btn.textContent = lang === 'en' ? 'RU' : 'EN';
-}
-function toggleLanguage() {
-  const next = localStorage.getItem('_lang') === 'en' ? 'ru' : 'en';
-  localStorage.setItem('_lang', next);
-  _applyI18n();
-}
-document.addEventListener('DOMContentLoaded', _applyI18n);
+// ── Language toggle: _applyI18n()/toggleLanguage() now live in common.js (shared
+//    across every page, not just this one) so the '_lang' preference persists across
+//    navigation and any page can opt in by adding data-i18n-ru/data-i18n-en attributes
+//    plus a #lang-toggle-btn. See common.js for the implementation. ──
 
 (() => {
   // ── Active nav link ─────────────────────────────────────────────────────

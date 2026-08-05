@@ -27,6 +27,8 @@ const commonJsDeclaredGlobals = {
   _toDate: 'readonly',
   _renderAdminBadge: 'readonly',
   _statusInfo: 'readonly',
+  _applyI18n: 'readonly',
+  toggleLanguage: 'readonly',
 };
 
 // These are only ever created via `window.foo = function(){...}` (property
