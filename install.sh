@@ -142,6 +142,24 @@ start_containers() {
     fi
     sleep 2
   done
+
+  # The `web` container already runs migrations itself on every boot, before it starts
+  # accepting requests (backend/main.py's lifespan() -> backend/db_migrate.py, which
+  # handles both a normal `alembic upgrade head` and — for a pre-Alembic existing DB —
+  # the one-time `stamp head` adoption; see that module's docstring) — the health-wait
+  # loop above having succeeded already implies migrations succeeded, since a failed
+  # migration crashes the app before it can ever bind and answer that health check. This
+  # call runs strictly AFTER that loop (never concurrently with the container's own
+  # migration attempt, which would otherwise mean two `alembic` processes racing the
+  # same sqlite file) and is expected to be an instant no-op — it exists purely to give
+  # `sudo js` a clear, explicit, loudly-failing line for this step rather than making an
+  # operator infer "migrations must be fine" from an unrelated health check.
+  log "Проверка миграций БД (alembic upgrade head)..."
+  if docker compose -f "$INSTALL_DIR/docker-compose.yml" --env-file "$INSTALL_DIR/.env" exec -T web python -m backend.db_migrate; then
+    ok "Миграции БД в актуальном состоянии."
+  else
+    die "Миграция БД завершилась ошибкой — сайт может работать со старой схемой. Проверьте: docker compose -f ${INSTALL_DIR}/docker-compose.yml logs web"
+  fi
 }
 
 # ════════════════════════════════════════════════════════════════════════════

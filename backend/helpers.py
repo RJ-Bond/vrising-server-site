@@ -6,6 +6,8 @@ import asyncio
 import json
 import logging
 import os
+import shutil
+import subprocess
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from zoneinfo import ZoneInfo
@@ -37,6 +39,49 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 # Shared with main.py's own _auto_backup_task (Background tasks, not yet split out) —
 # same reason UPLOAD_DIR lives here rather than in routers/admin_system.py.
 BACKUP_DIR = Path(os.getenv("BACKUP_DIR", "/data/backups"))
+
+# Optional offsite copy destination for the nightly auto-backup (_auto_backup_task in
+# backend/main.py). Unset (default) = offsite copy is skipped entirely; BACKUP_DIR alone
+# still gets its daily local backup either way — this only adds a second copy outside the
+# `db_data` Docker volume, so a lost/corrupted host disk doesn't take the only backup copy
+# down with it. There's no real remote-storage account to test against in this sandboxed
+# environment, so this is deliberately just "copy this file to a path on the local
+# filesystem" rather than talking to any specific cloud API — that path is expected to
+# already be a mounted destination (e.g. an rclone remote mounted via `rclone mount`, or a
+# plain NFS/SMB share bind-mounted into the `web` container). See README.md's "Резервные
+# копии" section for how to actually wire one up.
+BACKUP_REMOTE_PATH = os.getenv("BACKUP_REMOTE_PATH", "").strip()
+
+
+def copy_backup_offsite(src: Path) -> bool:
+    """Best-effort copy of a just-created local backup file to BACKUP_REMOTE_PATH, if
+    set. Returns whether a copy was attempted and succeeded (False for both "nothing to
+    do, BACKUP_REMOTE_PATH unset" and "attempted but failed") — never raises, since an
+    offsite copy failing (remote unmounted, disk full, permission denied) must never be
+    allowed to take down the local backup that already succeeded, or the retention
+    cleanup that runs after it in the caller.
+
+    Prefers `rsync` when the binary happens to be present (resumable, preserves mtime,
+    only transfers changed bytes on a retry of the same file) and falls back to a plain
+    `shutil.copy2` otherwise — the Docker image doesn't install rsync by default, so
+    shutil.copy2 is the realistic path today; rsync is picked up automatically if a
+    maintainer adds it to their own image/Dockerfile.
+    """
+    if not BACKUP_REMOTE_PATH:
+        return False
+    try:
+        dest_dir = Path(BACKUP_REMOTE_PATH)
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        dest = dest_dir / src.name
+        if shutil.which("rsync"):
+            subprocess.run(["rsync", "-a", "--", str(src), str(dest)], check=True, timeout=300)
+        else:
+            shutil.copy2(str(src), str(dest))
+        logger.info("Offsite backup copy: %s -> %s", src.name, dest)
+        return True
+    except Exception as e:
+        logger.error("Offsite backup copy failed for %s: %s", src.name, e)
+        return False
 
 # Longest side, in px, that an uploaded photo is downscaled to. Site backgrounds/hero
 # logos/avatars/covers are never displayed anywhere near source-camera resolution

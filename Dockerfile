@@ -11,6 +11,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ ./backend/
 COPY VERSION ./
+# Needed at container startup: backend/db_migrate.py shells out to the `alembic` CLI
+# (cwd=/app — see its REPO_ROOT) to bring the schema up to date before the app starts
+# serving (see lifespan()/_run_db_migrations() in backend/main.py). alembic.ini's
+# script_location=alembic resolves relative to this same /app WORKDIR.
+COPY alembic.ini ./
+COPY alembic/ ./alembic/
 
 EXPOSE 8000
 

@@ -19,6 +19,13 @@ services:
       - SMTP_PASS=${SMTP_PASS:-}
       - SMTP_FROM=${SMTP_FROM:-noreply@localhost}
       - TZ=Europe/Moscow
+      # Optional offsite copy destination for the nightly auto-backup — see
+      # backend/helpers.py's copy_backup_offsite() and README.md's "Резервные копии"
+      # section. Unset (default) = no offsite copy attempted, only the local
+      # BACKUP_DIR/db_data backup runs. Must be a path *inside this container* — mount
+      # your actual remote/network share as a volume below and point this at that
+      # mount point (see README.md for a worked example, e.g. an rclone mount).
+      - BACKUP_REMOTE_PATH=${BACKUP_REMOTE_PATH:-}
     volumes:
       - db_data:/data
       - ./backend:/app/backend
