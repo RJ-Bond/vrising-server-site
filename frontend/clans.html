@@ -420,7 +420,7 @@ function memberStackHtml(clan) {
     const label = m.username || m.character_name || '?';
     const grad = (typeof nameGradient === 'function') ? nameGradient(label) : '#3a0060';
     const inner = m.avatar_url
-      ? `<img class="member-stack-avatar" src="${esc(m.avatar_url)}" alt="" title="${esc(label)}">`
+      ? `<img class="member-stack-avatar" src="${esc(m.avatar_url)}" alt="${esc(label)}" title="${esc(label)}" loading="lazy">`
       : `<span class="member-stack-avatar" style="background:${grad};" title="${esc(label)}">${esc(label.charAt(0).toUpperCase())}</span>`;
     return `<span class="member-stack-item">${inner}${onlineDotHtml(m.is_online, { size: 7, corner: 'left' })}</span>`;
   }).join('');
@@ -797,7 +797,7 @@ function memberRowHtml(m) {
   const initial = esc((m.username || m.character_name || '?').charAt(0).toUpperCase());
   const grad = (typeof nameGradient === 'function') ? nameGradient(m.username || m.character_name || '') : '#3a0060';
   const avatarHtml = m.avatar_url
-    ? `<img class="member-avatar" src="${esc(m.avatar_url)}" alt="">`
+    ? `<img class="member-avatar" src="${esc(m.avatar_url)}" alt="${displayName}" loading="lazy">`
     : `<span class="member-avatar" style="background:${grad};">${initial}</span>`;
   const linkOpen = m.username ? `<a href="/user.html?u=${encodeURIComponent(m.username)}" style="color:var(--text);text-decoration:none;">` : `<span style="color:var(--text);">`;
   const linkClose = m.username ? '</a>' : '</span>';
@@ -862,6 +862,12 @@ function onDetailBackdropClick(e) {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeClanDetail(); });
 
 init();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>

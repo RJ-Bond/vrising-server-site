@@ -527,5 +527,11 @@ function closeMobMenu2() {
   document.getElementById('mob-overlay2').classList.remove('open');
 }
 </script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
 </body>
 </html>

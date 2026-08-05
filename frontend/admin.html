@@ -4055,7 +4055,7 @@ async function loadLinkedAccounts() {
         <td>
           <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:.5rem;text-decoration:none;color:var(--text);">
             ${u.avatar_url
-              ? `<img src="${esc(u.avatar_url)}" alt="" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
+              ? `<img src="${esc(u.avatar_url)}" alt="" loading="lazy" style="width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;">`
               : `<span style="width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.08);display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;color:var(--muted);flex-shrink:0;">${esc(u.username.slice(0,1).toUpperCase())}</span>`}
             <span style="font-weight:600;font-size:.82rem;">${esc(u.username)}</span>
           </a>
@@ -4494,7 +4494,7 @@ function _usersHashHue(str) {
 }
 function userAvatarHtml(u, size, fontSize) {
   size = size || '1.85rem'; fontSize = fontSize || '.68rem';
-  if (u.avatar_url) return `<img src="${esc(u.avatar_url)}" alt="" class="user-avatar" style="width:${size};height:${size};">`;
+  if (u.avatar_url) return `<img src="${esc(u.avatar_url)}" alt="" loading="lazy" class="user-avatar" style="width:${size};height:${size};">`;
   const hue = _usersHashHue(u.username || String(u.id));
   const initial = (u.username || '?').trim().charAt(0).toUpperCase();
   return `<span class="user-avatar" style="width:${size};height:${size};font-size:${fontSize};background:hsl(${hue},55%,32%);">${esc(initial)}</span>`;
@@ -5429,7 +5429,7 @@ async function loadAdminFiles() {
         ${used ? `<span title="${esc(f.used_by.map(u => u.label).join(', '))}" style="position:absolute;top:.35rem;left:.35rem;z-index:1;background:rgba(0,70,15,.75);border:1px solid rgba(0,160,35,.5);color:#86efac;font-size:.58rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;">используется</span>` : ''}
         <div style="height:90px;background:rgba(8,0,16,.7);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;" onclick="window.open('${esc(f.url)}','_blank')">
           ${isImg(f.filename)
-            ? `<img src="${esc(f.url)}" alt="" style="width:100%;height:100%;object-fit:cover;">`
+            ? `<img src="${esc(f.url)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;">`
             : `<span style="font-size:2rem;">📄</span>`}
         </div>
         <div style="padding:.5rem .6rem;flex:1;display:flex;flex-direction:column;gap:.25rem;">

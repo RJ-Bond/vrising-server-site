@@ -771,7 +771,7 @@ function renderPodium(top3) {
     const name = u.player_name || 'Аноним';
     const grad = (typeof nameGradient === 'function') ? nameGradient(name) : '#3a0060';
     const avatarHtml = u.avatar_url
-      ? `<img class="podium-avatar" src="${esc(u.avatar_url)}" alt="" style="border:2px solid ${borders[i]};">`
+      ? `<img class="podium-avatar" src="${esc(u.avatar_url)}" alt="${esc(name)}" style="border:2px solid ${borders[i]};">`
       : `<span class="podium-avatar" style="background:${grad};border:2px solid ${borders[i]};">${esc(name.charAt(0).toUpperCase())}</span>`;
     const valueText = fmtMetric(u.metricValue);
     const verifiedHtml = u.verified ? `<span class="lb-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>` : '';
@@ -1134,7 +1134,7 @@ async function openPlayerModal(playerName, serverNum, playerRank) {
     const avgH   = Math.floor(avgSec / 3600);
     const avgM   = Math.floor((avgSec % 3600) / 60);
     const avatarHtml = data.avatar_url
-      ? `<img src="${esc(data.avatar_url)}" alt="" style="width:4rem;height:4rem;border-radius:50%;object-fit:cover;margin:0 auto .75rem;display:block;border:2px solid rgba(150,0,28,.5);">`
+      ? `<img src="${esc(data.avatar_url)}" alt="${esc(playerName)}" style="width:4rem;height:4rem;border-radius:50%;object-fit:cover;margin:0 auto .75rem;display:block;border:2px solid rgba(150,0,28,.5);">`
       : `<div style="width:4rem;height:4rem;border-radius:50%;background:${nameGradient(playerName)};margin:0 auto .75rem;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;color:#fff;">${esc(playerName.charAt(0).toUpperCase())}</div>`;
     const isOnline = _onlineNames.has(playerName);
     inner.innerHTML = `
@@ -1185,6 +1185,12 @@ document.addEventListener('keydown', e => {
     if (s) { s.focus(); s.select(); }
   }
 });
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
 </script>
 </body>
 </html>

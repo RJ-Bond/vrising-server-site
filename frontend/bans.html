@@ -914,5 +914,11 @@ async function resolveAppeal(id, approve, btnEl) {
   }
 }
 </script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
 </body>
 </html>

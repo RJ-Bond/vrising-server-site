@@ -353,7 +353,7 @@ function applySiteBackground(bg) {
 function shopItemCardHtml(it) {
   const disabled = it.cost > _shopBalance || it.stock === 0;
   const img = it.image_url
-    ? `<img class="shop-item-image" src="${esc(it.image_url)}" alt="">`
+    ? `<img class="shop-item-image" src="${esc(it.image_url)}" alt="${esc(it.name)}" loading="lazy">`
     : `<div class="shop-item-image" style="display:flex;align-items:center;justify-content:center;font-size:1.8rem;opacity:.35;">🎁</div>`;
   const stockLabel = it.stock == null ? '' : `<div class="shop-item-stock">Осталось: ${it.stock}</div>`;
   return `<div class="g-card shop-item-card${disabled ? ' disabled' : ''}">
@@ -433,6 +433,12 @@ async function loadMyRedemptions() {
   } catch {
     list.innerHTML = '<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки заявок.</p>';
   }
+}
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
 }
 </script>
 </body>

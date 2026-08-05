@@ -4,6 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Технические работы</title>
+  <link rel="canonical" href="https://v.just-skill.ru/maintenance.html" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -483,7 +484,7 @@
         const logoEl = document.getElementById('site-logo');
         const subEl  = document.getElementById('site-sub');
         if (s.site_logo_url) {
-          logoEl.innerHTML = `<img src="${s.site_logo_url}" style="height:2.8rem;object-fit:contain;">`;
+          logoEl.innerHTML = `<img src="${s.site_logo_url}" alt="Логотип сайта" style="height:2.8rem;object-fit:contain;">`;
           subEl.style.display = 'none';
         } else if (s.site_title) {
           logoEl.textContent = s.site_title;
