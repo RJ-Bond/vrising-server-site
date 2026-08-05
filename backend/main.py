@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import json
+import sys
 import time
 import asyncio
 import httpx
@@ -51,14 +52,15 @@ from slowapi.middleware import SlowAPIMiddleware
 # (e.g. _track_players writes Leaderboard data from inside what's filed as "Monitor").
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, text, update, func
+from sqlalchemy import select, delete, update, func
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import Base, User, News, Setting, PlayerRecord, ServerSnapshot, PageView, ErrorLog, RevokedToken, Event, PlayerRankSnapshot, PluginHeartbeat, Announcement, GameClan, GameClanMember
+from .models import User, News, Setting, PlayerRecord, ServerSnapshot, PageView, ErrorLog, RevokedToken, Event, PlayerRankSnapshot, PluginHeartbeat, Announcement, GameClan, GameClanMember
 from .rate_limit import limiter
 from .helpers import (
     BACKUP_DIR,
+    copy_backup_offsite,
     _visitor_data,
     _explicit_logouts,
     _write_maintenance_flag,
@@ -229,132 +231,38 @@ async def _seed_defaults(db: AsyncSession):
     await db.commit()
 
 
+async def _run_db_migrations() -> None:
+    """Bring the DB schema up to date via Alembic (alembic/versions/) instead of the
+    old Base.metadata.create_all() + growing hand-written ALTER TABLE list this used to
+    be (see git history / CLAUDE.md). Delegates the actual decision logic to
+    backend/db_migrate.py — see its module docstring for why a plain `alembic upgrade
+    head` isn't safe on its own (existing, pre-Alembic production DBs need a one-time
+    `stamp head` adoption first) and why this shells out to a *subprocess* rather than
+    calling Alembic's Python API in-process: alembic/env.py calls fileConfig() on
+    alembic.ini, which would reconfigure (and likely disable) this app's own logging
+    setup above if run inside this same process.
+
+    Raises on failure — a broken/partial schema is not something to silently continue
+    booting against; docker-compose's `restart: unless-stopped` + healthcheck make a
+    crash-loop here loud (visible in `docker compose logs`) rather than a silent
+    half-working deploy.
+    """
+    proc = await asyncio.create_subprocess_exec(
+        sys.executable, "-m", "backend.db_migrate",
+        cwd=str(Path(__file__).resolve().parent.parent),
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+    )
+    out, _ = await proc.communicate()
+    output = out.decode(errors="replace").strip()
+    if output:
+        logger.info("db_migrate: %s", output)
+    if proc.returncode != 0:
+        raise RuntimeError(f"Database migration failed (exit {proc.returncode}) — refusing to start:\n{output}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-        # add columns that may be missing in existing DBs (SQLite ALTER TABLE)
-        for stmt in [
-            "ALTER TABLE news ADD COLUMN tags VARCHAR(256) DEFAULT ''",
-            "ALTER TABLE users ADD COLUMN avatar_url VARCHAR(512) DEFAULT NULL",
-            "ALTER TABLE news ADD COLUMN views INTEGER DEFAULT 0 NOT NULL",
-            "ALTER TABLE news ADD COLUMN pinned BOOLEAN DEFAULT 0 NOT NULL",
-            "ALTER TABLE users ADD COLUMN clan_id INTEGER DEFAULT NULL",
-            "ALTER TABLE users ADD COLUMN rules_accepted_at DATETIME DEFAULT NULL",
-            "ALTER TABLE comments ADD COLUMN parent_id INTEGER REFERENCES comments(id) ON DELETE CASCADE",
-            "CREATE TABLE IF NOT EXISTS comment_reactions (id INTEGER PRIMARY KEY, comment_id INTEGER REFERENCES comments(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, emoji VARCHAR(10) NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(comment_id, user_id, emoji))",
-            "CREATE TABLE IF NOT EXISTS notifications (id INTEGER PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, type VARCHAR(32) NOT NULL, data TEXT NOT NULL DEFAULT '{}', read BOOLEAN NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE INDEX IF NOT EXISTS ix_notifications_user ON notifications(user_id, read)",
-            "ALTER TABLE users ADD COLUMN game_nickname VARCHAR(64) DEFAULT NULL",
-            "ALTER TABLE news ADD COLUMN publish_at DATETIME DEFAULT NULL",
-            "ALTER TABLE news ADD COLUMN is_template BOOLEAN DEFAULT 0 NOT NULL",
-            "CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY, reporter_id INTEGER REFERENCES users(id) ON DELETE SET NULL, target_type VARCHAR(32) NOT NULL, target_id INTEGER NOT NULL, reason VARCHAR(512) NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'pending', admin_note TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, reviewed_at DATETIME)",
-            "CREATE TABLE IF NOT EXISTS polls (id INTEGER PRIMARY KEY, news_id INTEGER REFERENCES news(id) ON DELETE CASCADE, question VARCHAR(256) NOT NULL, multiple BOOLEAN NOT NULL DEFAULT 0, ends_at DATETIME, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE TABLE IF NOT EXISTS poll_options (id INTEGER PRIMARY KEY, poll_id INTEGER REFERENCES polls(id) ON DELETE CASCADE, text VARCHAR(256) NOT NULL)",
-            "CREATE TABLE IF NOT EXISTS poll_votes (id INTEGER PRIMARY KEY, poll_id INTEGER REFERENCES polls(id) ON DELETE CASCADE, option_id INTEGER REFERENCES poll_options(id) ON DELETE CASCADE, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, created_at DATETIME DEFAULT CURRENT_TIMESTAMP, UNIQUE(poll_id, option_id, user_id))",
-            "CREATE TABLE IF NOT EXISTS page_views (id INTEGER PRIMARY KEY, path VARCHAR(256) NOT NULL, ip_hash VARCHAR(64), created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE INDEX IF NOT EXISTS ix_page_views_date ON page_views(created_at)",
-            "CREATE TABLE IF NOT EXISTS error_logs (id INTEGER PRIMARY KEY, path VARCHAR(256) NOT NULL, method VARCHAR(8) NOT NULL DEFAULT 'GET', status_code INTEGER NOT NULL, error TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE INDEX IF NOT EXISTS ix_error_logs_date ON error_logs(created_at)",
-            "CREATE TABLE IF NOT EXISTS messages (id INTEGER PRIMARY KEY, sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE, recipient_id INTEGER REFERENCES users(id) ON DELETE CASCADE, content TEXT NOT NULL, read BOOLEAN NOT NULL DEFAULT 0, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE INDEX IF NOT EXISTS ix_messages_recipient ON messages(recipient_id, read)",
-            "CREATE INDEX IF NOT EXISTS ix_messages_sender ON messages(sender_id)",
-            "CREATE INDEX IF NOT EXISTS ix_messages_conversation ON messages(sender_id, recipient_id)",
-            "ALTER TABLE users ADD COLUMN admin_title VARCHAR(128) DEFAULT NULL",
-            "ALTER TABLE users ADD COLUMN last_active_at DATETIME DEFAULT NULL",
-            "ALTER TABLE users ADD COLUMN badge_icon_url VARCHAR(512) DEFAULT NULL",
-            "ALTER TABLE users ADD COLUMN badge_style VARCHAR(32) DEFAULT 'default'",
-            "CREATE TABLE IF NOT EXISTS revoked_tokens (id INTEGER PRIMARY KEY, token VARCHAR(512) NOT NULL UNIQUE, expires_at DATETIME NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE INDEX IF NOT EXISTS ix_revoked_tokens_token ON revoked_tokens(token)",
-            "ALTER TABLE users ADD COLUMN revoke_before DATETIME DEFAULT NULL",
-            "ALTER TABLE player_records ADD COLUMN session_count INTEGER NOT NULL DEFAULT 0",
-            "ALTER TABLE users ADD COLUMN cover_url VARCHAR(512) DEFAULT NULL",
-            "ALTER TABLE users ADD COLUMN totp_secret VARCHAR(64) DEFAULT NULL",
-            "ALTER TABLE users ADD COLUMN totp_enabled BOOLEAN NOT NULL DEFAULT 0",
-            "ALTER TABLE audit_log ADD COLUMN target_type VARCHAR(50) DEFAULT NULL",
-            "ALTER TABLE audit_log ADD COLUMN target_id INTEGER DEFAULT NULL",
-            "ALTER TABLE users ADD COLUMN bio VARCHAR(160) DEFAULT NULL",
-            "ALTER TABLE users ADD COLUMN steam_id VARCHAR(32) DEFAULT NULL",
-            "CREATE UNIQUE INDEX IF NOT EXISTS ix_users_steam_id ON users(steam_id)",
-            "CREATE TABLE IF NOT EXISTS plugin_heartbeats (server_num INTEGER PRIMARY KEY, server_name VARCHAR(128), plugin_version VARCHAR(32), player_count INTEGER NOT NULL DEFAULT 0, last_seen_at DATETIME NOT NULL)",
-            "CREATE TABLE IF NOT EXISTS game_clans (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, clan_guid VARCHAR(36) NOT NULL, name VARCHAR(64) NOT NULL, motto VARCHAR(64) DEFAULT '', updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(server_num, clan_guid))",
-            "CREATE TABLE IF NOT EXISTS game_clan_members (id INTEGER PRIMARY KEY, clan_id INTEGER NOT NULL REFERENCES game_clans(id) ON DELETE CASCADE, steam_id VARCHAR(32) NOT NULL, character_name VARCHAR(64) NOT NULL, role VARCHAR(16) NOT NULL DEFAULT 'member')",
-            "CREATE INDEX IF NOT EXISTS ix_game_clan_members_clan ON game_clan_members(clan_id)",
-            "CREATE TABLE IF NOT EXISTS announcements (id INTEGER PRIMARY KEY, text TEXT NOT NULL, interval_minutes INTEGER, enabled BOOLEAN NOT NULL DEFAULT 1, expires_at DATETIME, last_sent_at DATETIME, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-            "ALTER TABLE announcements ADD COLUMN target_steam_id VARCHAR(32) DEFAULT NULL",
-            "ALTER TABLE player_records ADD COLUMN steam_id VARCHAR(32) DEFAULT NULL",
-            "CREATE INDEX IF NOT EXISTS ix_player_records_steam_id ON player_records(steam_id)",
-            "ALTER TABLE announcements ADD COLUMN server_num INTEGER NOT NULL DEFAULT 1",
-            "CREATE TABLE IF NOT EXISTS server_message_templates (server_num INTEGER PRIMARY KEY, connect_template TEXT, disconnect_template TEXT, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE TABLE IF NOT EXISTS server_api_keys (server_num INTEGER PRIMARY KEY, api_key VARCHAR(128) NOT NULL, updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP)",
-            "CREATE TABLE IF NOT EXISTS scheduled_restarts (server_num INTEGER PRIMARY KEY, restart_at DATETIME)",
-            "ALTER TABLE scheduled_restarts ADD COLUMN daily_restart_time VARCHAR(8) DEFAULT NULL",
-            "CREATE TABLE IF NOT EXISTS warnings (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, steam_id VARCHAR(32) NOT NULL, character_name VARCHAR(64) NOT NULL, reason VARCHAR(512) NOT NULL, admin_name VARCHAR(64) NOT NULL, created_at DATETIME NOT NULL)",
-            "CREATE INDEX IF NOT EXISTS ix_warnings_steam_id ON warnings(steam_id)",
-            "CREATE TABLE IF NOT EXISTS bans (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, steam_id VARCHAR(32) NOT NULL, character_name VARCHAR(64) NOT NULL, admin_name VARCHAR(64) NOT NULL, reason VARCHAR(512) NOT NULL, banned_at DATETIME NOT NULL, unban_at DATETIME, unbanned_at DATETIME)",
-            "CREATE INDEX IF NOT EXISTS ix_bans_steam_id ON bans(steam_id)",
-            "CREATE TABLE IF NOT EXISTS ban_appeals (id INTEGER PRIMARY KEY, ban_id INTEGER REFERENCES bans(id), steam_id VARCHAR(32) NOT NULL, character_name VARCHAR(64) NOT NULL, message VARCHAR(2000) NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'pending', admin_response VARCHAR(1024), admin_name VARCHAR(64), created_at DATETIME NOT NULL, resolved_at DATETIME)",
-            "CREATE INDEX IF NOT EXISTS ix_ban_appeals_steam_id ON ban_appeals(steam_id)",
-            "CREATE TABLE IF NOT EXISTS moderation_log (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, action VARCHAR(32) NOT NULL, admin_name VARCHAR(64), target_name VARCHAR(64), target_steam_id VARCHAR(32), details VARCHAR(512), created_at DATETIME NOT NULL)",
-            "CREATE INDEX IF NOT EXISTS ix_moderation_log_created ON moderation_log(created_at)",
-            "CREATE TABLE IF NOT EXISTS player_daily_activity (id INTEGER PRIMARY KEY, server_num INTEGER NOT NULL DEFAULT 1, steam_id VARCHAR(32) NOT NULL, activity_date VARCHAR(10) NOT NULL, UNIQUE(server_num, steam_id, activity_date))",
-            "CREATE INDEX IF NOT EXISTS ix_player_daily_activity_steam_id ON player_daily_activity(steam_id)",
-            # ─── Points economy ─────────────────────────────────────────────
-            "ALTER TABLE users ADD COLUMN points_balance INTEGER NOT NULL DEFAULT 0",
-            "CREATE TABLE IF NOT EXISTS points_transactions (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, delta INTEGER NOT NULL, balance_after INTEGER NOT NULL, reason VARCHAR(32) NOT NULL, detail VARCHAR(256), ref_type VARCHAR(32), ref_id INTEGER, created_at DATETIME NOT NULL)",
-            "CREATE INDEX IF NOT EXISTS ix_points_transactions_user ON points_transactions(user_id, created_at)",
-            "CREATE TABLE IF NOT EXISTS shop_items (id INTEGER PRIMARY KEY, name VARCHAR(128) NOT NULL, description TEXT, cost INTEGER NOT NULL, image_url VARCHAR(512), is_active BOOLEAN NOT NULL DEFAULT 1, stock INTEGER, sort_order INTEGER NOT NULL DEFAULT 0, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL)",
-            "CREATE TABLE IF NOT EXISTS shop_redemptions (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, shop_item_id INTEGER REFERENCES shop_items(id) ON DELETE SET NULL, item_name_snapshot VARCHAR(128) NOT NULL, cost_snapshot INTEGER NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'pending', delivery_mode VARCHAR(16) NOT NULL DEFAULT 'manual', player_note VARCHAR(500), admin_note VARCHAR(500), created_at DATETIME NOT NULL, resolved_at DATETIME, resolved_by VARCHAR(64))",
-            "CREATE INDEX IF NOT EXISTS ix_shop_redemptions_status_created ON shop_redemptions(status, created_at)",
-            # ─── Clan online-status/combat-power + castle bases (plugin sync) ──────
-            "ALTER TABLE game_clan_members ADD COLUMN is_online BOOLEAN NOT NULL DEFAULT 0",
-            "ALTER TABLE game_clan_members ADD COLUMN last_connected_unix INTEGER DEFAULT NULL",
-            "ALTER TABLE game_clan_members ADD COLUMN physical_power FLOAT DEFAULT NULL",
-            "ALTER TABLE game_clan_members ADD COLUMN spell_power FLOAT DEFAULT NULL",
-            "CREATE TABLE IF NOT EXISTS game_clan_bases (id INTEGER PRIMARY KEY, clan_id INTEGER NOT NULL REFERENCES game_clans(id) ON DELETE CASCADE, level INTEGER NOT NULL DEFAULT 0, floor_count INTEGER NOT NULL DEFAULT 0, is_raid_protected BOOLEAN NOT NULL DEFAULT 0, min_x INTEGER NOT NULL DEFAULT 0, min_z INTEGER NOT NULL DEFAULT 0, max_x INTEGER NOT NULL DEFAULT 0, max_z INTEGER NOT NULL DEFAULT 0)",
-            "CREATE INDEX IF NOT EXISTS ix_game_clan_bases_clan ON game_clan_bases(clan_id)",
-            # ─── .warn auto-escalation "once per threshold crossing" state ─────────
-            "CREATE TABLE IF NOT EXISTS warn_escalation_state (steam_id VARCHAR(32) PRIMARY KEY, last_escalation_count INTEGER NOT NULL DEFAULT 0)",
-            # ─── Missing indexes on columns actually filtered/joined on elsewhere ──
-            # (Comment.news_id/Message.*/PointsTransaction.user_id etc. above already
-            # have theirs — these three were genuinely never indexed.)
-            "CREATE INDEX IF NOT EXISTS ix_comments_author ON comments(author_id)",
-            "CREATE INDEX IF NOT EXISTS ix_polls_news_id ON polls(news_id)",
-            "CREATE INDEX IF NOT EXISTS ix_poll_votes_option ON poll_votes(option_id)",
-        ]:
-            try:
-                await conn.execute(text(stmt))
-            except Exception:
-                pass  # column already exists
-
-        # One-time fixup: poll_votes' UNIQUE constraint used to be (poll_id, user_id)
-        # instead of (poll_id, option_id, user_id), so a multiple=True poll's second
-        # option insert for one vote hit an IntegrityError (see PollVote's own
-        # docstring). SQLite can't ALTER a UNIQUE constraint in place, so this rebuilds
-        # the table under the fixed schema — a no-op once run once (checked via
-        # sqlite_master's stored CREATE TABLE text) or if the table was just created
-        # fresh above (already the fixed constraint in that case, so this never
-        # matches). Safe to copy every row as-is: the OLD constraint made a same-
-        # (poll_id, user_id) duplicate impossible to have ever been inserted.
-        row = (await conn.execute(text(
-            "SELECT sql FROM sqlite_master WHERE type='table' AND name='poll_votes'"
-        ))).scalar_one_or_none()
-        if row and "UNIQUE(poll_id, user_id)" in row:
-            await conn.execute(text("ALTER TABLE poll_votes RENAME TO poll_votes_old"))
-            await conn.execute(text(
-                "CREATE TABLE poll_votes (id INTEGER PRIMARY KEY, "
-                "poll_id INTEGER REFERENCES polls(id) ON DELETE CASCADE, "
-                "option_id INTEGER REFERENCES poll_options(id) ON DELETE CASCADE, "
-                "user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, "
-                "created_at DATETIME DEFAULT CURRENT_TIMESTAMP, "
-                "UNIQUE(poll_id, option_id, user_id))"
-            ))
-            await conn.execute(text(
-                "INSERT INTO poll_votes (id, poll_id, option_id, user_id, created_at) "
-                "SELECT id, poll_id, option_id, user_id, created_at FROM poll_votes_old"
-            ))
-            await conn.execute(text("DROP TABLE poll_votes_old"))
-            await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_poll_votes_option ON poll_votes(option_id)"))
+    await _run_db_migrations()
     async with AsyncSession(engine, expire_on_commit=False) as db:
         await _seed_defaults(db)
         await _migrate_admin_role_tiers(db)
@@ -1537,7 +1445,10 @@ async def _scheduler_task():
 
 
 async def _auto_backup_task():
-    """Create daily DB backup at midnight UTC."""
+    """Create daily DB backup at midnight UTC, then (if BACKUP_REMOTE_PATH is set) copy
+    it offsite too — see copy_backup_offsite()'s docstring in helpers.py for why that's a
+    plain local/mounted-path copy rather than a specific cloud API, and how a maintainer
+    points it at a real destination."""
     while True:
         try:
             now = datetime.now(timezone.utc)
@@ -1552,7 +1463,13 @@ async def _auto_backup_task():
                 dst = BACKUP_DIR / f"vrising_{ts}.db"
                 shutil.copy2(str(src), str(dst))
                 logger.info("Auto backup created: %s", dst)
-                # keep last 7 backups
+                # copy_backup_offsite shells out to rsync (if present) / does blocking
+                # file I/O via shutil — offload to a thread so a slow/unmounted remote
+                # path can't stall this task's event loop.
+                await asyncio.to_thread(copy_backup_offsite, dst)
+                # keep last 7 backups (local only — BACKUP_REMOTE_PATH is expected to
+                # manage its own retention; this app has no way to know what else lives
+                # at that destination or what retention policy it should follow there)
                 backups = sorted(BACKUP_DIR.glob("vrising_*.db"))
                 for old in backups[:-7]:
                     old.unlink(missing_ok=True)

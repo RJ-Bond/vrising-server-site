@@ -50,6 +50,15 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        # SQLite can't ALTER a constraint/column in place (no native DROP CONSTRAINT,
+        # very limited ALTER COLUMN) — batch mode makes Alembic emit the copy-to-new-
+        # table / copy-data / drop-old-table / rename dance instead, which is the only
+        # way SQLite supports these changes at all. Every migration in this repo
+        # targets SQLite (see DATABASE_URL's default), so this is on unconditionally
+        # rather than dialect-sniffed. This replaces the hand-rolled RENAME/CREATE/
+        # COPY/DROP that used to live in backend/main.py's lifespan() for the
+        # poll_votes UNIQUE-constraint rebuild specifically.
+        render_as_batch=True,
     )
 
     with context.begin_transaction():
@@ -57,7 +66,7 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(connection=connection, target_metadata=target_metadata, render_as_batch=True)
 
     with context.begin_transaction():
         context.run_migrations()

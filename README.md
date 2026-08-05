@@ -224,8 +224,10 @@ docker compose up -d --build
 
 ```
 vrising-server-site/
-├── Dockerfile                 # Сборка Python-образа
-├── docker-compose.yml         # Оркестрация контейнеров (web + nginx)
+├── Dockerfile                 # Сборка Python-образа (включает alembic.ini + alembic/)
+├── docker-compose.yml         # Оркестрация контейнеров (web + nginx) — продакшн
+├── docker-compose.staging.yml # Тот же стек на отдельных портах/томах для pre-prod теста
+├── alembic.ini / alembic/     # Миграции схемы БД (см. "Миграции БД" ниже)
 ├── requirements.txt           # Python-зависимости (прод)
 ├── requirements-dev.txt       # + pytest/pytest-asyncio для тестов
 ├── install.sh                 # Скрипт автоустановки/обновления для Debian 13 (js/vrising)
@@ -242,7 +244,9 @@ vrising-server-site/
 │   ├── models.py               # Модели БД: User, News, Comment, Setting, PlayerRecord,
 │   │                           # Wipe, GameClan(+Member), Event, Ban/BanAppeal/Warning,
 │   │                           # PointsTransaction/ShopItem/ShopRedemption и др.
-│   ├── database.py             # Async SQLite engine
+│   ├── database.py             # Async SQLite engine, включает WAL journal_mode
+│   ├── db_migrate.py           # Раннер миграций (alembic upgrade head), запускается при
+│   │                           # каждом старте (lifespan) и явно в install.sh
 │   ├── auth.py                 # JWT + bcrypt + 2FA/TOTP, ROLE_LEVELS/role_level()/is_at_least()
 │   ├── monitor.py              # A2S_INFO UDP-мониторинг серверов
 │   ├── schemas.py              # Pydantic-схемы запросов/ответов
@@ -363,6 +367,103 @@ docker compose up -d --build
 # Обновление с GitHub (на сервере)
 sudo js
 ```
+
+---
+
+## Миграции БД
+
+Схема БД версионируется через [Alembic](https://alembic.sqlalchemy.org/) (`alembic.ini`,
+`alembic/versions/`). `alembic upgrade head` выполняется автоматически:
+
+- при каждом старте контейнера `web` (`backend/main.py`'s `lifespan()` →
+  `backend/db_migrate.py`) — приложение не начинает принимать запросы, пока схема не
+  приведена в актуальное состояние;
+- явно, ещё раз, во время `sudo js` (`install.sh`) — для видимого, отдельного шага в
+  логе обновления с понятной ошибкой, если что-то пошло не так.
+
+Оба вызова идемпотентны — повторный `alembic upgrade head`, когда схема уже актуальна,
+ничего не делает. `backend/db_migrate.py` также умеет одноразово "усыновить" БД, которая
+уже содержит таблицы, но никогда не запускала Alembic (`alembic stamp head` вместо
+`upgrade head` — только запись в служебную таблицу `alembic_version`, без единого DDL).
+
+Локально при разработке новую миграцию под изменённые модели (`backend/models.py`)
+генерируют так:
+
+```bash
+export DATABASE_URL=sqlite+aiosqlite:///путь/к/тестовой.db
+alembic upgrade head                                   # применить всё, что уже есть
+alembic revision --autogenerate -m "краткое описание"   # сгенерировать новую
+alembic upgrade head                                    # применить и проверить, что не падает
+alembic revision --autogenerate -m "should be empty"     # sanity-check: diff должен быть пустым
+```
+Всегда открывайте автосгенерированный файл и проверяйте руками — автогенерация не видит
+переименования колонок (увидит DROP+ADD) и иногда предлагает лишние операции.
+
+---
+
+## Резервные копии
+
+Ручное управление — вкладка **Резервные копии** в панели администратора (только
+`superadmin`): список/скачивание существующих копий и кнопка "Создать сейчас"
+(`GET/POST /api/admin/backups*`, `GET /api/admin/backup` — см. `backend/routers/admin_system.py`).
+
+Автоматическая копия создаётся каждый день в полночь UTC (`_auto_backup_task` в
+`backend/main.py`) в `BACKUP_DIR` (по умолчанию `/data/backups`, том `db_data`) —
+хранятся последние 7 копий, старые удаляются.
+
+**Offsite-копия (опционально).** Если задана переменная окружения `BACKUP_REMOTE_PATH`,
+каждая ежедневная автокопия дополнительно копируется по этому пути ПОСЛЕ создания
+локальной — так потеря/повреждение диска сервера не уносит с собой единственную копию
+бэкапа. Путь должен существовать **внутри контейнера `web`** — т.е. это должна быть
+смонтированная в контейнер директория (сетевой диск, `rclone mount` и т.п.), а не
+произвольный путь на хосте. Копирование — через `rsync` (если бинарник есть в образе) или
+`shutil.copy2` (реальный путь по умолчанию, т.к. в образ `rsync` пока не устанавливается);
+см. `backend/helpers.py`'s `copy_backup_offsite()`. Ошибка offsite-копирования не мешает
+локальному бэкапу и ротации — только пишется в лог.
+
+Пример подключения rclone-remote как смонтированной директории:
+
+```bash
+# на хосте: примонтировать rclone-remote в директорию
+rclone mount myremote:vrising-backups /opt/vrising-backups-mount --daemon
+
+# в docker-compose.yml, сервис web — добавить volume и переменную окружения:
+#   volumes:
+#     - /opt/vrising-backups-mount:/mnt/offsite-backups
+#   environment:
+#     - BACKUP_REMOTE_PATH=/mnt/offsite-backups
+```
+Тот же подход работает для обычного сетевого диска (NFS/SMB), примонтированного на
+хосте и проброшенного в контейнер тем же способом.
+
+---
+
+## Staging-окружение
+
+`docker-compose.staging.yml` поднимает тот же стек (тот же образ/код) на отдельном
+проекте compose, отдельных именах контейнеров, отдельном порту и отдельном томе БД — можно
+запускать **рядом** с продакшн-стеком на том же сервере, ничего в нём не трогая, чтобы
+проверить изменения перед `sudo js`.
+
+```bash
+cp .env .env.staging               # или .env.example, если .env ещё нет
+# при желании отредактируйте .env.staging (например STAGING_HTTP_PORT)
+
+docker compose -f docker-compose.staging.yml --env-file .env.staging up -d --build
+
+# сайт доступен на http://<IP-сервера>:8080 (порт меняется через STAGING_HTTP_PORT)
+
+# логи / остановка
+docker compose -f docker-compose.staging.yml logs -f
+docker compose -f docker-compose.staging.yml down          # добавьте -v, чтобы стереть staging-БД
+```
+
+Что сознательно отличается от продакшна (см. комментарии в самом файле):
+- своя SQLite БД (`vrising-staging_db_data`, никогда не пересекается с продакшн-томом);
+- не примонтирован `/var/run/docker.sock` — staging не должен иметь контроль над Docker
+  хоста (SSL-установка/самообновление через админку недоступны в staging);
+- нет сервисов `umami`/`umami-db` и SSL — только простой HTTP на отдельном порту
+  (`nginx/nginx.staging.conf` — копия `nginx.conf` без блока `/analytics/`).
 
 ---
 

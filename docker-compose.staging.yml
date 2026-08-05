@@ -1,0 +1,103 @@
+name: vrising-staging
+
+# Pre-production staging stack — same image/code as docker-compose.yml, but its own
+# project name, container names, host ports, and DB volume, so it can run *alongside*
+# the real production stack on the same server without touching it. See README.md's
+# "Staging-окружение" section for the full how-to.
+#
+# A full standalone file rather than a docker-compose.override.yml layered on top of
+# docker-compose.yml: Compose overrides REPLACE (not merge) list-valued fields like
+# `ports`/`volumes` wholesale, and several things here need to *not* exist at all rather
+# than be overridden (no docker.sock mount — a staging container has no business holding
+# host Docker control; no Umami/SSL — unrelated to what staging is for and their volume
+# names are hardcoded in docker-compose.yml, so a second stack reusing that file would
+# collide on them). Restating web+nginx in full here is more lines but the actual
+# differences are visible in one place instead of requiring the reader to mentally diff
+# two files against Compose's per-field merge-vs-replace rules.
+#
+# Not included on purpose: `umami`/`umami-db` (unrelated to verifying app changes,
+# and would double Postgres resource usage for no reason) and any SSL/Let's Encrypt
+# wiring (staging serves plain HTTP on an alternate port — see nginx below; it is not
+# meant to be internet-facing, and enable-https.sh/admin_system.py's ssl/install route
+# both assume the production nginx-ssl.conf + letsencrypt volumes, neither of which
+# staging has).
+
+services:
+  web:
+    build: .
+    container_name: vrising_api_staging
+    restart: unless-stopped
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-changeme_generate_random_32chars}
+      - DATABASE_URL=sqlite+aiosqlite:////data/vrising.db
+      - VRISING_SERVER_IP=${VRISING_SERVER_IP:-127.0.0.1}
+      - VRISING_SERVER_PORT=${VRISING_SERVER_PORT:-27016}
+      - SENTRY_DSN=${SENTRY_DSN:-}
+      - SENTRY_TRACES_SAMPLE_RATE=${SENTRY_TRACES_SAMPLE_RATE:-0.1}
+      # Defaults to the staging port below rather than prod's :80/:443 — override in
+      # .env.staging if you're testing from somewhere other than the host itself.
+      - ALLOWED_ORIGINS=${STAGING_ALLOWED_ORIGINS:-http://localhost:8080}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@localhost}
+      - TZ=Europe/Moscow
+      - BACKUP_REMOTE_PATH=${BACKUP_REMOTE_PATH:-}
+    volumes:
+      # Own named volume (auto-scoped as vrising-staging_db_data by the project name
+      # above) — a completely separate SQLite file from production's db_data, so
+      # nothing tried out here can ever touch real data.
+      - db_data:/data
+      - ./backend:/app/backend
+      # Deliberately NOT mounted here (unlike docker-compose.yml):
+      #   - /var/run/docker.sock — SSL-install/self-update admin routes use it to talk
+      #     to the Docker daemon; staging has no business holding host Docker control.
+      #   - .:/opt/vrising-site — only exists in prod for the same docker.sock-driven
+      #     admin routes (git pull self-update, nginx config templating for SSL).
+      - maintenance_flag:/var/maintenance
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/version')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    networks:
+      vrising_staging_net:
+        # nginx.staging.conf reuses the exact same upstream hostname production's
+        # nginx.conf uses (vrising_api) so the two config files stay identical for
+        # everything but the /analytics/ block — this container's real name is
+        # vrising_api_staging (must be globally unique on the host), this alias just
+        # makes it resolvable as vrising_api *within this stack's own isolated
+        # network*, which doesn't collide with production's same-named container
+        # living in its own separate vrising_net.
+        aliases:
+          - vrising_api
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: vrising_nginx_staging
+    restart: unless-stopped
+    ports:
+      # Host-side port only — change the left-hand side to taste if 8080 is already
+      # in use. Plain HTTP only (no :443/SSL mapping — see file header).
+      - "${STAGING_HTTP_PORT:-8080}:80"
+    volumes:
+      # nginx.staging.conf, NOT nginx.conf/nginx-ssl.conf — see that file's own header
+      # comment for why staging needs its own trimmed copy (no Umami upstream).
+      - ./nginx/nginx.staging.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend:/usr/share/nginx/html:ro
+      - maintenance_flag:/var/maintenance:ro
+    depends_on:
+      web:
+        condition: service_healthy
+    networks:
+      - vrising_staging_net
+
+volumes:
+  db_data:
+  maintenance_flag:
+
+networks:
+  vrising_staging_net:
+    driver: bridge
