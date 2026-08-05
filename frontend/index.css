@@ -733,6 +733,18 @@
       .left-panel.compact .nav-user-card-bottom { justify-content:center; border-top:none; padding-top:0; margin-top:.4rem; }
       .left-panel.compact #nav-user-since { display:none; }
       .left-panel.compact .nav-user-card-actions { flex-direction:column; gap:.35rem; }
+      /* "Who's online" list — same overflow problem as the user card: the row's
+         avatar+username link, since-badge and DM button are all full-size, and
+         the sparkline SVG has a fixed 176px width, so a 70px rail just clips
+         everything past the avatar (or juts the chart out past the edge). */
+      .left-panel.compact .online-user-row { justify-content:center; gap:.3rem; }
+      .left-panel.compact .ow-row-link { flex:0 0 auto; }
+      .left-panel.compact .ow-row-namewrap,
+      .left-panel.compact .ow-since,
+      .left-panel.compact .ow-dm-btn,
+      .left-panel.compact .ow-group-hdr,
+      .left-panel.compact #ow-peak,
+      .left-panel.compact #ow-sparkline { display:none; }
     }
     #left-panel-compact-btn:hover { color:var(--gold); border-color:rgba(201,169,74,0.5); }
     .left-panel.compact #left-panel-compact-btn svg { transform:rotate(180deg); }

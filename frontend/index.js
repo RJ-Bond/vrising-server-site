@@ -600,9 +600,9 @@ function _owRow(u, isNew = false, isSelf = false, showDm = false) {
   return `<div class="online-user-row${isNew ? ' ow-new' : ''}${selfCls}" data-uname="${esc(u.username)}"
     onmouseenter="_owShowCard(event,${cardData.replace(/"/g,'&quot;')})"
     onmouseleave="_owHideCard()">
-    <a href="/user.html?u=${encodeURIComponent(u.username)}" style="display:flex;align-items:center;gap:.45rem;flex:1;min-width:0;text-decoration:none;color:inherit;">
+    <a href="/user.html?u=${encodeURIComponent(u.username)}" class="ow-row-link" style="display:flex;align-items:center;gap:.45rem;flex:1;min-width:0;text-decoration:none;color:inherit;">
       ${av}
-      <div style="flex:1;min-width:0;">
+      <div class="ow-row-namewrap" style="flex:1;min-width:0;">
         <div class="online-name" style="color:${roleColor};">${esc(u.username)}${sword}${deviceIcon}</div>
       </div>
     </a>
