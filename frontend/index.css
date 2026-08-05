@@ -734,7 +734,13 @@
          bigger than the others: #left-panel-compact-btn is absolutely positioned
          at top:.75rem, so a smaller top padding let the (now-bigger) avatar right
          below it overlap the button instead of clearing it. */
-      .left-panel.compact .nav-link-item { justify-content:center; padding:.5rem; border-radius:.4rem; }
+      /* overflow:visible undoes .nav-link-item's own overflow:hidden (needed
+         normally to contain its hover shimmer-bar ::after effect) — without it,
+         the [data-tip] tooltip below (which also renders via ::after, and has
+         to escape the 70px box via left:calc(100% + 8px)) gets clipped at this
+         element's own edge before it can even reach the stacking-context issue
+         fixed above, so it never appeared at all. */
+      .left-panel.compact .nav-link-item { justify-content:center; padding:.5rem; border-radius:.4rem; overflow:visible; }
       .left-panel.compact .nav-link-item span { display:none; }
       .left-panel.compact #left-panel-title,
       .left-panel.compact h3 { display:none; }
