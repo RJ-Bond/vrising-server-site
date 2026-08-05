@@ -16,3 +16,10 @@ tzdata>=2024.1
 Pillow>=10.3.0
 alembic==1.19.0
 sentry-sdk[fastapi]==2.66.1
+# Web Push (VAPID signing + aes128gcm payload encryption for the browser Push API).
+# Hand-rolling this (ECDH key agreement, HKDF, AES-GCM content encoding per RFC 8291,
+# plus the VAPID JWT per RFC 8292) is exactly the kind of crypto code that's easy to
+# get subtly wrong; pywebpush bundles py-vapid + http-ece and is the de-facto standard
+# for this. Pulls in requests (already pinned above, matches) plus py-vapid/http-ece/
+# cryptography as new transitive deps.
+pywebpush==2.3.0

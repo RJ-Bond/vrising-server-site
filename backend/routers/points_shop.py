@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import datetime
 from typing import Optional
@@ -9,7 +10,7 @@ from sqlalchemy import select, func, or_, update
 from ..database import get_db
 from ..models import User, PointsTransaction, ShopItem, ShopRedemption, Notification
 from ..auth import get_admin_user, get_current_user
-from ..helpers import _audit, _award_points
+from ..helpers import _audit, _award_points, send_push
 from ..rate_limit import limiter
 from ..schemas import (
     ShopItemCreate,
@@ -152,6 +153,12 @@ async def fulfill_shop_redemption(
     ))
     await db.commit()
     await db.refresh(r)
+    asyncio.create_task(send_push(
+        r.user_id,
+        "Заявка выполнена",
+        f"«{r.item_name_snapshot}» выполнена",
+        "/profile.html",
+    ))
     return ShopRedemptionOut.model_validate(r)
 
 
@@ -187,6 +194,13 @@ async def cancel_shop_redemption(
         ))
     await db.commit()
     await db.refresh(r)
+    if user is not None:
+        asyncio.create_task(send_push(
+            user.id,
+            "Заявка отменена",
+            f"«{r.item_name_snapshot}» отменена, {r.cost_snapshot} очков возвращено",
+            "/profile.html",
+        ))
     return ShopRedemptionOut.model_validate(r)
 
 
@@ -213,6 +227,12 @@ async def grant_points(
         data=json.dumps({"delta": body.delta, "reason": reason, "note": body.note or ""}, ensure_ascii=False),
     ))
     await db.commit()
+    asyncio.create_task(send_push(
+        user.id,
+        "Начислены очки",
+        f"{body.delta:+d} очков" + (f": {body.note}" if body.note else ""),
+        "/profile.html",
+    ))
     tx_res = await db.execute(
         select(PointsTransaction).where(PointsTransaction.user_id == user.id).order_by(PointsTransaction.id.desc()).limit(1)
     )
