@@ -721,10 +721,13 @@
        assumption a name+badge would just wrap, but at 70px it actually overflows
        past the panel's edge instead (the badge has no wrap-safe width limit). ── */
     @media (min-width:1025px) {
-      .left-panel.compact { width:70px !important; padding:.55rem !important; }
+      .left-panel.compact { width:70px !important; padding:2.5rem .55rem .55rem !important; }
       /* Reclaiming the outer padding (1.25rem → .55rem) is what actually buys
          room for readable icons/avatar at 70px total width — box-sizing:border-box
-         means padding eats into that budget directly. */
+         means padding eats into that budget directly. Top padding stays much
+         bigger than the others: #left-panel-compact-btn is absolutely positioned
+         at top:.75rem, so a smaller top padding let the (now-bigger) avatar right
+         below it overlap the button instead of clearing it. */
       .left-panel.compact .nav-link-item { justify-content:center; padding:.5rem; border-radius:.4rem; }
       .left-panel.compact .nav-link-item span { display:none; }
       .left-panel.compact #left-panel-title,
