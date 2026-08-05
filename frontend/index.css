@@ -707,17 +707,27 @@
     /* ── Left nav compact mode (index.js's toggleLeftPanelCompact) — icon-only rail
        for a returning visitor who doesn't need the full labelled nav every time.
        Only the nav links + section titles collapse; the user card and "online"
-       widget stay as-is (still useful at a glance, not worth hiding). ── */
-    .left-panel.compact { width:70px !important; }
-    .left-panel.compact .nav-link-item { justify-content:center; padding:.55rem; }
-    .left-panel.compact .nav-link-item span { display:none; }
-    .left-panel.compact #left-panel-title,
-    .left-panel.compact h3 { display:none; }
-    .left-panel.compact .discord-btn, .left-panel.compact .max-btn { justify-content:center; padding:.55rem; }
-    .left-panel.compact .discord-btn > :not(svg), .left-panel.compact .max-btn > :not(svg) { display:none; }
+       widget stay as-is (still useful at a glance, not worth hiding). Desktop-only
+       (min-width:769px guard) — below that the panel becomes the mobile slide-out
+       drawer (see the 768px block further down), which already has its own
+       full-width/full-label rules; without this guard `.left-panel.compact`'s
+       higher selector specificity would win over those and leave a returning
+       visitor's saved compact preference wrongly shrinking the mobile drawer too. ── */
+    @media (min-width:769px) {
+      .left-panel.compact { width:70px !important; }
+      .left-panel.compact .nav-link-item { justify-content:center; padding:.55rem; }
+      .left-panel.compact .nav-link-item span { display:none; }
+      .left-panel.compact #left-panel-title,
+      .left-panel.compact h3 { display:none; }
+      .left-panel.compact .discord-btn, .left-panel.compact .max-btn { justify-content:center; padding:.55rem; }
+      .left-panel.compact .discord-btn > :not(svg), .left-panel.compact .max-btn > :not(svg) { display:none; }
+    }
     #left-panel-compact-btn:hover { color:var(--gold); border-color:rgba(201,169,74,0.5); }
     .left-panel.compact #left-panel-compact-btn svg { transform:rotate(180deg); }
-    @media (max-width:640px) { #left-panel-compact-btn { display:none; } }
+    /* !important needed here: the button has an inline style="display:flex" (see
+       index.html), which without !important would always win over this rule
+       regardless of the media query — the button silently never hid on mobile. */
+    @media (max-width:768px) { #left-panel-compact-btn { display:none !important; } }
 
     /* ── Trust stats bar ── */
     .home-stat-val { font-family:'Cinzel',serif; font-size:1.5rem; font-weight:700; color:var(--gold); line-height:1; }
