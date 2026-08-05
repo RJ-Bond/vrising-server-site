@@ -333,6 +333,39 @@ async def add_comment(
                     f"{current_user.username} ответил на ваш комментарий:\n\n{body.content[:200]}\n\nНовость: {news.title}",
                     f"<p><b>{safe_username}</b> ответил на ваш комментарий в новости <b>{safe_title}</b>:</p><blockquote>{safe_preview}</blockquote>",
                 ))
+
+    # @mentions — Notification.type has said "reply", "mention" in its own comment
+    # since this model was written, but mention parsing was never actually built.
+    # Case-insensitive exact-username match (usernames can't contain spaces, so a
+    # greedy word-boundary capture is safe); capped so one comment can't blast
+    # notifications at an arbitrary number of accounts. The parent-comment author (if
+    # any) is skipped here since they already got a "reply" notification above for
+    # this exact comment — a second "mention" notification for the same event would
+    # just be noise, not new information.
+    mentioned_names = list(dict.fromkeys(re.findall(r"@(\w{3,32})", body.content)))[:5]
+    if mentioned_names:
+        skip_id = {current_user.id}
+        if body.parent_id and parent_c and parent_c.author_id:
+            skip_id.add(parent_c.author_id)
+        mentioned_res = await db.execute(
+            select(User).where(func.lower(User.username).in_([n.lower() for n in mentioned_names]), User.is_active == True)
+        )
+        for mentioned_user in mentioned_res.scalars().all():
+            if mentioned_user.id in skip_id:
+                continue
+            db.add(Notification(
+                user_id=mentioned_user.id,
+                type="mention",
+                data=json.dumps({
+                    "comment_id": comment.id,
+                    "news_slug": slug,
+                    "news_title": news.title,
+                    "from_username": current_user.username,
+                    "preview": body.content[:100],
+                }, ensure_ascii=False),
+            ))
+        await db.commit()
+
     return {
         "id": comment.id,
         "content": comment.content,

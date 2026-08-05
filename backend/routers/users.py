@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text, or_
 
 from ..database import get_db
-from ..models import User, PlayerRecord, PlayerRankSnapshot, GameClan, GameClanMember, Comment, Reaction, News
+from ..models import User, PlayerRecord, PlayerRankSnapshot, GameClan, GameClanMember, Comment, Reaction, News, PlayerDailyActivity
 from ..auth import get_moderator_user, get_admin_user, get_superadmin_user, role_level
 from ..helpers import log_audit, _audit, _fmt_dt
 from ..schemas import UserOut, LinkedAccountOut
@@ -282,6 +282,32 @@ async def get_user_activity_trend(
         delta = max(0, cur.total - prev.total)
         trend.append({"date": cur.day, "seconds": delta})
     return trend
+
+
+@router.get("/api/users/{username}/activity-heatmap")
+async def get_user_activity_heatmap(username: str, days: int = Query(180, ge=30, le=365), db: AsyncSession = Depends(get_db)):
+    """GitHub-style contribution calendar — which calendar days (site-local timezone,
+    same PlayerDailyActivity table used for the in-game connect-streak) a player
+    connected at least once, across any server. Unlike /activity-trend (playtime
+    *amount* per day, from PlayerRankSnapshot), this is presence-only (played that day
+    or not) — PlayerDailyActivity doesn't record a duration, so intensity levels beyond
+    "active"/"not" would be fabricated. Requires a linked steam_id (game-side identity);
+    returns an empty set for an unlinked account rather than 404ing, same as
+    /activity-trend effectively does via lookup_name falling back to the site username."""
+    result = await db.execute(select(User).where(User.username == username, User.is_active == True))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+    if not user.steam_id:
+        return {"days": days, "active_dates": []}
+
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+    rows = (await db.execute(
+        select(PlayerDailyActivity.activity_date)
+        .where(PlayerDailyActivity.steam_id == user.steam_id, PlayerDailyActivity.activity_date >= cutoff)
+        .distinct()
+    )).all()
+    return {"days": days, "active_dates": sorted(r[0] for r in rows)}
 
 
 # ─── User activity feed ──────────────────────────────────────────────────────

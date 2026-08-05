@@ -236,7 +236,16 @@
         <div class="balance-label">Ваш баланс</div>
         <div class="balance-value" id="shop-balance-val">—</div>
       </div>
-      <a href="/profile.html" style="font-size:.78rem;color:var(--muted);text-decoration:none;border:1px solid rgba(150,0,28,0.25);border-radius:.5rem;padding:.45rem .9rem;white-space:nowrap;">История очков →</a>
+      <button type="button" onclick="toggleShopPointsHistory()" id="shop-history-toggle" style="font-size:.78rem;color:var(--muted);background:none;cursor:pointer;border:1px solid rgba(150,0,28,0.25);border-radius:.5rem;padding:.45rem .9rem;white-space:nowrap;font-family:'Inter',sans-serif;">История очков ▾</button>
+    </div>
+    <div id="shop-history-panel" class="g-card" style="display:none;padding:1rem 1.2rem;margin-top:.6rem;animation:fade-up .3s ease both;">
+      <table style="width:100%;border-collapse:collapse;font-size:.8rem;">
+        <thead><tr style="text-align:left;color:var(--muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;">
+          <th style="padding:.3rem .5rem;">Дата</th><th style="padding:.3rem .5rem;">Причина</th><th style="padding:.3rem .5rem;">Δ</th><th style="padding:.3rem .5rem;">Баланс</th>
+        </tr></thead>
+        <tbody id="shop-history-body"><tr><td colspan="4" style="text-align:center;color:var(--muted);padding:.75rem;">Загрузка…</td></tr></tbody>
+      </table>
+      <a href="/profile.html" style="display:inline-block;margin-top:.6rem;font-size:.72rem;color:var(--gold);text-decoration:none;">Вся история в профиле →</a>
     </div>
 
     <!-- Item grid -->
@@ -318,6 +327,39 @@ let _shopItemsCache = [];
     document.getElementById('shop-login-gate').style.display = '';
   });
 })();
+
+/* ── Points history (collapsed by default) ──────────────────────────────────
+   Was only reachable via a "→ profile.html" link — a player browsing the shop
+   had to leave the page to see whether they actually have the points they
+   think they have / where their balance came from. Same reason-label map and
+   endpoint as profile.html's own history tab. */
+const SHOP_POINTS_REASON_LABELS = { playtime: 'Игра', streak: 'Стрик захода', donation: 'Донат', redeem: 'Покупка', refund: 'Возврат', admin_adjust: 'Коррекция', nickname_change: 'Смена ника' };
+let _shopHistoryLoaded = false;
+async function toggleShopPointsHistory() {
+  const panel = document.getElementById('shop-history-panel');
+  const btn = document.getElementById('shop-history-toggle');
+  const opening = panel.style.display === 'none';
+  panel.style.display = opening ? '' : 'none';
+  btn.textContent = opening ? 'История очков ▴' : 'История очков ▾';
+  if (opening && !_shopHistoryLoaded) {
+    _shopHistoryLoaded = true;
+    const body = document.getElementById('shop-history-body');
+    try {
+      const d = await fetch(`${API}/points/transactions/me?per_page=10`, { credentials: 'include' }).then(r => r.json());
+      const items = d.items || [];
+      body.innerHTML = items.length ? items.map(t => `
+        <tr style="border-top:1px solid rgba(110,0,150,0.12);">
+          <td style="padding:.4rem .5rem;color:var(--muted);font-size:.75rem;white-space:nowrap;">${fmtDate(t.created_at)}</td>
+          <td style="padding:.4rem .5rem;">${SHOP_POINTS_REASON_LABELS[t.reason]||t.reason}</td>
+          <td style="padding:.4rem .5rem;font-weight:600;color:${t.delta>=0?'#4ade80':'#f87171'};">${t.delta>=0?'+':''}${t.delta}</td>
+          <td style="padding:.4rem .5rem;color:var(--gold);">${t.balance_after}</td>
+        </tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:.75rem;">Истории пока нет</td></tr>';
+    } catch {
+      body.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;padding:.75rem;">Ошибка загрузки</td></tr>';
+      _shopHistoryLoaded = false;
+    }
+  }
+}
 
 /* ── Site settings ── */
 function applySiteBackground(bg) {

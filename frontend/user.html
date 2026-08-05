@@ -228,6 +228,19 @@
       <div style="height:120px;position:relative;"><canvas id="pub-trend-chart"></canvas></div>
     </div>
 
+    <!-- Activity calendar (GitHub-style, shown only if the account has any linked
+         in-game activity — see GET /api/users/{username}/activity-heatmap) -->
+    <div id="pub-heatmap-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Календарь активности —</h2>
+      <div id="pub-heatmap-grid" style="display:flex;gap:3px;overflow-x:auto;padding-bottom:.3rem;"></div>
+      <div style="display:flex;align-items:center;gap:.35rem;margin-top:.6rem;font-size:.62rem;color:var(--muted);">
+        Меньше
+        <span style="width:10px;height:10px;border-radius:2px;background:rgba(255,255,255,0.06);display:inline-block;"></span>
+        <span style="width:10px;height:10px;border-radius:2px;background:rgba(180,0,35,0.75);display:inline-block;"></span>
+        Больше
+      </div>
+    </div>
+
     <!-- Info -->
     <div class="g-card" style="padding:1.4rem 1.5rem;">
       <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Информация —</h2>
@@ -388,6 +401,47 @@ function renderActivityTrend(rows) {
   });
 }
 
+// GitHub-style contribution calendar from GET /api/users/{u}/activity-heatmap —
+// presence-only (that day had ≥1 in-game connect or not), no intensity levels, since
+// PlayerDailyActivity (unlike PlayerRankSnapshot behind the trend chart above) never
+// recorded a duration — see the endpoint's own docstring for why.
+function renderActivityHeatmap(data) {
+  const card = document.getElementById('pub-heatmap-card');
+  const grid = document.getElementById('pub-heatmap-grid');
+  if (!card || !grid) return;
+  const activeDates = data?.active_dates;
+  if (!activeDates || !activeDates.length) { card.style.display = 'none'; return; }
+  const activeSet = new Set(activeDates);
+  const days = data.days || 180;
+
+  // Start on a Monday so weeks line up into clean 7-row columns.
+  const today = new Date(); today.setUTCHours(0,0,0,0);
+  const start = new Date(today); start.setUTCDate(start.getUTCDate() - days);
+  const dow = (start.getUTCDay() + 6) % 7; // 0=Mon
+  start.setUTCDate(start.getUTCDate() - dow);
+
+  const weeks = [];
+  let cursor = new Date(start);
+  while (cursor <= today) {
+    const week = [];
+    for (let d = 0; d < 7; d++) {
+      const iso = cursor.toISOString().slice(0, 10);
+      week.push({ iso, active: activeSet.has(iso), future: cursor > today });
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+    weeks.push(week);
+  }
+
+  grid.innerHTML = weeks.map(week => `
+    <div style="display:flex;flex-direction:column;gap:3px;">
+      ${week.map(d => d.future
+        ? `<span style="width:10px;height:10px;"></span>`
+        : `<span data-tip="${d.active ? 'Играл ' : 'Не играл '}${new Date(d.iso+'T00:00:00Z').toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',timeZone:'UTC'})}" style="width:10px;height:10px;border-radius:2px;display:inline-block;background:${d.active ? 'rgba(180,0,35,0.75)' : 'rgba(255,255,255,0.06)'};"></span>`
+      ).join('')}
+    </div>`).join('');
+  card.style.display = '';
+}
+
 function renderPublicActivity(actData) {
   const card = document.getElementById('pub-activity-card');
   const list = document.getElementById('pub-activity-list');
@@ -494,6 +548,12 @@ async function loadUser(){
       let trend = null;
       try { trend = await fetch(`${API}/users/${encodeURIComponent(username)}/activity-trend`).then(r => r.ok ? r.json() : null); } catch {}
       renderActivityTrend(trend);
+    })();
+
+    (async () => {
+      let heat = null;
+      try { heat = await fetch(`${API}/users/${encodeURIComponent(username)}/activity-heatmap?days=180`).then(r => r.ok ? r.json() : null); } catch {}
+      renderActivityHeatmap(heat);
     })();
 
     const statusEl = document.getElementById('user-status');

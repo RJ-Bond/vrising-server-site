@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 
 from pydantic import BaseModel, field_validator
@@ -6,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from ..database import get_db
-from ..models import User, Message
+from ..models import User, Message, Notification
 from ..auth import get_current_user
 from ..rate_limit import limiter
 from ..schemas import strip_html_tags
@@ -49,6 +50,18 @@ async def send_message(
     db.add(msg)
     await db.commit()
     await db.refresh(msg)
+    # DMs previously had no notification at all — the recipient only found out by
+    # opening the inbox themselves. Same Notification mechanism as comment replies/
+    # mentions, "message" type (see the notif-bell rendering in index.js/common.js).
+    db.add(Notification(
+        user_id=recipient.id,
+        type="message",
+        data=json.dumps({
+            "from_username": current_user.username,
+            "preview": msg.content[:100],
+        }, ensure_ascii=False),
+    ))
+    await db.commit()
     return {
         "id": msg.id,
         "sender": current_user.username,

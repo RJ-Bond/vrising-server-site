@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -6,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
 
 from ..database import get_db
-from ..models import User, Ban, Warning, BanAppeal, ModerationLogEntry, WarnEscalationState
+from ..models import User, Ban, Warning, BanAppeal, ModerationLogEntry, WarnEscalationState, Notification
 from ..auth import get_admin_user, get_superadmin_user
 from ..rate_limit import limiter
 from ..helpers import _require_plugin_key, _fmt_dt_z, _force_unban, _audit, _get_server_names, _get_linked_usernames
@@ -471,6 +472,17 @@ async def resolve_ban_appeal(
             _force_unban(ban)
 
     await _audit(db, current_user.id, "appeal.resolve", target_type="ban_appeal", target_id=appeal.id, detail=appeal.status)
+    # Appeals are keyed by steam_id, not a site user_id — appellants aren't required to
+    # be logged in to submit one, so a notification is only possible if their steam_id
+    # happens to match a linked site account. Best-effort, not a hard requirement of
+    # resolving the appeal.
+    linked_res = await db.execute(select(User).where(User.steam_id == appeal.steam_id))
+    linked_user = linked_res.scalar_one_or_none()
+    if linked_user is not None:
+        db.add(Notification(
+            user_id=linked_user.id, type="appeal_resolved",
+            data=json.dumps({"approved": body.approve, "admin_response": body.admin_response or ""}, ensure_ascii=False),
+        ))
     await db.commit()
     return {"success": True}
 

@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import Optional
 
@@ -6,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, update
 
 from ..database import get_db
-from ..models import User, PointsTransaction, ShopItem, ShopRedemption
+from ..models import User, PointsTransaction, ShopItem, ShopRedemption, Notification
 from ..auth import get_admin_user, get_current_user
 from ..helpers import _audit, _award_points
 from ..rate_limit import limiter
@@ -145,6 +146,10 @@ async def fulfill_shop_redemption(
     if body.admin_note:
         r.admin_note = body.admin_note
     await _audit(db, current_user.id, "shop.redemption.fulfill", target_type="shop_redemption", target_id=r.id, detail=r.item_name_snapshot)
+    db.add(Notification(
+        user_id=r.user_id, type="shop_fulfilled",
+        data=json.dumps({"item_name": r.item_name_snapshot, "redemption_id": r.id}, ensure_ascii=False),
+    ))
     await db.commit()
     await db.refresh(r)
     return ShopRedemptionOut.model_validate(r)
@@ -175,6 +180,11 @@ async def cancel_shop_redemption(
     if body.admin_note:
         r.admin_note = body.admin_note
     await _audit(db, current_user.id, "shop.redemption.cancel", target_type="shop_redemption", target_id=r.id, detail=r.item_name_snapshot)
+    if user is not None:
+        db.add(Notification(
+            user_id=user.id, type="shop_cancelled",
+            data=json.dumps({"item_name": r.item_name_snapshot, "redemption_id": r.id, "refund": r.cost_snapshot}, ensure_ascii=False),
+        ))
     await db.commit()
     await db.refresh(r)
     return ShopRedemptionOut.model_validate(r)
@@ -198,6 +208,10 @@ async def grant_points(
     reason = (body.reason or "").strip()[:32] or "admin_adjust"
     await _award_points(db, user, body.delta, reason, body.note)
     await _audit(db, current_user.id, "points.grant", target_type="user", target_id=user.id, detail=f"{body.delta:+d} ({reason}): {body.note or ''}")
+    db.add(Notification(
+        user_id=user.id, type="points_grant",
+        data=json.dumps({"delta": body.delta, "reason": reason, "note": body.note or ""}, ensure_ascii=False),
+    ))
     await db.commit()
     tx_res = await db.execute(
         select(PointsTransaction).where(PointsTransaction.user_id == user.id).order_by(PointsTransaction.id.desc()).limit(1)

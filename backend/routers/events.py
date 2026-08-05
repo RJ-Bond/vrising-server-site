@@ -1,8 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
 from jose import jwt as jose_jwt
@@ -272,3 +272,80 @@ async def admin_event_participants(
             "registered_at": _fmt_dt(ep.registered_at),
         })
     return result
+
+
+# ─── Calendar export (.ics) ─────────────────────────────────────────────────────
+# Lets a player subscribe to server events in their own calendar app instead of having
+# to remember to check events.html — a plain static file, no auth, so it works as a
+# "webcal://" subscription URL a calendar app polls periodically, not just a one-time
+# download. RFC 5545 requires CRLF line endings and escaping ",;\" and literal
+# newlines in text fields.
+
+def _ics_escape(text: str) -> str:
+    return text.replace("\\", "\\\\").replace(",", "\\,").replace(";", "\\;").replace("\n", "\\n")
+
+
+def _ics_dt(dt: datetime) -> str:
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def _ics_vevent(ev: Event) -> str:
+    end = ev.end_date or ev.start_date
+    lines = [
+        "BEGIN:VEVENT",
+        f"UID:event-{ev.id}@just-skill.ru",
+        f"DTSTAMP:{_ics_dt(datetime.now(timezone.utc))}",
+        f"DTSTART:{_ics_dt(ev.start_date)}",
+        f"DTEND:{_ics_dt(end)}",
+        f"SUMMARY:{_ics_escape(ev.title)}",
+    ]
+    if ev.description:
+        lines.append(f"DESCRIPTION:{_ics_escape(ev.description)}")
+    if ev.status == "cancelled":
+        lines.append("STATUS:CANCELLED")
+    lines.append("END:VEVENT")
+    return "\r\n".join(lines)
+
+
+def _ics_calendar(vevents: list[str]) -> str:
+    return "\r\n".join([
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Just-Skill.Ru//Events//RU",
+        "CALSCALE:GREGORIAN",
+        *vevents,
+        "END:VCALENDAR",
+        "",
+    ])
+
+
+@router.get("/api/events/{event_id}/ics")
+async def get_event_ics(event_id: int, db: AsyncSession = Depends(get_db)):
+    ev = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
+    if ev is None:
+        raise HTTPException(404, "Event not found")
+    body = _ics_calendar([_ics_vevent(ev)])
+    return Response(
+        content=body, media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="event-{ev.id}.ics"'},
+    )
+
+
+@router.get("/api/events.ics")
+async def get_events_calendar_feed(db: AsyncSession = Depends(get_db)):
+    """Full feed (not paginated — a calendar app expects the whole subscription in one
+    response) of every non-cancelled event, past or future, so a client that already
+    subscribed doesn't lose history it cached. Excludes cancelled events entirely
+    rather than including them as CANCELLED VEVENTs — simpler, and this repo has no
+    "was this ever real" audit need for a calendar feed the way the moderation log
+    does."""
+    rows = (await db.execute(
+        select(Event).where(Event.status != "cancelled").order_by(Event.start_date.asc())
+    )).scalars().all()
+    body = _ics_calendar([_ics_vevent(ev) for ev in rows])
+    return Response(
+        content=body, media_type="text/calendar; charset=utf-8",
+        headers={"Content-Disposition": 'inline; filename="events.ics"'},
+    )

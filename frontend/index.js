@@ -2821,7 +2821,7 @@ async function loadNotifications() {
       list.innerHTML = d.items.map(n => `
         <div style="padding:.65rem 1rem;border-bottom:1px solid rgba(150,0,28,0.1);background:${n.read?'transparent':'rgba(200,0,40,0.05)'};">
           <div style="font-size:.75rem;color:#e2d8f0;">
-            ${n.type==='reply'?`<strong>@${esc(n.data?.from_username||'')}</strong> ответил на ваш комментарий`:'Новое уведомление'}
+            ${n.type==='reply'?`<strong>@${esc(n.data?.from_username||'')}</strong> ответил на ваш комментарий`:n.type==='mention'?`<strong>@${esc(n.data?.from_username||'')}</strong> упомянул вас в комментарии`:n.type==='message'?`<strong>@${esc(n.data?.from_username||'')}</strong> отправил вам сообщение`:n.type==='shop_fulfilled'?`Заявка на «${esc(n.data?.item_name||'')}» выполнена`:n.type==='shop_cancelled'?`Заявка на «${esc(n.data?.item_name||'')}» отменена, очки возвращены`:n.type==='points_grant'?`Начислено ${(n.data?.delta||0)>0?'+':''}${n.data?.delta||0} очков`:n.type==='appeal_resolved'?(n.data?.approved?'Апелляция одобрена, бан снят':'Апелляция отклонена'):'Новое уведомление'}
           </div>
           ${n.data?.preview ? `<div style="font-size:.68rem;color:#9488a8;margin-top:.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(n.data.preview)}</div>` : ''}
           ${n.data?.news_slug ? `<a href="/?news=${esc(n.data.news_slug)}${n.data?.comment_id ? '&comment='+n.data.comment_id : ''}" style="font-size:.65rem;color:#c8002a;text-decoration:none;">Перейти →</a>` : ''}

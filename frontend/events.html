@@ -129,6 +129,7 @@
   <div style="text-align:center;margin-bottom:2rem;">
     <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;">События и турниры</h1>
     <p style="font-size:.8rem;color:var(--muted);margin-top:.4rem;">Участвуйте в событиях сервера</p>
+    <a href="/api/events.ics" download="events.ics" data-tip="Подписка: webcal://v.just-skill.ru/api/events.ics" style="display:inline-flex;align-items:center;gap:.35rem;margin-top:.6rem;font-size:.72rem;color:var(--muted);text-decoration:none;border:1px solid rgba(150,0,28,0.25);border-radius:.5rem;padding:.35rem .75rem;">📅 Добавить в календарь</a>
   </div>
 
   <!-- Status filter -->
@@ -330,7 +331,10 @@ function renderEvents() {
         ? `<div style="font-size:.8rem;color:var(--muted);line-height:1.55;margin-bottom:.85rem;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">${esc(ev.description)}</div>`
         : '<div style="margin-bottom:.85rem;"></div>'}
       ${countdownHtml}
-      <div style="font-size:.72rem;color:var(--muted);margin-bottom:${joinBtn ? '.75rem' : '0'};">👥 ${pCount}${pMax ? '/' + pMax : ''} участников</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:${joinBtn ? '.75rem' : '0'};">
+        <span style="font-size:.72rem;color:var(--muted);">👥 ${pCount}${pMax ? '/' + pMax : ''} участников</span>
+        <a href="/api/events/${ev.id}/ics" download="event-${ev.id}.ics" style="font-size:.68rem;color:var(--muted);text-decoration:none;" data-tip="Добавить в календарь">📅 .ics</a>
+      </div>
       ${joinBtn}
     </div>`;
   }).join('');
