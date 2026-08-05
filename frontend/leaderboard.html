@@ -19,7 +19,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
   <link rel="stylesheet" href="/theme.css?v=4" />
-  <link rel="stylesheet" href="/components.css?v=3" />
+  <link rel="stylesheet" href="/components.css?v=4" />
   <style>
     /* Base tokens in /theme.css; overrides below for this page's lighter surfaces/text. */
     :root {
@@ -314,16 +314,17 @@
 <!-- ⑥ Mobile drawer -->
 <div class="mobile-overlay" :class="{ open: mobNavOpen }" @click="mobNavOpen = false"></div>
 <div class="mobile-drawer" :class="{ open: mobNavOpen }">
-  <a href="/">Главная</a>
-  <a href="/servers.html">Сервера</a>
-  <a href="/leaderboard.html" class="active">Игроки</a>
-  <a href="/clans.html">Кланы</a>
-  <a href="/map.html">Карта</a>
-  <a href="/bans.html">Баны</a>
-  <a href="/shop.html">Магазин</a>
-  <a href="/faq.html">FAQ</a>
-  <a id="mob-profile" href="/profile.html" style="display:none;">Профиль</a>
-  <a id="mob-login" href="/login.html">Войти</a>
+  <a href="/">🏠 Главная</a>
+  <a href="/servers.html">🖥️ Сервера</a>
+  <a href="/leaderboard.html">🏆 Игроки</a>
+  <a href="/clans.html">🛡️ Кланы</a>
+  <a href="/bans.html">🚫 Баны</a>
+  <a href="/shop.html">🛒 Магазин</a>
+  <a href="/map.html">🗺️ Карта</a>
+  <a href="/faq.html">❓ FAQ</a>
+  <a href="/events.html">📅 События</a>
+  <a href="/profile.html">👤 Профиль</a>
+  <a href="#" onclick="openGlobalSearch();return false;">🔍 Поиск</a>
 </div>
 
 <!-- NAV -->
@@ -331,15 +332,30 @@
   <div class="nav-inner">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);"></a>
     <div class="nav-links">
-      <a href="/" class="topnav-link">Главная</a>
-      <a href="/servers.html" class="topnav-link">Сервера</a>
-      <a href="/leaderboard.html" class="topnav-link active">Игроки</a>
-      <a href="/clans.html" class="topnav-link">Кланы</a>
-      <a href="/map.html" class="topnav-link">Карта</a>
-      <a href="/bans.html" class="topnav-link">Баны</a>
-      <a href="/shop.html" class="topnav-link">Магазин</a>
-      <a href="/faq.html" class="topnav-link">FAQ</a>
-      <a id="nav-profile-link" href="/profile.html" class="topnav-link" style="display:none;">Профиль</a>
+      <a href="/" class="topnav-link">🏠 Главная</a>
+      <a href="/servers.html" class="topnav-link">🖥️ Сервера</a>
+      <a href="/leaderboard.html" class="topnav-link">🏆 Игроки</a>
+      <a href="/clans.html" class="topnav-link">🛡️ Кланы</a>
+      <a href="/bans.html" class="topnav-link">🚫 Баны</a>
+      <a href="/shop.html" class="topnav-link">🛒 Магазин</a>
+      <div class="nav-dropdown">
+        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)">Ещё ▾</button>
+        <div class="nav-dropdown-menu">
+          <a href="/map.html" class="nav-dropdown-item">🗺️ Карта</a>
+          <a href="/faq.html" class="nav-dropdown-item">❓ FAQ</a>
+          <a href="/events.html" class="nav-dropdown-item">📅 События</a>
+        </div>
+      </div>
+      <button type="button" class="nav-icon-btn" onclick="openGlobalSearch()" aria-label="Поиск по сайту" data-tip="Поиск (Ctrl+K)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-search"></use></svg>
+      </button>
+      <div id="nav-profile-link" class="nav-dropdown" style="display:none;">
+        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)">👤 Профиль ▾</button>
+        <div class="nav-dropdown-menu">
+          <a href="/profile.html" class="nav-dropdown-item">Мой профиль</a>
+          <a href="#" class="nav-dropdown-item" onclick="logout();return false;">Выйти</a>
+        </div>
+      </div>
       <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
     </div>
     <div id="notif-bell-wrap" style="position:relative;display:none;">
@@ -448,7 +464,7 @@
 <script src="/chart.min.js"></script>
 <script src="/charts.js?v=2"></script>
 <script src="/alpine.min.js"></script>
-<script src="/common.js?v=11"></script>
+<script src="/common.js?v=12"></script>
 <script>
 const API = '/api';
 const PER_PAGE = 25;

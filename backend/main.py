@@ -441,7 +441,15 @@ app.include_router(moderation.router)
 
 @app.get("/api/version")
 async def get_version():
-    version_file = Path("/app/VERSION")
+    """Reads the SAME path as admin_system.py's _REPO_VERSION_FILE (keep these two in
+    sync) — the git checkout bind-mounted at /opt/vrising-site (docker-compose.yml's
+    ".:/opt/vrising-site" volume), not /app/VERSION. /app/VERSION is baked into the
+    Docker image at build time (Dockerfile's "COPY VERSION ./") and NOT bind-mounted,
+    so it goes stale after every routine deploy (git pull + uvicorn --reload, no image
+    rebuild) — this was previously the site — the public footer showed an old version
+    while the admin panel's update-check (already on the live-mounted path) correctly
+    saw the new one."""
+    version_file = Path("/opt/vrising-site/VERSION")
     if version_file.exists():
         return {"version": version_file.read_text().strip()}
     return {"version": None}

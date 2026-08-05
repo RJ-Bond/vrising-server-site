@@ -458,15 +458,16 @@ function _statusInfo(iso) {
 
     const fetches = [
       fetch(`/api/users?search=${encodeURIComponent(q)}&limit=5`).then(r => r.ok ? r.json() : null).catch(() => null),
-      fetch(`/api/news?search=${encodeURIComponent(q)}&limit=5`).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch(`/api/news?search=${encodeURIComponent(q)}&per_page=5`).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch(`/api/clans?search=${encodeURIComponent(q)}&limit=5`).then(r => r.ok ? r.json() : null).catch(() => null),
     ];
 
     const [usersRes, newsRes, clansRes] = await Promise.all(fetches);
 
-    /* Normalise to arrays */
+    /* Normalise to arrays. GET /api/news returns {items,total,page,pages} (PaginatedNews),
+       not {news:[...]} — this used to read the wrong key and silently show zero results. */
     const users  = Array.isArray(usersRes)       ? usersRes       : (usersRes  && Array.isArray(usersRes.users))  ? usersRes.users  : [];
-    const news   = Array.isArray(newsRes)        ? newsRes        : (newsRes   && Array.isArray(newsRes.news))    ? newsRes.news    : [];
+    const news   = Array.isArray(newsRes)        ? newsRes        : (newsRes   && Array.isArray(newsRes.items))   ? newsRes.items   : [];
     const clans  = Array.isArray(clansRes)       ? clansRes       : (clansRes  && Array.isArray(clansRes.clans))  ? clansRes.clans  : [];
 
     _results.innerHTML = '';
@@ -562,4 +563,109 @@ function showToast(msg, type = 'info', duration = 4500) {
     el.style.transform = 'translateX(12px)';
     setTimeout(() => el.remove(), 280);
   }, duration);
+}
+
+/* Presence heartbeat — reports this visitor (+ their current page) to
+   /api/online/ping every 30s, keeping the homepage's "who's online" widget and
+   last_active_at fresh. Used to live only in index.js, so every OTHER page's visits
+   never sent a page label — they still updated last_active_at (every page already
+   calls GET /api/auth/me), so a user could show up "online" with no page shown at
+   all, which looked like a bug (it was — just an incomplete rollout). Runs from here
+   instead so every page reports both. */
+(function initPresencePing() {
+  let _vid = localStorage.getItem('_ow_vid');
+  if (!_vid) { _vid = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now()); localStorage.setItem('_ow_vid', _vid); }
+
+  function _pageLabel() {
+    const p = location.pathname;
+    if (p === '/' || p === '/index.html') return 'Главная';
+    if (p === '/servers.html')     return 'Серверы';
+    if (p === '/leaderboard.html') return 'Игроки';
+    if (p === '/clans.html')       return 'Кланы';
+    if (p === '/bans.html')        return 'Баны';
+    if (p === '/map.html')         return 'Карта';
+    if (p === '/faq.html')         return 'FAQ';
+    if (p === '/events.html')      return 'События';
+    if (p === '/shop.html')        return 'Магазин';
+    if (p === '/profile.html')     return 'Профиль';
+    if (p === '/user.html')        return 'Профиль игрока';
+    if (p === '/appeal.html')      return 'Апелляция';
+    if (p === '/admin.html')       return 'Админка';
+    if (p === '/login.html')       return 'Вход';
+    if (p === '/reset.html')       return 'Сброс пароля';
+    if (p.startsWith('/news/'))    return 'Читает новость';
+    return 'Сайт';
+  }
+
+  function ping() {
+    const u = getUser();
+    // credentials:'include' so the backend can verify identity from the session
+    // cookie itself instead of trusting this request body's self-reported fields.
+    fetch('/api/online/ping', {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitor_id: _vid, is_authed: !!u, username: u?.username || null, page: _pageLabel() })
+    }).catch(() => {});
+  }
+
+  ping();
+  setInterval(ping, 30000);
+})();
+
+/* Auto-detected active nav link — was hand-maintained as class="topnav-link active"
+   independently hardcoded (differently) into every content page's own nav markup;
+   driven from the current path instead now, so a page can never end up with a
+   stale/missing active state again. Covers both the desktop .topnav-link row and the
+   mobile .mobile-drawer list — every page here is a flat top-level route, so an exact
+   pathname match is enough (no nested-route prefix matching needed). */
+(function initActiveNav() {
+  function _init() {
+    const path = location.pathname === '/index.html' ? '/' : location.pathname;
+    document.querySelectorAll('.topnav-link[href], .mobile-drawer a[href]').forEach(a => {
+      a.classList.toggle('active', a.getAttribute('href') === path);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _init);
+  else _init();
+})();
+
+/* Nav dropdowns ("Ещё" grouping + profile menu, see .nav-dropdown in
+   components.css/index.css) — toggled by the trigger button's onclick, closed on
+   outside click or Escape. Only one open at a time. */
+function toggleNavDropdown(btn) {
+  const dd = btn.closest('.nav-dropdown');
+  if (!dd) return;
+  const wasOpen = dd.classList.contains('open');
+  document.querySelectorAll('.nav-dropdown.open').forEach(el => el.classList.remove('open'));
+  if (!wasOpen) dd.classList.add('open');
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.nav-dropdown')) {
+    document.querySelectorAll('.nav-dropdown.open').forEach(el => el.classList.remove('open'));
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') document.querySelectorAll('.nav-dropdown.open').forEach(el => el.classList.remove('open'));
+});
+
+/* Compact nav past a small scroll threshold (see .nav-compact in components.css/
+   index.css) — trims vertical padding so more of the page is visible on scroll,
+   without hiding navigation outright like a hide-on-scroll pattern would. */
+(function initCompactNav() {
+  function _onScroll() {
+    const nav = document.querySelector('.glass-nav');
+    if (nav) nav.classList.toggle('nav-compact', window.scrollY > 40);
+  }
+  window.addEventListener('scroll', _onScroll, { passive: true });
+  _onScroll();
+})();
+
+/* Shared logout for the public nav's profile dropdown (#nav-profile-link, see
+   components.css/index.css's .nav-dropdown) — mirrors admin.html's own logout() and
+   profile.html's doLogout(); every OTHER page's nav previously had a plain "Профиль"
+   link with no logout affordance in the nav at all. */
+async function logout() {
+  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+  localStorage.removeItem('user'); sessionStorage.removeItem('user');
+  localStorage.removeItem('token'); sessionStorage.removeItem('token');
+  window.location.href = '/login.html';
 }

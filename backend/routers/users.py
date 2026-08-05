@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, text
+from sqlalchemy import select, func, text, or_
 
 from ..database import get_db
 from ..models import User, PlayerRecord, PlayerRankSnapshot, GameClan, GameClanMember, Comment, Reaction, News
@@ -138,6 +138,33 @@ async def unlink_steam_account(
     await _audit(db, current_user.id, "user.unlink_steam", target_type="user", target_id=user.id, detail=user.username)
     await db.commit()
     return {"ok": True}
+
+
+# ─── Public user search ──────────────────────────────────────────────────────
+# Backs the Ctrl+K global search (frontend/common.js's openGlobalSearch()/_doSearch())
+# — that search bar already fetches /api/users?search=&limit= for its "Игроки" category
+# alongside /api/news and /api/clans (both already existed and worked), but this
+# endpoint itself never existed, so every search silently came back with zero player
+# results (the fetch 404s, caught by _doSearch's .catch(() => null)). Public,
+# unauthenticated — same visibility as the leaderboard/online-widget, which already
+# show username/avatar/role to anyone.
+
+@router.get("/api/users")
+async def search_users(
+    search: str = Query(None, max_length=64),
+    limit: int = Query(5, ge=1, le=20),
+    db: AsyncSession = Depends(get_db),
+):
+    if not search or not search.strip():
+        return {"users": []}
+    like = f"%{search.strip()}%"
+    result = await db.execute(
+        select(User.username, User.avatar_url, User.role)
+        .where(User.is_active == True, or_(User.username.ilike(like), User.game_nickname.ilike(like)))
+        .order_by(User.username).limit(limit)
+    )
+    users = [{"username": r.username, "avatar_url": r.avatar_url, "role": r.role} for r in result.all()]
+    return {"users": users}
 
 
 # ─── Public profile ──────────────────────────────────────────────────────────

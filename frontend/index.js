@@ -303,36 +303,10 @@ function owShowAll() {
 }
 
 (function initOnlineWidget() {
-  let _vid = localStorage.getItem('_ow_vid');
-  if (!_vid) { _vid = (crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2) + Date.now()); localStorage.setItem('_ow_vid', _vid); }
-
-  const _page = () => {
-    const p = location.pathname;
-    if (p === '/' || p === '/index.html') return 'Главная';
-    if (p === '/servers.html')     return 'Серверы';
-    if (p === '/leaderboard.html') return 'Игроки';
-    if (p === '/clans.html')       return 'Кланы';
-    if (p === '/bans.html')        return 'Баны';
-    if (p === '/map.html')         return 'Карта';
-    if (p === '/faq.html')         return 'FAQ';
-    if (p === '/profile.html')     return 'Профиль';
-    if (p.startsWith('/news/'))    return 'Читает новость';
-    return 'Сайт';
-  };
-
-  const ping = () => {
-    const u = getUser();
-    // credentials:'include' so the backend can verify identity from the session
-    // cookie itself instead of trusting this request body's self-reported fields.
-    fetch('/api/online/ping', {
-      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ visitor_id: _vid, is_authed: !!u, username: u?.username || null, page: _page() })
-    }).catch(() => {});
-  };
-
-  ping();
-  setInterval(ping, 30000);
-
+  // The visitor-id/page-label/ping heartbeat used to live here — moved to
+  // common.js's initPresencePing() so every page pings, not just this one (see that
+  // function's doc comment). This function now only renders the widget itself, which
+  // only exists on this page.
   const load = async () => {
     try {
       const d = await fetch('/api/online').then(r => r.json());
@@ -2293,7 +2267,9 @@ async function loadVersion() {
   try {
     const d = await fetch(`${API}/version`).then(r => r.json());
     const el = document.getElementById('footer-version');
-    if (el) el.textContent = `🏷️ Версия: ${d.version || 'dev'}`;
+    if (!el) return;
+    el.textContent = `🏷️ Версия: ${d.version || 'dev'}`;
+    if (d.version) el.href = `https://github.com/RJ-Bond/vrising-server-site/releases/tag/${encodeURIComponent(d.version)}`;
   } catch {}
 }
 

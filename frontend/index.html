@@ -31,7 +31,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
   <link rel="stylesheet" href="/theme.css?v=4" />
-  <link rel="stylesheet" href="/index.css?v=6" />
+  <link rel="stylesheet" href="/index.css?v=7" />
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#06000f">
   <meta name="mobile-web-app-capable" content="yes">
@@ -48,14 +48,23 @@
   <div style="max-width:1280px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.25rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);"></a>
     <div class="nav-links">
-      <a href="/" class="topnav-link active">Главная</a>
-      <a href="/servers.html" class="topnav-link">Сервера</a>
-      <a href="/leaderboard.html" class="topnav-link">Игроки</a>
-      <a href="/clans.html" class="topnav-link">Кланы</a>
-      <a href="/map.html" class="topnav-link">Карта</a>
-      <a href="/bans.html" class="topnav-link">Баны</a>
-      <a href="/shop.html" class="topnav-link">Магазин</a>
-      <a href="/faq.html" class="topnav-link">FAQ</a>
+      <a href="/" class="topnav-link">🏠 Главная</a>
+      <a href="/servers.html" class="topnav-link">🖥️ Сервера</a>
+      <a href="/leaderboard.html" class="topnav-link">🏆 Игроки</a>
+      <a href="/clans.html" class="topnav-link">🛡️ Кланы</a>
+      <a href="/bans.html" class="topnav-link">🚫 Баны</a>
+      <a href="/shop.html" class="topnav-link">🛒 Магазин</a>
+      <div class="nav-dropdown">
+        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)">Ещё ▾</button>
+        <div class="nav-dropdown-menu">
+          <a href="/map.html" class="nav-dropdown-item">🗺️ Карта</a>
+          <a href="/faq.html" class="nav-dropdown-item">❓ FAQ</a>
+          <a href="/events.html" class="nav-dropdown-item">📅 События</a>
+        </div>
+      </div>
+      <button type="button" class="nav-icon-btn" onclick="openGlobalSearch()" aria-label="Поиск по сайту" data-tip="Поиск (Ctrl+K)">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-search"></use></svg>
+      </button>
     </div>
     <div style="display:flex;align-items:center;gap:.75rem;">
       <button class="hamburger-btn" onclick="toggleDrawer()" aria-label="Меню">
@@ -282,6 +291,14 @@
       <a href="/faq.html" class="nav-link-item">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
         <span>FAQ</span>
+      </a>
+      <a href="/events.html" class="nav-link-item">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--crimson)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <span>События</span>
+      </a>
+      <a href="#" onclick="openGlobalSearch();return false;" class="nav-link-item">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><use href="/icons.svg#icon-search"></use></svg>
+        <span>Поиск <span style="opacity:.5;font-size:.68rem;">Ctrl+K</span></span>
       </a>
     </nav>
     <!-- No "Войти"/"Профиль" item here — the header's own Войти/Выйти (top-right)
@@ -691,7 +708,7 @@
         Steam
       </a>
     </div>
-    <span id="footer-copy" style="font-size:.68rem;color:var(--muted);">🦇 © 2026 Just-Skill.Ru · <span id="footer-version" style="opacity:.7;">🏷️ Версия: —</span></span>
+    <span id="footer-copy" style="font-size:.68rem;color:var(--muted);">🦇 © 2026 Just-Skill.Ru · <a id="footer-version" href="https://github.com/RJ-Bond/vrising-server-site/releases" target="_blank" rel="noopener" style="opacity:.7;color:inherit;text-decoration:none;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='.7'">🏷️ Версия: —</a></span>
   </div>
 </footer>
 
@@ -700,7 +717,7 @@
 <script src="/charts.js?v=2"></script>
 <script src="/anime.min.js"></script>
 <script src="/anim.js?v=1"></script>
-<script src="/common.js?v=11"></script>
+<script src="/common.js?v=12"></script>
 <script src="/index.js?v=12"></script>
 <div id="ow-hover-card"></div>
 

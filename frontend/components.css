@@ -31,6 +31,38 @@
 .mobile-drawer a:hover, .mobile-drawer a.active { color:#fff; background:rgba(150,0,28,0.22); border-color:rgba(180,0,35,0.5); }
 @media (max-width:640px) { .nav-links { display:none; } .nav-burger { display:flex; } .mobile-overlay { display:block; } }
 
+/* ── Nav dropdown ("Ещё" grouping + profile menu) — shares .topnav-link's own
+   look for the trigger button, opens a small floating menu below it. Toggled by
+   common.js's toggleNavDropdown(), closed on outside-click/Escape/route change. */
+.nav-dropdown { position:relative; }
+.nav-dropdown-menu {
+  display:none; position:absolute; top:calc(100% + .4rem); left:0; min-width:11rem; z-index:45;
+  background:rgba(10,2,18,0.98); border:1px solid rgba(150,0,28,0.35); border-radius:.6rem;
+  padding:.35rem; box-shadow:0 8px 32px rgba(0,0,0,0.6); backdrop-filter:blur(14px);
+}
+.nav-dropdown.open .nav-dropdown-menu { display:block; }
+.nav-dropdown-item {
+  display:block; font-size:.78rem; font-weight:600; color:var(--muted); text-decoration:none;
+  padding:.5rem .65rem; border-radius:.4rem; transition:all .15s; font-family:'Inter',sans-serif;
+  background:none; border:none; width:100%; text-align:left; cursor:pointer;
+}
+.nav-dropdown-item:hover { color:#fff; background:rgba(150,0,28,0.18); }
+
+/* ── Nav icon button (search trigger etc.) — square variant of .topnav-link ── */
+.nav-icon-btn {
+  display:inline-flex; align-items:center; justify-content:center; width:2.1rem; height:2.1rem;
+  border-radius:.5rem; border:1px solid transparent; background:none; color:var(--muted);
+  cursor:pointer; transition:all .2s; flex-shrink:0;
+}
+.nav-icon-btn:hover { color:var(--text); background:rgba(150,0,28,0.12); border-color:rgba(160,0,35,0.35); }
+
+/* ── Compact nav on scroll — toggled by common.js past a small scroll threshold,
+   trims vertical padding/logo size so more page content is visible without
+   actually hiding navigation (unlike a hide-on-scroll pattern). ── */
+.glass-nav { transition:padding .2s; }
+.glass-nav.nav-compact #nav-logo { font-size:.92rem; }
+.glass-nav.nav-compact .topnav-link, .glass-nav.nav-compact .nav-icon-btn { padding-top:.28rem; padding-bottom:.28rem; }
+
 /* ── Dot-grid page texture ── */
 body::before { content:''; position:fixed; inset:0; z-index:0; pointer-events:none; background-image:radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1px); background-size:28px 28px; }
 
