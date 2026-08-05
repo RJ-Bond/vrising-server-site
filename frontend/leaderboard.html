@@ -545,7 +545,7 @@ function relativeDate(iso) {
 function activityBadge(lastSeen) {
   if (!lastSeen) return '';
   const diff = Date.now() - new Date(lastSeen).getTime();
-  if (diff < 86400000)  return '<span class="lb-badge" title="Был онлайн последние 24ч">🔥</span>';
+  if (diff < 86400000)  return '<span class="lb-badge" title="Был онлайн последние 24ч">🟢</span>';
   if (diff < 604800000) return '<span class="lb-badge" title="Был онлайн последние 7 дней">⚡</span>';
   return '';
 }
