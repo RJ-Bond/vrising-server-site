@@ -54,7 +54,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
   <link rel="stylesheet" href="/theme.css?v=4" />
-  <link rel="stylesheet" href="/index.css?v=18" />
+  <link rel="stylesheet" href="/index.css?v=19" />
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#06000f">
   <meta name="mobile-web-app-capable" content="yes">
@@ -539,8 +539,7 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--crimson)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span>События</span>
       </a>
-      <a href="#" onclick="openGlobalSearch();return false;" class="nav-link-item" data-tip="Поиск"
-         style="background:rgba(150,0,28,0.11);border:1px solid rgba(150,0,28,0.28);margin-top:.15rem;">
+      <a href="#" onclick="openGlobalSearch();return false;" class="nav-link-item nav-link-item-action" data-tip="Поиск">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><use href="/icons.svg#icon-search"></use></svg>
         <span>Поиск <span style="opacity:.5;font-size:.68rem;">Ctrl+K</span></span>
       </a>
@@ -579,21 +578,23 @@
       </a>
     </div>
 
-    <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:1.1rem 0;"></div>
+    <div id="online-widget-summary">
+      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin:1.1rem 0;"></div>
 
-    <h3 data-i18n-ru="— На сайте —" data-i18n-en="— On the site —" style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.65rem;text-align:center;">— На сайте —</h3>
+      <h3 data-i18n-ru="— На сайте —" data-i18n-en="— On the site —" style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.65rem;text-align:center;">— На сайте —</h3>
 
-    <!-- Total count -->
-    <div style="text-align:center;margin-bottom:.6rem;">
-      <div style="display:inline-flex;align-items:center;gap:.5rem;">
-        <span class="online-dot"></span>
-        <span style="font-size:1.6rem;font-family:'Cinzel',serif;color:#4ade80;line-height:1;" id="ow-total">–</span>
+      <!-- Total count -->
+      <div style="text-align:center;margin-bottom:.6rem;">
+        <div style="display:inline-flex;align-items:center;gap:.5rem;">
+          <span class="online-dot"></span>
+          <span style="font-size:1.6rem;font-family:'Cinzel',serif;color:#4ade80;line-height:1;" id="ow-total">–</span>
+        </div>
+        <div style="font-size:.6rem;color:var(--muted);margin-top:.15rem;">
+          <span data-tip="Пользователи" style="cursor:default;">👤</span> <span id="ow-users">–</span> · <span data-tip="Гости" style="cursor:default;">👁</span> <span id="ow-guests">–</span><span id="ow-bots-wrap" style="display:none;"> · <span data-tip="Боты" style="cursor:default;">🤖</span> <span id="ow-bots">0</span></span>
+        </div>
+        <div id="ow-peak" style="font-size:.56rem;color:var(--muted);opacity:.6;margin-top:.12rem;display:none;"></div>
+        <div id="ow-sparkline"></div>
       </div>
-      <div style="font-size:.6rem;color:var(--muted);margin-top:.15rem;">
-        <span data-tip="Пользователи" style="cursor:default;">👤</span> <span id="ow-users">–</span> · <span data-tip="Гости" style="cursor:default;">👁</span> <span id="ow-guests">–</span><span id="ow-bots-wrap" style="display:none;"> · <span data-tip="Боты" style="cursor:default;">🤖</span> <span id="ow-bots">0</span></span>
-      </div>
-      <div id="ow-peak" style="font-size:.56rem;color:var(--muted);opacity:.6;margin-top:.12rem;display:none;"></div>
-      <div id="ow-sparkline"></div>
     </div>
 
     <div id="ow-list" style="display:flex;flex-direction:column;gap:.2rem;"></div>

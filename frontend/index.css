@@ -430,6 +430,12 @@
     }
     .nav-link-item:hover { background:rgba(150,0,28,0.22); border-color:rgba(160,0,35,0.5); box-shadow:0 0 14px rgba(190,0,35,0.22), inset 0 0 10px rgba(140,0,25,0.1); color:var(--text); }
     .nav-link-item:hover::after { left:150%; }
+    /* Search opens a modal instead of navigating like its siblings — a faint tint
+       marks it as "does something here" rather than "goes somewhere". Reset to
+       the plain baseline in compact mode (below): at 70px wide every icon needs
+       to read identically, and this one extra border stood out as a stray box
+       around just one icon rather than a deliberate accent. */
+    .nav-link-item-action { background:rgba(150,0,28,0.11); border-color:rgba(150,0,28,0.28); }
     .nav-link-item.active {
       background:rgba(180,0,35,0.18); border-color:rgba(200,0,40,0.55);
       box-shadow:0 0 14px rgba(200,0,40,0.2), inset 0 0 12px rgba(160,0,30,0.12);
@@ -772,6 +778,16 @@
       .left-panel.compact #continue-widget,
       .left-panel.compact #my-clan-card,
       .left-panel.compact #notif-preview-strip { display:none !important; }
+      /* Collapsed rail = navigation icons only. Everything content-shaped (who's
+         online summary/list, tip of the day) either overflows the 70px rail
+         illegibly or, at best, adds nothing a bare icon strip needs — hide it
+         entirely rather than trying to cram a shrunk version in; it's one click
+         (the expand arrow) away. */
+      .left-panel.compact #online-widget-summary,
+      .left-panel.compact #ow-list,
+      .left-panel.compact #ow-pages,
+      .left-panel.compact #ow-more-wrap,
+      .left-panel.compact #tip-of-day-card { display:none !important; }
       /* More breathing room between icons, plus a divider ahead of the nav list
          so the toggle/avatar area, navigation, and social links read as distinct
          groups instead of one unbroken column of icons. */
@@ -780,6 +796,7 @@
       /* Icons default to a single muted tone instead of each link's own accent
          color (was a "rainbow" of unrelated colors with nothing to explain why) —
          full color only returns on hover, as an affordance rather than noise. */
+      .left-panel.compact .nav-link-item-action { background:rgba(110,0,20,0.1); border-color:rgba(110,0,20,0.2); }
       .left-panel.compact .nav-link-item svg { stroke:var(--muted); transition:stroke .15s,transform .15s; }
       .left-panel.compact .nav-link-item:hover svg { stroke:var(--gold); transform:scale(1.15); }
       .left-panel.compact .nav-link-item:hover { background:rgba(201,169,74,.1); }
