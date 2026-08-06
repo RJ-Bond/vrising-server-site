@@ -83,7 +83,7 @@ async def _record_maintenance_history(db: AsyncSession, enabled: bool) -> None:
 @router.get("/api/settings/public")
 async def get_public_settings(db: AsyncSession = Depends(get_db)):
     keys = ["site_title", "site_tagline", "site_description", "site_logo_url", "hero_logo_url", "hero_subtitle", "favicon_url", "discord_url", "discord_server_id", "max_url", "bg_image_url", "server_ip", "server_port", "server_name", "server2_name", "wipe_date", "wipe_type", "wipe_date2", "wipe_type2", "event_active", "event_title", "event_text", "event_color", "rules", "timezone", "time_format", "date_format", "maintenance_mode", "maintenance_title", "maintenance_message", "maintenance_video_url", "maintenance_end_time", "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates", "maintenance_history", "nav_hidden",
-            "home_pitch", "home_testimonials", "home_gallery", "site_launched_date"]
+            "home_pitch", "home_testimonials", "home_gallery", "site_launched_date", "rules_tldr"]
     result = await db.execute(select(Setting).where(Setting.key.in_(keys)))
     settings = result.scalars().all()
     d = {s.key: s.value for s in settings}
@@ -202,6 +202,13 @@ ALLOWED_SETTING_KEYS = {
     "maintenance_start_time", "maintenance_fallback_image", "maintenance_status_updates", "maintenance_history",
     "points_per_minute_playtime", "points_streak_bonus", "points_streak_min_days",
     "nav_hidden",
+    # Homepage content keys (main.py seeds these, frontend/admin.html's SETTINGS_FIELD_KEYS
+    # already lets an admin edit all five) — home_pitch/home_testimonials/home_gallery/
+    # site_launched_date were missing here despite that, so saving any of them 400'd with
+    # "Unknown setting key" the whole time; rules_tldr (new, item 4 of this pass — see
+    # frontend/index.js's loadSiteSettings()) is added correctly from the start so it
+    # doesn't repeat that gap.
+    "home_pitch", "home_testimonials", "home_gallery", "site_launched_date", "rules_tldr",
 }
 
 @router.get("/api/admin/settings", response_model=list[SettingOut])

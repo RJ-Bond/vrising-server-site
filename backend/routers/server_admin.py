@@ -116,6 +116,26 @@ async def update_server_api_key(
     return ServerApiKeyOut(api_key=value)
 
 
+# ─── Scheduled server restart (public, read-only) ──────────────────────────────
+# Homepage "restart scheduled" banner (frontend/index.js's loadRestartBanner(), see
+# index.html's #restart-banner) needs restart_at without an admin session — the two
+# existing readers of ScheduledRestart are both gated (GET .../restart just below
+# requires get_admin_user; GET /api/plugin/restart-status requires the plugin API key
+# via _require_plugin_key). This exposes ONLY restart_at, nothing else on the row (no
+# daily_restart_time, no per-server admin details), same "public, unauthenticated,
+# read-only" posture as GET /api/online or GET /api/clans/leaderboard.
+@router.get("/api/servers/{server_num}/restart-status")
+@limiter.limit("60/minute")
+async def public_restart_status(
+    request: Request,
+    server_num: int,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(ScheduledRestart).where(ScheduledRestart.server_num == server_num))
+    row = result.scalar_one_or_none()
+    return {"restart_at": _fmt_dt_z(row.restart_at if row else None)}
+
+
 # ─── Scheduled server restart (admin) ──────────────────────────────────────────
 # Admin-panel counterpart to POST /api/plugin/schedule-restart / cancel-restart
 # (backend/routers/plugin_integration.py) — shares the same ScheduledRestart row and

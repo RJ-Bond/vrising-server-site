@@ -2200,6 +2200,21 @@ async function loadSiteSettings() {
       if (pitch) { pitchEl.textContent = pitch; pitchEl.style.display = ''; }
       else { pitchEl.style.display = 'none'; }
     }
+    // TL;DR rules summary — "rules_tldr" setting, newline-separated short bullets,
+    // hidden entirely when empty (same convention as home_pitch just above).
+    const tldrWrap = document.getElementById('rules-tldr-wrap');
+    const tldrList = document.getElementById('rules-tldr-list');
+    if (tldrWrap && tldrList) {
+      const bullets = (d.rules_tldr || '').split('\n').map(s => s.trim()).filter(Boolean);
+      if (bullets.length) {
+        tldrList.innerHTML = bullets.map(b => `<li style="display:flex;gap:.5rem;font-size:.8rem;color:var(--text);line-height:1.4;">
+          <span style="color:var(--gold);flex-shrink:0;">▸</span><span>${esc(b)}</span>
+        </li>`).join('');
+        tldrWrap.style.display = '';
+      } else {
+        tldrWrap.style.display = 'none';
+      }
+    }
     // Gallery + testimonials — both admin-editable JSON, both stay hidden when empty
     // rather than showing placeholder/fabricated content (see admin.html's own
     // "только реальные отзывы" note next to the testimonials field).
@@ -2391,14 +2406,17 @@ async function loadSiteSettings() {
         };
         const c = colorMap[d.event_color] || colorMap.crimson;
         banner.style.display = '';
-        banner.innerHTML = `<div class="event-banner" style="background:${c.bg};border-color:${c.border};">
+        // Wrapped in a link to /events.html (was previously a dead-end informational
+        // banner with nowhere to click through to) — text/icon/colors unchanged.
+        banner.innerHTML = `<a href="/events.html" class="event-banner" style="background:${c.bg};border-color:${c.border};text-decoration:none;">
           <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,${c.top},transparent);"></div>
           <div class="event-banner-icon">${c.icon}</div>
           <div class="event-banner-body">
             <div class="event-banner-title" style="color:${c.text};">${esc(d.event_title)}</div>
             ${d.event_text ? `<div class="event-banner-text">${esc(d.event_text)}</div>` : ''}
           </div>
-        </div>`;
+          <div style="flex-shrink:0;color:${c.text};opacity:.7;font-size:.7rem;font-weight:700;letter-spacing:.04em;white-space:nowrap;">Подробнее →</div>
+        </a>`;
       }
     }
   } catch {}

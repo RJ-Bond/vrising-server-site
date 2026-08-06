@@ -474,6 +474,15 @@
     <div id="news-sentinel" style="height:2px;margin-top:1rem;"></div>
     <div id="news-loading-more" style="display:none;text-align:center;padding:.75rem 0;color:var(--muted);font-size:.75rem;">Загрузка…</div>
 
+    <!-- TL;DR rules summary — admin-configured "rules_tldr" setting (newline-separated
+         short bullets), hidden entirely until an admin fills it in. Sits above the full
+         rules accordion below since the accordion's own content is free text an admin
+         writes per-rule and can't be algorithmically summarized. -->
+    <div id="rules-tldr-wrap" style="display:none;margin-top:1.35rem;background:rgba(10,3,16,0.6);border:1px solid rgba(200,155,0,0.22);border-radius:.75rem;padding:.85rem 1.1rem;">
+      <div style="font-size:.62rem;font-weight:700;letter-spacing:.14em;color:var(--gold);text-transform:uppercase;margin-bottom:.5rem;">TL;DR — правила вкратце</div>
+      <ul id="rules-tldr-list" style="margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:.35rem;"></ul>
+    </div>
+
     <!-- ── Rules section ── -->
     <div class="rules-section">
       <div class="rules-header" onclick="toggleRules()" id="rules-header">
