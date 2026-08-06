@@ -2554,6 +2554,8 @@ loadWipeHistory();
 let _teamLoaded = false;
 loadTeam();
 setInterval(loadTeam, 10000);
+loadActivityFeed();
+setInterval(loadActivityFeed, 60000);
 
 // ── Trust stats bar ─────────────────────────────────────────────────────────
 // Real numbers only (GET /api/homepage-stats + site_launched_date setting) — the
@@ -2659,6 +2661,37 @@ async function loadTeam() {
     wrap.style.display = '';
     _showRightPanelJumplink('jumplink-team');
     if (firstLoad && window.animateEntrance) animateEntrance('#team-list .team-card', { distance: 12, stagger: 80 });
+  } catch {}
+}
+
+// ── Activity feed ────────────────────────────────────────────────────────────
+// Read-only "what's happening" strip: GET /api/activity-feed merges recent news,
+// recently-created events and player playtime/streak milestones server-side
+// (backend/routers/activity_feed.py), already sorted+capped — this just renders it.
+const ACTIVITY_FEED_ICON_FALLBACK = { news: '📰', event: '📅', milestone: '⭐' };
+
+async function loadActivityFeed() {
+  try {
+    const data = await fetch(`${API}/activity-feed`).then(r => r.ok ? r.json() : null);
+    if (!Array.isArray(data) || data.length === 0) return;
+    const wrap = document.getElementById('activity-feed-section');
+    const list = document.getElementById('activity-feed-list');
+    if (!wrap || !list) return;
+    list.innerHTML = data.map(item => {
+      const icon = item.icon || ACTIVITY_FEED_ICON_FALLBACK[item.type] || '•';
+      const when = item.timestamp ? fmtDateTime(item.timestamp) : '';
+      return `<a href="${esc(item.url)}" style="display:flex;gap:.55rem;align-items:flex-start;text-decoration:none;padding:.4rem .5rem;border-radius:.5rem;transition:background .18s;"
+        onmouseover="this.style.background='rgba(110,0,20,0.14)'" onmouseout="this.style.background='transparent'">
+        <span style="font-size:.85rem;line-height:1.35;flex-shrink:0;">${esc(icon)}</span>
+        <span style="min-width:0;flex:1;">
+          <span style="display:block;font-size:.72rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(item.title)}</span>
+          ${item.subtitle ? `<span style="display:block;font-size:.63rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(item.subtitle)}</span>` : ''}
+          ${when ? `<span style="display:block;font-size:.56rem;color:var(--muted);opacity:.65;margin-top:.1rem;">${esc(when)}</span>` : ''}
+        </span>
+      </a>`;
+    }).join('');
+    wrap.style.display = '';
+    _showRightPanelJumplink('jumplink-activity');
   } catch {}
 }
 

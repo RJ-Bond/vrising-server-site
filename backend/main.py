@@ -383,10 +383,11 @@ class PageViewMiddleware(BaseHTTPMiddleware):
 app.add_middleware(PageViewMiddleware)
 
 
-from .routers import points_shop, wipes, notifications, messages, reports, polls, events, news, auth as auth_router, profile, clans, leaderboard, plugin_integration, server_admin, users, admin_settings, admin_system, admin_misc, moderation, search  # noqa: E402 — deliberately after `app`/middleware are fully set up, right above the include_router() calls that use it
+from .routers import points_shop, wipes, notifications, messages, reports, polls, events, news, auth as auth_router, profile, clans, leaderboard, plugin_integration, server_admin, users, admin_settings, admin_system, admin_misc, moderation, search, activity_feed  # noqa: E402 — deliberately after `app`/middleware are fully set up, right above the include_router() calls that use it
 
 app.include_router(points_shop.router)
 app.include_router(search.router)
+app.include_router(activity_feed.router)
 app.include_router(wipes.router)
 app.include_router(notifications.router)
 app.include_router(messages.router)

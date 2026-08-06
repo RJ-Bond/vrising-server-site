@@ -578,6 +578,7 @@
          hidden by JS unless there's actually more than one section to jump to. -->
     <div id="right-panel-jumplinks" style="display:none;justify-content:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.85rem;font-size:.62rem;">
       <a href="#right-panel" style="color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Сервера</a>
+      <a href="#activity-feed-section" id="jumplink-activity" style="display:none;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Лента</a>
       <a href="#team-section" id="jumplink-team" style="display:none;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Команда</a>
       <a href="#discord-widget-wrap" id="jumplink-discord" style="display:none;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Discord</a>
     </div>
@@ -622,6 +623,17 @@
       Подробнее на странице сервера
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
     </a>
+
+    <!-- Activity feed — read-only "what's happening" strip (news/events/player
+         milestones), a same-site substitute for routing this kind of chatter through
+         Discord/Telegram (both restricted for this site's audience). Hidden until
+         GET /api/activity-feed actually returns something, same pattern as
+         #team-section below. -->
+    <div id="activity-feed-section" style="display:none;margin-top:1.1rem;">
+      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.85rem;"></div>
+      <h3 data-i18n-ru="— Лента событий —" data-i18n-en="— Activity feed —" style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;text-align:center;">— Лента событий —</h3>
+      <div id="activity-feed-list" style="display:flex;flex-direction:column;gap:.15rem;"></div>
+    </div>
 
     <!-- Team section -->
     <div id="team-section" style="display:none;margin-top:1.1rem;">
@@ -832,7 +844,7 @@
 <script src="/anime.min.js"></script>
 <script src="/anim.js?v=1"></script>
 <script src="/common.js?v=13"></script>
-<script src="/index.js?v=16"></script>
+<script src="/index.js?v=17"></script>
 <div id="ow-hover-card"></div>
 
 <!-- ══ NEWS EDITOR MODAL ══════════════════════════════════════════════════════ -->
