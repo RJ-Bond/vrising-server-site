@@ -20,6 +20,9 @@
     discord_url: 'https://discord.gg/example',
     event_active: 'false', rules: '1. Уважайте других игроков.\n2. Без читов.',
     nav_hidden: '["/shop.html"]',
+    // rules_tldr (backend/routers/admin_settings.py) — homepage TL;DR-above-the-
+    // accordion widget (frontend/index.js loadSiteSettings()), newline-separated bullets.
+    rules_tldr: 'Без читов и дюпов\nУважайте других игроков\nРейды только по расписанию',
   };
 
   // member_preview mirrors GET /api/clans's shape (GameClanMemberOut in backend/schemas.py)
@@ -234,7 +237,27 @@
     { type: 'event', title: 'Турнир кланов «Кровавая арена»', subtitle: `Начало: ${iso(-5 * 24 * 3600 * 1000)}`, url: '/events.html', icon: '📅', timestamp: iso(4 * 3600 * 1000) },
     { type: 'milestone', title: 'Shadowfang', subtitle: 'Играет 7 дней подряд', url: '/user.html?u=Shadowfang', icon: '🔥', timestamp: iso(9 * 3600 * 1000) },
     { type: 'news', title: 'Хэллоуин ивент стартовал', subtitle: 'Особые дропы и декорации до конца недели.', url: '/?news=halloween-event', icon: '📰', timestamp: iso(28 * 3600 * 1000) },
+    // shop_redemption (backend/routers/activity_feed.py) — fulfilled ShopRedemption rows.
+    { type: 'shop_redemption', title: 'Waypoint Shard', subtitle: 'Получил: Dracarys', url: '/shop.html', icon: '🛒', timestamp: iso(3 * 3600 * 1000) },
   ];
+
+  // GET /api/users/recent (backend/routers/users.py) — homepage "Новые игроки" avatar
+  // strip (frontend/index.js loadNewPlayers()). Newest-first, matching the real endpoint.
+  const recentUsers = [
+    { username: 'Nightshade', avatar_url: null, created_at: iso(2 * 3600 * 1000) },
+    { username: 'Emberclaw', avatar_url: null, created_at: iso(20 * 3600 * 1000) },
+    { username: 'Grimwald', avatar_url: null, created_at: iso(2 * 24 * 3600 * 1000) },
+    { username: 'Ashlynn', avatar_url: null, created_at: iso(4 * 24 * 3600 * 1000) },
+  ];
+
+  // GET /api/servers/{n}/restart-status (backend/routers/server_admin.py) — public
+  // read-only counterpart to the admin/plugin restart-status endpoints, backing the
+  // homepage restart-countdown banner (frontend/index.js loadRestartBanner()). Server 1
+  // has a restart scheduled ~2h15m out (within the banner's visibility window); server 2
+  // has nothing scheduled, exercising both the shown and hidden states.
+  const restartStatus = (serverNum) => ({
+    restart_at: serverNum === 1 ? iso(-(2 * 3600 + 15 * 60) * 1000) : null,
+  });
 
   // PaginatedNews shape (backend/schemas.py NewsListOut) — GET /api/news, backing
   // index.html's news feed (frontend/index.js's loadNews()). Previously unmocked,
@@ -258,8 +281,10 @@
     [/\/api\/settings\/public$/, () => settingsPublic],
     [/\/api\/auth\/me$/, () => null], // anonymous visitor — handled as 401 below
     [/\/api\/team/, () => team],
+    [/\/api\/users\/recent/, () => recentUsers],
     [/\/api\/users\/[^/]+\/activity/, () => userActivity],
     [/\/api\/users\/[^/]+$/, () => userProfile],
+    [/\/api\/servers\/\d+\/restart-status/, (url) => restartStatus(Number(url.match(/\/api\/servers\/(\d+)\/restart-status/)[1]))],
     [/\/api\/clans\/leaderboard/, (url) => clanLeaderboard(url.includes('server=2') ? 2 : (url.includes('server=1') ? 1 : null))],
     [/\/api\/clans\/\d+$/, (url) => clanDetail(url.match(/\/api\/clans\/(\d+)/)[1])],
     [/\/api\/clans(\?|$)/, () => clans],

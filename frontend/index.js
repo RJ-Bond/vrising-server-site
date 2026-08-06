@@ -2588,6 +2588,13 @@ loadTeam();
 setInterval(loadTeam, 10000);
 loadActivityFeed();
 setInterval(loadActivityFeed, 60000);
+loadTopClans();
+setInterval(loadTopClans, 60000);
+loadNewPlayers();
+loadTopNow();
+loadRestartBanner();
+setInterval(loadRestartBanner, 60000);
+initQuickstartCard();
 
 // ── Trust stats bar ─────────────────────────────────────────────────────────
 // Real numbers only (GET /api/homepage-stats + site_launched_date setting) — the
@@ -2700,7 +2707,7 @@ async function loadTeam() {
 // Read-only "what's happening" strip: GET /api/activity-feed merges recent news,
 // recently-created events and player playtime/streak milestones server-side
 // (backend/routers/activity_feed.py), already sorted+capped — this just renders it.
-const ACTIVITY_FEED_ICON_FALLBACK = { news: '📰', event: '📅', milestone: '⭐' };
+const ACTIVITY_FEED_ICON_FALLBACK = { news: '📰', event: '📅', milestone: '⭐', shop_redemption: '🛒' };
 
 async function loadActivityFeed() {
   try {
@@ -2745,6 +2752,188 @@ function _showRightPanelJumplink(linkId) {
   if (link) link.style.display = 'inline-block';
   const bar = document.getElementById('right-panel-jumplinks');
   if (bar) bar.style.display = 'flex';
+}
+
+// ── Top clans mini-widget ─────────────────────────────────────────────────────
+// GET /api/clans/leaderboard (built earlier today, ranks clans by combat power) was
+// previously only shown on clans.html — this is the compact homepage version. Hidden
+// entirely when there's no real power data yet, same "don't show a leaderboard of
+// zeroes" rule clans.html's own power-leaderboard card already follows.
+async function loadTopClans() {
+  try {
+    const rows = await fetch(`${API}/clans/leaderboard?limit=5`).then(r => r.ok ? r.json() : []);
+    const hasRealPower = Array.isArray(rows) && rows.some(c => (c.total_power || 0) > 0);
+    const wrap = document.getElementById('top-clans-section');
+    const list = document.getElementById('top-clans-list');
+    if (!wrap || !list) return;
+    if (!hasRealPower) { wrap.style.display = 'none'; return; }
+    const medals = ['🥇', '🥈', '🥉'];
+    list.innerHTML = rows.slice(0, 5).map((c, i) => {
+      const power = Math.round(c.total_power || 0).toLocaleString('ru-RU');
+      const rankLabel = medals[i] || (i + 1);
+      return `<a href="/clans.html?clan=${c.id}" style="display:flex;align-items:center;gap:.5rem;text-decoration:none;padding:.3rem .4rem;border-radius:.4rem;transition:background .15s;"
+        onmouseover="this.style.background='rgba(110,0,20,0.12)'" onmouseout="this.style.background='transparent'">
+        <span style="width:1.3rem;text-align:center;font-size:.75rem;color:var(--gold);flex-shrink:0;">${rankLabel}</span>
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'Philosopher',serif;font-size:.78rem;color:var(--text);">${esc(c.name)}</span>
+        <span style="font-size:.68rem;color:var(--gold);white-space:nowrap;flex-shrink:0;">⚔ ${power}</span>
+      </a>`;
+    }).join('');
+    wrap.style.display = '';
+    _showRightPanelJumplink('jumplink-clans');
+  } catch {}
+}
+
+// ── "Новые игроки" avatar strip ───────────────────────────────────────────────
+// GET /api/users/recent — most recently registered active accounts, linking to their
+// profiles. Hidden until there's at least one to show.
+async function loadNewPlayers() {
+  try {
+    const rows = await fetch(`${API}/users/recent?limit=10`).then(r => r.ok ? r.json() : []);
+    const wrap = document.getElementById('new-players-section');
+    const strip = document.getElementById('new-players-strip');
+    if (!wrap || !strip || !Array.isArray(rows) || !rows.length) return;
+    strip.innerHTML = rows.map(u => {
+      const ph = `<span style="width:2.2rem;height:2.2rem;border-radius:50%;background:rgba(60,30,90,.8);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:var(--text);">${esc((u.username[0] || '?').toUpperCase())}</span>`;
+      const av = u.avatar_url
+        ? `<img src="${esc(u.avatar_url)}" alt="" style="width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover;" onerror="this.outerHTML='${ph.replace(/'/g, "\\'")}'">` : ph;
+      return `<a href="/user.html?u=${encodeURIComponent(u.username)}" title="${esc(u.username)}" data-tip="${esc(u.username)}"
+        style="display:block;border-radius:50%;border:2px solid rgba(150,0,28,0.3);transition:border-color .15s,transform .15s;"
+        onmouseover="this.style.borderColor='rgba(200,0,40,0.6)';this.style.transform='scale(1.08)'"
+        onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.transform='scale(1)'">${av}</a>`;
+    }).join('');
+    wrap.style.display = '';
+    _showRightPanelJumplink('jumplink-newplayers');
+  } catch {}
+}
+
+// ── "Сейчас в топе" combined stat row ─────────────────────────────────────────
+// 3 compact cards in one glanceable row — top player by playtime, top clan by combat
+// power, longest active connect-streak. Reuses the same two endpoints the leaderboard/
+// clans widgets elsewhere already fetch (no new backend). Each of the 3 slots stays
+// hidden independently if its own data isn't available yet, and the whole row stays
+// hidden if none of the 3 have anything to show.
+async function loadTopNow() {
+  try {
+    const [players, clans] = await Promise.all([
+      fetch(`${API}/leaderboard?server=1&period=all&per_page=50`).then(r => r.ok ? r.json() : []),
+      fetch(`${API}/clans/leaderboard?limit=1`).then(r => r.ok ? r.json() : []),
+    ]);
+    let shown = false;
+    const bar = document.getElementById('home-topnow-bar');
+
+    if (Array.isArray(players) && players.length) {
+      // Already sorted by total_seconds desc (GET /api/leaderboard's default order).
+      const top = players[0];
+      const el = document.getElementById('topnow-player');
+      if (el) {
+        document.getElementById('topnow-player-name').textContent = top.player_name;
+        const hrs = Math.floor(top.total_seconds / 3600);
+        document.getElementById('topnow-player-val').textContent = `${hrs.toLocaleString('ru-RU')} ч в игре`;
+        el.href = `/user.html?u=${encodeURIComponent(top.player_name)}`;
+        el.style.display = '';
+        shown = true;
+      }
+      // Longest active streak among this same sample (top-50 by playtime) — an
+      // approximation of the true site-wide max, not a separate full scan; reasonable
+      // since this is a "glanceable" widget, not an authoritative ranking.
+      const bestStreak = players.reduce((best, p) => (p.streak_days > (best?.streak_days || 0) ? p : best), null);
+      const streakEl = document.getElementById('topnow-streak');
+      if (streakEl && bestStreak && bestStreak.streak_days > 0) {
+        document.getElementById('topnow-streak-name').textContent = bestStreak.player_name;
+        document.getElementById('topnow-streak-val').textContent = `${bestStreak.streak_days} дн. подряд`;
+        streakEl.href = `/user.html?u=${encodeURIComponent(bestStreak.player_name)}`;
+        streakEl.style.display = '';
+        shown = true;
+      }
+    }
+
+    if (Array.isArray(clans) && clans.length && (clans[0].total_power || 0) > 0) {
+      const topClan = clans[0];
+      const el = document.getElementById('topnow-clan');
+      if (el) {
+        document.getElementById('topnow-clan-name').textContent = topClan.name;
+        document.getElementById('topnow-clan-val').textContent = `⚔ ${Math.round(topClan.total_power).toLocaleString('ru-RU')}`;
+        el.href = `/clans.html?clan=${topClan.id}`;
+        el.style.display = '';
+        shown = true;
+      }
+    }
+
+    if (shown && bar) bar.style.display = '';
+  } catch {}
+}
+
+// ── Scheduled restart banner ──────────────────────────────────────────────────
+// GET /api/servers/{N}/restart-status (public read-only counterpart to the admin/
+// plugin restart-status endpoints — backend/routers/server_admin.py). Checks both
+// server slots; shows the soonest restart_at that falls within the next few hours.
+// Dismissal is keyed by the restart_at ISO string itself (not just a boolean) so a
+// NEWLY scheduled restart after a dismissal shows again instead of staying hidden.
+const RESTART_BANNER_THRESHOLD_MS = 6 * 3600 * 1000;
+
+async function loadRestartBanner() {
+  try {
+    const results = await Promise.all([1, 2].map(n =>
+      fetch(`${API}/servers/${n}/restart-status`).then(r => r.ok ? r.json() : null).catch(() => null)
+    ));
+    const banner = document.getElementById('restart-banner');
+    const textEl = document.getElementById('restart-banner-text');
+    if (!banner || !textEl) return;
+
+    const now = Date.now();
+    let soonest = null;
+    results.forEach((res, i) => {
+      if (!res || !res.restart_at) return;
+      const at = new Date(res.restart_at).getTime();
+      if (isNaN(at)) return;
+      const diff = at - now;
+      if (diff > 0 && diff <= RESTART_BANNER_THRESHOLD_MS && (!soonest || at < soonest.at)) {
+        soonest = { at, server: i + 1 };
+      }
+    });
+
+    if (!soonest) { banner.style.display = 'none'; return; }
+    if (localStorage.getItem('_restartBannerDismissed') === String(soonest.at)) {
+      banner.style.display = 'none';
+      return;
+    }
+
+    const diff = soonest.at - now;
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const srvName = (soonest.server === 2 ? window._srvName2 : window._srvName) || `Сервер ${soonest.server}`;
+    const timeStr = h > 0 ? `${h}ч ${m}м` : `${m}м`;
+    textEl.textContent = `Плановый рестарт «${srvName}» через ${timeStr}`;
+    banner.dataset.restartAt = String(soonest.at);
+    banner.style.display = '';
+  } catch {}
+}
+
+function dismissRestartBanner() {
+  const banner = document.getElementById('restart-banner');
+  if (!banner) return;
+  if (banner.dataset.restartAt) localStorage.setItem('_restartBannerDismissed', banner.dataset.restartAt);
+  banner.style.display = 'none';
+}
+
+// ── Quick-start onboarding card ───────────────────────────────────────────────
+// 3-step "Скачать игру → Зарегистрироваться → Подключиться" card for a first-time
+// anonymous visitor — shown only when logged out, dismissible and remembered via
+// localStorage so a returning anonymous visitor who already dismissed it isn't nagged
+// again. getUser() (common.js) reads the cached user synchronously, same check the nav
+// user-card init IIFE at the top of this file already uses before the /api/auth/me
+// round-trip resolves.
+function initQuickstartCard() {
+  const card = document.getElementById('quickstart-card');
+  if (!card) return;
+  if (getUser()) return; // logged in (even just cached) — never show
+  if (localStorage.getItem('_quickstartDismissed') === '1') return;
+  card.style.display = '';
+}
+function dismissQuickstart() {
+  const card = document.getElementById('quickstart-card');
+  if (card) card.style.display = 'none';
+  localStorage.setItem('_quickstartDismissed', '1');
 }
 
 // ── Direct Messages ──────────────────────────────────────────────────────────
