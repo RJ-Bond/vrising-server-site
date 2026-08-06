@@ -125,8 +125,9 @@
     .clan-lb-name { font-family:'Cinzel',serif; font-size:.84rem; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
     .clan-lb-meta { font-size:.62rem; color:var(--muted); display:flex; align-items:center; gap:.4rem; margin-top:.2rem; flex-wrap:wrap; }
     .clan-lb-online-count { color:#2ee69b; }
-    .clan-lb-power { font-family:'Oswald',sans-serif; font-size:.85rem; color:var(--gold); white-space:nowrap; flex-shrink:0; text-align:right; }
-    .clan-lb-power-label { font-size:.56rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; display:block; }
+    .clan-lb-power { font-family:'Oswald',sans-serif; color:var(--gold); white-space:nowrap; flex-shrink:0; text-align:right; }
+    .clan-lb-power-label { font-size:.56rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; display:block; margin-bottom:.05rem; }
+    .clan-lb-power-val { font-size:.95rem; font-weight:600; }
     @media (max-width:480px) { .clan-lb-meta .server-pill { display:none; } }
 
     /* ── Clan card ── */
@@ -750,7 +751,7 @@ function clanLbRowHtml(row, i) {
     </div>
     <div class="clan-lb-power">
       <span class="clan-lb-power-label">Мощь</span>
-      ${power}
+      <span class="clan-lb-power-val">⚔ ${power}</span>
     </div>
   </div>`;
 }
@@ -759,7 +760,14 @@ function renderClanPowerLeaderboard(rows) {
   const section = document.getElementById('clan-power-lb');
   const list = document.getElementById('clan-power-lb-rows');
   if (!section || !list) return;
-  if (!rows || !rows.length) { section.style.display = 'none'; return; }
+  // The plugin doesn't send physical_power/spell_power for any character yet on this
+  // deployment (a game-side gap, not a query bug — every clan legitimately sums to 0
+  // right now). Ranking by a stat that's uniformly zero isn't a real ranking, just an
+  // alphabetical list wearing a "ТОП КЛАНОВ ПО МОЩИ" label — hide the section rather
+  // than show a misleading "leaderboard" of zeroes, same as the no-rows case below.
+  // Reverts to showing automatically the moment real power data starts flowing in.
+  const hasRealPower = Array.isArray(rows) && rows.some(r => (r.total_power || 0) > 0);
+  if (!rows || !rows.length || !hasRealPower) { section.style.display = 'none'; return; }
   list.innerHTML = rows.map(clanLbRowHtml).join('');
   section.style.display = '';
 }
