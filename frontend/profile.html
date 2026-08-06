@@ -525,6 +525,16 @@
       <div id="push-msg" style="font-size:.75rem;margin-top:.4rem;display:none;"></div>
     </div>
 
+    <!-- Newsletter opt-in -->
+    <div id="newsletter-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Email-рассылка —</h2>
+      <label style="display:flex;align-items:center;gap:.6rem;cursor:pointer;font-size:.82rem;color:var(--text);">
+        <input id="newsletter-opt-in-cb" type="checkbox" onchange="toggleNewsletterOptIn()" style="width:1.1rem;height:1.1rem;accent-color:var(--gold);cursor:pointer;flex:none;">
+        <span>Получать еженедельный дайджест новостей сайта на email</span>
+      </label>
+      <div id="newsletter-msg" style="font-size:.75rem;margin-top:.55rem;display:none;"></div>
+    </div>
+
   </div><!-- /tab-panel-security -->
 
   <!-- TAB: Очки — points ledger + own redemption history, see
@@ -1053,6 +1063,8 @@ async function loadProfile() {
     loadActivity(u.username);
     _initTwoFACard(u.totp_enabled || false);
     initPushCard();
+    const newsletterCb = document.getElementById('newsletter-opt-in-cb');
+    if (newsletterCb) newsletterCb.checked = !!u.newsletter_opt_in;
     document.getElementById('profile-name').textContent  = u.username;
     document.getElementById('profile-email').textContent = u.email;
 
@@ -1615,6 +1627,29 @@ async function disablePush() {
     show('Push-уведомления отключены', true);
     initPushCard();
   } catch {
+    show('Ошибка соединения', false);
+  }
+}
+
+// ── Newsletter opt-in ────────────────────────────────────────────────────────
+// PUT /api/profile/newsletter (backend/routers/profile.py) — genuinely opt-in,
+// same toggle turns the weekly digest on and back off. On failure the checkbox is
+// reverted so it never silently shows a state the server didn't actually save.
+async function toggleNewsletterOptIn() {
+  const cb = document.getElementById('newsletter-opt-in-cb');
+  const msg = document.getElementById('newsletter-msg');
+  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = ''; };
+  const desired = cb.checked;
+  try {
+    const res = await fetch(`${API}/profile/newsletter`, {
+      method: 'PUT', credentials: 'include',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({newsletter_opt_in: desired}),
+    });
+    if (!res.ok) { cb.checked = !desired; return show('Не удалось сохранить настройку', false); }
+    show(desired ? 'Рассылка включена' : 'Рассылка отключена', true);
+  } catch {
+    cb.checked = !desired;
     show('Ошибка соединения', false);
   }
 }

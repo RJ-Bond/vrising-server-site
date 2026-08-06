@@ -212,3 +212,25 @@ async def set_badge_style(
     user.badge_style = body.style
     await db.commit()
     return {"badge_style": user.badge_style}
+
+
+# ─── Newsletter opt-in ────────────────────────────────────────────────────────
+# Weekly news-digest email (see send_newsletter_digest() in helpers.py and
+# _newsletter_digest_task in main.py). Off by default — this is the only place a
+# user can turn it on or back off; no dark pattern, same toggle both ways.
+
+class NewsletterOptInBody(BaseModel):
+    newsletter_opt_in: bool
+
+
+@router.put("/api/profile/newsletter")
+async def set_newsletter_opt_in(
+    body: NewsletterOptInBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(User).where(User.id == current_user.id))
+    user = result.scalar_one()
+    user.newsletter_opt_in = body.newsletter_opt_in
+    await db.commit()
+    return {"newsletter_opt_in": user.newsletter_opt_in}

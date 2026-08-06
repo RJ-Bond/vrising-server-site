@@ -68,6 +68,7 @@ from .helpers import (
     _utc_ts,
     _set_auth_cookie,
     _audit,
+    send_newsletter_digest,
 )
 from .auth import (
     get_password_hash,
@@ -302,6 +303,7 @@ async def lifespan(app: FastAPI):
     task_monitor = asyncio.create_task(_monitor_poll_task())
     task_scheduler = asyncio.create_task(_scheduler_task())
     task_ranksnap = asyncio.create_task(_leaderboard_snapshot_task())
+    task_newsletter = asyncio.create_task(_newsletter_digest_task())
     yield
     task_publish.cancel()
     task_backup.cancel()
@@ -309,6 +311,7 @@ async def lifespan(app: FastAPI):
     task_monitor.cancel()
     task_scheduler.cancel()
     task_ranksnap.cancel()
+    task_newsletter.cancel()
 
 
 app = FastAPI(title="V Rising Server Site", version="1.0.0", lifespan=lifespan)
@@ -1522,6 +1525,34 @@ async def _leaderboard_snapshot_task():
             break
         except Exception as e:
             logger.error("_leaderboard_snapshot_task error: %s", e)
+
+
+async def _newsletter_digest_task():
+    """Weekly: email opted-in users a digest of news published since the last send.
+    Fires every Monday at 09:00 UTC. What actually gets sent (the "since last send"
+    cutoff) is tracked in the "newsletter_last_sent_at" Setting by
+    send_newsletter_digest() itself, not by this loop's timing — so a missed or
+    delayed run (deploy downtime spanning the trigger time, etc.) still only sends
+    what's genuinely new next time it fires, same shape as the other *_task loops
+    in this module (_auto_backup_task, _leaderboard_snapshot_task)."""
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            days_until_monday = (7 - now.weekday()) % 7
+            next_run = (now + timedelta(days=days_until_monday)).replace(hour=9, minute=0, second=0, microsecond=0)
+            if next_run <= now:
+                next_run += timedelta(days=7)
+            await asyncio.sleep((next_run - now).total_seconds())
+            async with AsyncSession(engine, expire_on_commit=False) as db:
+                summary = await send_newsletter_digest(db)
+                logger.info(
+                    "Newsletter digest: items=%d recipients=%d sent=%d",
+                    summary["items"], summary["recipients"], summary["sent"],
+                )
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error("_newsletter_digest_task error: %s", e)
 
 
 async def _monitor_poll_cycle():

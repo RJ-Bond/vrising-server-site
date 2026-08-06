@@ -12,7 +12,7 @@ from sqlalchemy import select, func, or_, case
 from ..database import get_db
 from ..models import User, News, Comment, Setting, AuditLog, PageView, ErrorLog, PointsTransaction, ShopRedemption
 from ..auth import get_admin_user, get_moderator_user
-from ..helpers import UPLOAD_DIR
+from ..helpers import UPLOAD_DIR, send_newsletter_digest
 
 router = APIRouter()
 
@@ -50,6 +50,22 @@ async def test_discord_webhook(request: Request, current_user: User = Depends(ge
         raise
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Ошибка запроса: {type(e).__name__}: {e}") from e
+
+
+# ─── Newsletter digest ────────────────────────────────────────────────────────
+# Manual "send it now" action for the weekly opt-in news digest (see
+# send_newsletter_digest() in helpers.py and _newsletter_digest_task in main.py,
+# which normally fires this same function every Monday). admin tier, not
+# superadmin — this is a content/comms action, not infra/role-management, same
+# tier as test_discord_webhook above.
+
+@router.post("/api/admin/newsletter/send-now")
+async def send_newsletter_digest_now(
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    summary = await send_newsletter_digest(db)
+    return summary
 
 
 # ─── Dashboard stats ─────────────────────────────────────────────────────────

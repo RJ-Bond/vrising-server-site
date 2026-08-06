@@ -44,6 +44,11 @@ class User(Base):
     # main.py — those are the only call sites that keep this in sync with the
     # PointsTransaction ledger.
     points_balance = Column(Integer, nullable=False, default=0, server_default="0")
+    # Opt-in flag for the weekly news-digest email (see _newsletter_digest_task in
+    # main.py and send_newsletter_digest() in helpers.py). Default False — the digest
+    # must stay genuinely opt-in, never sent to an account that hasn't explicitly
+    # turned it on from frontend/profile.html, and just as easy to turn back off.
+    newsletter_opt_in = Column(Boolean, nullable=False, default=False, server_default="0")
 
 
 class Clan(Base):

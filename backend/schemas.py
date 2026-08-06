@@ -368,6 +368,7 @@ class UserOut(BaseModel):
     totp_enabled: bool = False
     bio: Optional[str] = None
     points_balance: int = 0
+    newsletter_opt_in: bool = False
 
     model_config = {"from_attributes": True}
 
