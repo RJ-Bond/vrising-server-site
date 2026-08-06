@@ -98,6 +98,37 @@
     }
     @keyframes podium-in { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
 
+    /* ── Clan power leaderboard rows (ported from leaderboard.html's .lb-row/.lb-rank/
+       .lb-medal — different ranking axis from the podium above, which sorts by
+       member_count, so kept as a distinct list rather than a second podium). ── */
+    .clan-lb-row {
+      display:flex; align-items:center; gap:.75rem; padding:.6rem .5rem;
+      border-bottom:1px solid rgba(255,255,255,0.06); cursor:pointer;
+      transition:background .15s, transform .15s; border-radius:.4rem;
+    }
+    .clan-lb-row:hover { background:rgba(150,0,28,0.08); transform:translateX(2px); }
+    .clan-lb-row:last-child { border-bottom:none; }
+    .clan-lb-row.rank-1 { background:rgba(255,213,74,0.07); border:1px solid rgba(255,213,74,0.2); padding-left:.4rem; padding-right:.4rem; }
+    .clan-lb-row.rank-2 { background:rgba(214,214,232,0.05); border:1px solid rgba(214,214,232,0.15); padding-left:.4rem; padding-right:.4rem; }
+    .clan-lb-row.rank-3 { background:rgba(224,163,97,0.06); border:1px solid rgba(224,163,97,0.16); padding-left:.4rem; padding-right:.4rem; }
+    .clan-lb-rank { font-family:'Oswald',sans-serif; font-size:1rem; font-weight:600; color:var(--muted); width:1.8rem; text-align:center; flex-shrink:0; }
+    .clan-lb-rank.top1 { color:#ffd54a; text-shadow:0 0 12px rgba(255,213,74,0.7); }
+    .clan-lb-rank.top2 { color:#d6d6e8; text-shadow:0 0 8px rgba(214,214,232,0.5); }
+    .clan-lb-rank.top3 { color:#e0a361; text-shadow:0 0 8px rgba(224,163,97,0.5); }
+    .clan-lb-medal { font-size:1.05rem; }
+    .clan-lb-avatar {
+      width:2rem; height:2rem; border-radius:.45rem; display:flex; align-items:center; justify-content:center;
+      font-family:'Cinzel',serif; font-size:.78rem; font-weight:700; color:var(--gold); flex-shrink:0;
+      border:1px solid rgba(255,255,255,0.09);
+    }
+    .clan-lb-name-col { flex:1; min-width:0; }
+    .clan-lb-name { font-family:'Cinzel',serif; font-size:.84rem; font-weight:700; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
+    .clan-lb-meta { font-size:.62rem; color:var(--muted); display:flex; align-items:center; gap:.4rem; margin-top:.2rem; flex-wrap:wrap; }
+    .clan-lb-online-count { color:#2ee69b; }
+    .clan-lb-power { font-family:'Oswald',sans-serif; font-size:.85rem; color:var(--gold); white-space:nowrap; flex-shrink:0; text-align:right; }
+    .clan-lb-power-label { font-size:.56rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; display:block; }
+    @media (max-width:480px) { .clan-lb-meta .server-pill { display:none; } }
+
     /* ── Clan card ── */
     .clan-card {
       padding:1.25rem; cursor:pointer;
@@ -262,6 +293,21 @@
     </div>
     <!-- Populated once clans load — hidden entirely when everything is on one server -->
     <div id="clan-server-tabs" class="clan-toggle"></div>
+  </div>
+
+  <!-- Clan power leaderboard — GET /api/clans/leaderboard, ranked server-side by total
+       combat power summed across each clan's FULL roster (the grid/podium below sort by
+       member_count, and the grid's own "По мощи" toggle only sums the 4-member preview —
+       both understate/misorder bigger clans, so this is the one place on the page with an
+       accurate power ranking). Tracks the server tab above, ignores the search box below,
+       same reasoning as the podium. Hidden until data loads (mirrors the podium's own
+       display:none-until-populated pattern). -->
+  <div id="clan-power-lb" class="g-card" style="padding:1.1rem 1.1rem 1.25rem;margin-bottom:1.5rem;display:none;">
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;">
+      <span style="font-size:1.05rem;">🏆</span>
+      <h2 class="gothic" style="font-size:.86rem;font-weight:700;letter-spacing:.06em;color:var(--text);text-transform:uppercase;" data-i18n-ru="Топ кланов по мощи" data-i18n-en="Top clans by power">Топ кланов по мощи</h2>
+    </div>
+    <div id="clan-power-lb-rows"></div>
   </div>
 
   <!-- Top-3 podium — tracks the server tab above, ignores the search box below
@@ -671,6 +717,68 @@ function renderPodium(top3) {
   section.style.display = '';
 }
 
+/* ── Clan power leaderboard (GET /api/clans/leaderboard) — a distinct ranking axis
+   from the podium/grid above: server-side sum of physical_power+spell_power across
+   each clan's FULL roster, not the 4-member preview the rest of this page works from.
+   Tracks the server-tab filter (loadClanPowerLeaderboard is called from init() and
+   again from setServerFilter()); a fetch error just hides the section rather than
+   showing an error state, since the grid above is the primary content and already
+   loaded successfully by the time this secondary widget runs. ── */
+const CLAN_LB_LIMIT = 10;
+
+function clanLbRowHtml(row, i) {
+  const rank = i + 1;
+  const rankCls = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
+  const rowCls = rank <= 3 ? ` rank-${rank}` : '';
+  const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : null;
+  const name = esc(row.name || '?');
+  const initials = esc((row.name || '?').trim().slice(0, 2).toUpperCase());
+  const grad = (typeof nameGradient === 'function') ? nameGradient(row.name || '') : '#3a0060';
+  const members = row.member_count || 0;
+  const onlineHtml = row.online_count > 0 ? `<span class="clan-lb-online-count">● ${row.online_count} онлайн</span>` : '';
+  const power = Math.round(row.total_power || 0).toLocaleString('ru-RU');
+  return `<div class="clan-lb-row${rowCls}" style="animation:fade-up .35s ease both;animation-delay:${Math.min(i * 30, 300)}ms;" onclick="openClanDetail(${row.id})">
+    <span class="clan-lb-rank ${rankCls}">${medal ? `<span class="clan-lb-medal">${medal}</span>` : rank}</span>
+    <span class="clan-lb-avatar" style="background:${grad};">${initials}</span>
+    <div class="clan-lb-name-col">
+      <span class="clan-lb-name">${name}</span>
+      <div class="clan-lb-meta">
+        <span>${members} участник${pluralMembers(members)}</span>
+        ${onlineHtml}
+        <span class="server-pill">${esc(shortServerLabel(row.server_name))}</span>
+      </div>
+    </div>
+    <div class="clan-lb-power">
+      <span class="clan-lb-power-label">Мощь</span>
+      ${power}
+    </div>
+  </div>`;
+}
+
+function renderClanPowerLeaderboard(rows) {
+  const section = document.getElementById('clan-power-lb');
+  const list = document.getElementById('clan-power-lb-rows');
+  if (!section || !list) return;
+  if (!rows || !rows.length) { section.style.display = 'none'; return; }
+  list.innerHTML = rows.map(clanLbRowHtml).join('');
+  section.style.display = '';
+}
+
+async function loadClanPowerLeaderboard(serverNum) {
+  try {
+    const params = new URLSearchParams({ limit: String(CLAN_LB_LIMIT) });
+    if (serverNum && serverNum !== 'all') params.set('server', String(serverNum));
+    const rows = await fetch(`${API}/clans/leaderboard?${params}`).then(r => {
+      if (!r.ok) throw new Error('bad_status');
+      return r.json();
+    });
+    renderClanPowerLeaderboard(Array.isArray(rows) ? rows : []);
+  } catch {
+    const section = document.getElementById('clan-power-lb');
+    if (section) section.style.display = 'none';
+  }
+}
+
 /* ── Render grid ── */
 function renderGrid(clans) {
   const grid = document.getElementById('clans-grid');
@@ -727,6 +835,7 @@ function setServerFilter(num) {
   _serverFilter = num;
   renderServerTabs(_allClans);
   renderPodium(serverFilteredClans().slice(0, 3));
+  loadClanPowerLeaderboard(num);
   filterCards();
 }
 
@@ -779,6 +888,7 @@ async function init() {
     renderStats(_allClans);
     renderServerTabs(_allClans);
     renderPodium(_allClans.slice(0, 3));
+    loadClanPowerLeaderboard(_serverFilter);
     renderGrid(_allClans);
 
     // Deep link — e.g. clans.html?clan=42 opens that clan's detail modal directly,

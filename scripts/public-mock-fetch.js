@@ -52,6 +52,21 @@
       ] },
   ];
 
+  // GameClanLeaderboardOut shape (backend/schemas.py) — GET /api/clans/leaderboard,
+  // ranked by total combat power summed across each clan's FULL member roster (unlike
+  // GET /api/clans's member_preview above, capped at 4 members). Values below are just
+  // plausible numbers for the screenshot, not derived from memberPreview's power sum.
+  const clanLeaderboardRows = [
+    { id: 1, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', name: 'Кровавые Клыки', motto: 'Старейший клан сервера. Ищем активных игроков для рейдов.', member_count: 12, online_count: 4, total_power: 15680, avg_power: 1306.7 },
+    { id: 4, server_num: 2, server_name: '[RU] Just-Skill.Ru | Brutal PvE', name: 'Пепельный Клинок', motto: 'PvP-кланы, объединяйтесь.', member_count: 5, online_count: 2, total_power: 9120, avg_power: 1824.0 },
+    { id: 2, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', name: 'Ночная Стража', motto: 'PvE-фокус, помогаем новичкам освоиться.', member_count: 7, online_count: 1, total_power: 6440, avg_power: 920.0 },
+    { id: 3, server_num: 2, server_name: '[RU] Just-Skill.Ru | Brutal PvE', name: 'Алый Договор', motto: '', member_count: 3, online_count: 0, total_power: 2210, avg_power: 736.7 },
+  ];
+  const clanLeaderboard = (server) => {
+    const rows = server ? clanLeaderboardRows.filter(c => c.server_num === server) : clanLeaderboardRows;
+    return rows.slice().sort((a, b) => b.total_power - a.total_power);
+  };
+
   const clanDetail = (id) => {
     const base = clans.find(c => c.id === Number(id)) || clans[0];
     return {
@@ -215,6 +230,7 @@
     [/\/api\/team/, () => team],
     [/\/api\/users\/[^/]+\/activity/, () => userActivity],
     [/\/api\/users\/[^/]+$/, () => userProfile],
+    [/\/api\/clans\/leaderboard/, (url) => clanLeaderboard(url.includes('server=2') ? 2 : (url.includes('server=1') ? 1 : null))],
     [/\/api\/clans\/\d+$/, (url) => clanDetail(url.match(/\/api\/clans\/(\d+)/)[1])],
     [/\/api\/clans(\?|$)/, () => clans],
     [/\/api\/events/, () => events],

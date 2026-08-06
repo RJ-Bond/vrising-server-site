@@ -7,12 +7,18 @@ from sqlalchemy import select, func, case
 from ..database import get_db
 from ..models import User, GameClan, GameClanMember, GameClanBase
 from ..helpers import _get_server_names
-from ..schemas import GameClanOut, GameClanDetailOut
+from ..schemas import GameClanOut, GameClanDetailOut, GameClanLeaderboardOut
 
 # Leaders/officers first, then alphabetical by character name — used both for
 # GET /api/clans's small per-card member preview and GET /api/clans/{id}'s full list.
 _ROLE_RANK = case((GameClanMember.role == "leader", 0), (GameClanMember.role == "officer", 1), else_=2)
 _MEMBER_PREVIEW_SIZE = 4
+# Cap for GET /api/clans/leaderboard — clan counts here are the same order of magnitude
+# as GET /api/clans (dozens, not thousands; see that endpoint's "1 in 5 has 0 members"
+# comment), so a plain top-N with no pagination is plenty rather than adding page params
+# for a list this small.
+_LEADERBOARD_DEFAULT_LIMIT = 20
+_LEADERBOARD_MAX_LIMIT = 50
 
 router = APIRouter()
 
@@ -158,6 +164,67 @@ async def list_clans(search: Optional[str] = None, limit: Optional[int] = None, 
     if limit:
         out = out[:limit]
     return out
+
+
+@router.get("/api/clans/leaderboard", response_model=list[GameClanLeaderboardOut])
+async def clans_leaderboard(server: Optional[int] = None, limit: Optional[int] = None, db: AsyncSession = Depends(get_db)):
+    """Ranks clans by total combat power (sum of physical_power+spell_power across the
+    clan's FULL member roster — not just the 4-member preview GET /api/clans exposes,
+    which would understate/misorder anything bigger than that). member_count and
+    online_count ride along as displayed secondary stats, same fields the clan cards
+    already show elsewhere on the site.
+
+    NOTE: this must be registered before GET /api/clans/{clan_id} — that route's
+    clan_id:int path converter would otherwise 422 on the literal segment "leaderboard"
+    before this route ever got a chance to match (FastAPI/Starlette try routes in
+    registration order, and a type-conversion failure on a match is not treated as a
+    non-match)."""
+    limit = _LEADERBOARD_DEFAULT_LIMIT if limit is None else max(1, min(limit, _LEADERBOARD_MAX_LIMIT))
+
+    query = select(GameClan)
+    if server is not None:
+        query = query.where(GameClan.server_num == server)
+    clans = (await db.execute(query)).scalars().all()
+    if not clans:
+        return []
+    clan_ids = [c.id for c in clans]
+    server_names = await _get_server_names(db)
+
+    # One grouped query for member_count/online_count/total_power across every clan —
+    # same "bulk query, not N+1" pattern GET /api/clans already uses for its own
+    # per-clan aggregates. NULL physical_power/spell_power (character never spawned in
+    # world yet) count as 0 toward the sum rather than excluding the member.
+    agg_rows = (await db.execute(
+        select(
+            GameClanMember.clan_id,
+            func.count(GameClanMember.id),
+            func.sum(case((GameClanMember.is_online, 1), else_=0)),
+            func.sum(func.coalesce(GameClanMember.physical_power, 0.0) + func.coalesce(GameClanMember.spell_power, 0.0)),
+        ).where(GameClanMember.clan_id.in_(clan_ids)).group_by(GameClanMember.clan_id)
+    )).all()
+    agg_by_clan = {clan_id: (count, online, power) for clan_id, count, online, power in agg_rows}
+
+    out = []
+    for c in clans:
+        count, online, power = agg_by_clan.get(c.id, (0, 0, 0.0))
+        # Same "0-member clans aren't a real community yet" exclusion as GET /api/clans
+        # — an abandoned/throwaway clan has no members to rank by power in the first
+        # place.
+        if count <= 0:
+            continue
+        out.append({
+            "id": c.id, "server_num": c.server_num,
+            "server_name": server_names.get(c.server_num) or f"Сервер {c.server_num}",
+            "name": c.name, "motto": c.motto or "",
+            "member_count": count, "online_count": online or 0,
+            "total_power": float(power or 0.0), "avg_power": float(power or 0.0) / count,
+        })
+
+    # Primary: total power (the whole point of this endpoint vs. GET /api/clans's
+    # member_count sort). Ties broken by member count, then name, for a stable order
+    # across requests instead of depending on incidental DB row order.
+    out.sort(key=lambda c: (-c["total_power"], -c["member_count"], c["name"]))
+    return out[:limit]
 
 
 @router.get("/api/clans/{clan_id}", response_model=GameClanDetailOut)

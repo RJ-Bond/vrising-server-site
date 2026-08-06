@@ -774,6 +774,23 @@ class GameClanDetailOut(GameClanOut):
     members: list[GameClanMemberOut] = []
 
 
+class GameClanLeaderboardOut(BaseModel):
+    """One row of GET /api/clans/leaderboard — ranked by total combat power summed
+    across the clan's FULL roster (unlike GameClanOut.member_preview, which is capped
+    at 4 and would understate power for any clan bigger than that)."""
+    id: int
+    server_num: int
+    server_name: str
+    name: str
+    motto: Optional[str] = ""
+    member_count: int
+    online_count: int
+    total_power: float
+    avg_power: float
+
+    model_config = {"from_attributes": True}
+
+
 class ReportCreate(BaseModel):
     target_type: str
     target_id: int
