@@ -236,7 +236,23 @@
     { type: 'news', title: 'Хэллоуин ивент стартовал', subtitle: 'Особые дропы и декорации до конца недели.', url: '/?news=halloween-event', icon: '📰', timestamp: iso(28 * 3600 * 1000) },
   ];
 
+  // PaginatedNews shape (backend/schemas.py NewsListOut) — GET /api/news, backing
+  // index.html's news feed (frontend/index.js's loadNews()). Previously unmocked,
+  // so every homepage screenshot this far just showed loadNews()'s catch-block
+  // "Ошибка загрузки" state instead of real cards — this is what a visual review
+  // of the homepage was actually blind to.
+  const newsAuthor = { username: 'Vortigern', avatar_url: null, role: 'superadmin', admin_title: null, badge_icon_url: null, badge_style: 'crown' };
+  const newsItems = [
+    { id: 5, title: 'Обновление сервера 1.2 — исправления и баланс', slug: 'obnovlenie-servera-1-2', summary: 'Список изменений: исправлена дюп-уязвимость с алтарями, перебалансированы боссы Silverlight Hills, ускорена загрузка чанков.', thumbnail_url: null, tags: 'патч,баланс', published: true, pinned: true, views: 842, publish_at: null, is_template: false, created_at: iso(20 * 60 * 1000), author: newsAuthor, comment_count: 14 },
+    { id: 4, title: 'Турнир кланов «Кровавая арена» — регистрация открыта', slug: 'turnir-krovavaya-arena', summary: 'PvP-турнир 3х3 в конце недели, призовой фонд в очках магазина. Регистрация на странице событий.', thumbnail_url: null, tags: 'события,pvp', published: true, pinned: false, views: 511, publish_at: null, is_template: false, created_at: iso(9 * 3600 * 1000), author: newsAuthor, comment_count: 6 },
+    { id: 3, title: 'Хэллоуин-ивент стартовал', slug: 'halloween-event', summary: 'Особые дропы, тыквенные декорации построек и лимитированный бейдж профиля — до конца недели.', thumbnail_url: null, tags: 'события', published: true, pinned: false, views: 298, publish_at: null, is_template: false, created_at: iso(28 * 3600 * 1000), author: newsAuthor, comment_count: 3 },
+    { id: 2, title: 'Плановые технические работы 12.08', slug: 'planovye-raboty-12-08', summary: 'Оба сервера будут недоступны примерно 30 минут для миграции базы данных.', thumbnail_url: null, tags: 'технические', published: true, pinned: false, views: 156, publish_at: null, is_template: false, created_at: iso(3 * 24 * 3600 * 1000), author: newsAuthor, comment_count: 1 },
+    { id: 1, title: 'Добро пожаловать на Just-Skill.Ru', slug: 'dobro-pozhalovat', summary: 'Правила, вайпы, как привязать игровой аккаунт — коротко обо всём на странице FAQ.', thumbnail_url: null, tags: 'общее', published: true, pinned: false, views: 1204, publish_at: null, is_template: false, created_at: iso(20 * 24 * 3600 * 1000), author: newsAuthor, comment_count: 22 },
+  ];
+  const newsPage = () => ({ items: newsItems, total: newsItems.length, page: 1, pages: 1 });
+
   const routes = [
+    [/\/api\/news(\?|$)/, newsPage],
     [/\/api\/activity-feed/, () => activityFeed],
     [/\/api\/search(\?|$)/, () => searchResults],
     [/\/api\/settings\/public$/, () => settingsPublic],

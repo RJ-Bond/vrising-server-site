@@ -1216,7 +1216,13 @@ async function loadNews(page = 1, append = false) {
   data.items.forEach((n, idx) => {
     const thumbImg = n.thumbnail_url
       ? `<div class="news-thumb-wrap" style="width:140px;min-height:110px;flex-shrink:0;align-self:stretch;background:url('${esc(n.thumbnail_url)}') center/cover no-repeat,linear-gradient(180deg,rgba(60,0,80,0.7),rgba(40,0,15,0.7));"></div>`
-      : `<div class="news-card-accent" style="width:4px;flex-shrink:0;align-self:stretch;background:linear-gradient(180deg,rgba(180,0,35,0.7),rgba(100,0,180,0.5));border-radius:0;"></div>`;
+      // Narrower than the thumbnail case on purpose (a full 140px placeholder box would
+      // just be dead space) but wide enough to hold a faint centered glyph instead of a
+      // bare color bar, so a feed mixing image/no-image cards reads as "some cards have
+      // less decoration" rather than "some cards are missing a chunk of their layout."
+      : `<div class="news-card-accent" style="width:36px;min-height:110px;flex-shrink:0;align-self:stretch;background:linear-gradient(180deg,rgba(180,0,35,0.55),rgba(100,0,180,0.4));border-radius:0;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:1.1rem;opacity:.35;color:#fff;" aria-hidden="true">📰</span>
+        </div>`;
     const tagsHtml = (n.tags || '').split(',').map(t => t.trim()).filter(Boolean)
       .map(t => `<span class="news-tag" onclick="event.stopPropagation();setTag('${esc(t)}')">${esc(t)}</span>`).join('');
     const authorName = esc(n.author.username);
@@ -1231,22 +1237,30 @@ async function loadNews(page = 1, append = false) {
     const pinnedBadge = n.pinned
       ? `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.58rem;font-weight:700;letter-spacing:.06em;color:rgba(240,192,64,0.9);background:rgba(180,130,0,0.15);border:1px solid rgba(210,165,0,0.35);border-radius:9999px;padding:.05rem .4rem;white-space:nowrap;">📌 Закреплено</span>`
       : '';
+    // Both badges used to be individually position:absolute with the "Новая" badge's
+    // left-offset hardcoded to clear "Горячее"'s width (6.5rem) when both show at
+    // once — broke the moment either label's text got longer (e.g. under i18n).
+    // Now both are plain flex children of one absolutely-positioned overlay row
+    // (badgesOverlay below), so they just flow left-to-right at their natural width.
     const hotBadge = (n.slug === _hotSlug && (n.views || 0) > 0)
-      ? `<div style="position:absolute;top:.55rem;left:.55rem;z-index:2;background:linear-gradient(135deg,rgba(200,0,42,0.92),rgba(140,0,20,0.85));border:1px solid rgba(255,80,80,0.4);border-radius:9999px;padding:.2rem .6rem;font-size:.58rem;font-weight:700;color:#fff;letter-spacing:.06em;line-height:1;display:inline-flex;align-items:center;gap:.28rem;box-shadow:0 0 12px rgba(200,0,42,0.4);backdrop-filter:blur(4px);"><span style="font-size:.72rem;line-height:1;">&#x1F525;</span>Горячее</div>`
+      ? `<span style="background:linear-gradient(135deg,rgba(200,0,42,0.92),rgba(140,0,20,0.85));border:1px solid rgba(255,80,80,0.4);border-radius:9999px;padding:.2rem .6rem;font-size:.58rem;font-weight:700;color:#fff;letter-spacing:.06em;line-height:1;display:inline-flex;align-items:center;gap:.28rem;box-shadow:0 0 12px rgba(200,0,42,0.4);backdrop-filter:blur(4px);white-space:nowrap;"><span style="font-size:.72rem;line-height:1;">&#x1F525;</span><span data-i18n-ru="Горячее" data-i18n-en="Hot">Горячее</span></span>`
       : '';
     const isNew = (Date.now() - new Date(n.created_at).getTime()) < 86400000;
     const newBadge = isNew
-      ? `<div style="position:absolute;top:.55rem;left:${n.slug === _hotSlug ? '6.5rem' : '.55rem'};z-index:2;background:linear-gradient(135deg,rgba(0,160,60,0.92),rgba(0,100,40,0.85));border:1px solid rgba(0,220,80,0.4);border-radius:9999px;padding:.2rem .6rem;font-size:.58rem;font-weight:700;color:#fff;letter-spacing:.06em;line-height:1;display:inline-flex;align-items:center;gap:.28rem;box-shadow:0 0 10px rgba(0,180,60,0.35);"><span style="font-size:.72rem;line-height:1;">&#x2728;</span>Новая</div>`
+      ? `<span style="background:linear-gradient(135deg,rgba(0,160,60,0.92),rgba(0,100,40,0.85));border:1px solid rgba(0,220,80,0.4);border-radius:9999px;padding:.2rem .6rem;font-size:.58rem;font-weight:700;color:#fff;letter-spacing:.06em;line-height:1;display:inline-flex;align-items:center;gap:.28rem;box-shadow:0 0 10px rgba(0,180,60,0.35);white-space:nowrap;"><span style="font-size:.72rem;line-height:1;">&#x2728;</span><span data-i18n-ru="Новая" data-i18n-en="New">Новая</span></span>`
+      : '';
+    const badgesOverlay = (hotBadge || newBadge)
+      ? `<div style="position:absolute;top:.55rem;left:.55rem;z-index:2;display:flex;gap:.4rem;flex-wrap:wrap;max-width:calc(100% - 1.1rem);">${hotBadge}${newBadge}</div>`
       : '';
     const readingTimeBadge = `<span style="display:inline-flex;align-items:center;gap:.2rem;font-size:.6rem;color:var(--muted);"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${readingTime(n.content)}</span>`;
     _newsItems.push(n);
     const card = document.createElement('div');
     card.className = 'news-card';
     card.style.animationDelay = `${idx * 45}ms`;
-    card.innerHTML = `${hotBadge}${newBadge}<div class="news-card-row" style="display:flex;gap:0;align-items:stretch;min-height:110px;">
+    card.innerHTML = `${badgesOverlay}<div class="news-card-row" style="display:flex;gap:0;align-items:stretch;min-height:110px;">
       ${thumbImg}
       <div style="padding:.85rem 1rem .75rem;flex:1;min-width:0;display:flex;flex-direction:column;gap:.28rem;">
-        <div style="display:flex;align-items:center;gap:.5rem;">
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;row-gap:.2rem;">
           <span style="font-size:.6rem;color:var(--muted);letter-spacing:.03em;">${fmtDate(n.created_at)}</span>
           ${viewsBadge}
           ${readingTimeBadge}
@@ -1265,7 +1279,7 @@ async function loadNews(page = 1, append = false) {
           </div>
           <div style="display:flex;align-items:center;gap:.35rem;flex-shrink:0;margin-left:.5rem;">
             <div class="card-reactions" data-slug="${esc(n.slug)}" style="display:flex;align-items:center;gap:.02rem;margin-right:.2rem;">
-              ${['heart','thumbs_up','fire'].map(key => `<button onclick="event.stopPropagation();quickReact('${esc(n.slug)}','${key}',this)" data-key="${key}" style="background:none;border:none;padding:.1rem .22rem;cursor:pointer;line-height:1;display:inline-flex;color:var(--muted);opacity:.45;transition:opacity .15s,transform .15s,color .15s;" onmouseover="this.style.opacity='1';this.style.transform='scale(1.22)'" onmouseout="this.style.opacity=this.dataset.active?'1':'.45';this.style.transform='scale(1)'">${RX_ICONS[key]}</button>`).join('')}
+              ${['heart','thumbs_up','fire'].map(key => `<button onclick="event.stopPropagation();quickReact('${esc(n.slug)}','${key}',this)" data-key="${key}" style="background:none;border:none;padding:.1rem .22rem;cursor:pointer;line-height:1;display:inline-flex;color:var(--muted);opacity:.65;transition:opacity .15s,transform .15s,color .15s;" onmouseover="this.style.opacity='1';this.style.transform='scale(1.22)'" onmouseout="this.style.opacity=this.dataset.active?'1':'.65';this.style.transform='scale(1)'">${RX_ICONS[key]}</button>`).join('')}
             </div>
             ${tagsHtml ? `<div style="display:flex;gap:.2rem;">${tagsHtml}</div>` : ''}
             <span style="font-size:.65rem;color:rgba(200,0,40,0.65);letter-spacing:.04em;white-space:nowrap;">Читать →</span>
@@ -2692,6 +2706,15 @@ async function loadActivityFeed() {
     }).join('');
     wrap.style.display = '';
     _showRightPanelJumplink('jumplink-activity');
+    // Small "fresh" dot on the jumplink pill itself when the newest item is recent —
+    // not real unread-tracking (no per-visitor read state anywhere on this feed),
+    // just a lightweight visual cue that there's something new since the last hour,
+    // matching the pattern of e.g. the "Новая" badge on news cards (<24h = fresh).
+    const newest = data[0] && data[0].timestamp ? new Date(data[0].timestamp).getTime() : 0;
+    const jl = document.getElementById('jumplink-activity');
+    if (jl && newest && (Date.now() - newest) < 3600000 && !jl.querySelector('.jl-fresh-dot')) {
+      jl.insertAdjacentHTML('beforeend', ' <span class="jl-fresh-dot"></span>');
+    }
   } catch {}
 }
 

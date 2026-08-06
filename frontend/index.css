@@ -101,7 +101,7 @@
     }
     /* Castle silhouette */
     .castle-wrap { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: min(900px,100%); pointer-events: none; }
-    .castle-svg { width: 100%; opacity: 0.22; filter: blur(0.5px); }
+    .castle-svg { width: 100%; opacity: 0.34; filter: blur(0.5px); }
 
     /* Stars */
     .stars { position: absolute; inset: 0; }
@@ -545,6 +545,7 @@
     #ow-sparkline { margin:.55rem .35rem 0;opacity:.7; }
     .ow-group-hdr { font-size:.55rem;color:var(--muted);letter-spacing:.06em;padding:.28rem .35rem .04rem;opacity:.7; }
     .online-dot { width:.42rem;height:.42rem;border-radius:50%;background:#4ade80;box-shadow:0 0 7px #4ade80;flex-shrink:0;animation:ow-pulse 2.4s ease-in-out infinite; }
+    .jl-fresh-dot { display:inline-block;width:.36rem;height:.36rem;border-radius:50%;background:var(--crimson);box-shadow:0 0 6px var(--crimson);vertical-align:middle;animation:ow-pulse 2.4s ease-in-out infinite; }
     @keyframes ow-pulse { 0%,100%{box-shadow:0 0 4px #4ade80;opacity:1} 50%{box-shadow:0 0 12px #4ade80,0 0 20px rgba(74,222,128,.4);opacity:.85} }
     @keyframes ow-fadein { from{opacity:0;transform:translateX(-7px)} to{opacity:1;transform:none} }
     .ow-new { animation:ow-fadein .32s ease both; }
@@ -925,6 +926,17 @@
       #news-section { order:0; }
       #drawer-close { display:block !important; }
 
+      /* Quick-jump pills (#right-panel-jumplinks) are .2rem/.5rem-padded links sized
+         for a mouse pointer — well under the ~44px touch-target guideline on a phone. */
+      #right-panel-jumplinks a { padding:.5rem .75rem !important; font-size:.68rem !important; }
+
+      /* Full "Just-Skill.Ru" logo text wraps to 2 lines on narrow screens at its
+         desktop 1.25rem size + .15em letter-spacing, competing with the hamburger/
+         Войти/EN buttons for width in the nav bar. .nav-compact's own scroll-triggered
+         .92rem alone still wasn't tight enough to fit on one line at 390px — cut
+         letter-spacing too rather than shrinking the font further into illegibility. */
+      #nav-logo { font-size:.92rem; letter-spacing:.04em; white-space:nowrap; }
+
       /* Logged-in top bar (username + Админка + bell + DM + Выйти) doesn't fit a
          narrow screen — "Выйти" was getting pushed past the viewport edge. Hide the
          two text-heavy, purely-decorative items here; the drawer's user card already
@@ -965,8 +977,8 @@
 
     /* ── Status bar ── */
     .status-bar {
-      background:rgba(10,2,18,0.82); border-top:1px solid rgba(110,0,20,0.25);
-      border-bottom:1px solid rgba(110,0,20,0.2); backdrop-filter:blur(12px);
+      background:rgba(10,2,18,0.88); border-top:1px solid rgba(150,0,28,0.4);
+      border-bottom:1px solid rgba(150,0,28,0.32); backdrop-filter:blur(12px);
     }
     .status-bar-inner {
       max-width:900px; margin:0 auto; padding:.4rem 1.25rem;

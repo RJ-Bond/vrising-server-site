@@ -54,7 +54,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
   <link rel="stylesheet" href="/theme.css?v=4" />
-  <link rel="stylesheet" href="/index.css?v=16" />
+  <link rel="stylesheet" href="/index.css?v=17" />
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#06000f">
   <meta name="mobile-web-app-capable" content="yes">
@@ -367,7 +367,8 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--crimson)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span>События</span>
       </a>
-      <a href="#" onclick="openGlobalSearch();return false;" class="nav-link-item" data-tip="Поиск">
+      <a href="#" onclick="openGlobalSearch();return false;" class="nav-link-item" data-tip="Поиск"
+         style="background:rgba(150,0,28,0.11);border:1px solid rgba(150,0,28,0.28);margin-top:.15rem;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><use href="/icons.svg#icon-search"></use></svg>
         <span>Поиск <span style="opacity:.5;font-size:.68rem;">Ctrl+K</span></span>
       </a>
@@ -590,12 +591,12 @@
       <div style="width:100%;height:3rem;border-radius:.5rem;background:rgba(110,0,20,0.1);animation:pulse 2s ease-in-out infinite;"></div>
     </div>
     <div id="left-circles"></div>
-    <div class="spark-wrap" id="spark1-wrap" style="height:36px;margin-top:.5rem;margin-bottom:.1rem;">
+    <div class="spark-wrap" id="spark1-wrap" style="height:36px;margin-top:.5rem;margin-bottom:.1rem;border-left:2px solid rgba(224,85,117,0.4);padding-left:.4rem;" data-tip="Онлайн за 7 дней">
       <canvas id="left-spark" style="display:none;border-radius:.3rem;opacity:.75;cursor:crosshair;"></canvas>
     </div>
     <div id="left-connect" style="margin-top:.75rem;"></div>
     <div id="left-players" style="margin-top:.6rem;"></div>
-    <div id="left-info" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.55rem;"></div>
+    <div id="left-info" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.65rem;padding-top:.55rem;border-top:1px solid rgba(255,255,255,0.06);"></div>
 
     <!-- Latency + stats -->
     <div id="monitor-stats" style="display:none;">
@@ -608,12 +609,12 @@
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.55),transparent);margin:1.1rem 0;"></div>
       <div id="left-status2" style="margin-bottom:.75rem;"></div>
       <div id="left-circles2"></div>
-      <div class="spark-wrap" id="spark2-wrap" style="height:36px;margin-top:.5rem;margin-bottom:.1rem;">
+      <div class="spark-wrap" id="spark2-wrap" style="height:36px;margin-top:.5rem;margin-bottom:.1rem;border-left:2px solid rgba(153,85,238,0.4);padding-left:.4rem;" data-tip="Онлайн за 7 дней">
         <canvas id="left-spark2" style="display:none;border-radius:.3rem;opacity:.75;cursor:crosshair;"></canvas>
       </div>
       <div id="left-connect2" style="margin-top:.75rem;"></div>
       <div id="left-players2" style="margin-top:.6rem;"></div>
-      <div id="left-info2" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.55rem;"></div>
+      <div id="left-info2" style="font-size:.78rem;display:flex;flex-direction:column;gap:.4rem;margin-top:.65rem;padding-top:.55rem;border-top:1px solid rgba(255,255,255,0.06);"></div>
       <div id="stat-uptime7d-s2" style="display:none;"></div>
       <div id="stat-peak7d-s2" style="display:none;"></div>
     </div>
@@ -844,7 +845,7 @@
 <script src="/anime.min.js"></script>
 <script src="/anim.js?v=1"></script>
 <script src="/common.js?v=13"></script>
-<script src="/index.js?v=17"></script>
+<script src="/index.js?v=18"></script>
 <div id="ow-hover-card"></div>
 
 <!-- ══ NEWS EDITOR MODAL ══════════════════════════════════════════════════════ -->
