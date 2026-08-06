@@ -86,6 +86,40 @@ async def list_events(
     return {"items": items, "total": total}
 
 
+@router.get("/api/events/mine/next")
+async def my_next_event(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Nearest upcoming/active event the current user is registered for — powers the
+    homepage "Продолжить" widget (frontend/index.js). Ordered by start_date ascending
+    with no lower bound on start_date itself: an "active" event may have already
+    started (start_date in the past) and should still outrank a later "upcoming" one,
+    so the status filter alone (not a start_date >= now filter) decides eligibility.
+    Registered above GET /api/events/{event_id} for the same reason
+    /api/clans/leaderboard is registered above /api/clans/{clan_id} — see that route's
+    comment; a literal "mine" segment here is a different path shape (2 segments after
+    /api/events) so it can't actually collide, but keeping the ordering convention
+    consistent avoids relitigating it later."""
+    row = (await db.execute(
+        select(Event)
+        .join(EventParticipant, EventParticipant.event_id == Event.id)
+        .where(
+            EventParticipant.user_id == current_user.id,
+            Event.status.in_(("upcoming", "active")),
+        )
+        .order_by(Event.start_date.asc())
+        .limit(1)
+    )).scalar_one_or_none()
+    if row is None:
+        return {"event": None}
+    return {"event": {
+        "id": row.id, "title": row.title, "event_type": row.event_type,
+        "start_date": _fmt_dt(row.start_date), "end_date": _fmt_dt(row.end_date),
+        "status": row.status,
+    }}
+
+
 @router.get("/api/events/{event_id}")
 async def get_event(
     event_id: int,
