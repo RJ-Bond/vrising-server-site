@@ -2902,7 +2902,13 @@ async function loadHomepageStats() {
       }
     }
     if (stats.top_clan) {
-      document.getElementById('home-stat-clan-val').textContent = stats.top_clan.name;
+      const clanValEl = document.getElementById('home-stat-clan-val');
+      clanValEl.textContent = stats.top_clan.name;
+      // Truncated via CSS ellipsis (see the element's own style attribute) since clan
+      // names are real player-chosen text with no length limit, unlike the numeric
+      // stats next to it — the native title tooltip surfaces the full name on hover
+      // for whenever it actually gets cut off.
+      clanValEl.title = stats.top_clan.name;
       document.getElementById('home-stat-clan').style.display = '';
       shown = true;
     }
