@@ -1701,6 +1701,15 @@
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             Добавить правило
           </button>
+
+          <div class="s-field" style="margin-top:1rem;">
+            <label>TL;DR правил (кратко, до accordion)</label>
+            <div class="s-field-row" style="align-items:flex-start;">
+              <textarea id="setting-rules_tldr" class="dark-input" rows="3" maxlength="600" placeholder="Без читов и дюпов&#10;Уважайте других игроков&#10;Рейды только по расписанию"></textarea>
+              <button class="s-save-btn" onclick="saveSetting('rules_tldr')">Сохранить</button>
+            </div>
+            <p class="s-desc">2-3 коротких пункта, по одному на строку — показываются на главной над полным списком правил. Оставьте пустым — блок не показывается.</p>
+          </div>
         </div>
       </div>
 
@@ -3436,7 +3445,7 @@ async function submitEditor() {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
-const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','hero_logo_url','hero_subtitle','favicon_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','plugin_api_key','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time','maintenance_start_time','maintenance_fallback_image','nav_hidden','home_pitch','home_testimonials','home_gallery','site_launched_date'];
+const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','hero_logo_url','hero_subtitle','favicon_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','plugin_api_key','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time','maintenance_start_time','maintenance_fallback_image','nav_hidden','home_pitch','home_testimonials','home_gallery','site_launched_date','rules_tldr'];
 let _settingsBaseline = {};
 
 // Client-side filter over the existing .s-card blocks — cheaper and safer than
@@ -5759,7 +5768,7 @@ const _ALLOWED_SETTING_KEYS = new Set([
   'event_active','event_title','event_text','event_color',
   'rules','https_domain','https_email','timezone','time_format','date_format',
   'rcon_password','rcon_port',
-  'home_pitch','home_testimonials','home_gallery','site_launched_date',
+  'home_pitch','home_testimonials','home_gallery','site_launched_date','rules_tldr',
 ]);
 
 async function importSettings(input) {

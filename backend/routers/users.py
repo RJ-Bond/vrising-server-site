@@ -170,6 +170,28 @@ async def search_users(
     return {"users": users}
 
 
+# ─── Recently registered users ───────────────────────────────────────────────
+# Backs the homepage "Новые игроки" avatar-strip widget (frontend/index.js's
+# loadNewPlayers()) — a thin recency-ordered slice, same public/unauthenticated
+# visibility as the search endpoint above. Registered BEFORE GET /api/users/{username}
+# below for the same reason GET /api/clans/leaderboard is registered before
+# GET /api/clans/{clan_id} (see that router's comment): a literal path segment here
+# would otherwise never get a chance to match once a {username} route is tried first.
+
+@router.get("/api/users/recent")
+async def recent_users(
+    limit: int = Query(8, ge=1, le=20),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(User.username, User.avatar_url, User.created_at)
+        .where(User.is_active == True)
+        .order_by(User.created_at.desc())
+        .limit(limit)
+    )
+    return [{"username": r.username, "avatar_url": r.avatar_url, "created_at": _fmt_dt(r.created_at)} for r in result.all()]
+
+
 # ─── Public profile ──────────────────────────────────────────────────────────
 
 @router.get("/api/users/{username}")

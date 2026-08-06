@@ -8,6 +8,7 @@ merge of notable events that already happened elsewhere on the site:
   - Recently created events (frontend/events.html has no per-event deep link yet, so
     items point at the events list page, not a specific event)
   - Players who just crossed a playtime-hours or connect-streak milestone
+  - Recently fulfilled points-shop redemptions (item name + who redeemed it)
 
 Deliberately builds on data that already exists (News/Event/PlayerRecord/
 PlayerRankSnapshot/PlayerDailyActivity) — no new tracking table. Clan changes are
@@ -32,7 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..helpers import _fmt_dt, _site_timezone
-from ..models import Event, News, PlayerDailyActivity, PlayerRankSnapshot, PlayerRecord, User
+from ..models import Event, News, PlayerDailyActivity, PlayerRankSnapshot, PlayerRecord, ShopRedemption, User
 
 router = APIRouter()
 
@@ -40,6 +41,7 @@ FEED_LIMIT = 20
 _NEWS_LIMIT = 6
 _EVENTS_LIMIT = 6
 _MILESTONE_LIMIT = 8
+_SHOP_LIMIT = 6
 # How far back a player must have been seen to even be considered for a milestone
 # crossing — bounds the pool query and keeps "just crossed" meaning "recently", not
 # "at some point in this account's history".
@@ -91,7 +93,7 @@ def _current_streak(activity_dates: set[str], today: date) -> int:
 
 
 class ActivityFeedItemOut(BaseModel):
-    type: Literal["news", "event", "milestone"]
+    type: Literal["news", "event", "milestone", "shop_redemption"]
     title: str
     subtitle: str = ""
     url: str
@@ -130,6 +132,26 @@ async def get_activity_feed(
             type="event", title=title,
             subtitle=f"Начало: {_fmt_dt(start_date)}" if start_date else "",
             url="/events.html", icon="📅", timestamp=_fmt_dt(created_at),
+        )))
+
+    # ─── Recent shop purchases ────────────────────────────────────────────────
+    # Fulfilled ShopRedemption rows only (not "pending"/"cancelled" — a pending request
+    # isn't a real event yet, and this is simpler than a standalone widget since the
+    # feed UI already exists on the homepage). item_name_snapshot/resolved_by are copied
+    # at purchase/fulfil time (see ShopRedemption's docstring in models.py) so this never
+    # needs to join the (possibly since-deleted) ShopItem row.
+    shop_rows = (await db.execute(
+        select(ShopRedemption.item_name_snapshot, ShopRedemption.resolved_at, ShopRedemption.created_at, User.username)
+        .join(User, User.id == ShopRedemption.user_id)
+        .where(ShopRedemption.status == "fulfilled")
+        .order_by(ShopRedemption.resolved_at.desc())
+        .limit(_SHOP_LIMIT)
+    )).all()
+    for item_name, resolved_at, created_at, username in shop_rows:
+        ts = resolved_at or created_at
+        raw_items.append((ts, ActivityFeedItemOut(
+            type="shop_redemption", title=item_name, subtitle=f"Получил: {username}",
+            url="/shop.html", icon="🛒", timestamp=_fmt_dt(ts),
         )))
 
     # ─── Playtime-hours / connect-streak milestones ─────────────────────────

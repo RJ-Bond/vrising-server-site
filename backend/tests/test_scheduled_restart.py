@@ -224,3 +224,44 @@ async def test_plugin_cleanup_cancel_is_visible_to_admin_panel(client, db_sessio
 
     admin_r = await client.get("/api/admin/servers/1/restart", headers=_bearer(admin))
     assert admin_r.json() == {"restart_at": None}
+
+
+# ─── Public, unauthenticated read-only endpoint (homepage restart banner) ───────
+# GET /api/servers/{server_num}/restart-status — item 3 of the homepage widgets pass:
+# a public counterpart exposing ONLY restart_at, since both existing readers above are
+# gated (admin JWT / plugin API key) and the homepage banner has neither.
+
+async def test_public_restart_status_requires_no_auth(client, db_session):
+    r = await client.get("/api/servers/1/restart-status")
+    assert r.status_code == 200
+    assert r.json() == {"restart_at": None}
+
+
+async def test_public_restart_status_reflects_admin_schedule(client, db_session):
+    admin = await _make_admin(db_session)
+    post_r = await client.post("/api/admin/servers/1/restart", json={"minutes": 20}, headers=_bearer(admin))
+    restart_at = post_r.json()["restart_at"]
+
+    pub_r = await client.get("/api/servers/1/restart-status")
+    assert pub_r.status_code == 200
+    assert pub_r.json() == {"restart_at": restart_at}
+
+
+async def test_public_restart_status_scoped_per_server(client, db_session):
+    admin = await _make_admin(db_session)
+    await client.post("/api/admin/servers/1/restart", json={"minutes": 5}, headers=_bearer(admin))
+
+    r1 = await client.get("/api/servers/1/restart-status")
+    assert r1.json()["restart_at"] is not None
+    r2 = await client.get("/api/servers/2/restart-status")
+    assert r2.json() == {"restart_at": None}
+
+
+async def test_public_restart_status_reflects_plugin_cancel(client, db_session):
+    admin = await _make_admin(db_session)
+    await _set_plugin_key(db_session)
+    await client.post("/api/admin/servers/1/restart", json={"minutes": 5}, headers=_bearer(admin))
+    await client.post("/api/plugin/cancel-restart", json={"server_num": 1}, headers=_hdr())
+
+    r = await client.get("/api/servers/1/restart-status")
+    assert r.json() == {"restart_at": None}

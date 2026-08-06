@@ -206,6 +206,12 @@ async def _seed_defaults(db: AsyncSession):
         Setting(key="home_testimonials", value="[]"),  # [{"author":"...","text":"..."}]
         Setting(key="home_gallery", value="[]"),  # ["https://.../img1.jpg", ...]
         Setting(key="site_launched_date", value=""),  # "YYYY-MM-DD", optional
+        # 2-3 short newline-separated bullets shown above the full rules accordion on the
+        # homepage (frontend/index.js's loadSiteSettings()/toggleRules()) — a fast summary
+        # before the expandable detail. Rules content itself (the "rules" key) is free text
+        # an admin writes per-rule, so this can't be derived algorithmically; empty by
+        # default, same "hidden until configured" convention as home_pitch above.
+        Setting(key="rules_tldr", value=""),
         # Points economy — earning rates, tunable by an admin on the Economy tab
         # (not exposed on /api/settings/public: admin-only tuning, no anonymous use).
         Setting(key="points_per_minute_playtime", value="1"),

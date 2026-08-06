@@ -46,3 +46,36 @@ async def test_nav_hidden_setting_accepted_and_round_trips_through_public_settin
     pub = await client.get("/api/settings/public")
     assert pub.status_code == 200
     assert pub.json().get("nav_hidden") == '["/shop.html"]'
+
+
+async def test_rules_tldr_setting_accepted_and_round_trips_through_public_settings(client, db_session):
+    # New setting added for the homepage TL;DR-rules-summary widget — same three-spot
+    # registration this file's own docstring warns about. Also exercises home_pitch/
+    # home_testimonials/home_gallery/site_launched_date, which were missing from
+    # ALLOWED_SETTING_KEYS despite being in admin.html's SETTINGS_FIELD_KEYS (a real,
+    # pre-existing gap fixed alongside rules_tldr — see admin_settings.py's comment).
+    admin = await _make_admin(db_session)
+    headers = _bearer(admin)
+
+    r = await client.put(
+        "/api/admin/settings/rules_tldr",
+        json={"value": "Без читов\nУважайте других"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["value"] == "Без читов\nУважайте других"
+
+    pub = await client.get("/api/settings/public")
+    assert pub.status_code == 200
+    assert pub.json().get("rules_tldr") == "Без читов\nУважайте других"
+
+
+async def test_home_pitch_setting_accepted(client, db_session):
+    admin = await _make_admin(db_session)
+    r = await client.put(
+        "/api/admin/settings/home_pitch",
+        json={"value": "PvE, честные рейты"},
+        headers=_bearer(admin),
+    )
+    assert r.status_code == 200
+    assert r.json()["value"] == "PvE, честные рейты"

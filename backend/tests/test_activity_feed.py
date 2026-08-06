@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from backend.auth import get_password_hash
-from backend.models import Event, News, PlayerDailyActivity, PlayerRankSnapshot, PlayerRecord, User
+from backend.models import Event, News, PlayerDailyActivity, PlayerRankSnapshot, PlayerRecord, ShopRedemption, User
 
 pytestmark = pytest.mark.asyncio
 
@@ -255,3 +255,37 @@ async def test_mixed_feed_shape_and_overall_cap(client, db_session):
     for item in body:
         assert set(item.keys()) == {"type", "title", "subtitle", "url", "icon", "timestamp"}
         assert item["timestamp"]  # non-empty ISO string
+
+
+# ─── Shop redemptions ────────────────────────────────────────────────────────
+
+async def test_fulfilled_shop_redemption_included(client, db_session):
+    buyer = await _make_user(db_session, "Buyer1")
+    db_session.add(ShopRedemption(
+        user_id=buyer.id, item_name_snapshot="Waypoint Shard", cost_snapshot=50,
+        status="fulfilled", resolved_at=datetime.now(timezone.utc), resolved_by="AdminOne",
+    ))
+    await db_session.commit()
+
+    r = await client.get("/api/activity-feed")
+    body = r.json()
+    assert len(body) == 1
+    assert body[0]["type"] == "shop_redemption"
+    assert body[0]["title"] == "Waypoint Shard"
+    assert body[0]["subtitle"] == "Получил: Buyer1"
+    assert body[0]["url"] == "/shop.html"
+
+
+async def test_pending_and_cancelled_redemptions_excluded(client, db_session):
+    buyer = await _make_user(db_session, "Buyer2")
+    db_session.add(ShopRedemption(
+        user_id=buyer.id, item_name_snapshot="Pending Item", cost_snapshot=10, status="pending",
+    ))
+    db_session.add(ShopRedemption(
+        user_id=buyer.id, item_name_snapshot="Cancelled Item", cost_snapshot=10, status="cancelled",
+        resolved_at=datetime.now(timezone.utc),
+    ))
+    await db_session.commit()
+
+    r = await client.get("/api/activity-feed")
+    assert [item for item in r.json() if item["type"] == "shop_redemption"] == []
