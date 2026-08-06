@@ -381,18 +381,24 @@
      Hidden entirely if there's nothing real to show in any of the 3 slots. -->
 <div id="home-topnow-bar" style="display:none;max-width:1280px;margin:1rem auto 0;padding:0 1.25rem;">
   <h2 data-i18n-ru="— Сейчас в топе —" data-i18n-en="— Right now on top —" style="font-family:'Philosopher',serif;font-size:.68rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;text-align:center;margin-bottom:.5rem;">— Сейчас в топе —</h2>
-  <div class="g-panel" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;padding:.9rem 1.25rem;border-radius:.875rem;">
-    <a id="topnow-player" href="/leaderboard.html" style="display:none;text-align:center;text-decoration:none;color:inherit;">
+  <!-- flex+justify-content:center, not a 3-col grid — one/two of these three slots is
+       routinely hidden (e.g. "Топ клан" whenever no clan has real combat-power data
+       yet), and a `grid-template-columns:repeat(auto-fit,minmax(150px,1fr))` track
+       still reserves/stretches full-width 1fr shares for however many children are
+       actually visible, spreading 2 populated cards to the far edges with a wide gap
+       where the hidden 3rd would have been instead of just sitting closer together. -->
+  <div class="g-panel" style="display:flex;flex-wrap:wrap;justify-content:center;gap:.75rem;padding:.9rem 1.25rem;border-radius:.875rem;">
+    <a id="topnow-player" href="/leaderboard.html" style="display:none;flex:0 1 200px;text-align:center;text-decoration:none;color:inherit;">
       <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.25rem;">🏆 Топ игрок</div>
       <div id="topnow-player-name" style="font-family:'Cinzel',serif;font-size:.92rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
       <div id="topnow-player-val" style="font-size:.68rem;color:var(--gold);margin-top:.1rem;"></div>
     </a>
-    <a id="topnow-clan" href="/clans.html" style="display:none;text-align:center;text-decoration:none;color:inherit;">
+    <a id="topnow-clan" href="/clans.html" style="display:none;flex:0 1 200px;text-align:center;text-decoration:none;color:inherit;">
       <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.25rem;">🛡️ Топ клан</div>
       <div id="topnow-clan-name" style="font-family:'Cinzel',serif;font-size:.92rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
       <div id="topnow-clan-val" style="font-size:.68rem;color:var(--gold);margin-top:.1rem;"></div>
     </a>
-    <a id="topnow-streak" href="/leaderboard.html" style="display:none;text-align:center;text-decoration:none;color:inherit;">
+    <a id="topnow-streak" href="/leaderboard.html" style="display:none;flex:0 1 200px;text-align:center;text-decoration:none;color:inherit;">
       <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.25rem;">🔥 Лучший стрик</div>
       <div id="topnow-streak-name" style="font-family:'Cinzel',serif;font-size:.92rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
       <div id="topnow-streak-val" style="font-size:.68rem;color:var(--gold);margin-top:.1rem;"></div>
