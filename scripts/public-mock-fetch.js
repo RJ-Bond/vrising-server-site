@@ -223,7 +223,21 @@
     { type: 'clan', title: 'Кровавые Клыки', url: '/clans.html?clan=1', snippet: 'Старейший клан сервера. Ищем активных игроков для рейдов.' },
   ];
 
+  // ActivityFeedItemOut shape (backend/routers/activity_feed.py) — GET /api/activity-feed,
+  // the index.html right-sidebar "Лента событий" widget (frontend/index.js
+  // loadActivityFeed()). One item per source type (news/event/milestone) so all three
+  // icon/subtitle layouts are exercised in the screenshot, already in the
+  // reverse-chronological order the real endpoint would return.
+  const activityFeed = [
+    { type: 'news', title: 'Обновление сервера 1.2', subtitle: 'Список изменений и исправлений в последнем патче.', url: '/?news=obnovlenie-servera-1-2', icon: '📰', timestamp: iso(20 * 60 * 1000) },
+    { type: 'milestone', title: 'Vortigern', subtitle: '100+ часов на сервере', url: '/user.html?u=Vortigern', icon: '⚔', timestamp: iso(90 * 60 * 1000) },
+    { type: 'event', title: 'Турнир кланов «Кровавая арена»', subtitle: `Начало: ${iso(-5 * 24 * 3600 * 1000)}`, url: '/events.html', icon: '📅', timestamp: iso(4 * 3600 * 1000) },
+    { type: 'milestone', title: 'Shadowfang', subtitle: 'Играет 7 дней подряд', url: '/user.html?u=Shadowfang', icon: '🔥', timestamp: iso(9 * 3600 * 1000) },
+    { type: 'news', title: 'Хэллоуин ивент стартовал', subtitle: 'Особые дропы и декорации до конца недели.', url: '/?news=halloween-event', icon: '📰', timestamp: iso(28 * 3600 * 1000) },
+  ];
+
   const routes = [
+    [/\/api\/activity-feed/, () => activityFeed],
     [/\/api\/search(\?|$)/, () => searchResults],
     [/\/api\/settings\/public$/, () => settingsPublic],
     [/\/api\/auth\/me$/, () => null], // anonymous visitor — handled as 401 below
