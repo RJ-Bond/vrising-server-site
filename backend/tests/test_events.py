@@ -274,3 +274,76 @@ async def test_admin_event_participants_requires_admin(client, db_session):
 
     r = await client.get(f"/api/admin/events/{ev.id}/participants", headers=_bearer(user))
     assert r.status_code == 403
+
+
+# ─── GET /api/events/mine/next ────────────────────────────────────────────────
+# Powers the homepage "Продолжить" widget (frontend/index.js) — nearest upcoming/
+# active event the caller is registered for.
+
+async def test_my_next_event_requires_login(client, db_session):
+    r = await client.get("/api/events/mine/next")
+    assert r.status_code == 401
+
+
+async def test_my_next_event_none_when_not_registered_anywhere(client, db_session):
+    admin = await _make_user(db_session, "EventAdmin16", role="admin")
+    user = await _make_user(db_session, "NoRegUser1", role="user")
+    await _make_event(db_session, admin, title="Unjoined Event")
+
+    r = await client.get("/api/events/mine/next", headers=_bearer(user))
+    assert r.status_code == 200
+    assert r.json() == {"event": None}
+
+
+async def test_my_next_event_returns_nearest_by_start_date(client, db_session):
+    admin = await _make_user(db_session, "EventAdmin17", role="admin")
+    user = await _make_user(db_session, "RegUser1", role="user")
+    far = await _make_event(db_session, admin, title="Far Event")
+    far.start_date = datetime.now(timezone.utc) + timedelta(days=10)
+    near = await _make_event(db_session, admin, title="Near Event")
+    near.start_date = datetime.now(timezone.utc) + timedelta(days=1)
+    await db_session.commit()
+
+    for ev in (far, near):
+        r = await client.post(f"/api/events/{ev.id}/join", headers=_bearer(user))
+        assert r.status_code == 200
+
+    r = await client.get("/api/events/mine/next", headers=_bearer(user))
+    assert r.status_code == 200
+    body = r.json()["event"]
+    assert body is not None
+    assert body["title"] == "Near Event"
+
+
+async def test_my_next_event_excludes_ended_and_cancelled(client, db_session):
+    admin = await _make_user(db_session, "EventAdmin18", role="admin")
+    user = await _make_user(db_session, "RegUser2", role="user")
+    ended = await _make_event(db_session, admin, title="Ended Reg Event", status="upcoming")
+    r = await client.post(f"/api/events/{ended.id}/join", headers=_bearer(user))
+    assert r.status_code == 200
+    ended.status = "ended"
+    await db_session.commit()
+
+    r = await client.get("/api/events/mine/next", headers=_bearer(user))
+    assert r.status_code == 200
+    assert r.json() == {"event": None}
+
+
+async def test_my_next_event_prioritizes_active_over_later_upcoming(client, db_session):
+    """An 'active' (already-started) event the user joined should still surface ahead
+    of a later 'upcoming' one — status alone gates eligibility, start_date only orders."""
+    admin = await _make_user(db_session, "EventAdmin19", role="admin")
+    user = await _make_user(db_session, "RegUser3", role="user")
+    upcoming = await _make_event(db_session, admin, title="Later Upcoming", status="upcoming")
+    upcoming.start_date = datetime.now(timezone.utc) + timedelta(days=5)
+    active = await _make_event(db_session, admin, title="Ongoing Active", status="active")
+    active.start_date = datetime.now(timezone.utc) - timedelta(hours=1)
+    await db_session.commit()
+
+    for ev in (upcoming, active):
+        r = await client.post(f"/api/events/{ev.id}/join", headers=_bearer(user))
+        assert r.status_code == 200
+
+    r = await client.get("/api/events/mine/next", headers=_bearer(user))
+    assert r.status_code == 200
+    assert r.json()["event"]["title"] == "Ongoing Active"

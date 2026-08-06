@@ -6,6 +6,7 @@ from sqlalchemy import select, func, case
 
 from ..database import get_db
 from ..models import User, GameClan, GameClanMember, GameClanBase
+from ..auth import get_current_user
 from ..helpers import _get_server_names
 from ..schemas import GameClanOut, GameClanDetailOut, GameClanLeaderboardOut
 
@@ -225,6 +226,47 @@ async def clans_leaderboard(server: Optional[int] = None, limit: Optional[int] =
     # across requests instead of depending on incidental DB row order.
     out.sort(key=lambda c: (-c["total_power"], -c["member_count"], c["name"]))
     return out[:limit]
+
+
+@router.get("/api/clans/mine")
+async def my_clan(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Site user's in-game clan card for the homepage "Твой клан" widget (frontend/
+    index.js) — looked up via User.steam_id, the authoritative site-account ↔ game-
+    account link set by the plugin's .register/.login commands (see models.py's
+    docstring on that column). No linked steam_id and "linked but not currently in any
+    GameClanMember roster" both collapse to the same {"clan": None} response — the
+    homepage card just hides either way, no need for the visitor to distinguish them.
+
+    Registered above GET /api/clans/{clan_id} for the same int-converter reason
+    /api/clans/leaderboard is (see that route's comment) — "mine" would otherwise never
+    get a chance to match."""
+    if not current_user.steam_id:
+        return {"clan": None}
+    member = (await db.execute(
+        select(GameClanMember).where(GameClanMember.steam_id == current_user.steam_id)
+    )).scalars().first()
+    if member is None:
+        return {"clan": None}
+    clan = await db.get(GameClan, member.clan_id)
+    if clan is None:
+        return {"clan": None}
+    agg = (await db.execute(
+        select(
+            func.count(GameClanMember.id),
+            func.sum(case((GameClanMember.is_online, 1), else_=0)),
+        ).where(GameClanMember.clan_id == clan.id)
+    )).first()
+    member_count = (agg[0] if agg else 0) or 0
+    online_count = (agg[1] if agg else 0) or 0
+    return {"clan": {
+        "id": clan.id, "name": clan.name,
+        "my_role": member.role,
+        "member_count": member_count,
+        "online_count": online_count,
+    }}
 
 
 @router.get("/api/clans/{clan_id}", response_model=GameClanDetailOut)

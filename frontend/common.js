@@ -731,3 +731,66 @@ function toggleLanguage() {
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _applyI18n);
 else _applyI18n();
+
+// ── Shared Web Push subscribe helper ────────────────────────────────────────
+// Single source for the actual PushManager.subscribe() + POST /api/push/subscribe
+// flow, used by profile.html's push-notifications card AND the homepage opt-in nudge
+// banner (index.js) — moved here (was profile.html-only) so both surfaces call the
+// exact same subscribe logic instead of a second copy drifting out of sync. Callers
+// own their own UI/status text; these two functions never touch the DOM and never
+// throw — they return a plain {ok, reason} result.
+function _urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+/* True if this browser/device already has an active push subscription — used to
+   decide whether to show an "enable push" prompt at all (never nag someone already
+   subscribed). Not a server-side flag: matches what "already opted in on THIS
+   browser" actually means for PushManager. */
+async function isPushSubscribed() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    return !!sub;
+  } catch { return false; }
+}
+
+/* Runs the full opt-in flow: fetch the VAPID public key, request Notification
+   permission, subscribe via PushManager, then persist the subscription server-side.
+   reason values: 'unsupported' | 'not-configured' | 'denied' | 'save-failed' | 'error'. */
+async function subscribeToPush() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    return { ok: false, reason: 'unsupported' };
+  }
+  try {
+    const keyRes = await fetch('/api/push/vapid-public-key', { credentials: 'include' });
+    const keyData = await keyRes.json().catch(() => ({}));
+    if (!keyData.public_key) return { ok: false, reason: 'not-configured' };
+
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') return { ok: false, reason: 'denied' };
+
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(keyData.public_key),
+      });
+    }
+    const subJson = sub.toJSON();
+    const res = await fetch('/api/push/subscribe', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: subJson.endpoint, keys: subJson.keys }),
+    });
+    if (!res.ok) return { ok: false, reason: 'save-failed' };
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: 'error' };
+  }
+}
