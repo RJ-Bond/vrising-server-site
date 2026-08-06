@@ -274,9 +274,26 @@ if (localStorage.getItem('_leftPanelCompact') === '1') {
     }
   });
 
+  // ── Personalized time-of-day greeting ────────────────────────────────────
+  // Computed from the VISITOR's own local clock (new Date().getHours()), not server
+  // time — see #hero-greeting's comment in index.html for why. Plain 4-bucket split;
+  // no need for anything fancier than "morning/day/evening/night" here.
+  function _timeGreeting() {
+    const h = new Date().getHours();
+    if (h >= 5 && h < 12) return 'Доброе утро';
+    if (h >= 12 && h < 18) return 'Добрый день';
+    if (h >= 18 && h < 23) return 'Добрый вечер';
+    return 'Доброй ночи';
+  }
+
   // ── User card in sidebar ─────────────────────────────────────────────────
   function _applyUser(u) {
     if (!u) return;
+    const greetEl = document.getElementById('hero-greeting');
+    if (greetEl) {
+      greetEl.textContent = `${_timeGreeting()}, ${u.username}!`;
+      greetEl.style.display = '';
+    }
     document.getElementById('nav-username').textContent = u.username;
     document.getElementById('nav-username').classList.remove('hidden');
     document.getElementById('nav-login').classList.add('hidden');
@@ -352,6 +369,9 @@ if (localStorage.getItem('_leftPanelCompact') === '1') {
         setInterval(loadNotifications, 60000);
         loadDmUnread();
         setInterval(loadDmUnread, 30000);
+        loadContinueWidget();
+        loadMyClanCard();
+        initPushNudge();
         setInterval(() => fetch('/api/auth/me', { credentials: 'include' }).catch(() => {}), 60000);
       });
     } else {
@@ -620,6 +640,77 @@ async function loadLatestNews() {
     card.onclick = (e) => { e.preventDefault(); openNews(n.slug); };
     wrap.style.display = '';
   } catch {}
+}
+
+// ── "Продолжить" widget (nearest upcoming/active registered event) ──────────
+async function loadContinueWidget() {
+  const wrap = document.getElementById('continue-widget');
+  if (!wrap) return;
+  try {
+    const res = await fetch(`${API}/events/mine/next`, { credentials: 'include' });
+    if (!res.ok) { wrap.style.display = 'none'; return; }
+    const d = await res.json();
+    const ev = d.event;
+    if (!ev) { wrap.style.display = 'none'; return; }
+    document.getElementById('continue-widget-title').textContent = ev.title;
+    const dt = _toDate(ev.start_date);
+    const when = dt ? dt.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+    document.getElementById('continue-widget-meta').textContent = ev.status === 'active' ? 'Идёт сейчас →' : `Начало: ${when}`;
+    document.getElementById('continue-widget-link').href = `/events.html?event=${ev.id}`;
+    wrap.style.display = 'flex';
+  } catch { wrap.style.display = 'none'; }
+}
+
+// ── "Твой клан" card (logged-in user's in-game clan) ─────────────────────────
+const _CLAN_ROLE_LABELS = { leader: 'Лидер', officer: 'Офицер', member: 'Участник' };
+async function loadMyClanCard() {
+  const wrap = document.getElementById('my-clan-card');
+  if (!wrap) return;
+  try {
+    const res = await fetch(`${API}/clans/mine`, { credentials: 'include' });
+    if (!res.ok) { wrap.style.display = 'none'; return; }
+    const d = await res.json();
+    const c = d.clan;
+    if (!c) { wrap.style.display = 'none'; return; }
+    document.getElementById('my-clan-name').textContent = c.name;
+    const roleLabel = _CLAN_ROLE_LABELS[c.my_role] || c.my_role;
+    document.getElementById('my-clan-meta').textContent = `${roleLabel} · ${c.member_count} участ. · ${c.online_count} онлайн`;
+    document.getElementById('my-clan-link').href = `/clans.html?clan=${c.id}`;
+    wrap.style.display = 'flex';
+  } catch { wrap.style.display = 'none'; }
+}
+
+// ── Push opt-in nudge banner ──────────────────────────────────────────────────
+// isPushSubscribed()/subscribeToPush() live in common.js (shared with profile.html's
+// push card) — this only decides whether to SHOW the nudge and wires the banner's
+// two buttons to that shared logic.
+async function initPushNudge() {
+  const banner = document.getElementById('push-nudge-banner');
+  if (!banner) return;
+  if (localStorage.getItem('_pushNudgeDismissed') === '1') return;
+  if (typeof Notification !== 'undefined' && Notification.permission === 'denied') return;
+  if (await isPushSubscribed()) return;
+  banner.style.display = 'block';
+}
+function dismissPushNudge() {
+  const banner = document.getElementById('push-nudge-banner');
+  if (banner) banner.style.display = 'none';
+  localStorage.setItem('_pushNudgeDismissed', '1');
+}
+async function acceptPushNudge() {
+  const btn = document.getElementById('push-nudge-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  const result = await subscribeToPush();
+  if (result.ok) {
+    showToast('Push-уведомления включены!', 'success');
+    dismissPushNudge();
+    return;
+  }
+  if (btn) { btn.disabled = false; btn.textContent = 'Включить'; }
+  // A hard 'denied' means the browser will block any future silent re-prompt anyway —
+  // no point nagging again on the next visit.
+  if (result.reason === 'denied') dismissPushNudge();
+  showToast('Не удалось включить push-уведомления', 'error');
 }
 
 // esc, getUser, nameGradient, _dateOpts, fmtDate, fmtDateTime,
@@ -3043,6 +3134,25 @@ function closeDmModal() {
 
 // ── Notification bell ──────────────────────────────────────────────────────
 let _notifOpen = false;
+// Plain-text (no markup) summary of a notification — used by the homepage inline
+// preview strip below, which sets it via .textContent (auto-escaping) rather than
+// innerHTML like the dropdown list does, since the strip has no need for the
+// dropdown's <strong> username styling.
+function _notifPreviewText(n) {
+  if (!n) return '';
+  const uname = n.data?.from_username || '';
+  switch (n.type) {
+    case 'reply': return `@${uname} ответил на ваш комментарий`;
+    case 'mention': return `@${uname} упомянул вас в комментарии`;
+    case 'message': return `@${uname} отправил вам сообщение`;
+    case 'shop_fulfilled': return `Заявка на «${n.data?.item_name || ''}» выполнена`;
+    case 'shop_cancelled': return `Заявка на «${n.data?.item_name || ''}» отменена, очки возвращены`;
+    case 'points_grant': return `Начислено ${(n.data?.delta || 0) > 0 ? '+' : ''}${n.data?.delta || 0} очков`;
+    case 'appeal_resolved': return n.data?.approved ? 'Апелляция одобрена, бан снят' : 'Апелляция отклонена';
+    default: return 'Новое уведомление';
+  }
+}
+
 async function loadNotifications() {
   const res = await fetch('/api/notifications', {credentials:'include'});
   if (!res.ok) return;
@@ -3052,6 +3162,22 @@ async function loadNotifications() {
   const list = document.getElementById('notif-list');
   if (wrap) wrap.style.display = '';
   if (cnt) { cnt.textContent = d.unread; cnt.style.display = d.unread > 0 ? '' : 'none'; }
+  // Inline homepage preview strip (near the nav user card) — only shown when there's
+  // actually an unread notification to tease; clicking it opens this SAME dropdown
+  // panel (toggleNotifPanel(), bound in index.html), never a second rendering of it.
+  const previewStrip = document.getElementById('notif-preview-strip');
+  if (previewStrip) {
+    const latestUnread = (d.items || []).find(n => !n.read);
+    if (latestUnread) {
+      const countEl = document.getElementById('notif-preview-count');
+      if (countEl) countEl.textContent = d.unread > 1 ? `${d.unread} новых уведомления` : 'Новое уведомление';
+      const textEl = document.getElementById('notif-preview-text');
+      if (textEl) textEl.textContent = _notifPreviewText(latestUnread);
+      previewStrip.style.display = '';
+    } else {
+      previewStrip.style.display = 'none';
+    }
+  }
   if (list) {
     if (!d.items || !d.items.length) {
       list.innerHTML = '<div style="padding:1rem;text-align:center;font-size:.78rem;color:#9488a8;">Нет уведомлений</div>';

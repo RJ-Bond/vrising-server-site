@@ -29,6 +29,8 @@ const commonJsDeclaredGlobals = {
   _statusInfo: 'readonly',
   _applyI18n: 'readonly',
   toggleLanguage: 'readonly',
+  isPushSubscribed: 'readonly',
+  subscribeToPush: 'readonly',
 };
 
 // These are only ever created via `window.foo = function(){...}` (property

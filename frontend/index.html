@@ -54,7 +54,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
   <link rel="stylesheet" href="/theme.css?v=4" />
-  <link rel="stylesheet" href="/index.css?v=17" />
+  <link rel="stylesheet" href="/index.css?v=18" />
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#06000f">
   <meta name="mobile-web-app-capable" content="yes">
@@ -172,6 +172,13 @@
 
   <!-- Content -->
   <div class="hero-content">
+    <!-- Personalized time-of-day greeting for logged-in visitors — supplements (never
+         replaces) the site title below, so the anonymous hero is untouched. Computed
+         from the VISITOR's local clock in JS (see _timeGreeting() in index.js), not
+         server time — a player in a different timezone should see their own morning/
+         evening, not the server host's. Hidden by default; only _applyUser() (index.js)
+         reveals it, and only once a cached/fresh session confirms a logged-in user. -->
+    <div id="hero-greeting" style="display:none;position:relative;z-index:1;font-family:'Cinzel',serif;font-size:1.05rem;font-weight:600;letter-spacing:.05em;color:var(--gold);margin-bottom:.5rem;text-shadow:0 0 16px rgba(201,169,74,0.35);"></div>
     <!-- Static fallback text (matches loadSiteSettings()'s own 'V RISING' default) so
          the page's largest above-the-fold text has real content on first paint —
          previously empty until GET /api/settings/public resolved, making this <h1>
@@ -324,6 +331,51 @@
           </button>
         </div>
       </div>
+    </div>
+
+    <!-- Inline notification preview (shown when logged in AND there's at least one
+         unread notification) — a one-line teaser next to the user card so an unread
+         notification is visible without opening the bell dropdown. Clicking it opens
+         the SAME #notif-panel the bell already drives (toggleNotifPanel(), index.js) —
+         no separate notification-rendering logic of its own. Populated by
+         loadNotifications() (index.js), which already runs on every page load/60s poll
+         for the bell badge; this just reads its result too. -->
+    <div id="notif-preview-strip" style="display:none;margin-bottom:.85rem;padding:.5rem .65rem;background:rgba(200,0,40,0.08);border:1px solid rgba(200,0,40,0.25);border-radius:.6rem;cursor:pointer;transition:border-color .15s,background .15s;"
+      onclick="toggleNotifPanel()" role="button" tabindex="0"
+      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleNotifPanel();}"
+      onmouseover="this.style.borderColor='rgba(200,0,40,0.45)';this.style.background='rgba(200,0,40,0.13)'"
+      onmouseout="this.style.borderColor='rgba(200,0,40,0.25)';this.style.background='rgba(200,0,40,0.08)'">
+      <div style="font-size:.6rem;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.2rem;display:flex;align-items:center;gap:.3rem;">🔔 <span id="notif-preview-count"></span></div>
+      <div id="notif-preview-text" style="font-size:.72rem;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+    </div>
+
+    <!-- "Продолжить" widget — nearest upcoming/active event the user is registered
+         for (GET /api/events/mine/next). Hidden when logged out or when there's
+         nothing to continue, matching the site's "hide sections with nothing to
+         show" convention (see #team-section). -->
+    <div id="continue-widget" class="nav-user-card" style="display:none;margin-bottom:.85rem;">
+      <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.35rem;">
+        <span style="font-size:.95rem;">📅</span>
+        <span style="font-size:.6rem;font-weight:700;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;">Продолжить</span>
+      </div>
+      <a id="continue-widget-link" href="/events.html" style="display:block;text-decoration:none;color:inherit;">
+        <div id="continue-widget-title" style="font-size:.8rem;color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+        <div id="continue-widget-meta" style="font-size:.64rem;color:var(--muted);margin-top:.25rem;"></div>
+      </a>
+    </div>
+
+    <!-- "Твой клан" card — logged-in user's in-game clan membership (GET
+         /api/clans/mine, resolved via User.steam_id). Hidden when logged out, no
+         linked game account, or not currently in any clan roster. -->
+    <div id="my-clan-card" class="nav-user-card" style="display:none;margin-bottom:.85rem;">
+      <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.35rem;">
+        <span style="font-size:.95rem;">🛡️</span>
+        <span style="font-size:.6rem;font-weight:700;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;">Твой клан</span>
+      </div>
+      <a id="my-clan-link" href="/clans.html" style="display:block;text-decoration:none;color:inherit;">
+        <div id="my-clan-name" style="font-size:.84rem;color:var(--text);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+        <div id="my-clan-meta" style="font-size:.64rem;color:var(--muted);margin-top:.25rem;"></div>
+      </a>
     </div>
 
     <nav style="display:flex;flex-direction:column;gap:.35rem;margin-bottom:1.25rem;">
@@ -682,6 +734,20 @@
   <button onclick="triggerPwaInstall()" style="font-size:.75rem;font-weight:700;background:linear-gradient(135deg,#6a001a,#a00022);border:none;border-radius:.5rem;padding:.4rem .9rem;color:#fff;cursor:pointer;">Установить</button>
 </div>
 
+<!-- ══ PUSH OPT-IN NUDGE ═════════════════════════════════════════════════════ -->
+<!-- Dismissible, localStorage-remembered nudge for logged-in users who haven't
+     enabled Web Push yet (see initPushNudge() in index.js) — never shown to an
+     anonymous visitor, never shown again once dismissed or already subscribed on
+     this browser. Reuses subscribeToPush() (common.js) — the SAME subscribe flow
+     profile.html's push card uses — via acceptPushNudge(), not a reimplementation.
+     Positioned bottom-right (PWA install prompt is bottom-left) so the two never
+     overlap if both happen to be eligible at once. -->
+<div id="push-nudge-banner" style="display:none;position:fixed;right:1rem;bottom:1.5rem;z-index:996;max-width:300px;background:rgba(10,2,18,0.95);border:1px solid rgba(150,0,28,0.4);border-radius:.75rem;padding:.85rem 1rem;box-shadow:0 8px 32px rgba(0,0,0,0.6);backdrop-filter:blur(10px);">
+  <button onclick="dismissPushNudge()" aria-label="Закрыть" style="position:absolute;top:.4rem;right:.5rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;line-height:1;padding:.15rem;">✕</button>
+  <p style="font-size:.78rem;color:var(--text);margin-bottom:.6rem;padding-right:1rem;">🔔 Включите push-уведомления — узнавайте об ответах и сообщениях, даже когда сайт закрыт.</p>
+  <button onclick="acceptPushNudge()" id="push-nudge-btn" style="font-size:.75rem;font-weight:700;background:linear-gradient(135deg,#6a001a,#a00022);border:none;border-radius:.5rem;padding:.4rem .9rem;color:#fff;cursor:pointer;">Включить</button>
+</div>
+
 <!-- ══ MODAL NAV ARROWS ═══════════════════════════════════════════════════════ -->
 <button id="modal-prev" onclick="navigateModal(-1)"
   style="position:fixed;left:1rem;top:50%;transform:translateY(-50%);
@@ -845,7 +911,7 @@
 <script src="/anime.min.js"></script>
 <script src="/anim.js?v=1"></script>
 <script src="/common.js?v=14"></script>
-<script src="/index.js?v=18"></script>
+<script src="/index.js?v=19"></script>
 <div id="ow-hover-card"></div>
 
 <!-- ══ NEWS EDITOR MODAL ══════════════════════════════════════════════════════ -->
