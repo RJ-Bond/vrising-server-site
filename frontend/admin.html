@@ -1369,6 +1369,15 @@
           </div>
 
           <div class="s-field">
+            <label>Email-дайджест новостей</label>
+            <div class="s-field-row">
+              <button onclick="sendNewsletterDigestNow(this)" style="padding:.4rem .75rem;background:rgba(0,80,0,.25);border:1px solid rgba(0,160,60,.35);color:#4ade80;border-radius:.45rem;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s;" onmouseover="this.style.background='rgba(0,100,0,.35)'" onmouseout="this.style.background='rgba(0,80,0,.25)'">▶ Отправить дайджест сейчас</button>
+            </div>
+            <p class="s-desc" id="newsletter-digest-result" style="margin-top:.3rem;"></p>
+            <p class="s-desc">Обычно уходит еженедельно опубликовавшимся с прошлой рассылки новостям, только подписавшимся в профиле пользователям. Эта кнопка запускает ту же рассылку прямо сейчас.</p>
+          </div>
+
+          <div class="s-field">
             <label style="display:flex;align-items:center;gap:.4rem;">
               <svg width="14" height="14" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
                 <defs><linearGradient id="maxAdminGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#1F9C6E"/><stop offset="100%" style="stop-color:#0DC268"/></linearGradient></defs>
@@ -5058,6 +5067,30 @@ async function testWebhook(btn) {
     }
   } catch (e) {
     if (res) { res.style.color = '#f87171'; res.textContent = '❌ Ошибка соединения: ' + e.message; }
+  } finally {
+    btn.textContent = orig; btn.disabled = false;
+  }
+}
+
+// ─── Newsletter digest (manual trigger) ────────────────────────────────────
+// POST /api/admin/newsletter/send-now (backend/routers/admin_misc.py) — runs the
+// same send_newsletter_digest() the weekly background task calls, just on demand.
+async function sendNewsletterDigestNow(btn) {
+  const res = document.getElementById('newsletter-digest-result');
+  const orig = btn.textContent;
+  btn.textContent = '⏳'; btn.disabled = true;
+  if (res) { res.style.color = ''; res.textContent = ''; }
+  try {
+    const r = await fetch(`${API}/admin/newsletter/send-now`, { method: 'POST', credentials: 'include' });
+    const d = await r.json().catch(() => null);
+    if (r.ok && d) {
+      res && (res.style.color = '#4ade80', res.textContent = `✅ Отправлено писем: ${d.sent} из ${d.recipients} подписчиков (новостей в дайджесте: ${d.items})`);
+    } else {
+      const detail = (d && (typeof d.detail === 'string' ? d.detail : JSON.stringify(d.detail))) || `HTTP ${r.status}`;
+      res && (res.style.color = '#f87171', res.textContent = `❌ ${detail}`);
+    }
+  } catch (e) {
+    res && (res.style.color = '#f87171', res.textContent = '❌ Ошибка соединения: ' + e.message);
   } finally {
     btn.textContent = orig; btn.disabled = false;
   }

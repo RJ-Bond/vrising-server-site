@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
 
 from .database import get_db
-from .models import User, AuditLog, ServerApiKey, Setting, PointsTransaction, Ban, PluginHeartbeat, ScheduledRestart, PushSubscription
+from .models import User, AuditLog, ServerApiKey, Setting, PointsTransaction, Ban, PluginHeartbeat, ScheduledRestart, PushSubscription, News
 from .auth import COOKIE_NAME
 
 logger = logging.getLogger(__name__)
@@ -326,6 +326,133 @@ async def _send_notification_email(to_email: str, subject: str, body_text: str, 
     except Exception as e:
         logger.error("Failed to send notification email: %s", e)
         return False
+
+
+# ─── Newsletter digest ─────────────────────────────────────────────────────────
+# Weekly opt-in email covering news published since the last digest. Two callers
+# share this: _newsletter_digest_task in main.py (the weekly schedule) and
+# POST /api/admin/newsletter/send-now in admin_misc.py (an admin "send it right
+# now" action) — both just call send_newsletter_digest(db), no separate code path
+# for "manual" vs "scheduled".
+
+NEWSLETTER_LAST_SENT_SETTING_KEY = "newsletter_last_sent_at"
+
+_HTML_ESCAPE_CHARS = (("&", "&amp;"), ("<", "&lt;"), (">", "&gt;"))
+
+
+def _html_escape(text: str) -> str:
+    for src, dst in _HTML_ESCAPE_CHARS:
+        text = text.replace(src, dst)
+    return text
+
+
+async def _newsletter_base_url(db: AsyncSession) -> str:
+    """Same https_domain Setting + fallback host GET /api/rss.xml already uses for
+    absolute news links, reused here so digest links resolve the same way regardless
+    of whether the send was triggered by the background task (no Request object at
+    all) or the admin manual-trigger endpoint."""
+    base_url = "https://v.just-skill.ru"
+    try:
+        res = await db.execute(select(Setting).where(Setting.key == "https_domain"))
+        s = res.scalar_one_or_none()
+        if s and s.value.strip():
+            base_url = f"https://{s.value.strip()}"
+    except Exception:
+        pass
+    return base_url
+
+
+async def send_newsletter_digest(db: AsyncSession) -> dict:
+    """Email every opted-in, active user a digest of news published since the last
+    digest send (Setting NEWSLETTER_LAST_SENT_SETTING_KEY) — title + short summary +
+    link per item, plain HTML, no templating engine (see helpers.py's
+    _send_notification_email, reused as-is rather than reinventing SMTP plumbing).
+    First-ever run (no Setting row yet) looks back 7 days rather than dumping the
+    entire news archive on whoever opts in before the first scheduled send.
+
+    Always advances the cutoff Setting to "now" once it runs, even when there's
+    nothing to send or nobody is opted in — a quiet week must not cause the next
+    digest to double up on the same items. This also means calling this twice in a
+    row (e.g. an admin manually triggering right after the weekly task already ran)
+    is safe: the second call simply finds nothing new.
+
+    Never raises: a per-recipient email failure is logged and skipped so one bad
+    address can't stop the rest of the batch, matching the "best-effort, never
+    breaks the caller" posture of send_push()/copy_backup_offsite() elsewhere in
+    this file. Returns a small summary dict for the caller to log/return as JSON:
+    {"items": n, "recipients": n, "sent": n}.
+    """
+    now = datetime.now(timezone.utc)
+    res = await db.execute(select(Setting).where(Setting.key == NEWSLETTER_LAST_SENT_SETTING_KEY))
+    setting = res.scalar_one_or_none()
+    since = None
+    if setting and setting.value:
+        try:
+            since = datetime.fromisoformat(setting.value)
+            if since.tzinfo is None:
+                since = since.replace(tzinfo=timezone.utc)
+        except ValueError:
+            since = None
+    if since is None:
+        since = now - timedelta(days=7)
+
+    # News.created_at is stored naive (SQLite) — compare against a naive UTC value,
+    # same normalization approach as _utc_ts()/_fmt_dt() elsewhere in this file.
+    since_naive = since.astimezone(timezone.utc).replace(tzinfo=None) if since.tzinfo else since
+    news_res = await db.execute(
+        select(News)
+        .where(News.published == True, News.is_template == False, News.created_at > since_naive)
+        .order_by(News.created_at.desc())
+        .limit(20)
+    )
+    items = news_res.scalars().all()
+
+    if setting:
+        setting.value = now.isoformat()
+    else:
+        db.add(Setting(key=NEWSLETTER_LAST_SENT_SETTING_KEY, value=now.isoformat()))
+    await db.commit()
+
+    if not items:
+        return {"items": 0, "recipients": 0, "sent": 0}
+
+    users_res = await db.execute(
+        select(User).where(User.newsletter_opt_in == True, User.is_active == True)
+    )
+    recipients = users_res.scalars().all()
+    if not recipients:
+        return {"items": len(items), "recipients": 0, "sent": 0}
+
+    base_url = await _newsletter_base_url(db)
+    subject = f"Новости V Rising — дайджест ({len(items)})"
+
+    text_parts = ["Свежие новости на сайте:", ""]
+    html_parts = ["<p>Свежие новости на сайте:</p>"]
+    for n in items:
+        link = f"{base_url}/?news={n.slug}"
+        summary = (n.summary or "").strip()
+        text_parts.append(f"{n.title}\n{summary}\n{link}\n")
+        html_parts.append(
+            '<div style="margin-bottom:16px;">'
+            f'<a href="{link}" style="font-size:16px;font-weight:bold;text-decoration:none;">{_html_escape(n.title)}</a>'
+            f'<p style="margin:4px 0;color:#444;">{_html_escape(summary)}</p>'
+            "</div>"
+        )
+    text_parts.append("Чтобы отписаться от рассылки, отключите её в настройках профиля на сайте.")
+    html_parts.append('<p style="color:#888;font-size:12px;">Чтобы отписаться от рассылки, отключите её в настройках профиля на сайте.</p>')
+    text = "\n".join(text_parts)
+    html = "".join(html_parts)
+
+    sent = 0
+    for user in recipients:
+        try:
+            ok = await _send_notification_email(user.email, subject, text, html)
+            if ok:
+                sent += 1
+        except Exception:
+            logger.warning("send_newsletter_digest: failed to send to user %s", user.id, exc_info=True)
+
+    return {"items": len(items), "recipients": len(recipients), "sent": sent}
 
 
 # ─── Web Push ─────────────────────────────────────────────────────────────────
