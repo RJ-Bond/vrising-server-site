@@ -1381,3 +1381,24 @@
     .sb-status-dot.online  { background:#4ade80; box-shadow:0 0 6px rgba(74,222,128,0.8); animation:dot-pulse 1.6s ease-in-out infinite; }
     .sb-status-dot.offline { background:#f87171; box-shadow:0 0 4px rgba(248,113,113,0.4); }
 
+    /* ── Print: server rules only ──────────────────────────────────────────
+       A visitor printing/saving the rules to read offline doesn't want the
+       hero, monitoring widgets, news feed, or dark theme background eating
+       ink/paper — hide everything on the page except the rules section, force
+       it open regardless of its current collapsed/expanded JS state (a
+       printed page has no click interaction to expand it), and switch to
+       plain black-on-white since @media print's whole point is a paper copy,
+       not reproducing the site's glassmorphism. */
+    @media print {
+      body::before, .fog, .glass-nav, .hero, .status-bar, #left-panel, #right-panel,
+      #news-section > div:not(.rules-section), .rules-header, #privacy-notice-banner,
+      #pwa-install-banner, footer, #toast-container, #modal-bg, #news-editor-bg {
+        display: none !important;
+      }
+      body { background:#fff !important; color:#000 !important; }
+      .main-grid { display:block !important; margin:0 !important; padding:0 !important; max-width:none !important; }
+      .rules-section { background:none !important; border:none !important; box-shadow:none !important; backdrop-filter:none !important; }
+      .rules-body { max-height:none !important; opacity:1 !important; overflow:visible !important; }
+      .rules-header-title, .rule-item, .rule-item * { color:#000 !important; }
+    }
+

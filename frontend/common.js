@@ -540,6 +540,13 @@ function showToast(msg, type = 'info', duration = 4500) {
   if (!wrap) {
     wrap = document.createElement('div');
     wrap.id = 'toast-wrap';
+    // A screen reader has no other way to learn a toast appeared — it's a
+    // transient DOM insertion, not a focus change or navigation. "polite" (not
+    // "assertive") even for error toasts: these are non-blocking notices the
+    // user can act on later, not urgent enough to interrupt whatever they're
+    // currently doing, which is what assertive live regions do.
+    wrap.setAttribute('role', 'status');
+    wrap.setAttribute('aria-live', 'polite');
     wrap.style.cssText = 'position:fixed;bottom:1.25rem;right:1.25rem;z-index:10000;display:flex;flex-direction:column;gap:.5rem;align-items:flex-end;pointer-events:none;';
     document.body.appendChild(wrap);
   }

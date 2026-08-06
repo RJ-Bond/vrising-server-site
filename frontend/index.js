@@ -1257,6 +1257,19 @@ async function loadNews(page = 1, append = false) {
     const card = document.createElement('div');
     card.className = 'news-card';
     card.style.animationDelay = `${idx * 45}ms`;
+    // Plain onclick div — Tab/Enter never reached it before. tabindex makes it a
+    // stop in the tab order; role+aria-label tell a screen reader what it is
+    // (native <h3> inside is buried among meta/reaction/tag text, not read as
+    // the card's name by default); Enter/Space are the two native "activate"
+    // keys for role=button per WAI-ARIA, since a <div> has no built-in keydown
+    // behavior the way a real <button>/<a> would.
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    card.setAttribute('aria-label', n.title);
+    card.addEventListener('keydown', (e) => {
+      if (e.target !== card) return; // let nested buttons/links handle their own Enter/Space
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openNews(n.slug); }
+    });
     card.innerHTML = `${badgesOverlay}<div class="news-card-row" style="display:flex;gap:0;align-items:stretch;min-height:110px;">
       ${thumbImg}
       <div style="padding:.85rem 1rem .75rem;flex:1;min-width:0;display:flex;flex-direction:column;gap:.28rem;">
@@ -1318,6 +1331,21 @@ async function loadNews(page = 1, append = false) {
   }
   _newsLoading = false;
 }
+
+// News cards render in a single column (#news-list is grid-template-columns:1fr),
+// so Up/Down is the natural "next/previous card" gesture — mirrors how a listbox/
+// feed widget behaves, rather than leaving arrow keys to do nothing on a focused
+// card the way they would on a plain focusable <div> by default. Delegated once on
+// the static container rather than per-card, since cards get replaced/appended
+// continuously (sort/filter/infinite-scroll).
+document.getElementById('news-list').addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  if (!e.target.classList.contains('news-card')) return;
+  const cards = Array.from(document.querySelectorAll('#news-list .news-card'));
+  const i = cards.indexOf(e.target);
+  const next = e.key === 'ArrowDown' ? cards[i + 1] : cards[i - 1];
+  if (next) { e.preventDefault(); next.focus(); }
+});
 
 // ── Infinite scroll ─────────────────────────────────────────────────────────
 const _newsObserver = new IntersectionObserver(entries => {
@@ -2713,7 +2741,11 @@ async function loadActivityFeed() {
     const newest = data[0] && data[0].timestamp ? new Date(data[0].timestamp).getTime() : 0;
     const jl = document.getElementById('jumplink-activity');
     if (jl && newest && (Date.now() - newest) < 3600000 && !jl.querySelector('.jl-fresh-dot')) {
-      jl.insertAdjacentHTML('beforeend', ' <span class="jl-fresh-dot"></span>');
+      // aria-hidden on the dot itself (it's an empty decorative element with no text
+      // a screen reader could meaningfully announce) — the actual signal goes on the
+      // link's own accessible name instead, since that's what gets read out.
+      jl.insertAdjacentHTML('beforeend', ' <span class="jl-fresh-dot" aria-hidden="true"></span>');
+      jl.setAttribute('aria-label', 'Лента — новое');
     }
   } catch {}
 }
