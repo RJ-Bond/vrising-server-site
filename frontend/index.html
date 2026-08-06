@@ -194,6 +194,19 @@
         </a>
       </div>
       <div id="home-pitch" style="display:none;position:relative;z-index:1;font-size:.8rem;color:var(--muted);max-width:520px;text-align:center;margin-top:.15rem;line-height:1.5;"></div>
+      <!-- Uptime trust badge — sourced from GET /api/monitor/stats' uptime_7d (server 1),
+           the longest uptime window that endpoint already computes; ServerSnapshot rows
+           are pruned to 8 days (see backend/main.py's _save_snapshot()), so a genuine
+           30-day figure isn't available without extending that retention window —
+           reusing the existing 7-day figure (labeled honestly as "7 дней") instead of
+           fabricating/mislabeling a 30-day number the data can't actually back.
+           Populated by loadStats() in index.js. -->
+      <div id="hero-uptime-badge" style="display:none;position:relative;z-index:1;margin-top:.55rem;">
+        <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;font-weight:600;letter-spacing:.02em;background:rgba(10,2,18,0.55);border:1px solid rgba(150,0,28,0.35);border-radius:9999px;padding:.28rem .9rem;backdrop-filter:blur(6px);color:var(--text);">
+          <span aria-hidden="true">🛡️</span>
+          <span id="hero-uptime-badge-text"></span>
+        </span>
+      </div>
     </div>
   </div>
 
@@ -253,6 +266,21 @@
   </div>
 </div>
 
+<!-- ══ MILESTONE BANNER ═════════════════════════════════════════════════════ -->
+<!-- Celebrates a round registered-player milestone. Detection tradeoff: there is
+     no "just crossed N" tracking table, so this shows whenever the CURRENT
+     total_users (GET /api/homepage-stats) sits inside a small band just above a
+     milestone (see MILESTONE_BAND in index.js), not only on the one pageview that
+     actually crossed it — it stays visible for every visitor until the count
+     grows past the band. Documented shortcut, not real crossing-detection
+     infrastructure. -->
+<div id="milestone-banner" style="display:none;max-width:1280px;margin:1rem auto 0;padding:0 1.25rem;">
+  <div style="background:linear-gradient(135deg,rgba(180,140,0,0.16),rgba(120,0,180,0.12));border:1px solid rgba(201,169,74,0.35);border-radius:.75rem;padding:.65rem 1.1rem;display:flex;align-items:center;justify-content:center;gap:.55rem;text-align:center;flex-wrap:wrap;">
+    <span style="font-size:1.1rem;" aria-hidden="true">🎉</span>
+    <span id="milestone-banner-text" style="font-size:.82rem;color:var(--gold);font-weight:600;letter-spacing:.02em;"></span>
+  </div>
+</div>
+
 <!-- ══ TRUST STATS ══════════════════════════════════════════════════════════ -->
 <!-- Real, computed numbers (GET /api/homepage-stats) — no fabricated figures.
      Hidden entirely if there's nothing meaningful to show (0 users etc.). -->
@@ -273,6 +301,26 @@
     <div id="home-stat-clan" style="display:none;text-align:center;">
       <div class="home-stat-val" id="home-stat-clan-val">—</div>
       <div class="home-stat-lbl" data-i18n-ru="клан недели" data-i18n-en="clan of the week">клан недели</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ COMMUNITY PROGRESS ═══════════════════════════════════════════════════ -->
+<!-- Single aggregate metric (total hours played across all players — same
+     GET /api/homepage-stats' total_hours field the trust-stats bar above shows)
+     as a progress-bar visual toward the next round goal. Goal is picked
+     dynamically by index.js's _niceGoal() (smallest 1/2/5×10^n above the current
+     total) rather than hardcoded, so it doesn't need a manual bump once passed —
+     it just re-targets to the next round number. Hidden if there are 0 hours
+     logged yet. -->
+<div id="community-progress-wrap" style="display:none;max-width:1280px;margin:1rem auto 0;padding:0 1.25rem;">
+  <div class="g-panel" style="padding:.9rem 1.25rem;border-radius:.875rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap;">
+      <span style="font-size:.72rem;color:var(--muted);letter-spacing:.02em;" id="community-progress-label"></span>
+      <span style="font-size:.78rem;font-weight:700;color:var(--gold);" id="community-progress-pct"></span>
+    </div>
+    <div style="height:8px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden;">
+      <div id="community-progress-fill" style="height:100%;width:0%;border-radius:9999px;background:linear-gradient(90deg,var(--crimson),var(--purple));transition:width 1s cubic-bezier(.4,0,.2,1);box-shadow:0 0 10px rgba(200,0,42,0.4);"></div>
     </div>
   </div>
 </div>
@@ -432,6 +480,20 @@
       </button>
     </div>
 
+    <!-- Tip of the day — a small, fixed set of hardcoded gameplay tips (index.js's
+         DAILY_TIPS), one shown per calendar day picked deterministically by
+         day-of-year so every visitor sees the same tip that day (not randomized per
+         pageload). No fetch involved, so it renders synchronously on load — no
+         loading/FOUC state to handle. -->
+    <div id="tip-of-day-card" style="margin-top:1.1rem;">
+      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.4),transparent);margin-bottom:.85rem;"></div>
+      <h3 data-i18n-ru="— Совет дня —" data-i18n-en="— Tip of the day —" style="font-family:'Philosopher',serif;font-size:.72rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.65rem;text-align:center;">— Совет дня —</h3>
+      <div style="background:rgba(20,5,35,0.35);border:1px solid rgba(110,0,150,0.22);border-radius:.6rem;padding:.7rem .85rem;display:flex;gap:.5rem;align-items:flex-start;">
+        <span style="font-size:1rem;flex-shrink:0;line-height:1.3;" aria-hidden="true">💡</span>
+        <span id="tip-of-day-text" style="font-size:.74rem;color:var(--text);line-height:1.55;"></span>
+      </div>
+    </div>
+
   </aside>
 
   <!-- ── CENTER: News ── -->
@@ -473,6 +535,19 @@
     <div id="news-list" style="display:grid;gap:.75rem;grid-template-columns:1fr;"></div>
     <div id="news-sentinel" style="height:2px;margin-top:1rem;"></div>
     <div id="news-loading-more" style="display:none;text-align:center;padding:.75rem 0;color:var(--muted);font-size:.75rem;">Загрузка…</div>
+
+    <!-- ══ ACHIEVEMENT SHOWCASE ═══════════════════════════════════════════════ -->
+    <!-- Wider, more visually prominent horizontal strip of just the milestone-type
+         items from GET /api/activity-feed — additive to the compact "Лента событий"
+         list in the right sidebar (#activity-feed-list), which keeps showing news/
+         events/milestones mixed together as before. This strip only surfaces the
+         milestone items, larger and with more visual weight. Hidden until there's
+         at least one milestone item. Populated by index.js's renderAchievementStrip(),
+         called from the same loadActivityFeed() that already fills the sidebar list. -->
+    <div id="achievement-strip-wrap" style="display:none;margin-top:1.5rem;">
+      <h2 data-i18n-ru="— Достижения сообщества —" data-i18n-en="— Community achievements —" style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;">— Достижения сообщества —</h2>
+      <div id="achievement-strip-list" style="display:grid;grid-auto-flow:column;grid-auto-columns:minmax(150px,1fr);gap:.65rem;overflow-x:auto;padding-bottom:.35rem;"></div>
+    </div>
 
     <!-- ── Rules section ── -->
     <div class="rules-section">
