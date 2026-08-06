@@ -236,6 +236,20 @@
     { type: 'news', title: 'Хэллоуин ивент стартовал', subtitle: 'Особые дропы и декорации до конца недели.', url: '/?news=halloween-event', icon: '📰', timestamp: iso(28 * 3600 * 1000) },
   ];
 
+  // GET /api/homepage-stats (backend/main.py get_homepage_stats()) — backs the
+  // trust-stats bar, the registered-player milestone banner and the community
+  // hours progress bar (frontend/index.js loadHomepageStats()). total_users is
+  // deliberately set just above a round milestone (1000) so the milestone
+  // banner's band-based heuristic (see MILESTONE_BAND in index.js) is actually
+  // exercised in the screenshot instead of staying hidden; total_hours sits well
+  // under the next "nice" goal (100 000) so the progress bar shows a partial,
+  // not-yet-complete fill.
+  const homepageStats = {
+    total_users: 1008,
+    total_hours: 86500,
+    top_clan: { name: 'Кровавые Клыки', member_count: 12 },
+  };
+
   // PaginatedNews shape (backend/schemas.py NewsListOut) — GET /api/news, backing
   // index.html's news feed (frontend/index.js's loadNews()). Previously unmocked,
   // so every homepage screenshot this far just showed loadNews()'s catch-block
@@ -254,6 +268,7 @@
   const routes = [
     [/\/api\/news(\?|$)/, newsPage],
     [/\/api\/activity-feed/, () => activityFeed],
+    [/\/api\/homepage-stats/, () => homepageStats],
     [/\/api\/search(\?|$)/, () => searchResults],
     [/\/api\/settings\/public$/, () => settingsPublic],
     [/\/api\/auth\/me$/, () => null], // anonymous visitor — handled as 401 below

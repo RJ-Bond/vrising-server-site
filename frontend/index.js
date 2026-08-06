@@ -803,6 +803,17 @@ async function loadStats() {
       gauge1.style.background = s.uptime_24h >= 95 ? '#4ade80' : s.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
     }
 
+    // Hero uptime trust badge — uses uptime_7d (server 1), the longest window
+    // this endpoint already computes. See the HTML comment on #hero-uptime-badge
+    // for why this isn't a 30-day figure.
+    const heroUpBadge = document.getElementById('hero-uptime-badge');
+    const heroUpText  = document.getElementById('hero-uptime-badge-text');
+    if (heroUpBadge && heroUpText && s.uptime_7d !== null) {
+      const uc7 = s.uptime_7d >= 95 ? '#86efac' : s.uptime_7d >= 80 ? '#fbbf24' : '#f87171';
+      heroUpText.innerHTML = `<span style="color:${uc7};font-weight:700;">${s.uptime_7d}%</span> аптайм за 7 дней`;
+      heroUpBadge.style.display = '';
+    }
+
     // colour uptime
     [['stat-uptime24', s.uptime_24h], ['stat-uptime7d', s.uptime_7d]].forEach(([id, v]) => {
       const el = document.getElementById(id);
@@ -2570,6 +2581,7 @@ loadTeam();
 setInterval(loadTeam, 10000);
 loadActivityFeed();
 setInterval(loadActivityFeed, 60000);
+renderTipOfDay();
 
 // ── Trust stats bar ─────────────────────────────────────────────────────────
 // Real numbers only (GET /api/homepage-stats + site_launched_date setting) — the
@@ -2584,6 +2596,9 @@ async function loadHomepageStats() {
     if (!stats) return;
     const bar = document.getElementById('home-stats-bar');
     let shown = false;
+
+    applyMilestoneBanner(stats.total_users || 0);
+    applyCommunityProgress(stats.total_hours || 0);
 
     if (stats.total_users > 0) {
       document.getElementById('home-stat-users-val').textContent = stats.total_users.toLocaleString('ru-RU');
@@ -2611,6 +2626,95 @@ async function loadHomepageStats() {
     }
     if (shown && bar) bar.style.display = '';
   } catch {}
+}
+
+// ── Registered-player milestone banner ──────────────────────────────────────
+// Tradeoff, spelled out: there's no "just crossed N" tracking table (that would
+// need a new persisted counter, out of scope here), so this shows whenever the
+// CURRENT total_users sits inside a small band just above a milestone rather
+// than only on the pageview that actually crossed it. A visitor loading the
+// page at total_users=1005 still sees the "1000" banner, and it stays visible
+// for every visitor until the count grows past milestone+MILESTONE_BAND — not
+// a one-time celebratory event, an honest approximation of one.
+const MILESTONES = [100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000];
+const MILESTONE_BAND = 20;
+
+function applyMilestoneBanner(totalUsers) {
+  const banner = document.getElementById('milestone-banner');
+  const textEl = document.getElementById('milestone-banner-text');
+  if (!banner || !textEl) return;
+  const hit = MILESTONES.find(m => totalUsers >= m && totalUsers <= m + MILESTONE_BAND);
+  if (!hit) { banner.style.display = 'none'; return; }
+  textEl.textContent = `Приветствуем ${hit.toLocaleString('ru-RU')}-го зарегистрированного игрока сообщества!`;
+  banner.style.display = '';
+}
+
+// ── Community progress bar ──────────────────────────────────────────────────
+// Single aggregate metric — total hours played across all players, the same
+// GET /api/homepage-stats total_hours field the trust-stats bar above already
+// shows — as a progress-bar visual toward the next round goal. The goal is
+// picked dynamically (smallest "nice" number, 1/2/5 × 10^n, strictly greater
+// than the current total) instead of a hardcoded target, so it doesn't need a
+// manual bump once the community passes it — it just re-targets to the next
+// round number on the next load.
+function _niceGoal(value) {
+  if (value <= 0) return 1000;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(value)));
+  for (const mult of [1, 2, 5, 10]) {
+    const candidate = magnitude * mult;
+    if (candidate > value) return candidate;
+  }
+  return magnitude * 10;
+}
+
+function applyCommunityProgress(totalHours) {
+  const wrap = document.getElementById('community-progress-wrap');
+  if (!wrap) return;
+  if (!totalHours || totalHours <= 0) { wrap.style.display = 'none'; return; }
+  const goal = _niceGoal(totalHours);
+  const pct = Math.min(100, Math.max(0, Math.round(totalHours / goal * 100)));
+  const label = document.getElementById('community-progress-label');
+  const pctEl = document.getElementById('community-progress-pct');
+  const fill = document.getElementById('community-progress-fill');
+  if (label) label.textContent = `До ${goal.toLocaleString('ru-RU')} часов сообщества`;
+  if (pctEl) pctEl.textContent = `${pct}%`;
+  if (fill) fill.style.width = pct + '%';
+  wrap.style.display = '';
+}
+
+// ── Tip of the day ────────────────────────────────────────────────────────
+// Hardcoded, game-accurate V Rising tips — one shown per calendar day, picked
+// deterministically by day-of-year (not random per pageload/session) so every
+// visitor sees the same tip on a given day. Pure client-side content, no fetch,
+// so it renders synchronously with no loading state to handle.
+const DAILY_TIPS = [
+  'Кровь разного типа даёт разные бонусы: Воин усиливает физическую атаку, Разбойник — скорость передвижения, Учёный — урон заклинаний, Громила — запас здоровья. Держите под рукой несколько типов для разных ситуаций.',
+  'Перед штурмом босса проверяйте его иммунитеты в бестиарии (клавиша V) — часть боссов невосприимчива к определённым эффектам контроля или типам урона.',
+  'Кровяной алтарь подсвечивает трассу к ближайшему доступному боссу — идти по боссам примерно в этом порядке безопаснее, чем пытаться забежать вперёд по уровню.',
+  'Стройте замок с одним узким входом — оборонять его от рейдов и волн мобов проще, чем базу с несколькими открытыми проёмами.',
+  'Слуг (Servants) можно отправлять фармить ресурсы, пока вы заняты боссами — слуга с нужной специализацией экономит часы ручного сбора.',
+  'На PvE-серверах постройки не разрушаются другими игроками — весь урон по базе приходится только от боссов и мобов, крепостные стены нужны в основном для них.',
+  'Цикл дня и ночи общий для всех серверов: под открытым небом днём вампир получает урон от солнца — держите под рукой укрытие или зелье от солнца на случай, если бой затянется до рассвета.',
+  'Чеснок и серебро наносят вампиру повышенный урон и накладывают дебаффы — по возможности обходите зоны с этими эффектами или снимайте их усиление заранее.',
+  'Новые технологии открываются в основном через убийство боссов, а не только через верстак — не пропускайте боссов пониже уровнем, даже если тянет сразу к сильным.',
+  'Куст кровавой розы (Blood Rose) со временем привлекает NPC-фермеров — удобный источник крови типа "Фермер" без необходимости постоянно охотиться самому.',
+  'Пленных NPC можно держать живыми в тюремной камере ради крови высокого качества дольше, чем при разовом убийстве — расходуется постепенно.',
+  'На серверах с регулярными вайпами стоит заранее решить, где строиться — споты рядом с ранними боссами разбирают в первые часы после вайпа.',
+  'Точки телепортации (Waygate) заметно экономят время на дальних перемещениях — стройте их на обоих концах маршрутов, которыми часто пользуетесь.',
+  'В клане удобно распределять типы крови и специализации построек между участниками — не обязательно каждому фармить и строить всё самому.',
+  'Осадное оружие эффективно против стен, но не заменяет тактику — рейд без плана быстро теряет ресурсы под ответным огнём защитников базы.',
+  'Территория рядом с ещё не побеждённым боссом обычно отмечена как заповедная (immune territory) — учитывайте это при выборе места под замок.',
+  'Артефакты и камни зачарования можно менять под конкретного босса или ситуацию — не обязательно держать один и тот же набор на все случаи жизни.',
+  'Проверяйте направление и радиус атак боссов перед боем — у большинства есть один-два особенно опасных приёма, которые проще выучить заранее, чем в бою.',
+];
+
+function renderTipOfDay() {
+  const el = document.getElementById('tip-of-day-text');
+  if (!el || !DAILY_TIPS.length) return;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((now - start) / 86400000);
+  el.textContent = DAILY_TIPS[dayOfYear % DAILY_TIPS.length];
 }
 
 // ── Team ────────────────────────────────────────────────────────────────────
@@ -2688,6 +2792,7 @@ async function loadActivityFeed() {
   try {
     const data = await fetch(`${API}/activity-feed`).then(r => r.ok ? r.json() : null);
     if (!Array.isArray(data) || data.length === 0) return;
+    renderAchievementStrip(data.filter(it => it.type === 'milestone'));
     const wrap = document.getElementById('activity-feed-section');
     const list = document.getElementById('activity-feed-list');
     if (!wrap || !list) return;
@@ -2716,6 +2821,37 @@ async function loadActivityFeed() {
       jl.insertAdjacentHTML('beforeend', ' <span class="jl-fresh-dot"></span>');
     }
   } catch {}
+}
+
+// ── Achievement showcase strip ──────────────────────────────────────────────
+// Wider, more visually prominent horizontal strip of just the milestone-type
+// items from the same GET /api/activity-feed payload the compact sidebar list
+// above already renders — additive, NOT a replacement for that list (which
+// keeps showing news/events/milestones mixed together as before). The feed
+// endpoint doesn't return avatar_url for milestone items (only username/
+// subtitle/icon — see ActivityFeedItemOut in backend/routers/activity_feed.py),
+// so cards use the same generated initial-avatar (nameGradient(), already used
+// elsewhere on the site as the no-avatar fallback) instead of firing a
+// per-item profile fetch just for this strip.
+function renderAchievementStrip(items) {
+  const wrap = document.getElementById('achievement-strip-wrap');
+  const list = document.getElementById('achievement-strip-list');
+  if (!wrap || !list) return;
+  if (!items || !items.length) { wrap.style.display = 'none'; return; }
+  list.innerHTML = items.slice(0, 8).map(it => {
+    const initial = esc((it.title || '?').charAt(0).toUpperCase());
+    return `<a href="${esc(it.url)}" style="display:flex;flex-direction:column;align-items:center;text-align:center;gap:.45rem;background:rgba(20,5,35,0.4);border:1px solid rgba(201,169,74,0.22);border-radius:.7rem;padding:.9rem .7rem;text-decoration:none;transition:all .2s;min-width:150px;"
+      onmouseover="this.style.borderColor='rgba(201,169,74,0.55)';this.style.background='rgba(28,8,45,0.55)'"
+      onmouseout="this.style.borderColor='rgba(201,169,74,0.22)';this.style.background='rgba(20,5,35,0.4)'">
+      <div style="position:relative;width:44px;height:44px;flex-shrink:0;">
+        <div style="width:44px;height:44px;border-radius:50%;background:${nameGradient(it.title || '?')};display:flex;align-items:center;justify-content:center;font-family:'Cinzel',serif;font-size:1rem;color:#fff;">${initial}</div>
+        <span style="position:absolute;bottom:-2px;right:-2px;font-size:1rem;line-height:1;filter:drop-shadow(0 0 4px rgba(0,0,0,0.6));">${esc(it.icon || '⭐')}</span>
+      </div>
+      <div style="font-size:.76rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">${esc(it.title)}</div>
+      <div style="font-size:.64rem;color:var(--muted);line-height:1.3;">${esc(it.subtitle || '')}</div>
+    </a>`;
+  }).join('');
+  wrap.style.display = '';
 }
 
 // Reveals one quick-jump link (+ the bar itself) in the right sidebar — see
