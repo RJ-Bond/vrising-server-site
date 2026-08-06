@@ -552,6 +552,13 @@
     .ow-group-hdr { font-size:.55rem;color:var(--muted);letter-spacing:.06em;padding:.28rem .35rem .04rem;opacity:.7; }
     .online-dot { width:.42rem;height:.42rem;border-radius:50%;background:#4ade80;box-shadow:0 0 7px #4ade80;flex-shrink:0;animation:ow-pulse 2.4s ease-in-out infinite; }
     .jl-fresh-dot { display:inline-block;width:.36rem;height:.36rem;border-radius:50%;background:var(--crimson);box-shadow:0 0 6px var(--crimson);vertical-align:middle;animation:ow-pulse 2.4s ease-in-out infinite; }
+    /* #right-panel-jumplinks can hold up to 6 pills in a ~260px-wide panel on BOTH
+       desktop and mobile — scrolls horizontally instead of wrapping (an orphaned
+       last pill on its own line read as broken, not intentional). Scrollbar hidden
+       since this is a secondary nav aid; the edge mask hints there's more to scroll
+       to without needing a visible track. */
+    .jumplinks-scroll { -webkit-mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 12px),transparent); mask-image:linear-gradient(90deg,transparent,#000 12px,#000 calc(100% - 12px),transparent); scrollbar-width:none; }
+    .jumplinks-scroll::-webkit-scrollbar { display:none; }
     @keyframes ow-pulse { 0%,100%{box-shadow:0 0 4px #4ade80;opacity:1} 50%{box-shadow:0 0 12px #4ade80,0 0 20px rgba(74,222,128,.4);opacity:.85} }
     @keyframes ow-fadein { from{opacity:0;transform:translateX(-7px)} to{opacity:1;transform:none} }
     .ow-new { animation:ow-fadein .32s ease both; }

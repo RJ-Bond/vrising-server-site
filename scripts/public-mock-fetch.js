@@ -286,7 +286,24 @@
     { id: 2, title: 'Плановые технические работы 12.08', slug: 'planovye-raboty-12-08', summary: 'Оба сервера будут недоступны примерно 30 минут для миграции базы данных.', thumbnail_url: null, tags: 'технические', published: true, pinned: false, views: 156, publish_at: null, is_template: false, created_at: iso(3 * 24 * 3600 * 1000), author: newsAuthor, comment_count: 1 },
     { id: 1, title: 'Добро пожаловать на Just-Skill.Ru', slug: 'dobro-pozhalovat', summary: 'Правила, вайпы, как привязать игровой аккаунт — коротко обо всём на странице FAQ.', thumbnail_url: null, tags: 'общее', published: true, pinned: false, views: 1204, publish_at: null, is_template: false, created_at: iso(20 * 24 * 3600 * 1000), author: newsAuthor, comment_count: 22 },
   ];
-  const newsPage = () => ({ items: newsItems, total: newsItems.length, page: 1, pages: 1 });
+  // Respects ?tag= and ?search= like the real endpoint does — without this, a
+  // tag-filtered request (e.g. loadFeatured()'s /api/news?tag=featured) got back
+  // the exact same unfiltered list as the plain homepage feed, making the
+  // "featured" card and the first regular list card show the identical article
+  // on every mock screenshot — looked like a real duplicate-content bug, but was
+  // actually just this mock ignoring the query string. None of the items above
+  // carry a "featured" tag, so a real ?tag=featured request now correctly comes
+  // back empty and the featured-wrap hides, matching what an admin who hasn't
+  // tagged anything "featured" yet would actually see.
+  const newsPage = (url) => {
+    const qs = new URLSearchParams((url.split('?')[1] || ''));
+    const tag = qs.get('tag');
+    const search = (qs.get('search') || '').trim().toLowerCase();
+    let items = newsItems;
+    if (tag) items = items.filter(n => (n.tags || '').split(',').map(t => t.trim()).includes(tag));
+    if (search) items = items.filter(n => n.title.toLowerCase().includes(search));
+    return { items, total: items.length, page: 1, pages: 1 };
+  };
 
   const routes = [
     [/\/api\/news(\?|$)/, newsPage],

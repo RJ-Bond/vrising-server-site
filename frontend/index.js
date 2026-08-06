@@ -69,6 +69,38 @@ function _removeArticleJsonLd() {
   document.getElementById('article-jsonld')?.remove();
 }
 
+// Homepage news list structured data — mirrors events.html's setEventsJsonLd() for
+// the same reason: _setArticleJsonLd() above only describes ONE article (while its
+// modal is open), the static <head> JSON-LD only covers Organization/WebSite, and
+// nothing described the actual list of recent articles the homepage shows. Called
+// from loadNews() on a fresh (non-append) page-1 load; removed if the list ends up
+// empty (filtered/searched down to nothing) rather than left stale.
+function setNewsListJsonLd(items) {
+  const id = 'news-list-jsonld';
+  document.getElementById(id)?.remove();
+  if (!items || !items.length) return;
+  const el = document.createElement('script');
+  el.type = 'application/ld+json';
+  el.id = id;
+  el.textContent = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    itemListElement: items.map((n, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      url: `${location.origin}/?news=${encodeURIComponent(n.slug)}`,
+      item: {
+        '@type': 'NewsArticle',
+        headline: n.title,
+        description: n.summary || n.title,
+        datePublished: n.created_at,
+        author: { '@type': 'Person', name: n.author.username },
+      },
+    })),
+  });
+  document.head.appendChild(el);
+}
+
 // ── Scroll progress ────────────────────────────────────────────────────────
 window.addEventListener('scroll', () => {
   const el = document.getElementById('scroll-progress');
@@ -670,23 +702,6 @@ function _owRow(u, isNew = false, isSelf = false, showDm = false) {
   </div>`;
 }
 
-async function loadLatestNews() {
-  try {
-    const data = await fetch(`${API}/news?per_page=1&page=1`).then(r => r.json());
-    if (!data.items?.length) return;
-    const n = data.items[0];
-    const wrap = document.getElementById('nav-latest-wrap');
-    const card = document.getElementById('nav-latest-card');
-    const titleEl = document.getElementById('nav-latest-title');
-    const dateEl = document.getElementById('nav-latest-date');
-    if (!wrap) return;
-    titleEl.textContent = n.title;
-    dateEl.textContent = fmtDate(n.created_at);
-    card.onclick = (e) => { e.preventDefault(); openNews(n.slug); };
-    wrap.style.display = '';
-  } catch {}
-}
-
 // ── "Продолжить" widget (nearest upcoming/active registered event) ──────────
 async function loadContinueWidget() {
   const wrap = document.getElementById('continue-widget');
@@ -1184,10 +1199,11 @@ async function loadFeatured() {
   if (!wrap) return;
   try {
     const _fr = await fetch(`${API}/news?tag=featured&per_page=1&page=1`);
-    if (!_fr.ok) { wrap.style.display = 'none'; return; }
+    if (!_fr.ok) { wrap.style.display = 'none'; _featuredSlug = null; return; }
     const data = await _fr.json();
-    if (!data.items || !data.items.length) { wrap.style.display = 'none'; return; }
+    if (!data.items || !data.items.length) { wrap.style.display = 'none'; _featuredSlug = null; return; }
     const n = data.items[0];
+    _featuredSlug = n.slug;
     const authorName = esc(n.author.username);
     const adminBadge = _renderAdminBadge(n.author);
     const avatarEl = n.author.avatar_url
@@ -1283,6 +1299,10 @@ let _newsLoading = false;
 let _newsItems = [];
 let _hotSlug = null;
 let _newsSort = 'date';
+// Set by loadFeatured() when it renders an article into the "Главное" hero card —
+// loadNews() skips this same slug in the regular list below so a tagged-featured
+// article that's ALSO the newest one doesn't show up twice on the same page.
+let _featuredSlug = null;
 
 function setNewsSort(sort) {
   _newsSort = sort;
@@ -1356,11 +1376,21 @@ async function loadNews(page = 1, append = false) {
         ${hasFilters ? `<button onclick="resetNewsFilters()" style="margin-top:.75rem;background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;font-size:.75rem;cursor:pointer;font-family:'Inter',sans-serif;">Сбросить фильтры</button>` : ''}
       </div>`;
       if (countLabel) countLabel.textContent = '';
+      setNewsListJsonLd([]);
       _newsLoading = false;
       return;
     }
-    if (countLabel) countLabel.textContent = data.total ? `Показано ${_newsItems.length + data.items.length} из ${data.total}` : '';
-  data.items.forEach((n, idx) => {
+    // Skip whatever loadFeatured() already put in the "Главное" hero card above —
+    // otherwise a tagged-featured article that also happens to be newest shows up
+    // twice on the same page. Best-effort: loadFeatured() and loadNews() are two
+    // independent fetches kicked off together at page load, so on a very slow
+    // connection this list's own fetch could theoretically resolve first (before
+    // _featuredSlug is set) and miss the dedup on that one render — acceptable for
+    // how narrow this edge case already is (an admin has to have tagged something
+    // "featured" at all), not worth sequencing the two fetches over.
+    const itemsToRender = _featuredSlug ? data.items.filter(n => n.slug !== _featuredSlug) : data.items;
+    if (countLabel) countLabel.textContent = data.total ? `Показано ${_newsItems.length + itemsToRender.length} из ${data.total}` : '';
+  itemsToRender.forEach((n, idx) => {
     const thumbImg = n.thumbnail_url
       ? `<div class="news-thumb-wrap" style="width:140px;min-height:110px;flex-shrink:0;align-self:stretch;background:url('${esc(n.thumbnail_url)}') center/cover no-repeat,linear-gradient(180deg,rgba(60,0,80,0.7),rgba(40,0,15,0.7));"></div>`
       // Narrower than the thumbnail case on purpose (a full 140px placeholder box would
@@ -1475,6 +1505,7 @@ async function loadNews(page = 1, append = false) {
     }
     list.appendChild(card);
   });
+  if (!append) setNewsListJsonLd(itemsToRender);
   } catch(e) {
     if (loadingMore) loadingMore.style.display = 'none';
     if (!append && list) list.innerHTML = `<div class="news-empty"><div class="news-empty-icon">⚠</div><div class="news-empty-title">Ошибка загрузки</div><p class="news-empty-sub">Не удалось загрузить новости — проверьте связь и попробуйте снова.</p><button onclick="loadNews(1)" style="margin-top:.75rem;background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;font-size:.75rem;cursor:pointer;font-family:'Inter',sans-serif;">↻ Повторить</button></div>`;
@@ -2395,6 +2426,11 @@ async function loadSiteSettings() {
         tldrWrap.style.display = 'none';
       }
     }
+    // Tip of the day — DAILY_TIPS already rendered synchronously at page load (no
+    // wait for this fetch); if an admin has filled in custom tips, re-render with
+    // those instead. Empty/unset (the default) leaves the hardcoded list in place.
+    const customTips = (d.daily_tips || '').split('\n').map(s => s.trim()).filter(Boolean);
+    if (customTips.length) renderTipOfDay(customTips);
     // Gallery + testimonials — both admin-editable JSON, both stay hidden when empty
     // rather than showing placeholder/fabricated content (see admin.html's own
     // "только реальные отзывы" note next to the testimonials field).
@@ -2773,13 +2809,19 @@ const DAILY_TIPS = [
   'Проверяйте направление и радиус атак боссов перед боем — у большинства есть один-два особенно опасных приёма, которые проще выучить заранее, чем в бою.',
 ];
 
-function renderTipOfDay() {
+// tips defaults to the hardcoded DAILY_TIPS so this still renders instantly at page
+// load with no fetch/loading-state to handle (called synchronously from Init below).
+// loadSiteSettings() calls this a second time with an admin-configured "daily_tips"
+// list once that fetch resolves, IF the admin has actually set one — overriding the
+// hardcoded tip is opt-in, not a wait every visitor pays for by default.
+function renderTipOfDay(tips) {
+  const list = (tips && tips.length) ? tips : DAILY_TIPS;
   const el = document.getElementById('tip-of-day-text');
-  if (!el || !DAILY_TIPS.length) return;
+  if (!el || !list.length) return;
   const now = new Date();
   const start = new Date(now.getFullYear(), 0, 0);
   const dayOfYear = Math.floor((now - start) / 86400000);
-  el.textContent = DAILY_TIPS[dayOfYear % DAILY_TIPS.length];
+  el.textContent = list[dayOfYear % list.length];
 }
 
 // ── Init ───────────────────────────────────────────────────────────────────
@@ -2801,7 +2843,6 @@ setInterval(loadStats, 300000);
 setInterval(loadSparklines, 60000);
 window.addEventListener('resize', loadSparklines);
 loadFeatured();
-loadLatestNews();
 _applyNewsUrlParams();
 loadNews(1);
 loadTags();
@@ -2813,11 +2854,15 @@ loadActivityFeed();
 setInterval(loadActivityFeed, 60000);
 renderTipOfDay();
 loadTopClans();
-setInterval(loadTopClans, 60000);
+// Same 60s cadence as loadActivityFeed/loadRestartBanner above/below, but offset by
+// a few seconds each so three independent polling timers that all started within
+// milliseconds of each other at page load don't stay permanently in lockstep,
+// re-sending their requests in the same synchronized burst every single minute.
+setInterval(loadTopClans, 65000);
 loadNewPlayers();
 loadTopNow();
 loadRestartBanner();
-setInterval(loadRestartBanner, 60000);
+setInterval(loadRestartBanner, 70000);
 initQuickstartCard();
 
 // ── Trust stats bar ─────────────────────────────────────────────────────────
@@ -2882,7 +2927,23 @@ function applyMilestoneBanner(totalUsers) {
   if (!banner || !textEl) return;
   const hit = MILESTONES.find(m => totalUsers >= m && totalUsers <= m + MILESTONE_BAND);
   if (!hit) { banner.style.display = 'none'; return; }
-  textEl.textContent = `Приветствуем ${hit.toLocaleString('ru-RU')}-го зарегистрированного игрока сообщества!`;
+  // "Приветствуем N-го игрока" read fine as a one-time celebration but this banner
+  // actually stays up for every visitor for as long as total_users sits in the band
+  // (see MILESTONE_BAND above) — could be days. Reworded to not imply a single
+  // just-happened event on a repeat visit.
+  textEl.textContent = `Сообщество уже больше ${hit.toLocaleString('ru-RU')} игроков!`;
+  // Restart banner takes priority — it's actionable/time-sensitive (a server is
+  // about to bounce), the milestone banner is just celebratory. Two stacked banners
+  // reads as a wall of promo before any real content; at most one shows at a time.
+  // Race-safety: loadRestartBanner() does the mirror check (hides this one if IT
+  // decides to show, in case that resolves after this function already showed it) —
+  // between the two of them, whichever renders second wins the "only one visible"
+  // rule regardless of which of the two independent fetches resolves first.
+  const restartBanner = document.getElementById('restart-banner');
+  if (restartBanner && restartBanner.style.display !== 'none') {
+    banner.style.display = 'none';
+    return;
+  }
   banner.style.display = '';
 }
 
@@ -3134,7 +3195,7 @@ async function loadTopNow() {
   try {
     const [players, clans] = await Promise.all([
       fetch(`${API}/leaderboard?server=1&period=all&per_page=50`).then(r => r.ok ? r.json() : []),
-      fetch(`${API}/clans/leaderboard?limit=1`).then(r => r.ok ? r.json() : []),
+      fetch(`${API}/clans/leaderboard?limit=5`).then(r => r.ok ? r.json() : []),
     ]);
     let shown = false;
     const bar = document.getElementById('home-topnow-bar');
@@ -3224,6 +3285,11 @@ async function loadRestartBanner() {
     textEl.textContent = `Плановый рестарт «${srvName}» через ${timeStr}`;
     banner.dataset.restartAt = String(soonest.at);
     banner.style.display = '';
+    // Restart takes priority over the milestone banner (see applyMilestoneBanner's
+    // matching check) — mirrored here in case the milestone banner's own independent
+    // fetch resolved first and already showed itself before this one decided to show.
+    const milestoneBanner = document.getElementById('milestone-banner');
+    if (milestoneBanner) milestoneBanner.style.display = 'none';
   } catch {}
 }
 

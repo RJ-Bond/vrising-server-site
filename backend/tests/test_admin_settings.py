@@ -79,3 +79,23 @@ async def test_home_pitch_setting_accepted(client, db_session):
     )
     assert r.status_code == 200
     assert r.json()["value"] == "PvE, честные рейты"
+
+
+async def test_daily_tips_setting_accepted_and_round_trips_through_public_settings(client, db_session):
+    # Tip-of-the-day sidebar card (frontend/index.js's DAILY_TIPS/renderTipOfDay())
+    # started fully hardcoded — this setting lets an admin override it with custom
+    # newline-separated tips without a code deploy. Same three-spot registration.
+    admin = await _make_admin(db_session)
+    headers = _bearer(admin)
+
+    r = await client.put(
+        "/api/admin/settings/daily_tips",
+        json={"value": "Совет один\nСовет два"},
+        headers=headers,
+    )
+    assert r.status_code == 200
+    assert r.json()["value"] == "Совет один\nСовет два"
+
+    pub = await client.get("/api/settings/public")
+    assert pub.status_code == 200
+    assert pub.json().get("daily_tips") == "Совет один\nСовет два"

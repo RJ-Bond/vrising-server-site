@@ -54,7 +54,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
   <link rel="stylesheet" href="/theme.css?v=4" />
-  <link rel="stylesheet" href="/index.css?v=19" />
+  <link rel="stylesheet" href="/index.css?v=20" />
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#06000f">
   <meta name="mobile-web-app-capable" content="yes">
@@ -356,6 +356,22 @@
       <div class="home-stat-lbl" data-i18n-ru="клан недели" data-i18n-en="clan of the week">клан недели</div>
     </div>
   </div>
+  <!-- Community hours progress bar — folded into THIS SAME panel rather than its own
+       separate boxed section below: it's the exact same total_hours number the
+       "часов наиграно" stat above already shows, just as a progress-bar visual toward
+       a round goal. Two adjacent boxes both fronting the same underlying figure read
+       as redundant; one card with a stat row + a progress row reads as one story about
+       hours played. Toggles independently of the stat row above (own display:none) —
+       0 hours logged yet still shows registered-player/clan stats without an empty bar. -->
+  <div id="community-progress-wrap" style="display:none;width:100%;margin-top:.9rem;padding-top:.85rem;border-top:1px solid rgba(255,255,255,0.08);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap;">
+      <span style="font-size:.72rem;color:var(--muted);letter-spacing:.02em;" id="community-progress-label"></span>
+      <span style="font-size:.78rem;font-weight:700;color:var(--gold);" id="community-progress-pct"></span>
+    </div>
+    <div style="height:8px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden;">
+      <div id="community-progress-fill" style="height:100%;width:0%;border-radius:9999px;background:linear-gradient(90deg,var(--crimson),var(--purple));transition:width 1s cubic-bezier(.4,0,.2,1);box-shadow:0 0 10px rgba(200,0,42,0.4);"></div>
+    </div>
+  </div>
 </div>
 
 <!-- ══ "СЕЙЧАС В ТОПЕ" ══════════════════════════════════════════════════════ -->
@@ -384,25 +400,6 @@
   </div>
 </div>
 
-<!-- ══ COMMUNITY PROGRESS ═══════════════════════════════════════════════════ -->
-<!-- Single aggregate metric (total hours played across all players — same
-     GET /api/homepage-stats' total_hours field the trust-stats bar above shows)
-     as a progress-bar visual toward the next round goal. Goal is picked
-     dynamically by index.js's _niceGoal() (smallest 1/2/5×10^n above the current
-     total) rather than hardcoded, so it doesn't need a manual bump once passed —
-     it just re-targets to the next round number. Hidden if there are 0 hours
-     logged yet. -->
-<div id="community-progress-wrap" style="display:none;max-width:1280px;margin:1rem auto 0;padding:0 1.25rem;">
-  <div class="g-panel" style="padding:.9rem 1.25rem;border-radius:.875rem;">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap;">
-      <span style="font-size:.72rem;color:var(--muted);letter-spacing:.02em;" id="community-progress-label"></span>
-      <span style="font-size:.78rem;font-weight:700;color:var(--gold);" id="community-progress-pct"></span>
-    </div>
-    <div style="height:8px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden;">
-      <div id="community-progress-fill" style="height:100%;width:0%;border-radius:9999px;background:linear-gradient(90deg,var(--crimson),var(--purple));transition:width 1s cubic-bezier(.4,0,.2,1);box-shadow:0 0 10px rgba(200,0,42,0.4);"></div>
-    </div>
-  </div>
-</div>
 
 <!-- ══ MAIN ══════════════════════════════════════════════════════════════════ -->
 <div class="main-grid" style="max-width:1280px;margin:2rem auto;padding:0 1.25rem;display:flex;gap:1.25rem;align-items:flex-start;">
@@ -786,13 +783,20 @@
 
     <!-- Quick-jump — this panel stacks monitoring + team + Discord and can get long;
          hidden by JS unless there's actually more than one section to jump to. -->
-    <div id="right-panel-jumplinks" style="display:none;justify-content:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.85rem;font-size:.62rem;">
-      <a href="#right-panel" style="color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Сервера</a>
-      <a href="#activity-feed-section" id="jumplink-activity" style="display:none;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Лента</a>
-      <a href="#top-clans-section" id="jumplink-clans" style="display:none;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Кланы</a>
-      <a href="#new-players-section" id="jumplink-newplayers" style="display:none;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Новички</a>
-      <a href="#team-section" id="jumplink-team" style="display:none;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Команда</a>
-      <a href="#discord-widget-wrap" id="jumplink-discord" style="display:none;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Discord</a>
+    <!-- Up to 6 pills can be visible at once now (Сервера/Лента/Кланы/Новички/Команда/
+         Discord) — too many to wrap cleanly in a ~260px-wide panel (used to leave the
+         last pill stranded alone on its own line). Horizontal scroll instead of wrap:
+         a row that scrolls reads as "more options, swipe/scroll" rather than a broken
+         layout the way an orphaned last pill did. Scrollbar hidden (jumplinks.css class
+         below) since this is a secondary nav aid, not primary content worth a visible
+         scroll track. -->
+    <div id="right-panel-jumplinks" class="jumplinks-scroll" style="display:none;justify-content:flex-start;gap:.5rem;flex-wrap:nowrap;overflow-x:auto;margin-bottom:.85rem;font-size:.62rem;">
+      <a href="#right-panel" style="flex-shrink:0;white-space:nowrap;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Сервера</a>
+      <a href="#activity-feed-section" id="jumplink-activity" style="display:none;flex-shrink:0;white-space:nowrap;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Лента</a>
+      <a href="#top-clans-section" id="jumplink-clans" style="display:none;flex-shrink:0;white-space:nowrap;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Кланы</a>
+      <a href="#new-players-section" id="jumplink-newplayers" style="display:none;flex-shrink:0;white-space:nowrap;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Новички</a>
+      <a href="#team-section" id="jumplink-team" style="display:none;flex-shrink:0;white-space:nowrap;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Команда</a>
+      <a href="#discord-widget-wrap" id="jumplink-discord" style="display:none;flex-shrink:0;white-space:nowrap;color:var(--muted);text-decoration:none;padding:.2rem .5rem;border-radius:.3rem;border:1px solid rgba(150,0,28,0.2);">Discord</a>
     </div>
 
     <!-- Server 1 -->
@@ -1114,7 +1118,7 @@
 <script src="/anime.min.js"></script>
 <script src="/anim.js?v=1"></script>
 <script src="/common.js?v=14"></script>
-<script src="/index.js?v=19"></script>
+<script src="/index.js?v=20"></script>
 <div id="ow-hover-card"></div>
 
 <!-- ══ NEWS EDITOR MODAL ══════════════════════════════════════════════════════ -->
