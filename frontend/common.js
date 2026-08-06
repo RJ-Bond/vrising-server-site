@@ -682,11 +682,37 @@ async function logout() {
 //    attributes on translatable static text and a #lang-toggle-btn element in its nav.
 //    Pages with neither are unaffected — querySelectorAll finds nothing and the button
 //    lookup is null-guarded. ──
-function _applyI18n() {
+// `opts.animate` (only ever passed by toggleLanguage() below, an explicit user
+// action) briefly cross-fades the visible text nodes instead of swapping them
+// instantly. Deliberately NOT applied on the initial page-load call at the
+// bottom of this file (opts is undefined/an Event there, so `opts.animate` is
+// falsy) — a fade on first paint would just be a flash of nothing, not a
+// legible transition. Also skipped under prefers-reduced-motion. Placeholder/
+// title/aria-label swaps stay instant either way — those aren't visible text
+// a cross-fade would read on, and fading input placeholders in particular
+// tends to look like a glitch rather than a transition.
+function _applyI18n(opts) {
   const lang = localStorage.getItem('_lang') === 'en' ? 'en' : 'ru';
-  document.querySelectorAll('[data-i18n-ru]').forEach(el => {
-    el.textContent = lang === 'en' ? el.dataset.i18nEn : el.dataset.i18nRu;
-  });
+  const animate = !!(opts && opts.animate) && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const textEls = document.querySelectorAll('[data-i18n-ru]');
+  const toggleBtns = document.querySelectorAll('#lang-toggle-btn');
+  const swapText = () => {
+    textEls.forEach(el => { el.textContent = lang === 'en' ? el.dataset.i18nEn : el.dataset.i18nRu; });
+    toggleBtns.forEach(btn => { btn.textContent = lang === 'en' ? 'RU' : 'EN'; });
+  };
+  if (animate) {
+    const fadeEls = [...textEls, ...toggleBtns];
+    fadeEls.forEach(el => { el.style.transition = 'opacity .09s ease'; el.style.opacity = '0'; });
+    setTimeout(() => {
+      swapText();
+      fadeEls.forEach(el => { el.style.opacity = '1'; });
+      // Drop the inline transition/opacity once the fade-in finishes so these
+      // elements don't carry stray inline styles into whatever comes next.
+      setTimeout(() => { fadeEls.forEach(el => { el.style.transition = ''; el.style.opacity = ''; }); }, 100);
+    }, 90);
+  } else {
+    swapText();
+  }
   document.querySelectorAll('[data-i18n-ph-ru]').forEach(el => {
     el.placeholder = lang === 'en' ? el.dataset.i18nPhEn : el.dataset.i18nPhRu;
   });
@@ -697,14 +723,11 @@ function _applyI18n() {
     el.setAttribute('aria-label', lang === 'en' ? el.dataset.i18nAriaEn : el.dataset.i18nAriaRu);
   });
   document.documentElement.lang = lang;
-  document.querySelectorAll('#lang-toggle-btn').forEach(btn => {
-    btn.textContent = lang === 'en' ? 'RU' : 'EN';
-  });
 }
 function toggleLanguage() {
   const next = localStorage.getItem('_lang') === 'en' ? 'ru' : 'en';
   localStorage.setItem('_lang', next);
-  _applyI18n();
+  _applyI18n({ animate: true });
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _applyI18n);
 else _applyI18n();

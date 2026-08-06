@@ -207,6 +207,51 @@ if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
   }
 }
 
+// ── Scroll-reveal for major static sections ─────────────────────────────────
+// Trust stats bar, wipe cards, wipe history, screenshot gallery, testimonials
+// and the footer fade + rise in the first time they scroll into view (see
+// .reveal-on-scroll/.revealed-section in index.css). One-shot — unobserved after
+// firing, never re-triggers on scrolling back past a section. Not gated on
+// prefers-reduced-motion here: the elements must still end up visible either way,
+// and index.css's consolidated reduced-motion media query already collapses the
+// CSS transition to ~0ms, so this still "works", it just doesn't visibly animate.
+(function initScrollReveal() {
+  const targets = document.querySelectorAll('.reveal-on-scroll');
+  if (!targets.length || !('IntersectionObserver' in window)) return;
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      entry.target.classList.add('revealed-section');
+      io.unobserve(entry.target);
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+  targets.forEach(el => io.observe(el));
+})();
+
+// ── Card tilt-on-hover (news + team cards) ──────────────────────────────────
+// A small perspective tilt (max ~5deg) that follows the cursor — a subtle depth
+// cue, not a gimmick. Pure transform (compositor-friendly, no layout/paint cost),
+// and reuses each card's own existing CSS transition (news-card: "transform .2s",
+// team-card: "all .22s") to damp the motion instead of running a rAF loop —
+// there's no per-frame work here, just a transform write per mousemove, which is
+// cheap and only happens while a card is actually being hovered.
+// News cards preserve their existing :hover lift (translateY(-3px)) by folding it
+// into the same inline transform, since a JS-set inline style would otherwise
+// override (not combine with) the CSS ".news-card:hover{transform:...}" rule.
+const _tiltOk = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+function _cardTilt(e, liftPrefix) {
+  if (!_tiltOk) return;
+  const card = e.currentTarget;
+  const r = card.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  const px = (e.clientX - r.left) / r.width;
+  const py = (e.clientY - r.top) / r.height;
+  const rx = ((0.5 - py) * 5).toFixed(2);
+  const ry = ((px - 0.5) * 5).toFixed(2);
+  card.style.transform = `${liftPrefix || ''}perspective(800px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+}
+function _cardTiltReset(e) { e.currentTarget.style.transform = ''; }
+
 // ── Privacy notice ───────────────────────────────────────────────────────────
 if (localStorage.getItem('_privacyNoticeSeen') !== '1') {
   document.addEventListener('DOMContentLoaded', () => {
@@ -667,7 +712,7 @@ function renderServerBlock(d, sfx) {
       circEl.innerHTML = `
         <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;">
           <div>
-            <div><span style="font-size:1.65rem;font-weight:700;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;line-height:1;">${d.players}</span><span style="color:var(--muted);font-size:1rem;"> / ${d.max_players}</span></div>
+            <div${pct >= 90 ? ' class="near-full-ring" title="Сервер почти заполнен"' : ''}><span style="font-size:1.65rem;font-weight:700;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;color:#ecd8e0;line-height:1;">${d.players}</span><span style="color:var(--muted);font-size:1rem;"> / ${d.max_players}</span></div>
             <div style="font-size:.52rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:.1rem;">Игроков онлайн</div>
           </div>
           ${d.latency_ms != null ? `<div style="text-align:right;">
@@ -1270,6 +1315,11 @@ async function loadNews(page = 1, append = false) {
       if (e.target !== card) return; // let nested buttons/links handle their own Enter/Space
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openNews(n.slug); }
     });
+    // Tilt-on-hover (see _cardTilt/_cardTiltReset above) — folds in the existing
+    // "translateY(-3px)" :hover lift so the JS-set inline transform doesn't blot
+    // out that CSS rule.
+    card.addEventListener('mousemove', (e) => _cardTilt(e, 'translateY(-3px) '));
+    card.addEventListener('mouseleave', _cardTiltReset);
     card.innerHTML = `${badgesOverlay}<div class="news-card-row" style="display:flex;gap:0;align-items:stretch;min-height:110px;">
       ${thumbImg}
       <div style="padding:.85rem 1rem .75rem;flex:1;min-width:0;display:flex;flex-direction:column;gap:.28rem;">
@@ -2676,7 +2726,8 @@ async function loadTeam() {
 
       return `<div class="team-card" style="${lastOddStyle}background:rgba(12,3,20,0.72);border:1px solid rgba(110,0,28,0.28);border-radius:.85rem;padding:.85rem .65rem .7rem;text-align:center;transition:all .22s;position:relative;overflow:hidden;"
         onmouseover="this.style.borderColor='rgba(180,0,42,0.55)';this.style.boxShadow='0 0 22px rgba(130,0,30,0.22),inset 0 0 14px rgba(100,0,20,0.07)';this.style.background='rgba(16,4,26,0.88)'"
-        onmouseout="this.style.borderColor='rgba(110,0,28,0.28)';this.style.boxShadow='';this.style.background='rgba(12,3,20,0.72)'">
+        onmouseout="this.style.borderColor='rgba(110,0,28,0.28)';this.style.boxShadow='';this.style.background='rgba(12,3,20,0.72)'"
+        onmousemove="_cardTilt(event)" onmouseleave="_cardTiltReset(event)">
         <div style="position:absolute;top:0;left:20%;right:20%;height:1px;background:linear-gradient(90deg,transparent,rgba(200,0,42,0.3),transparent);"></div>
         <a href="/user.html?u=${encodeURIComponent(u.username)}" style="text-decoration:none;display:block;" tabindex="-1">
           <div style="position:relative;width:52px;height:52px;border-radius:50%;margin:0 auto .6rem;border:2px solid rgba(180,0,35,0.4);box-shadow:0 0 14px rgba(160,0,30,0.25),0 0 0 3px rgba(90,0,20,0.18);overflow:visible;">

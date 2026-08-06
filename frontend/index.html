@@ -257,7 +257,7 @@
 <!-- Real, computed numbers (GET /api/homepage-stats) — no fabricated figures.
      Hidden entirely if there's nothing meaningful to show (0 users etc.). -->
 <div id="home-stats-bar" style="display:none;max-width:1280px;margin:1.25rem auto 0;padding:0 1.25rem;">
-  <div class="g-panel" style="display:flex;flex-wrap:wrap;gap:1.5rem;justify-content:center;padding:1rem 1.5rem;border-radius:.875rem;position:relative;">
+  <div class="g-panel reveal-on-scroll" style="display:flex;flex-wrap:wrap;gap:1.5rem;justify-content:center;padding:1rem 1.5rem;border-radius:.875rem;position:relative;">
     <div id="home-stat-users" style="display:none;text-align:center;">
       <div class="home-stat-val" id="home-stat-users-val">—</div>
       <div class="home-stat-lbl" data-i18n-ru="игроков зарегистрировано" data-i18n-en="registered players">игроков зарегистрировано</div>
@@ -496,7 +496,7 @@
     </div>
 
     <!-- ── Info cards ── -->
-    <div class="info-grid">
+    <div class="info-grid reveal-on-scroll">
       <div style="display:none;"></div>
       <div id="wipe-card" class="info-card" style="display:none;flex-direction:column;padding:0;overflow:hidden;">
         <div style="height:3px;background:linear-gradient(90deg,transparent,var(--crimson),transparent);"></div>
@@ -549,7 +549,7 @@
     </div>
 
     <!-- Wipe history -->
-    <div id="wipe-history-wrap" style="display:none;margin-top:.75rem;">
+    <div id="wipe-history-wrap" class="reveal-on-scroll" style="display:none;margin-top:.75rem;">
       <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(110,0,20,0.3),transparent);margin-bottom:.75rem;"></div>
       <div style="font-size:.65rem;font-weight:700;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:.55rem;">История вайпов</div>
       <div id="wipe-history-list" style="display:flex;flex-direction:column;gap:.3rem;"></div>
@@ -557,14 +557,14 @@
 
     <!-- Screenshot gallery — admin.html's "Галерея скриншотов" setting, hidden until
          the site owner actually adds real screenshots (no stock/placeholder images). -->
-    <div id="home-gallery-wrap" style="display:none;margin-top:1.5rem;">
+    <div id="home-gallery-wrap" class="reveal-on-scroll" style="display:none;margin-top:1.5rem;">
       <h2 data-i18n-ru="— Скриншоты сервера —" data-i18n-en="— Server screenshots —" style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;">— Скриншоты сервера —</h2>
       <div id="home-gallery-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.6rem;"></div>
     </div>
 
     <!-- Community testimonials — admin.html's "Отзывы сообщества" setting, hidden
          until the site owner adds real player quotes. -->
-    <div id="home-testimonials-wrap" style="display:none;margin-top:1.5rem;">
+    <div id="home-testimonials-wrap" class="reveal-on-scroll" style="display:none;margin-top:1.5rem;">
       <h2 data-i18n-ru="— Отзывы сообщества —" data-i18n-en="— Community reviews —" style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;">— Отзывы сообщества —</h2>
       <div id="home-testimonials-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem;"></div>
     </div>
@@ -822,7 +822,7 @@
 </div>
 
 <!-- ══ FOOTER ════════════════════════════════════════════════════════════════ -->
-<footer class="site-footer">
+<footer class="site-footer reveal-on-scroll">
   <div class="footer-inner">
     <a href="/" id="footer-logo" class="gothic" style="font-size:.95rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 16px rgba(204,0,40,0.5);">⚔ V RISING</a>
     <div class="footer-links">

@@ -704,6 +704,16 @@
       transition:all .25s; backdrop-filter:blur(6px); text-decoration:none;
     }
     .hero-join-btn:hover { border-color:rgba(201,169,74,0.6); color:var(--gold); transform:translateY(-2px); }
+    /* Slow breathing glow to draw a first-time visitor's eye to the primary "join
+       the community" CTA — reuses the same box-shadow-pulse language as .badge-on's
+       badge-glow/hero-glow-pulse elsewhere on this page (same ease-in-out rhythm)
+       rather than inventing a new animation style. Rests at zero glow on both ends
+       of the cycle so it reads as a slow heartbeat, not a flashing button. */
+    @keyframes hero-cta-breathe {
+      0%,100% { box-shadow: 0 0 0 rgba(201,169,74,0), inset 0 0 0 rgba(201,169,74,0); }
+      50%      { box-shadow: 0 0 20px rgba(201,169,74,0.32), 0 0 6px rgba(201,169,74,0.18), inset 0 0 10px rgba(201,169,74,0.06); }
+    }
+    .hero-join-btn { animation: hero-cta-breathe 3.6s ease-in-out infinite; }
 
     /* ── Left nav compact mode (index.js's toggleLeftPanelCompact) — icon-only rail
        for a returning visitor who doesn't need the full labelled nav every time.
@@ -1400,5 +1410,59 @@
       .rules-section { background:none !important; border:none !important; box-shadow:none !important; backdrop-filter:none !important; }
       .rules-body { max-height:none !important; opacity:1 !important; overflow:visible !important; }
       .rules-header-title, .rule-item, .rule-item * { color:#000 !important; }
+    }
+
+    /* ── Scroll-reveal for major static sections (trust stats bar, wipe cards,
+       wipe history, screenshot gallery, testimonials, footer) — a subtle one-shot
+       fade + slight rise the first time each section scrolls into view, matching
+       the same resting values (translateY 14-16px, opacity 0→1) already used by
+       .g-panel's own load-time fade-up rather than inventing a different motion.
+       Triggered once via IntersectionObserver in index.js (initScrollReveal) then
+       unobserved — never re-triggers on scrolling back past it. Elements below
+       still render/measure normally while at opacity:0 (no layout shift, paint-only),
+       and prefers-reduced-motion collapses the transition to ~0ms via the
+       consolidated media query further down, so content never gets stuck hidden. */
+    .reveal-on-scroll { opacity:0; transform:translateY(16px); transition:opacity .5s ease, transform .5s ease; }
+    .reveal-on-scroll.revealed-section { opacity:1; transform:translateY(0); }
+
+    /* ── Near-full server capacity ring (online-count urgency cue, >=90% full) ──
+       Same expanding-ring box-shadow technique as .h-online-dot's online-pulse
+       keyframe above (0 0 0 0 → 0 0 0 Npx transparent), just re-tinted crimson/gold
+       instead of green so a "nearly full" cue doesn't read as the same "healthy/
+       online" signal. Applied conditionally by index.js's renderServerBlock() only
+       once a server crosses 90% capacity — most of the time this class is absent
+       and nothing here even matches. */
+    @keyframes near-full-pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(201,169,74,0.45), 0 0 0 0 rgba(200,0,42,0.35); }
+      50%      { box-shadow: 0 0 0 5px rgba(201,169,74,0), 0 0 0 8px rgba(200,0,42,0); }
+    }
+    .near-full-ring {
+      display:inline-flex; align-items:baseline; border-radius:9999px;
+      padding:.1rem .5rem; margin:-.1rem -.5rem;
+      animation: near-full-pulse 2.2s ease-in-out infinite;
+    }
+
+    /* ── prefers-reduced-motion audit ──────────────────────────────────────────
+       Neither this file's pre-existing animations (stars twinkle, .fog drift,
+       badge-glow, ow-pulse/online-pulse, hero-glow-pulse, wipe-urgency, rune-idle,
+       skel-shimmer, etc.) nor index.js's pre-existing hero-particle/star creation
+       and scroll-parallax (the parallax listener already self-guards on this same
+       media query) respected this preference before this pass — confirmed by grep,
+       zero hits for "reduced-motion" anywhere in this file prior to today. This is
+       a real, page-wide accessibility gap independent of the new items above, so
+       it's fixed once here for the whole page rather than only for what's new.
+       Forcing near-zero duration (not display:none / animation:none) deliberately
+       preserves every `animation-fill-mode:both|forwards` entrance already in use
+       (.g-panel, .news-card, .rule-item.revealed, .toast, .event-banner, and the
+       new .reveal-on-scroll/.near-full-ring/.hero-join-btn above) — they still run,
+       just too fast to perceive, and settle on their intended end state instead of
+       vanishing or getting stuck at their 0% frame. */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
     }
 
