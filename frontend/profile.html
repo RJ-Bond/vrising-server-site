@@ -666,7 +666,7 @@
   </div>
 </div>
 
-<script src="/common.js?v=13"></script>
+<script src="/common.js?v=14"></script>
 <script>
 const API = '/api';
 
@@ -1529,18 +1529,11 @@ async function disableTwoFA() {
 }
 
 // ── Push notifications ──────────────────────────────────────────────────────
-// Opt-in Web Push: subscribe() registers this browser/device with the backend (see
-// POST /api/push/subscribe in backend/routers/notifications.py); send_push() in
-// backend/helpers.py then fans out to it alongside every in-app Notification. Status
-// is read straight from the browser's own PushManager subscription, not a server flag
-// — matches what "Отключить" in this browser would actually undo.
-function _urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const raw = atob(base64);
-  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
-}
-
+// Opt-in Web Push: subscribeToPush()/isPushSubscribed() (common.js) own the actual
+// PushManager.subscribe() + POST /api/push/subscribe flow — shared with the homepage
+// opt-in nudge banner (index.js) so both surfaces use the exact same subscribe logic.
+// Status is read straight from the browser's own PushManager subscription, not a
+// server flag — matches what "Отключить" in this browser would actually undo.
 async function initPushCard() {
   const statusEl = document.getElementById('push-status');
   const enableBtn = document.getElementById('push-enable-btn');
@@ -1577,37 +1570,21 @@ async function initPushCard() {
   }
 }
 
+const _pushReasonMsg = {
+  'unsupported': 'Push-уведомления не поддерживаются этим браузером',
+  'not-configured': 'Push-уведомления не настроены на сервере',
+  'denied': 'Разрешение на уведомления не выдано',
+  'save-failed': 'Ошибка сохранения подписки',
+  'error': 'Ошибка соединения',
+};
+
 async function enablePush() {
   const msg = document.getElementById('push-msg');
   const show = (t, ok) => { msg.textContent=t; msg.style.color=ok?'#4ade80':'#f87171'; msg.style.display=''; };
-  try {
-    const keyRes = await fetch(`${API}/push/vapid-public-key`, {credentials:'include'});
-    const keyData = await keyRes.json().catch(()=>({}));
-    if (!keyData.public_key) return show('Push-уведомления не настроены на сервере', false);
-
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') return show('Разрешение на уведомления не выдано', false);
-
-    const reg = await navigator.serviceWorker.ready;
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: _urlBase64ToUint8Array(keyData.public_key),
-      });
-    }
-    const subJson = sub.toJSON();
-    const res = await fetch(`${API}/push/subscribe`, {
-      method: 'POST', credentials: 'include',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({endpoint: subJson.endpoint, keys: subJson.keys}),
-    });
-    if (!res.ok) return show('Ошибка сохранения подписки', false);
-    show('Push-уведомления включены!', true);
-    initPushCard();
-  } catch {
-    show('Ошибка соединения', false);
-  }
+  const result = await subscribeToPush();
+  if (!result.ok) return show(_pushReasonMsg[result.reason] || 'Ошибка соединения', false);
+  show('Push-уведомления включены!', true);
+  initPushCard();
 }
 
 async function disablePush() {
