@@ -129,20 +129,24 @@
 <body>
 
 <nav class="glass-nav">
-  <div style="max-width:680px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
+  <div style="max-width:680px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);"></a>
-    <div class="user-page-nav-links" style="display:flex;gap:.5rem;">
-      <a href="/leaderboard.html" class="btn btn-ghost" style="font-size:.72rem;">🏆 Лидерборд</a>
-      <a href="/" class="btn btn-ghost" style="font-size:.72rem;">← Главная</a>
+    <div class="user-page-nav-links" style="display:flex;gap:.5rem;align-items:center;">
+      <a href="/leaderboard.html" class="btn btn-ghost" style="font-size:.72rem;" data-i18n-ru="🏆 Лидерборд" data-i18n-en="🏆 Leaderboard">🏆 Лидерборд</a>
+      <a href="/" class="btn btn-ghost" style="font-size:.72rem;" data-i18n-ru="← Главная" data-i18n-en="← Home">← Главная</a>
     </div>
+    <button id="lang-toggle-btn" onclick="toggleLanguage()" title="English UI (site content stays Russian)"
+      style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;padding:0 .5rem;height:2rem;font-size:.7rem;font-weight:700;letter-spacing:.05em;cursor:pointer;color:#9488a8;transition:all .2s;"
+      onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
+      onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">EN</button>
       <div id="mob-overlay2" onclick="closeMobMenu2()"></div>
       <div id="mob-menu2">
-        <a href="/" class="mob-link">🏠 Главная</a>
-        <a href="/servers.html" class="mob-link">⚔️ Серверы</a>
-        <a href="/leaderboard.html" class="mob-link">🏆 Игроки</a>
-        <a href="/profile.html" class="mob-link">👤 Профиль</a>
+        <a href="/" class="mob-link" data-i18n-ru="🏠 Главная" data-i18n-en="🏠 Home">🏠 Главная</a>
+        <a href="/servers.html" class="mob-link" data-i18n-ru="⚔️ Серверы" data-i18n-en="⚔️ Servers">⚔️ Серверы</a>
+        <a href="/leaderboard.html" class="mob-link" data-i18n-ru="🏆 Игроки" data-i18n-en="🏆 Players">🏆 Игроки</a>
+        <a href="/profile.html" class="mob-link" data-i18n-ru="👤 Профиль" data-i18n-en="👤 Profile">👤 Профиль</a>
       </div>
-      <button id="nav-mob-btn2" onclick="openMobMenu2()" aria-label="Меню">
+      <button id="nav-mob-btn2" onclick="openMobMenu2()" aria-label="Меню" data-i18n-aria-ru="Меню" data-i18n-aria-en="Menu">
         <span></span><span></span><span></span>
       </button>
   </div>
@@ -154,15 +158,15 @@
        clan member, ban history, a shared URL) rather than site navigation, so a
        plain "Главная / {username}" trail helps orient someone who landed here cold. -->
   <div id="user-breadcrumb" style="font-size:.72rem;color:var(--muted);margin-bottom:1rem;display:flex;align-items:center;gap:.4rem;">
-    <a href="/" style="color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--muted)'">Главная</a>
+    <a href="/" style="color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--muted)'" data-i18n-ru="Главная" data-i18n-en="Home">Главная</a>
     <span style="opacity:.5;">/</span>
-    <span id="user-breadcrumb-name" style="color:var(--text);">Профиль</span>
+    <span id="user-breadcrumb-name" style="color:var(--text);" data-i18n-ru="Профиль" data-i18n-en="Profile">Профиль</span>
   </div>
 
   <div id="not-found" style="display:none;text-align:center;padding:4rem 1rem;">
     <div style="font-size:3rem;margin-bottom:1rem;filter:drop-shadow(0 0 18px rgba(180,0,30,0.5));">⚰</div>
-    <div class="gothic" style="font-size:1rem;color:var(--muted);">Игрок не найден</div>
-    <a href="/" class="btn" style="margin-top:1.5rem;font-size:.78rem;">← На главную</a>
+    <div class="gothic" style="font-size:1rem;color:var(--muted);" data-i18n-ru="Игрок не найден" data-i18n-en="Player not found">Игрок не найден</div>
+    <a href="/" class="btn" style="margin-top:1.5rem;font-size:.78rem;" data-i18n-ru="← На главную" data-i18n-en="← Back home">← На главную</a>
   </div>
 
   <div id="profile-wrap">
@@ -188,7 +192,7 @@
           <span id="user-status" style="display:none;align-items:center;gap:.28rem;font-size:.6rem;"></span>
           <a id="dm-user-btn" href="#" onclick="dmUser(event)" style="visibility:hidden;display:inline-flex;align-items:center;gap:.35rem;background:rgba(80,0,120,0.22);border:1px solid rgba(110,0,150,0.38);color:var(--muted);border-radius:.5rem;padding:.28rem .72rem;font-size:.72rem;text-decoration:none;cursor:pointer;transition:all .18s;" onmouseover="this.style.color='var(--text)';this.style.background='rgba(100,0,150,0.32)'" onmouseout="this.style.color='var(--muted)';this.style.background='rgba(80,0,120,0.22)'">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-comment"></use></svg>
-            Написать
+            <span data-i18n-ru="Написать" data-i18n-en="Message">Написать</span>
           </a>
         </div>
         <div id="user-game-nick" style="display:none;font-size:.72rem;color:var(--muted);margin-bottom:.1rem;"></div>
@@ -210,7 +214,7 @@
     <!-- Achievements (shown only if any earned) -->
     <div id="pub-achievements-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
-        <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;">— Достижения —</h2>
+        <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;" data-i18n-ru="— Достижения —" data-i18n-en="— Achievements —">— Достижения —</h2>
         <span id="pub-ach-counter" style="font-size:.72rem;font-family:'Oswald',sans-serif;color:var(--muted);font-weight:500;"></span>
       </div>
       <div class="pub-ach-grid" id="pub-achievements-grid"></div>
@@ -218,52 +222,52 @@
 
     <!-- Recent activity (shown only if any) -->
     <div id="pub-activity-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
-      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Последняя активность —</h2>
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Последняя активность —" data-i18n-en="— Recent activity —">— Последняя активность —</h2>
       <div id="pub-activity-list" style="display:flex;flex-direction:column;gap:.1rem;"></div>
     </div>
 
     <!-- Playtime trend (shown only once there are ≥2 days of history to diff) -->
     <div id="pub-trend-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
-      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Активность за месяц —</h2>
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Активность за месяц —" data-i18n-en="— Activity this month —">— Активность за месяц —</h2>
       <div style="height:120px;position:relative;"><canvas id="pub-trend-chart"></canvas></div>
     </div>
 
     <!-- Activity calendar (GitHub-style, shown only if the account has any linked
          in-game activity — see GET /api/users/{username}/activity-heatmap) -->
     <div id="pub-heatmap-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
-      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Календарь активности —</h2>
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Календарь активности —" data-i18n-en="— Activity calendar —">— Календарь активности —</h2>
       <div id="pub-heatmap-grid" style="display:flex;gap:3px;overflow-x:auto;padding-bottom:.3rem;"></div>
       <div style="display:flex;align-items:center;gap:.35rem;margin-top:.6rem;font-size:.62rem;color:var(--muted);">
-        Меньше
+        <span data-i18n-ru="Меньше" data-i18n-en="Less">Меньше</span>
         <span style="width:10px;height:10px;border-radius:2px;background:rgba(255,255,255,0.06);display:inline-block;"></span>
         <span style="width:10px;height:10px;border-radius:2px;background:rgba(180,0,35,0.75);display:inline-block;"></span>
-        Больше
+        <span data-i18n-ru="Больше" data-i18n-en="More">Больше</span>
       </div>
     </div>
 
     <!-- Info -->
     <div class="g-card" style="padding:1.4rem 1.5rem;">
-      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;">— Информация —</h2>
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Информация —" data-i18n-en="— Information —">— Информация —</h2>
       <div class="stat-row">
-        <span style="color:var(--muted);font-size:.82rem;">Роль</span>
+        <span style="color:var(--muted);font-size:.82rem;" data-i18n-ru="Роль" data-i18n-en="Role">Роль</span>
         <span id="user-role" style="font-size:.85rem;color:var(--text);font-weight:500;">—</span>
       </div>
       <div class="stat-row">
-        <span style="color:var(--muted);font-size:.82rem;">На сервере с</span>
+        <span style="color:var(--muted);font-size:.82rem;" data-i18n-ru="На сервере с" data-i18n-en="On the server since">На сервере с</span>
         <span id="user-since" style="font-size:.85rem;color:var(--text);font-weight:500;font-family:'Oswald',sans-serif;">—</span>
       </div>
       <div class="stat-row">
-        <span style="color:var(--muted);font-size:.82rem;">Всего на серверах</span>
+        <span style="color:var(--muted);font-size:.82rem;" data-i18n-ru="Всего на серверах" data-i18n-en="Total playtime">Всего на серверах</span>
         <span>
           <span id="user-playtime" style="font-size:.85rem;color:var(--text);font-weight:500;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;">—</span><span id="user-playtime-verified"></span>
         </span>
       </div>
       <div class="stat-row">
-        <span style="color:var(--muted);font-size:.82rem;">Последний сеанс</span>
+        <span style="color:var(--muted);font-size:.82rem;" data-i18n-ru="Последний сеанс" data-i18n-en="Last session">Последний сеанс</span>
         <span id="user-last-seen" style="font-size:.85rem;color:var(--text);font-weight:500;font-family:'Oswald',sans-serif;">—</span>
       </div>
       <div class="stat-row">
-        <span style="color:var(--muted);font-size:.82rem;">Комментариев</span>
+        <span style="color:var(--muted);font-size:.82rem;" data-i18n-ru="Комментариев" data-i18n-en="Comments">Комментариев</span>
         <span id="user-comment-count" style="font-size:.85rem;color:var(--text);font-weight:500;font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums;">—</span>
       </div>
     </div>
