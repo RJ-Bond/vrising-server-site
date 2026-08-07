@@ -103,6 +103,16 @@
     }
     .faq-item.open .faq-num { background:rgba(200,0,42,0.14); border-color:rgba(200,0,42,0.32); color:var(--crimson); }
     .faq-q-text { font-size:.88rem; font-weight:600; color:#ece3f7; }
+    .faq-copy-link {
+      flex-shrink:0; background:none; border:none; color:var(--muted); cursor:pointer;
+      padding:.3rem; border-radius:.35rem; display:flex; align-items:center; justify-content:center;
+      opacity:.4; transition:opacity .15s, color .15s, background .15s;
+    }
+    /* Full opacity on row hover/keyboard focus (desktop affordance); left at .4 the rest
+       of the time rather than 0 so it's still discoverable/tappable on touch, which has
+       no hover state to reveal a fully-hidden button. */
+    .faq-q:hover .faq-copy-link, .faq-copy-link:focus-visible { opacity:1; }
+    .faq-copy-link:hover, .faq-copy-link:focus-visible { color:var(--gold); background:rgba(201,169,74,0.1); }
     .faq-arrow { color:var(--gold); transition:transform .25s; flex-shrink:0; }
     .faq-item.open .faq-arrow { transform:rotate(180deg); }
     .faq-a {
@@ -382,6 +392,9 @@ function renderFaq(filter) {
               <span class="faq-num">${item.idx + 1}</span>
               <span class="faq-q-text">${item.q}</span>
             </div>
+            <button type="button" class="faq-copy-link" title="${_t('Скопировать ссылку', 'Copy link')}" aria-label="${_t('Скопировать ссылку на вопрос', 'Copy link to this question')}" onclick="copyFaqLink(event, ${item.idx})">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            </button>
             <svg class="faq-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
           <div class="faq-a">${item.a}</div>
@@ -396,8 +409,10 @@ function renderFaq(filter) {
 
   list.innerHTML = total ? html : `<div class="faq-no-results">${_t('Ничего не найдено по запросу', 'No results for your search')}</div>`;
 
-  // Open first item on initial render (no filter)
-  if (!filter) {
+  // Open first item on initial render (no filter) — skipped when a #faq-N deep link
+  // is present, since _openFaqFromHash() (called right after renderFaq()) opens that
+  // specific item instead; opening both would show two expanded questions at once.
+  if (!filter && !/^#faq-\d+$/.test(location.hash)) {
     const first = list.querySelector('.faq-item');
     if (first) {
       first.classList.add('open');
@@ -414,6 +429,35 @@ function toggleFaq(i) {
   const a = el.querySelector('.faq-a');
   a.style.maxHeight = !isOpen ? a.scrollHeight + 24 + 'px' : '0';
 }
+
+function copyFaqLink(e, i) {
+  e.stopPropagation(); // sits inside .faq-q, which itself toggles the question on click
+  const url = `${location.origin}${location.pathname}#faq-${i}`;
+  navigator.clipboard.writeText(url).then(() => {
+    showToast(_t('Ссылка скопирована', 'Link copied'), 'success');
+  }).catch(() => {});
+}
+
+// Deep link support: faq.html#faq-3 opens that question directly (expanding its
+// category if collapsed) instead of landing on the page with everything closed.
+// Runs after renderFaq() has built the DOM, and again on manual hash changes (e.g.
+// following a #faq-N link while already on this page) since the browser doesn't
+// re-render on a same-page hash change on its own.
+function _openFaqFromHash() {
+  const m = location.hash.match(/^#faq-(\d+)$/);
+  if (!m) return;
+  const idx = Number(m[1]);
+  const item = document.getElementById(`faq-${idx}`);
+  if (!item) return;
+  const group = item.closest('.faq-cat-group');
+  if (group && group.classList.contains('collapsed')) {
+    const label = group.querySelector('.faq-cat-label');
+    if (label) toggleFaqCat(label);
+  }
+  if (!item.classList.contains('open')) toggleFaq(idx);
+  item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+window.addEventListener('hashchange', _openFaqFromHash);
 
 function toggleFaqCat(labelEl) {
   const group = labelEl.closest('.faq-cat-group');
@@ -447,6 +491,7 @@ function clearFaqSearch() {
 }
 
 renderFaq();
+_openFaqFromHash();
 
 </script>
 <script src="/alpine.min.js"></script>
