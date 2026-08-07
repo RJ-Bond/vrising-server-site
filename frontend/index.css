@@ -1045,6 +1045,13 @@
       padding:.28rem .75rem; border-right:1px solid rgba(110,0,20,0.2);
       white-space:nowrap;
     }
+    /* Same crimson/purple identity colors already used for each server's own
+       sparkline (frontend/index.html's #spark1-wrap/#spark2-wrap borders) — with
+       both rows otherwise near-identical at a glance (small caps server names,
+       similar numbers), a matching accent here ties a status-bar row to "its"
+       monitoring card below without reading it word-by-word. */
+    #sb-s1-row .sb-srv-tag { border-left:2px solid rgba(224,85,117,0.5); }
+    #sb-s2-row .sb-srv-tag { border-left:2px solid rgba(153,85,238,0.5); }
     .sb-srv-logo { width:14px; height:14px; object-fit:contain; flex-shrink:0; opacity:.75; filter:drop-shadow(0 0 4px rgba(200,0,42,.5)); }
     .sb-srv-sep { display:none; }
 

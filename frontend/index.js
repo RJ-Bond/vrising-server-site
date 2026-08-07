@@ -790,6 +790,12 @@ function fmtDuration(sec) {
 
 function renderServerBlock(d, sfx) {
   const pct = d.max_players > 0 ? Math.round(d.players / d.max_players * 100) : 0;
+  // A real (not 0) but low population — a couple players on a 40-slot server, common
+  // for a small/early server — renders as a near-invisible sliver at true-to-scale
+  // width on a fully-rounded (border-radius:9999px) 7px-tall bar; below a few percent
+  // the rounded ends alone eat the whole "fill". Only the BAR's pixel width is
+  // floored here — the "N% заполнено" text below it still reports the real number.
+  const pctFillWidth = pct > 0 ? Math.max(pct, 4) : 0;
   const cls = d.online ? 'badge-on' : 'badge-off';
   const lbl = d.online ? '● ОНЛАЙН' : '● ОФЛАЙН';
 
@@ -827,7 +833,7 @@ function renderServerBlock(d, sfx) {
           </div>` : ''}
         </div>
         <div style="height:7px;background:rgba(255,255,255,0.08);border-radius:9999px;overflow:hidden;margin-bottom:.28rem;">
-          <div style="height:100%;width:${pct}%;border-radius:9999px;background:linear-gradient(90deg,${accent},rgba(${accentRgb},.5));transition:width .8s cubic-bezier(.4,0,.2,1);box-shadow:0 0 8px rgba(${accentRgb},.4);"></div>
+          <div style="height:100%;width:${pctFillWidth}%;border-radius:9999px;background:linear-gradient(90deg,${accent},rgba(${accentRgb},.5));transition:width .8s cubic-bezier(.4,0,.2,1);box-shadow:0 0 8px rgba(${accentRgb},.4);"></div>
         </div>
         <div style="display:flex;justify-content:space-between;font-size:.57rem;color:var(--muted);">
           <span>${pct}% заполнено</span>
@@ -2909,6 +2915,21 @@ async function loadHomepageStats() {
       // stats next to it — the native title tooltip surfaces the full name on hover
       // for whenever it actually gets cut off.
       clanValEl.title = stats.top_clan.name;
+      // A bare 2-4 letter clan tag ("SS") next to two big numbers reads as cryptic —
+      // add the member count backend/main.py's get_homepage_stats() already returns
+      // (was fetched but never displayed). Written into the label's data-i18n-ru/en
+      // attributes rather than just textContent, since common.js's _applyI18n()
+      // re-renders this element FROM those attributes on every language toggle —
+      // setting textContent alone would get silently overwritten back to the plain
+      // "клан недели" the next time a visitor switches languages.
+      const clanLbl = document.getElementById('home-stat-clan-lbl');
+      if (clanLbl && stats.top_clan.member_count) {
+        const n = stats.top_clan.member_count;
+        const ru = n % 10 === 1 && n % 100 !== 11 ? 'участник' : [2,3,4].includes(n % 10) && ![12,13,14].includes(n % 100) ? 'участника' : 'участников';
+        clanLbl.dataset.i18nRu = `клан недели · ${n} ${ru}`;
+        clanLbl.dataset.i18nEn = `clan of the week · ${n} member${n === 1 ? '' : 's'}`;
+        clanLbl.textContent = (localStorage.getItem('_lang') === 'en') ? clanLbl.dataset.i18nEn : clanLbl.dataset.i18nRu;
+      }
       document.getElementById('home-stat-clan').style.display = '';
       shown = true;
     }
@@ -2980,7 +3001,11 @@ function applyCommunityProgress(totalHours) {
   const label = document.getElementById('community-progress-label');
   const pctEl = document.getElementById('community-progress-pct');
   const fill = document.getElementById('community-progress-fill');
-  if (label) label.textContent = `До ${goal.toLocaleString('ru-RU')} часов сообщества`;
+  // Leads with the number already achieved, goal as secondary context — "До N часов"
+  // put the DISTANCE-to-an-arbitrary-round-number first, which reads like a KPI to
+  // hit rather than a real community milestone, especially for a small/early server
+  // where the round goal (_niceGoal can jump to 10x the current total) feels distant.
+  if (label) label.textContent = `${totalHours.toLocaleString('ru-RU')} часов сообщества — к отметке ${goal.toLocaleString('ru-RU')}`;
   if (pctEl) pctEl.textContent = `${pct}%`;
   if (fill) fill.style.width = pct + '%';
   wrap.style.display = '';
