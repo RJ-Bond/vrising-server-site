@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -96,9 +96,12 @@ async def update_game_nickname(
 # ─── Team ────────────────────────────────────────────────────────────────────
 
 @router.get("/api/team")
-async def get_team(db: AsyncSession = Depends(get_db)):
+async def get_team(response: Response, db: AsyncSession = Depends(get_db)):
     # Public staff roster — admin tier and up. Moderators stay internal/non-public,
-    # consistent with the usual mod/admin distinction.
+    # consistent with the usual mod/admin distinction. Membership itself changes
+    # rarely (a role change), so a short shared cache is safe — is_online below is
+    # already only accurate to a 5-minute cutoff, so this doesn't make that any staler.
+    response.headers["Cache-Control"] = "public, max-age=120"
     result = await db.execute(
         select(User).where(User.role.in_(("admin", "superadmin")), User.is_active == True).order_by(User.created_at)
     )

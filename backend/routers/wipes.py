@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -13,7 +13,11 @@ router = APIRouter()
 # ─── Wipes ───────────────────────────────────────────────────────────────────
 
 @router.get("/api/wipes", response_model=list[WipeOut])
-async def get_wipes(db: AsyncSession = Depends(get_db)):
+async def get_wipes(response: Response, db: AsyncSession = Depends(get_db)):
+    # Wipe history changes rarely (an admin action, not a live feed) — a short
+    # shared cache takes load off repeat visitors without risking a stale-looking
+    # page for long after a real wipe is recorded.
+    response.headers["Cache-Control"] = "public, max-age=120"
     result = await db.execute(select(Wipe).order_by(Wipe.wipe_date.desc()))
     return [WipeOut.model_validate(w) for w in result.scalars().all()]
 

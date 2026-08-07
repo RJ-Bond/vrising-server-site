@@ -214,7 +214,9 @@ async def totp_setup(
 
 
 @router.post("/api/auth/2fa/enable")
+@limiter.limit("5/minute")
 async def totp_enable(
+    request: Request,
     body: TotpCodeBody,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -235,7 +237,9 @@ async def totp_enable(
 
 
 @router.post("/api/auth/2fa/disable")
+@limiter.limit("5/minute")
 async def totp_disable(
+    request: Request,
     body: TotpCodeBody,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),

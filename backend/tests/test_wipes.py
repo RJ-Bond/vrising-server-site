@@ -57,6 +57,14 @@ async def test_list_wipes_empty(client, db_session):
     assert r.json() == []
 
 
+async def test_list_wipes_sets_cache_control(client, db_session):
+    """Wipe history changes rarely (an admin action), so it carries a short public
+    Cache-Control to take load off repeat visitors — see backend/routers/wipes.py."""
+    r = await client.get("/api/wipes")
+    assert r.status_code == 200
+    assert r.headers["Cache-Control"] == "public, max-age=120"
+
+
 # ─── POST /api/admin/wipes ────────────────────────────────────────────────────
 
 async def test_create_wipe_requires_admin(client, db_session):
