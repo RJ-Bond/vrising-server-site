@@ -56,7 +56,7 @@ from sqlalchemy import select, delete, update, func
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import User, News, Setting, PlayerRecord, ServerSnapshot, PageView, ErrorLog, RevokedToken, Event, PlayerRankSnapshot, PluginHeartbeat, Announcement, GameClan, GameClanMember
+from .models import User, News, Setting, PlayerRecord, ServerSnapshot, PageView, ErrorLog, RevokedToken, Event, PlayerRankSnapshot, PluginHeartbeat, Announcement, GameClan, GameClanMember, PushSubscription
 from .rate_limit import limiter
 from .helpers import (
     BACKUP_DIR,
@@ -69,6 +69,7 @@ from .helpers import (
     _set_auth_cookie,
     _audit,
     send_newsletter_digest,
+    send_push,
 )
 from .auth import (
     get_password_hash,
@@ -1077,6 +1078,13 @@ _status_cache: dict[int, dict] = {}
 _status_cache_ts: dict[int, float] = {}
 STATUS_CACHE_TTL = 28  # seconds
 
+# Previous online/offline state per server_num, tracked only by the periodic
+# _monitor_poll_cycle() (not the on-demand /status endpoints) so "back online"
+# push notifications fire on a real offline->online transition and never on
+# every poll while a server stays up. None means "unknown" — seeded that way
+# so the first poll after a process restart never fires a false transition.
+_prev_server_online: dict[int, Optional[bool]] = {}
+
 
 def _broadcast_status(data: dict) -> None:
     """Put server status update into all active SSE client queues."""
@@ -1594,6 +1602,37 @@ async def _monitor_poll_cycle():
         _status_cache[server_num] = payload
         _status_cache_ts[server_num] = time.time()
         _broadcast_status({"server": server_num, **payload})
+
+        # Web Push "favorite server back online" trigger — fires only on an
+        # actual offline->online transition (never on every poll while a
+        # server stays up, and never on the first poll after a process
+        # restart, where the previous state is unknown/None).
+        now_online = bool(data.get("online"))
+        prev_online = _prev_server_online.get(server_num)
+        if prev_online is False and now_online:
+            display_name = admin_name or data.get("name") or f"Server {server_num}"
+            asyncio.create_task(_notify_server_back_online(display_name))
+        _prev_server_online[server_num] = now_online
+
+
+async def _notify_server_back_online(server_name: str) -> None:
+    """Fan out a push notification to every user with at least one PushSubscription
+    row when a monitored game server transitions from offline to online. There's no
+    per-server subscription preference today, so this notifies everyone subscribed to
+    push at all (same coarse granularity as the news-push trigger). Fire-and-forget:
+    callers schedule this via asyncio.create_task, same pattern as every other
+    send_push() call site, so a slow/unreachable push service never blocks the
+    monitor poll loop."""
+    async with AsyncSession(engine, expire_on_commit=False) as db:
+        res = await db.execute(select(PushSubscription.user_id).distinct())
+        user_ids = [row[0] for row in res.all()]
+    for user_id in user_ids:
+        asyncio.create_task(send_push(
+            user_id,
+            "Сервер снова в сети",
+            f"{server_name} снова онлайн",
+            "/servers.html",
+        ))
 
 
 async def _monitor_poll_task():

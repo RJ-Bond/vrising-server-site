@@ -298,11 +298,37 @@ function dismissPrivacyNotice() {
 }
 
 // ── PWA install prompt ──────────────────────────────────────────────────────
+// Engagement gate: no existing site-wide pageview/returning-visitor tracker was
+// found in common.js or index.js (grepped first), so this is a small localStorage
+// counter scoped to the homepage — the only page that currently gates anything on
+// it. Never show the automatic banner on a visitor's very first pageview, even if
+// the browser fires beforeinstallprompt immediately.
+const PWA_MIN_PAGEVIEWS_FOR_BANNER = 2;
+function _homepagePageviewCount() {
+  const n = (parseInt(localStorage.getItem('_homeVisits') || '0', 10) || 0) + 1;
+  localStorage.setItem('_homeVisits', String(n));
+  return n;
+}
+const _homePageviewCount = _homepagePageviewCount();
+
+// Dismissal used to be a permanent flag (`_pwaInstallDismissed === '1'`) — once a
+// visitor closed the banner they'd never see it again, ever. Replaced with a
+// timestamp + cooldown so someone who wasn't interested on day 1 can still be
+// prompted again later once they're more invested in the site.
+const PWA_DISMISS_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000; // 2 weeks
+function _pwaDismissedRecently() {
+  localStorage.removeItem('_pwaInstallDismissed'); // drop the old permanent flag, if any
+  const ts = parseInt(localStorage.getItem('_pwaInstallDismissedAt') || '0', 10);
+  return !!ts && (Date.now() - ts) < PWA_DISMISS_COOLDOWN_MS;
+}
+
 let _pwaDeferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   _pwaDeferredPrompt = e;
-  if (localStorage.getItem('_pwaInstallDismissed') === '1') return;
+  _updatePwaInstallEntryPoint(); // manual "Install app" affordance becomes usable
+  if (_homePageviewCount < PWA_MIN_PAGEVIEWS_FOR_BANNER) return;
+  if (_pwaDismissedRecently()) return;
   const banner = document.getElementById('pwa-install-banner');
   if (banner) banner.style.display = 'block';
 });
@@ -311,14 +337,26 @@ async function triggerPwaInstall() {
   _pwaDeferredPrompt.prompt();
   await _pwaDeferredPrompt.userChoice;
   _pwaDeferredPrompt = null;
+  _updatePwaInstallEntryPoint();
   dismissPwaInstallBanner();
 }
 function dismissPwaInstallBanner() {
   const banner = document.getElementById('pwa-install-banner');
   if (banner) banner.style.display = 'none';
-  localStorage.setItem('_pwaInstallDismissed', '1');
+  localStorage.setItem('_pwaInstallDismissedAt', String(Date.now()));
 }
-window.addEventListener('appinstalled', () => { _pwaDeferredPrompt = null; });
+window.addEventListener('appinstalled', () => {
+  _pwaDeferredPrompt = null;
+  _updatePwaInstallEntryPoint();
+});
+// Persistent, low-key manual entry point (footer link) for a visitor who
+// dismissed/missed the automatic banner but wants to install later on purpose.
+// Only ever shown while a deferred install prompt is actually available — same
+// gating condition the automatic banner itself relies on.
+function _updatePwaInstallEntryPoint() {
+  const link = document.getElementById('footer-pwa-install');
+  if (link) link.style.display = _pwaDeferredPrompt ? '' : 'none';
+}
 
 function toggleLeftPanelCompact() {
   const panel = document.getElementById('left-panel');
