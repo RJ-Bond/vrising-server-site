@@ -23,16 +23,18 @@ list this merges together, all of which are already public. Capped and cheap sin
 this is expected to load on every homepage visit: fixed per-category caps, no N+1
 per-row queries (bulk lookups only, same style as GET /api/leaderboard).
 """
+import asyncio
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..helpers import _fmt_dt, _site_timezone
+from ..helpers import _activity_sse_clients, _fmt_dt, _site_timezone
 from ..models import Event, News, PlayerDailyActivity, PlayerRankSnapshot, PlayerRecord, ShopRedemption, User
 
 router = APIRouter()
@@ -264,3 +266,32 @@ async def get_activity_feed(
 
     raw_items.sort(key=lambda pair: pair[0], reverse=True)
     return [item for _, item in raw_items[:FEED_LIMIT]]
+
+
+@router.get("/api/activity-feed/stream")
+async def activity_feed_stream():
+    """Push new activity-feed items as they happen (helpers.activity_broadcast),
+    instead of making the homepage re-poll GET /api/activity-feed on a timer. Same
+    pattern as main.py's /api/online/stream: a bounded per-client queue plus a 25s
+    keepalive comment so idle proxies don't time the connection out. The frontend
+    still keeps a slow poll as a fallback for browsers/proxies that don't get SSE
+    through cleanly — this stream is a latency improvement, not the only source."""
+    queue: asyncio.Queue = asyncio.Queue(maxsize=20)
+    _activity_sse_clients.add(queue)
+
+    async def generate():
+        try:
+            while True:
+                try:
+                    data = await asyncio.wait_for(queue.get(), timeout=25)
+                    yield f"data: {data}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+        finally:
+            _activity_sse_clients.discard(queue)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

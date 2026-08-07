@@ -539,6 +539,34 @@ async def send_push(user_id: int, title: str, body: str, url: str = "/") -> None
         logger.warning("send_push: unexpected error sending to user %s", user_id, exc_info=True)
 
 
+# ─── Activity feed live broadcast ─────────────────────────────────────────────
+# SSE fan-out for the homepage activity feed (backend/routers/activity_feed.py).
+# Lives here rather than in that router because activity_feed.py's own docstring
+# documents this codebase's "routers don't import each other" convention — news.py/
+# events.py/points_shop.py and main.py's scheduled-publish task all need to trigger a
+# broadcast without importing activity_feed.py, and helpers.py is the one module all
+# of them already import from. Deliberately separate from main.py's _sse_clients/
+# _sse_broadcast (online-widget presence pings) — that one fires on every ~15-30s
+# heartbeat and carries no payload; this one only fires on a genuine new item and
+# carries the item itself, so the frontend can prepend it without a refetch.
+_activity_sse_clients: set = set()  # asyncio.Queue per connected SSE client
+
+
+def activity_broadcast(item: dict) -> None:
+    """Fan out one new activity-feed item (same shape as ActivityFeedItemOut) to every
+    connected /api/activity-feed/stream client. Fire-and-forget: a full queue just drops
+    that client's update (it still gets the item on its next reconnect/poll fallback),
+    same non-blocking contract as main.py's _broadcast_status."""
+    payload = json.dumps(item, default=str, ensure_ascii=False)
+    dead = set()
+    for q in _activity_sse_clients:
+        try:
+            q.put_nowait(payload)
+        except asyncio.QueueFull:
+            dead.add(q)
+    _activity_sse_clients.difference_update(dead)
+
+
 # ─── Game Plugin Integration ──────────────────────────────────────────────────
 # Server-to-site channel used by the BepInEx plugin (vrising-bepinex-plugin) for the
 # in-game .register/.login chat commands. Authenticated via a shared secret sent as the

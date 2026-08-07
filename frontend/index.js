@@ -1144,6 +1144,12 @@ async function loadStatus2() {
 // ── SSE for real-time status updates ───────────────────────────────────────
 let _sseConn = null;
 let _sseFailed = false;
+// Declared here (not next to startActivityFeedSSE()'s own definition further down)
+// because startActivityFeedSSE() is CALLED from the early init block below, and a
+// `let` declared later in the file is in the temporal dead zone until its own line
+// runs — calling a function that references it before that point throws
+// "Cannot access before initialization" even though the function itself is hoisted.
+let _activitySseConn = null;
 
 function startStatusSSE() {
   if (_sseConn) return;
@@ -2858,6 +2864,7 @@ loadTeam();
 setInterval(loadTeam, 10000);
 loadActivityFeed();
 setInterval(loadActivityFeed, 60000);
+startActivityFeedSSE();
 renderTipOfDay();
 loadTopClans();
 // Same 60s cadence as loadActivityFeed/loadRestartBanner above/below, but offset by
@@ -3122,6 +3129,30 @@ async function loadActivityFeed() {
   } catch {}
 }
 
+// SSE push for new activity-feed items (backend/helpers.py's activity_broadcast(),
+// fired from news publish/event create/shop redemption fulfil — see that helper's
+// comment for the full trigger list). Deliberately just re-fetches the full list on
+// a push rather than trying to splice the raw SSE payload into the DOM — the feed
+// merges 4 source types with its own sort/cap/achievement-strip-split logic already
+// in loadActivityFeed(), so re-running it is simpler and can't drift from a second,
+// parallel rendering path. The existing 60s setInterval(loadActivityFeed) above stays
+// as the fallback for proxies/browsers that don't get SSE through cleanly.
+function startActivityFeedSSE() {
+  if (_activitySseConn) return;
+  try {
+    _activitySseConn = new EventSource('/api/activity-feed/stream');
+    _activitySseConn.onmessage = (e) => {
+      if (!e.data || e.data === 'update') return;
+      loadActivityFeed();
+    };
+    _activitySseConn.onerror = () => {
+      _activitySseConn.close();
+      _activitySseConn = null;
+      setTimeout(startActivityFeedSSE, 30000);
+    };
+  } catch {}
+}
+
 // ── Achievement showcase strip ──────────────────────────────────────────────
 // Wider, more visually prominent horizontal strip of just the milestone-type
 // items from the same GET /api/activity-feed payload the compact sidebar list
@@ -3331,24 +3362,63 @@ function dismissRestartBanner() {
   banner.style.display = 'none';
 }
 
-// ── Quick-start onboarding card ───────────────────────────────────────────────
-// 3-step "Скачать игру → Зарегистрироваться → Подключиться" card for a first-time
-// anonymous visitor — shown only when logged out, dismissible and remembered via
-// localStorage so a returning anonymous visitor who already dismissed it isn't nagged
-// again. getUser() (common.js) reads the cached user synchronously, same check the nav
-// user-card init IIFE at the top of this file already uses before the /api/auth/me
-// round-trip resolves.
+// ── Visitor-type classification ───────────────────────────────────────────────
+// Drives which homepage widgets get prominence — a first-time anonymous visitor
+// needs "how do I join", a returning anonymous visitor already knows that and
+// responds better to a concrete reason to finally register, a logged-in visitor
+// needs neither. '_homeVisited' is set unconditionally on every homepage load
+// (see the bottom of this section) so it reflects "has this browser been here
+// before", independent of whether any particular widget was dismissed.
+function getVisitorType() {
+  if (getUser()) return 'authed';
+  return localStorage.getItem('_homeVisited') ? 'returning' : 'new';
+}
+
+// ── Adaptive welcome card ─────────────────────────────────────────────────────
+// Same slot as the old anon-only "quick-start" card, now with 3 content variants
+// (see frontend/index.html's #quickstart-card block) selected by getVisitorType().
+// Still dismissible, still remembered via localStorage (shared across variants —
+// once dismissed for a given visitor type, stays dismissed even if that type
+// later changes, e.g. anonymous -> authed after registering). getUser() (common.js)
+// reads the cached user synchronously, same check the nav user-card init IIFE at
+// the top of this file already uses before the /api/auth/me round-trip resolves.
 function initQuickstartCard() {
   const card = document.getElementById('quickstart-card');
-  if (!card) return;
-  if (getUser()) return; // logged in (even just cached) — never show
-  if (localStorage.getItem('_quickstartDismissed') === '1') return;
-  card.style.display = '';
+  if (card && localStorage.getItem('_quickstartDismissed') !== '1') {
+    const type = getVisitorType();
+    const variants = { new: 'quickstart-variant-new', returning: 'quickstart-variant-returning', authed: 'quickstart-variant-authed' };
+    Object.entries(variants).forEach(([t, id]) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = (t === type) ? 'flex' : 'none';
+    });
+    if (type === 'authed') {
+      const user = getUser();
+      const textEl = document.getElementById('quickstart-authed-text');
+      if (textEl && user) {
+        const balance = Number(user.points_balance || 0).toLocaleString('ru-RU');
+        textEl.textContent = `${user.username}, на вашем счету ${balance} ${_plural_ru_home(balance, 'очко', 'очка', 'очков')}. Загляните в магазин наград.`;
+      }
+    }
+    card.style.display = '';
+  }
+  // Marks "this browser has loaded the homepage before" independent of the card's
+  // own dismissed state, so getVisitorType() stays correct for any other feature
+  // that wants it later, not just this card.
+  localStorage.setItem('_homeVisited', '1');
 }
 function dismissQuickstart() {
   const card = document.getElementById('quickstart-card');
   if (card) card.style.display = 'none';
   localStorage.setItem('_quickstartDismissed', '1');
+}
+// Same algorithm as _plural_ru() used server-side (backend/routers/activity_feed.py) —
+// duplicated client-side since this one card needs it and pulling in a shared helper
+// for one string wasn't worth a new common.js export.
+function _plural_ru_home(n, one, few, many) {
+  const mod10 = n % 10, mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  return many;
 }
 
 // ── Direct Messages ──────────────────────────────────────────────────────────

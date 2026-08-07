@@ -10,7 +10,7 @@ from jose import jwt as jose_jwt
 from ..database import get_db
 from ..models import User, Event, EventParticipant, RevokedToken
 from ..auth import get_admin_user, get_current_user, SECRET_KEY, ALGORITHM, COOKIE_NAME
-from ..helpers import _fmt_dt, _audit
+from ..helpers import _fmt_dt, _audit, activity_broadcast
 
 router = APIRouter()
 
@@ -182,6 +182,11 @@ async def admin_create_event(
     await db.refresh(ev)
     await _audit(db, current_user.id, "event.create", target_type="event", target_id=ev.id, detail=ev.title)
     await db.commit()
+    activity_broadcast({
+        "type": "event", "title": ev.title,
+        "subtitle": f"Начало: {_fmt_dt(ev.start_date)}" if ev.start_date else "",
+        "url": "/events.html", "icon": "📅", "timestamp": _fmt_dt(ev.created_at),
+    })
     return {"id": ev.id, "title": ev.title, "status": ev.status, "event_type": ev.event_type}
 
 

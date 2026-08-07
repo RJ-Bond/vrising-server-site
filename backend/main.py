@@ -68,6 +68,7 @@ from .helpers import (
     _utc_ts,
     _set_auth_cookie,
     _audit,
+    activity_broadcast,
     send_newsletter_digest,
 )
 from .auth import (
@@ -1387,6 +1388,11 @@ async def _scheduled_publish_task():
                     logger.info("Auto-published news id=%s slug=%s", n.id, n.slug)
                 if rows:
                     await db.commit()
+                    for n in rows:
+                        activity_broadcast({
+                            "type": "news", "title": n.title, "subtitle": (n.summary or "").strip(),
+                            "url": f"/?news={n.slug}", "icon": "📰", "timestamp": _fmt_dt(n.created_at),
+                        })
         except asyncio.CancelledError:
             break
         except Exception as e:
@@ -1418,6 +1424,11 @@ async def _scheduler_task():
                     logger.info("_scheduler_task: auto-published news id=%s", news_item.id)
                 if items:
                     await db.commit()
+                    for news_item in items:
+                        activity_broadcast({
+                            "type": "news", "title": news_item.title, "subtitle": (news_item.summary or "").strip(),
+                            "url": f"/?news={news_item.slug}", "icon": "📰", "timestamp": _fmt_dt(news_item.created_at),
+                        })
 
                 # Auto-update event statuses
                 try:

@@ -10,7 +10,7 @@ from sqlalchemy import select, func, or_, update
 from ..database import get_db
 from ..models import User, PointsTransaction, ShopItem, ShopRedemption, Notification
 from ..auth import get_admin_user, get_current_user
-from ..helpers import _audit, _award_points, send_push
+from ..helpers import _audit, _award_points, _fmt_dt, activity_broadcast, send_push
 from ..rate_limit import limiter
 from ..schemas import (
     ShopItemCreate,
@@ -159,6 +159,12 @@ async def fulfill_shop_redemption(
         f"«{r.item_name_snapshot}» выполнена",
         "/profile.html",
     ))
+    redeemer = (await db.execute(select(User.username).where(User.id == r.user_id))).scalar_one_or_none()
+    if redeemer:
+        activity_broadcast({
+            "type": "shop_redemption", "title": r.item_name_snapshot, "subtitle": f"Получил: {redeemer}",
+            "url": "/shop.html", "icon": "🛒", "timestamp": _fmt_dt(r.resolved_at or r.created_at),
+        })
     return ShopRedemptionOut.model_validate(r)
 
 

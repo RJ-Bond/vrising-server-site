@@ -19,7 +19,7 @@ from ..database import get_db
 from ..models import User, News, Comment, PageView, Reaction, RevokedToken, CommentReaction, Notification, Setting
 from ..auth import get_admin_user, get_current_user, is_at_least, SECRET_KEY, ALGORITHM, COOKIE_NAME
 from ..rate_limit import limiter
-from ..helpers import _audit, _send_notification_email, send_push
+from ..helpers import _audit, _fmt_dt, _send_notification_email, activity_broadcast, send_push
 from ..schemas import (
     PaginatedNews,
     NewsListOut,
@@ -589,6 +589,10 @@ async def create_news(
         wh = wh_res.scalar_one_or_none()
         if wh and wh.value:
             asyncio.create_task(_discord_webhook_news(wh.value, news.title, news.summary, news.slug, news.thumbnail_url or ""))
+        activity_broadcast({
+            "type": "news", "title": news.title, "subtitle": (news.summary or "").strip(),
+            "url": f"/?news={news.slug}", "icon": "📰", "timestamp": _fmt_dt(news.created_at),
+        })
     result = await db.execute(select(News).where(News.id == news.id))
     return NewsOut.model_validate(result.scalar_one())
 
@@ -604,6 +608,7 @@ async def update_news(
     news = result.scalar_one_or_none()
     if news is None:
         raise HTTPException(status_code=404, detail="News not found")
+    was_published = news.published
     fields = body.model_fields_set
     if 'title'         in fields: news.title         = body.title
     if 'summary'       in fields: news.summary       = body.summary
@@ -628,6 +633,11 @@ async def update_news(
     await _audit(db, admin_u.id, "news.update", target_type="news", target_id=news.id, detail=news.title)
     await db.commit()
     await db.refresh(news)
+    if news.published and not was_published:
+        activity_broadcast({
+            "type": "news", "title": news.title, "subtitle": (news.summary or "").strip(),
+            "url": f"/?news={news.slug}", "icon": "📰", "timestamp": _fmt_dt(news.created_at),
+        })
     result2 = await db.execute(select(News).where(News.id == news.id))
     return NewsOut.model_validate(result2.scalar_one())
 
