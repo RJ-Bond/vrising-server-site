@@ -189,6 +189,72 @@
     .lb-filter-chip:hover { color:var(--text); border-color:rgba(200,0,40,0.3); }
     .lb-filter-chip.active { background:linear-gradient(135deg,#7a001c,var(--crimson)); color:#fff; border-color:transparent; }
 
+    /* ── Player comparison — pick up to 2 rows, see a side-by-side panel ── */
+    .lb-compare-check-wrap { display:none; flex-shrink:0; align-items:center; margin-right:.15rem; }
+    #lb-list.compare-mode .lb-compare-check-wrap { display:flex; }
+    .lb-compare-check { width:1rem; height:1rem; accent-color:var(--crimson); cursor:pointer; }
+    .lb-compare-check:disabled { opacity:.35; cursor:not-allowed; }
+
+    .lb-compare-bar {
+      position:fixed; left:50%; bottom:1.1rem; transform:translateX(-50%); z-index:500;
+      background:rgba(10,2,18,0.97); border:1px solid rgba(180,0,35,0.45); border-radius:.85rem;
+      box-shadow:0 10px 32px rgba(0,0,0,0.55); padding:.65rem .85rem;
+      max-width:calc(100vw - 2rem); animation:fade-up .25s ease both;
+    }
+    .lb-compare-bar-inner { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
+    .lb-compare-bar-label { font-size:.72rem; color:var(--muted); white-space:nowrap; }
+    .lb-compare-chips { display:flex; gap:.35rem; flex-wrap:wrap; }
+    .lb-compare-chip {
+      display:inline-flex; align-items:center; gap:.3rem; font-size:.72rem; font-weight:600;
+      background:rgba(150,0,28,0.14); border:1px solid rgba(180,0,35,0.35); color:#ece3f7;
+      border-radius:.5rem; padding:.22rem .3rem .22rem .55rem;
+    }
+    .lb-compare-chip button {
+      background:none; border:none; color:var(--muted); cursor:pointer; font-size:.68rem;
+      line-height:1; padding:.15rem; border-radius:50%; transition:color .15s;
+    }
+    .lb-compare-chip button:hover { color:#fca5a5; }
+    .lb-compare-go-btn {
+      background:linear-gradient(135deg,#7a001c,var(--crimson)); color:#fff; border:none;
+      border-radius:.5rem; padding:.45rem .9rem; font-size:.76rem; font-weight:700; cursor:pointer;
+      white-space:nowrap; transition:opacity .15s;
+    }
+    .lb-compare-go-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .lb-compare-clear-btn {
+      background:none; border:1px solid rgba(255,255,255,0.12); color:var(--muted);
+      border-radius:.5rem; padding:.45rem .7rem; font-size:.72rem; cursor:pointer; white-space:nowrap;
+    }
+    .lb-compare-clear-btn:hover { color:var(--text); }
+
+    .lb-compare-modal-overlay { position:fixed; inset:0; z-index:9999; display:flex; align-items:flex-start; justify-content:center; padding:3rem 1rem; overflow-y:auto; }
+    .lb-compare-modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.75); backdrop-filter:blur(5px); }
+    .lb-compare-modal {
+      position:relative; background:rgba(10,2,18,.97); border:1px solid rgba(180,0,35,.4);
+      border-radius:1rem; padding:1.75rem 1.25rem; max-width:480px; width:100%;
+      box-shadow:0 8px 48px rgba(0,0,0,.7); animation:fade-up .3s ease both;
+    }
+    .lb-compare-modal-close {
+      position:absolute; top:1rem; right:1rem; background:none; border:none; color:#9488a8;
+      cursor:pointer; font-size:1.1rem; line-height:1; padding:.2rem;
+    }
+    .lb-cmp-heads { display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin-bottom:1.25rem; }
+    .lb-cmp-head { display:flex; flex-direction:column; align-items:center; gap:.35rem; text-decoration:none; flex:1; min-width:0; }
+    .lb-cmp-avatar { width:3rem; height:3rem; border-radius:50%; object-fit:cover; display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:1.1rem; color:#fff; border:2px solid rgba(180,0,35,.4); }
+    .lb-cmp-name { font-size:.8rem; font-family:'Philosopher',serif; color:var(--text); max-width:9rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .lb-cmp-vs { font-family:'Cinzel',serif; font-size:.78rem; color:var(--gold); letter-spacing:.1em; flex-shrink:0; }
+    .lb-cmp-rows { display:flex; flex-direction:column; gap:.1rem; }
+    .lb-cmp-row { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:.5rem; padding:.55rem .2rem; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .lb-cmp-row:last-child { border-bottom:none; }
+    .lb-cmp-val { font-size:.82rem; font-weight:600; color:var(--text); text-align:center; }
+    .lb-cmp-val.win { color:#2ee69b; }
+    .lb-cmp-crown { font-size:.7rem; }
+    .lb-cmp-label { font-size:.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; text-align:center; white-space:nowrap; }
+    @media (max-width:480px) {
+      .lb-compare-modal { padding:1.4rem .8rem; }
+      .lb-cmp-name { max-width:6.5rem; }
+      .lb-cmp-label { font-size:.56rem; }
+    }
+
     /* ── Per-row expandable trend chart ── */
     .lb-expand-btn {
       background:none; border:none; color:var(--muted); cursor:pointer; padding:.2rem .35rem;
@@ -449,6 +515,7 @@
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;">
       <button class="lb-filter-chip" id="lb-verified-filter" onclick="toggleVerifiedFilter()" data-i18n-ru="✔ Только подтверждённые" data-i18n-en="✔ Verified only">✔ Только подтверждённые</button>
       <button class="lb-filter-chip" id="lb-myclan-filter" onclick="toggleMyClanFilter()" style="display:none;" data-i18n-ru="🏰 Только мой клан" data-i18n-en="🏰 My clan only">🏰 Только мой клан</button>
+      <button class="lb-filter-chip" id="lb-compare-toggle" onclick="toggleCompareMode()" data-i18n-ru="🆚 Сравнить игроков" data-i18n-en="🆚 Compare players">🆚 Сравнить игроков</button>
     </div>
     <div id="lb-col-header" style="display:flex;align-items:center;gap:.9rem;padding:.2rem .5rem .35rem;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;border-bottom:1px solid rgba(255,255,255,0.05);margin-bottom:.2rem;">
       <span style="width:2.2rem;flex-shrink:0;"></span>
@@ -595,6 +662,185 @@ function clanChipHtml(clanId, clanName) {
   return clanId
     ? `<a href="/clans.html?clan=${clanId}" class="lb-clan-chip" onclick="event.stopPropagation()" title="${esc(clanName)}">${esc(clanName)}</a>`
     : `<span class="lb-clan-chip" title="${esc(clanName)}">${esc(clanName)}</span>`;
+}
+
+// Row clicks navigate to the profile via a plain onclick — this mirrors that same
+// action for keyboard users (Enter/Space), same pattern as map.html's
+// onRegionKey()/toggleRegion() for its role="button" region cards.
+function onLbRowKey(e, el) {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    location.href = '/user.html?u=' + encodeURIComponent(el.dataset.username);
+  }
+}
+
+/* ── Player comparison — pick up to 2 players from the leaderboard and see their
+   stats side by side. Entirely client-side over rows already fetched for the current
+   page/metric (GET /api/leaderboard already returns everything renderRows() shows —
+   playtime, rank, streak, clan/combat power, points balance in points mode — so no
+   new backend endpoint is needed). Selection stores full row snapshots (not just
+   names) so a pick made on one page still has its stats once loadLeaderboard()
+   replaces _allPlayers for a different page. ── */
+let _compareMode = false;
+let _compareSelection = []; // up to 2 player row objects, snapshotted at selection time
+
+function isCompareSelected(name) {
+  return _compareSelection.some(p => p.player_name === name);
+}
+
+function toggleCompareMode() {
+  _compareMode = !_compareMode;
+  document.getElementById('lb-compare-toggle')?.classList.toggle('active', _compareMode);
+  document.getElementById('lb-list')?.classList.toggle('compare-mode', _compareMode);
+  if (!_compareMode) { _compareSelection = []; updateCompareBar(); }
+  applyFilters();
+}
+
+function toggleCompareSelect(checkbox) {
+  const name = checkbox.dataset.username;
+  if (checkbox.checked) {
+    if (_compareSelection.length >= 2) {
+      checkbox.checked = false;
+      showToast(_t('Можно сравнить только 2 игроков за раз', 'You can compare only 2 players at a time'), 'info');
+      return;
+    }
+    const player = _allPlayers.find(p => p.player_name === name);
+    if (player) _compareSelection.push(player);
+  } else {
+    _compareSelection = _compareSelection.filter(p => p.player_name !== name);
+  }
+  updateCompareBar();
+  syncCompareCheckboxes();
+}
+
+function removeCompareSelection(name) {
+  _compareSelection = _compareSelection.filter(p => p.player_name !== name);
+  updateCompareBar();
+  syncCompareCheckboxes();
+}
+
+function clearCompareSelection() {
+  _compareSelection = [];
+  updateCompareBar();
+  syncCompareCheckboxes();
+}
+
+// Keeps already-rendered row checkboxes in sync with _compareSelection (checked state
+// + disabling unchecked boxes once 2 are picked) without a full list re-render.
+function syncCompareCheckboxes() {
+  document.querySelectorAll('.lb-compare-check').forEach(cb => {
+    const selected = isCompareSelected(cb.dataset.username);
+    cb.checked = selected;
+    cb.disabled = !selected && _compareSelection.length >= 2;
+  });
+}
+
+function updateCompareBar() {
+  let bar = document.getElementById('lb-compare-bar');
+  if (!_compareMode || _compareSelection.length === 0) {
+    if (bar) bar.remove();
+    return;
+  }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'lb-compare-bar';
+    bar.className = 'lb-compare-bar';
+    document.body.appendChild(bar);
+  }
+  const chips = _compareSelection.map(p => `
+    <span class="lb-compare-chip">${esc(p.player_name)}<button type="button" data-username="${esc(p.player_name)}" onclick="removeCompareSelection(this.dataset.username)" aria-label="${_t('Убрать из сравнения','Remove from comparison')}">✕</button></span>
+  `).join('');
+  const canCompare = _compareSelection.length === 2;
+  bar.innerHTML = `
+    <div class="lb-compare-bar-inner">
+      <span class="lb-compare-bar-label" data-i18n-ru="Сравнение игроков:" data-i18n-en="Comparing players:">${_t('Сравнение игроков:', 'Comparing players:')}</span>
+      <div class="lb-compare-chips">${chips}</div>
+      <button type="button" class="lb-compare-go-btn" ${canCompare ? '' : 'disabled'} onclick="openCompareModal()" data-i18n-ru="Сравнить →" data-i18n-en="Compare →">${_t('Сравнить →', 'Compare →')}</button>
+      <button type="button" class="lb-compare-clear-btn" onclick="clearCompareSelection()" data-i18n-ru="Очистить" data-i18n-en="Clear">${_t('Очистить', 'Clear')}</button>
+    </div>`;
+}
+
+// Textual/ranked version of achievementBadge() above — the comparison panel needs a
+// comparable tier rank (for winner highlighting), not just an icon. Same thresholds,
+// so the tier shown here always agrees with the badge already shown on the row.
+function achievementTier(totalSeconds) {
+  const s = totalSeconds || 0;
+  if (s >= 3600000) return { icon: '🏆', rank: 3, label: _t('Легенда сервера', 'Server legend') };
+  if (s >= 360000)  return { icon: '⚔', rank: 2, label: _t('Ветеран', 'Veteran') };
+  if (s >= 36000)   return { icon: '⏱', rank: 1, label: _t('Активный игрок', 'Active player') };
+  return { icon: '—', rank: 0, label: _t('Новичок', 'Newcomer') };
+}
+
+// One comparison row: aVal/bVal drive which side "wins" (numeric, null-safe); aDisplay/
+// bDisplay are the pre-formatted strings actually shown. higherIsBetter=false for stats
+// like rank where a lower number wins.
+function compareRowHtml(label, aVal, bVal, aDisplay, bDisplay, higherIsBetter = true) {
+  let aWin = false, bWin = false;
+  if (aVal !== null && aVal !== undefined && bVal !== null && bVal !== undefined && aVal !== bVal) {
+    aWin = higherIsBetter ? aVal > bVal : aVal < bVal;
+    bWin = higherIsBetter ? bVal > aVal : bVal < aVal;
+  }
+  const crown = ' <span class="lb-cmp-crown">👑</span>';
+  return `<div class="lb-cmp-row">
+    <span class="lb-cmp-val${aWin ? ' win' : ''}">${aDisplay}${aWin ? crown : ''}</span>
+    <span class="lb-cmp-label">${label}</span>
+    <span class="lb-cmp-val${bWin ? ' win' : ''}">${bDisplay}${bWin ? crown : ''}</span>
+  </div>`;
+}
+
+function buildCompareModalHtml(a, b) {
+  const nameA = a.player_name || 'Аноним', nameB = b.player_name || 'Аноним';
+  const avatarHtml = (p, name) => p.avatar_url
+    ? `<img src="${esc(p.avatar_url)}" alt="" class="lb-cmp-avatar">`
+    : `<span class="lb-cmp-avatar" style="background:${nameGradient(name)}">${esc(name.charAt(0).toUpperCase())}</span>`;
+  const tierA = achievementTier(a.total_seconds), tierB = achievementTier(b.total_seconds);
+  const rankA = a._rank, rankB = b._rank;
+  const rows = [
+    compareRowHtml(_t('Место в рейтинге', 'Rank'), rankA, rankB, rankA ? `#${rankA}` : '—', rankB ? `#${rankB}` : '—', false),
+    compareRowHtml(
+      _metric === 'points' ? _t('Очки', 'Points') : _t('Время в игре', 'Time played'),
+      a.metricValue, b.metricValue, fmtMetric(a.metricValue), fmtMetric(b.metricValue), true,
+    ),
+    compareRowHtml(_t('Серия входов', 'Login streak'), a.streak_days || 0, b.streak_days || 0, `${a.streak_days || 0} 🔥`, `${b.streak_days || 0} 🔥`, true),
+    compareRowHtml(_t('Уровень достижений', 'Achievement tier'), tierA.rank, tierB.rank, `${tierA.icon} ${tierA.label}`, `${tierB.icon} ${tierB.label}`, true),
+  ];
+  if (a.physical_power != null || b.physical_power != null) {
+    rows.push(compareRowHtml(_t('Физ. мощь', 'Physical power'), a.physical_power, b.physical_power,
+      a.physical_power != null ? `⚔ ${Math.round(a.physical_power)}` : '—', b.physical_power != null ? `⚔ ${Math.round(b.physical_power)}` : '—', true));
+  }
+  if (a.spell_power != null || b.spell_power != null) {
+    rows.push(compareRowHtml(_t('Маг. мощь', 'Spell power'), a.spell_power, b.spell_power,
+      a.spell_power != null ? `🔮 ${Math.round(a.spell_power)}` : '—', b.spell_power != null ? `🔮 ${Math.round(b.spell_power)}` : '—', true));
+  }
+  return `
+    <div class="lb-compare-modal-backdrop" onclick="closeCompareModal()"></div>
+    <div class="lb-compare-modal" role="dialog" aria-modal="true" aria-label="${_t('Сравнение игроков', 'Player comparison')}">
+      <button type="button" class="lb-compare-modal-close" onclick="closeCompareModal()" aria-label="${_t('Закрыть', 'Close')}">✕</button>
+      <div class="lb-cmp-heads">
+        <a class="lb-cmp-head" href="/user.html?u=${encodeURIComponent(nameA)}">${avatarHtml(a, nameA)}<span class="lb-cmp-name">${esc(nameA)}</span></a>
+        <span class="lb-cmp-vs">VS</span>
+        <a class="lb-cmp-head" href="/user.html?u=${encodeURIComponent(nameB)}">${avatarHtml(b, nameB)}<span class="lb-cmp-name">${esc(nameB)}</span></a>
+      </div>
+      <div class="lb-cmp-rows">${rows.join('')}</div>
+    </div>`;
+}
+
+function _compareModalEscHandler(e) { if (e.key === 'Escape') closeCompareModal(); }
+
+function openCompareModal() {
+  if (_compareSelection.length !== 2) return;
+  closeCompareModal();
+  const modal = document.createElement('div');
+  modal.id = 'lb-compare-modal';
+  modal.className = 'lb-compare-modal-overlay';
+  modal.innerHTML = buildCompareModalHtml(_compareSelection[0], _compareSelection[1]);
+  document.body.appendChild(modal);
+  document.addEventListener('keydown', _compareModalEscHandler);
+}
+function closeCompareModal() {
+  const modal = document.getElementById('lb-compare-modal');
+  if (modal) modal.remove();
+  document.removeEventListener('keydown', _compareModalEscHandler);
 }
 
 function applySiteBackground(bg) {
@@ -875,7 +1121,14 @@ function renderRows(players) {
       const tip   = isUp ? `Поднялся на ${absN} мест за неделю` : `Опустился на ${absN} мест за неделю`;
       rankDeltaHtml = `<span class="lb-rank-delta ${isUp ? 'up' : 'down'}" data-tip="${tip}">${isUp ? '▲' : '▼'}${absN}</span>`;
     }
-    const rowHtml = `<div class="lb-row${isMe ? ' me' : ''}${podiumCls}" data-username="${esc(name)}" onclick="location.href='/user.html?u='+encodeURIComponent(this.dataset.username)" style="cursor:pointer;animation:fade-up .35s ease both;animation-delay:${Math.min(i * 25, 300)}ms;">
+    // Compare-mode checkbox state — always rendered (hidden via CSS unless #lb-list
+    // has .compare-mode), so toggling compare mode doesn't require a re-render.
+    const cmpChecked  = isCompareSelected(name);
+    const cmpDisabled = !cmpChecked && _compareSelection.length >= 2;
+    const rowHtml = `<div class="lb-row${isMe ? ' me' : ''}${podiumCls}" data-username="${esc(name)}" role="button" tabindex="0" aria-label="${_t('Открыть профиль','Open profile')} ${esc(name)}" onclick="location.href='/user.html?u='+encodeURIComponent(this.dataset.username)" onkeydown="onLbRowKey(event,this)" style="cursor:pointer;animation:fade-up .35s ease both;animation-delay:${Math.min(i * 25, 300)}ms;">
+      <label class="lb-compare-check-wrap" onclick="event.stopPropagation()" data-tip="${_t('Добавить к сравнению','Add to comparison')}">
+        <input type="checkbox" class="lb-compare-check" data-username="${esc(name)}" onchange="toggleCompareSelect(this)"${cmpChecked ? ' checked' : ''}${cmpDisabled ? ' disabled' : ''} aria-label="${_t('Добавить к сравнению','Add to comparison')}: ${esc(name)}">
+      </label>
       <span class="lb-rank ${rankCls}" style="animation:rank-in .4s ease both;animation-delay:${i * 30}ms;">${medal ? `<span class="lb-medal">${medal}</span>` : rank}${rankDeltaHtml}</span>
       <span class="lb-avatar-wrap">${avatarHtml}<span class="lb-online-dot${onlineDotCls}"></span></span>
       <span class="lb-name-col">
