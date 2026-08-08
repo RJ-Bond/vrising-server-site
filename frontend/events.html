@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Just-Skill.Ru" />
-  <meta property="og:title" content="V Rising — События" />
-  <meta property="og:description" content="События и турниры сервера V Rising — участвуйте в PvP и PvE активностях." />
+  <meta id="meta-og-title" property="og:title" content="V Rising — События" />
+  <meta id="meta-og-description" property="og:description" content="События и турниры сервера V Rising — участвуйте в PvP и PvE активностях." />
   <meta property="og:image" content="https://v.just-skill.ru/uploads/og-default.png" />
   <meta property="og:url" content="https://v.just-skill.ru/events.html" />
   <link rel="canonical" href="https://v.just-skill.ru/events.html" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="description" content="События и турниры сервера V Rising — участвуйте в PvP и PvE активностях." />
-  <title>События — V Rising</title>
+  <meta id="meta-description" name="description" content="События и турниры сервера V Rising — участвуйте в PvP и PvE активностях." />
+  <title id="page-title">События — V Rising</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#06000f">
   <meta name="mobile-web-app-capable" content="yes">
@@ -79,78 +79,82 @@
 <!-- NAV -->
 <div class="mobile-overlay" :class="{ open: mobNavOpen }" @click="mobNavOpen = false"></div>
 <div class="mobile-drawer" :class="{ open: mobNavOpen }">
-  <a href="/">🏠 Главная</a>
-  <a href="/servers.html">🖥️ Сервера</a>
-  <a href="/leaderboard.html">🏆 Игроки</a>
-  <a href="/clans.html">🛡️ Кланы</a>
-  <a href="/bans.html">🚫 Баны</a>
-  <a href="/shop.html">🛒 Магазин</a>
-  <a href="/map.html">🗺️ Карта</a>
-  <a href="/faq.html">❓ FAQ</a>
-  <a href="/events.html">📅 События</a>
-  <a href="/profile.html">👤 Профиль</a>
-  <a href="#" onclick="openGlobalSearch();return false;">🔍 Поиск</a>
+  <a href="/" data-i18n-ru="🏠 Главная" data-i18n-en="🏠 Home">🏠 Главная</a>
+  <a href="/servers.html" data-i18n-ru="🖥️ Сервера" data-i18n-en="🖥️ Servers">🖥️ Сервера</a>
+  <a href="/leaderboard.html" data-i18n-ru="🏆 Игроки" data-i18n-en="🏆 Players">🏆 Игроки</a>
+  <a href="/clans.html" data-i18n-ru="🛡️ Кланы" data-i18n-en="🛡️ Clans">🛡️ Кланы</a>
+  <a href="/bans.html" data-i18n-ru="🚫 Баны" data-i18n-en="🚫 Bans">🚫 Баны</a>
+  <a href="/shop.html" data-i18n-ru="🛒 Магазин" data-i18n-en="🛒 Shop">🛒 Магазин</a>
+  <a href="/map.html" data-i18n-ru="🗺️ Карта" data-i18n-en="🗺️ Map">🗺️ Карта</a>
+  <a href="/faq.html" data-i18n-ru="❓ FAQ" data-i18n-en="❓ FAQ">❓ FAQ</a>
+  <a href="/events.html" data-i18n-ru="📅 События" data-i18n-en="📅 Events">📅 События</a>
+  <a href="/profile.html" data-i18n-ru="👤 Профиль" data-i18n-en="👤 Profile">👤 Профиль</a>
+  <a href="#" onclick="openGlobalSearch();return false;" data-i18n-ru="🔍 Поиск" data-i18n-en="🔍 Search">🔍 Поиск</a>
 </div>
 <nav class="glass-nav">
   <div style="max-width:1000px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
     <a href="/" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);">⚔ V RISING</a>
     <div class="nav-links">
-      <a href="/" class="topnav-link">🏠 Главная</a>
-      <a href="/servers.html" class="topnav-link">🖥️ Сервера</a>
-      <a href="/leaderboard.html" class="topnav-link">🏆 Игроки</a>
-      <a href="/clans.html" class="topnav-link">🛡️ Кланы</a>
-      <a href="/bans.html" class="topnav-link">🚫 Баны</a>
-      <a href="/shop.html" class="topnav-link">🛒 Магазин</a>
+      <a href="/" class="topnav-link" data-i18n-ru="🏠 Главная" data-i18n-en="🏠 Home">🏠 Главная</a>
+      <a href="/servers.html" class="topnav-link" data-i18n-ru="🖥️ Сервера" data-i18n-en="🖥️ Servers">🖥️ Сервера</a>
+      <a href="/leaderboard.html" class="topnav-link" data-i18n-ru="🏆 Игроки" data-i18n-en="🏆 Players">🏆 Игроки</a>
+      <a href="/clans.html" class="topnav-link" data-i18n-ru="🛡️ Кланы" data-i18n-en="🛡️ Clans">🛡️ Кланы</a>
+      <a href="/bans.html" class="topnav-link" data-i18n-ru="🚫 Баны" data-i18n-en="🚫 Bans">🚫 Баны</a>
+      <a href="/shop.html" class="topnav-link" data-i18n-ru="🛒 Магазин" data-i18n-en="🛒 Shop">🛒 Магазин</a>
       <div class="nav-dropdown">
-        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)">Ещё ▾</button>
+        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)" data-i18n-ru="Ещё ▾" data-i18n-en="More ▾">Ещё ▾</button>
         <div class="nav-dropdown-menu">
-          <a href="/map.html" class="nav-dropdown-item">🗺️ Карта</a>
-          <a href="/faq.html" class="nav-dropdown-item">❓ FAQ</a>
-          <a href="/events.html" class="nav-dropdown-item">📅 События</a>
+          <a href="/map.html" class="nav-dropdown-item" data-i18n-ru="🗺️ Карта" data-i18n-en="🗺️ Map">🗺️ Карта</a>
+          <a href="/faq.html" class="nav-dropdown-item" data-i18n-ru="❓ FAQ" data-i18n-en="❓ FAQ">❓ FAQ</a>
+          <a href="/events.html" class="nav-dropdown-item" data-i18n-ru="📅 События" data-i18n-en="📅 Events">📅 События</a>
         </div>
       </div>
-      <button type="button" class="nav-icon-btn" onclick="openGlobalSearch()" aria-label="Поиск по сайту" data-tip="Поиск (Ctrl+K)">
+      <button type="button" class="nav-icon-btn" onclick="openGlobalSearch()" aria-label="Поиск по сайту" data-tip="Поиск (Ctrl+K)" data-i18n-aria-ru="Поиск по сайту" data-i18n-aria-en="Site search">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-search"></use></svg>
       </button>
       <div id="nav-profile-link" class="nav-dropdown" style="display:none;">
-        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)">👤 Профиль ▾</button>
+        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)" data-i18n-ru="👤 Профиль ▾" data-i18n-en="👤 Profile ▾">👤 Профиль ▾</button>
         <div class="nav-dropdown-menu">
-          <a href="/profile.html" class="nav-dropdown-item">Мой профиль</a>
-          <a href="#" class="nav-dropdown-item" onclick="logout();return false;">Выйти</a>
+          <a href="/profile.html" class="nav-dropdown-item" data-i18n-ru="Мой профиль" data-i18n-en="My profile">Мой профиль</a>
+          <a href="#" class="nav-dropdown-item" onclick="logout();return false;" data-i18n-ru="Выйти" data-i18n-en="Log out">Выйти</a>
         </div>
       </div>
-      <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
+      <a id="nav-login-link" href="/login.html" class="topnav-link" data-i18n-ru="Войти" data-i18n-en="Log in">Войти</a>
     </div>
-    <button class="nav-burger" @click="mobNavOpen = !mobNavOpen" aria-label="Меню">☰</button>
+    <button id="lang-toggle-btn" onclick="pageToggleLanguage()" title="English UI (site content stays Russian)"
+      style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;padding:0 .5rem;height:2rem;font-size:.7rem;font-weight:700;letter-spacing:.05em;cursor:pointer;color:#9488a8;transition:all .2s;"
+      onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
+      onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">EN</button>
+    <button class="nav-burger" @click="mobNavOpen = !mobNavOpen" aria-label="Меню" data-i18n-aria-ru="Меню" data-i18n-aria-en="Menu">☰</button>
   </div>
 </nav>
 
 <div style="max-width:860px;margin:2.5rem auto 3.5rem;padding:0 1rem;position:relative;z-index:1;">
   <div style="text-align:center;margin-bottom:2rem;">
-    <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;">События и турниры</h1>
-    <p style="font-size:.8rem;color:var(--muted);margin-top:.4rem;">Участвуйте в событиях сервера</p>
-    <a href="/api/events.ics" download="events.ics" data-tip="Подписка: webcal://v.just-skill.ru/api/events.ics" style="display:inline-flex;align-items:center;gap:.35rem;margin-top:.6rem;font-size:.72rem;color:var(--muted);text-decoration:none;border:1px solid rgba(150,0,28,0.25);border-radius:.5rem;padding:.35rem .75rem;">📅 Добавить в календарь</a>
+    <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;" data-i18n-ru="События и турниры" data-i18n-en="Events &amp; tournaments">События и турниры</h1>
+    <p style="font-size:.8rem;color:var(--muted);margin-top:.4rem;" data-i18n-ru="Участвуйте в событиях сервера" data-i18n-en="Take part in server events">Участвуйте в событиях сервера</p>
+    <a href="/api/events.ics" download="events.ics" data-tip="Подписка: webcal://v.just-skill.ru/api/events.ics" style="display:inline-flex;align-items:center;gap:.35rem;margin-top:.6rem;font-size:.72rem;color:var(--muted);text-decoration:none;border:1px solid rgba(150,0,28,0.25);border-radius:.5rem;padding:.35rem .75rem;" data-i18n-ru="📅 Добавить в календарь" data-i18n-en="📅 Add to calendar">📅 Добавить в календарь</a>
   </div>
 
   <!-- Status filter -->
   <div style="display:flex;gap:.4rem;margin-bottom:.6rem;flex-wrap:wrap;">
-    <button class="srv-period-btn active" onclick="filterStatus('all',this)">Все</button>
-    <button class="srv-period-btn" onclick="filterStatus('upcoming',this)">Предстоящие</button>
-    <button class="srv-period-btn" onclick="filterStatus('active',this)">Активные</button>
-    <button class="srv-period-btn" onclick="filterStatus('ended',this)">Прошедшие</button>
+    <button class="srv-period-btn active" onclick="filterStatus('all',this)" data-i18n-ru="Все" data-i18n-en="All">Все</button>
+    <button class="srv-period-btn" onclick="filterStatus('upcoming',this)" data-i18n-ru="Предстоящие" data-i18n-en="Upcoming">Предстоящие</button>
+    <button class="srv-period-btn" onclick="filterStatus('active',this)" data-i18n-ru="Активные" data-i18n-en="Active">Активные</button>
+    <button class="srv-period-btn" onclick="filterStatus('ended',this)" data-i18n-ru="Прошедшие" data-i18n-en="Past">Прошедшие</button>
   </div>
 
   <!-- Category filter -->
   <div style="display:flex;gap:.4rem;margin-bottom:1.5rem;flex-wrap:wrap;">
-    <button class="cat-pill active" onclick="filterCategory('all',this)">Все</button>
-    <button class="cat-pill" onclick="filterCategory('wipe',this)">🔥 Вайп</button>
-    <button class="cat-pill" onclick="filterCategory('tournament',this)">⚔ Турнир</button>
-    <button class="cat-pill" onclick="filterCategory('update',this)">⚡ Обновление</button>
-    <button class="cat-pill" onclick="filterCategory('event',this)">🌟 Событие</button>
+    <button class="cat-pill active" onclick="filterCategory('all',this)" data-i18n-ru="Все" data-i18n-en="All">Все</button>
+    <button class="cat-pill" onclick="filterCategory('wipe',this)" data-i18n-ru="🔥 Вайп" data-i18n-en="🔥 Wipe">🔥 Вайп</button>
+    <button class="cat-pill" onclick="filterCategory('tournament',this)" data-i18n-ru="⚔ Турнир" data-i18n-en="⚔ Tournament">⚔ Турнир</button>
+    <button class="cat-pill" onclick="filterCategory('update',this)" data-i18n-ru="⚡ Обновление" data-i18n-en="⚡ Update">⚡ Обновление</button>
+    <button class="cat-pill" onclick="filterCategory('event',this)" data-i18n-ru="🌟 Событие" data-i18n-en="🌟 Event">🌟 Событие</button>
   </div>
 
   <div id="events-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.25rem;">
-    <p style="color:var(--muted);text-align:center;grid-column:1/-1;">Загрузка…</p>
+    <p style="color:var(--muted);text-align:center;grid-column:1/-1;" data-i18n-ru="Загрузка…" data-i18n-en="Loading…">Загрузка…</p>
   </div>
 </div>
 
@@ -159,11 +163,24 @@
 <script>
 const API = '/api';
 
+// Small local i18n helper for strings this page builds at runtime (badges, countdown,
+// loading/error/empty states, join button) — _applyI18n() in common.js only handles
+// static data-i18n-ru/-en markup, same convention as faq.html's own _t().
+function _t(ru, en) { return localStorage.getItem('_lang') === 'en' ? en : ru; }
+
+// The shared toggle in common.js only swaps static data-i18n-ru/-en markup; it has no
+// idea this page also renders event cards dynamically from fetched data, so those need
+// a re-render to pick up the new language too.
+function pageToggleLanguage() {
+  toggleLanguage();
+  renderEvents();
+}
+
 const EVENT_TYPES = {
-  wipe:       { label:'Вайп',       color:'#c8002a', bg:'rgba(200,0,42,0.15)',   border:'rgba(200,0,42,0.4)',   icon:'🔥' },
-  tournament: { label:'Турнир',     color:'#c9a94a', bg:'rgba(200,160,0,0.15)', border:'rgba(200,160,0,0.4)', icon:'⚔' },
-  update:     { label:'Обновление', color:'#3b82f6', bg:'rgba(59,130,246,0.12)', border:'rgba(59,130,246,0.35)',icon:'⚡' },
-  event:      { label:'Событие',    color:'#a855f7', bg:'rgba(168,85,247,0.12)', border:'rgba(168,85,247,0.35)',icon:'🌟' },
+  wipe:       { label:{ru:'Вайп',       en:'Wipe'},       color:'#c8002a', bg:'rgba(200,0,42,0.15)',   border:'rgba(200,0,42,0.4)',   icon:'🔥' },
+  tournament: { label:{ru:'Турнир',     en:'Tournament'}, color:'#c9a94a', bg:'rgba(200,160,0,0.15)', border:'rgba(200,160,0,0.4)', icon:'⚔' },
+  update:     { label:{ru:'Обновление', en:'Update'},     color:'#3b82f6', bg:'rgba(59,130,246,0.12)', border:'rgba(59,130,246,0.35)',icon:'⚡' },
+  event:      { label:{ru:'Событие',    en:'Event'},      color:'#a855f7', bg:'rgba(168,85,247,0.12)', border:'rgba(168,85,247,0.35)',icon:'🌟' },
 };
 // Map legacy API event_type values to new categories
 const LEGACY_TYPE_MAP = { pvp:'tournament', pve:'event', social:'event', other:'event' };
@@ -186,22 +203,24 @@ function getEventType(ev) {
 
 function makeTypeBadge(typeName) {
   const t = EVENT_TYPES[typeName] || EVENT_TYPES.event;
-  return `<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;padding:.2rem .6rem;border-radius:9999px;background:${t.bg};border:1px solid ${t.border};color:${t.color};">${t.icon} ${t.label}</span>`;
+  const label = _t(t.label.ru, t.label.en);
+  return `<span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;padding:.2rem .6rem;border-radius:9999px;background:${t.bg};border:1px solid ${t.border};color:${t.color};">${t.icon} ${label}</span>`;
 }
 
 function startCountdowns() {
   document.querySelectorAll('.event-countdown[data-end]').forEach(el => {
     function tick() {
       const diff = new Date(el.dataset.end) - Date.now();
-      if (diff <= 0) { el.textContent = 'Завершено'; return; }
+      if (diff <= 0) { el.textContent = _t('Завершено', 'Ended'); return; }
       const d = Math.floor(diff/86400000);
       const h = Math.floor((diff%86400000)/3600000);
       const m = Math.floor((diff%3600000)/60000);
       const s = Math.floor((diff%60000)/1000);
       const pad = n => String(n).padStart(2,'0');
+      const dUnit = _t('д','d'), hUnit = _t('ч','h'), mUnit = _t('м','m'), sUnit = _t('с','s');
       el.innerHTML = d > 0
-        ? `<span>${d}</span><small>д</small> <span>${pad(h)}</span><small>ч</small> <span>${pad(m)}</span><small>м</small>`
-        : `<span>${pad(h)}</span><small>ч</small> <span>${pad(m)}</span><small>м</small> <span>${pad(s)}</span><small>с</small>`;
+        ? `<span>${d}</span><small>${dUnit}</small> <span>${pad(h)}</span><small>${hUnit}</small> <span>${pad(m)}</span><small>${mUnit}</small>`
+        : `<span>${pad(h)}</span><small>${hUnit}</small> <span>${pad(m)}</span><small>${mUnit}</small> <span>${pad(s)}</span><small>${sUnit}</small>`;
     }
     tick();
     setInterval(tick, 1000);
@@ -238,6 +257,19 @@ function setEventsJsonLd(events) {
   document.head.appendChild(el);
 }
 
+// Reads ?event=<id> (used by the /api/events-embed unfurl preview and the RSS feed's
+// per-event links) and scrolls to / highlights the matching card once the list has
+// rendered — a minimal deep link, not a full detail view.
+function _scrollToDeepLinkedEvent() {
+  const id = new URLSearchParams(location.search).get('event');
+  if (!id) return;
+  const card = document.querySelector(`.event-card[data-event-id="${id}"]`);
+  if (!card) return;
+  card.scrollIntoView({behavior:'smooth', block:'center'});
+  card.style.boxShadow = '0 0 0 2px var(--gold), 0 8px 40px rgba(0,0,0,0.7)';
+  setTimeout(() => { card.style.boxShadow = ''; }, 2500);
+}
+
 async function loadEvents() {
   const grid = document.getElementById('events-grid');
   try {
@@ -245,13 +277,14 @@ async function loadEvents() {
     _allEvents = d.items || [];
     renderEvents();
     setEventsJsonLd(_allEvents);
+    _scrollToDeepLinkedEvent();
   } catch {
     if (grid) grid.innerHTML = `
       <div style="grid-column:1/-1;text-align:center;padding:3.5rem 1rem;">
         <div style="font-size:3rem;margin-bottom:1rem;opacity:.6;filter:drop-shadow(0 0 12px rgba(180,0,30,0.45));">⚠</div>
-        <div class="gothic" style="font-size:1rem;color:var(--gold);margin-bottom:.5rem;">Ошибка загрузки</div>
-        <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">Не удалось загрузить события — проверьте связь и попробуйте снова.</div>
-        <button onclick="loadEvents()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">↻ Повторить</button>
+        <div class="gothic" style="font-size:1rem;color:var(--gold);margin-bottom:.5rem;">${_t('Ошибка загрузки', 'Failed to load')}</div>
+        <div style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;">${_t('Не удалось загрузить события — проверьте связь и попробуйте снова.', "Couldn't load events — check your connection and try again.")}</div>
+        <button onclick="loadEvents()" style="background:rgba(20,5,35,0.6);border:1px solid rgba(110,0,20,0.35);color:var(--muted);border-radius:.5rem;padding:.4rem .9rem;cursor:pointer;font-family:'Inter',sans-serif;font-size:.8rem;">${_t('↻ Повторить', '↻ Retry')}</button>
       </div>`;
   }
 }
@@ -282,8 +315,8 @@ function renderEvents() {
     grid.innerHTML = `
       <div style="grid-column:1/-1;text-align:center;padding:3.5rem 1rem;">
         <div style="font-size:3rem;margin-bottom:1rem;">🌑</div>
-        <div class="gothic" style="font-size:1rem;color:var(--text);margin-bottom:.5rem;">Событий нет</div>
-        <div style="font-size:.8rem;color:var(--muted);">Следите за объявлениями в Discord</div>
+        <div class="gothic" style="font-size:1rem;color:var(--text);margin-bottom:.5rem;">${_t('Событий нет', 'No events')}</div>
+        <div style="font-size:.8rem;color:var(--muted);">${_t('Следите за объявлениями в Discord', 'Watch for announcements in Discord')}</div>
       </div>`;
     return;
   }
@@ -296,7 +329,7 @@ function renderEvents() {
     const pMax = ev.max_participants;
 
     const startDt = ev.start_date
-      ? new Date(ev.start_date).toLocaleDateString('ru-RU', {day:'2-digit', month:'short', year:'numeric'})
+      ? new Date(ev.start_date).toLocaleDateString(_t('ru-RU', 'en-US'), {day:'2-digit', month:'short', year:'numeric'})
       : '—';
 
     // Countdown: upcoming → count to start, active + end_date → count to end
@@ -305,7 +338,7 @@ function renderEvents() {
       ? (ev.start_date || null)
       : ev.status === 'active' ? (ev.end_date || null) : null;
     if (countdownTarget) {
-      const label = ev.status === 'upcoming' ? 'До начала' : 'До конца';
+      const label = _t(ev.status === 'upcoming' ? 'До начала' : 'До конца', ev.status === 'upcoming' ? 'Starts in' : 'Ends in');
       countdownHtml = `
         <div style="margin-bottom:.75rem;padding:.6rem .75rem;background:rgba(255,255,255,0.03);border-radius:.5rem;border:1px solid rgba(255,255,255,0.06);">
           <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.35rem;">${label}</div>
@@ -317,7 +350,7 @@ function renderEvents() {
       : `<button onclick="joinEvent(${ev.id},this)" class="ev-join-btn" id="ev-join-${ev.id}"
           style="width:100%;padding:.5rem;background:linear-gradient(135deg,#6a001a,#a00022);border:none;border-radius:.5rem;color:#fff;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;"
           onmouseover="this.style.filter='brightness(1.2)'" onmouseout="this.style.filter=''">
-          Записаться
+          ${_t('Записаться', 'Join')}
         </button>`;
 
     return `<div class="event-card" data-event-id="${ev.id}" data-status="${ev.status}" data-type="${typeName}"
@@ -332,8 +365,8 @@ function renderEvents() {
         : '<div style="margin-bottom:.85rem;"></div>'}
       ${countdownHtml}
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:${joinBtn ? '.75rem' : '0'};">
-        <span style="font-size:.72rem;color:var(--muted);">👥 ${pCount}${pMax ? '/' + pMax : ''} участников</span>
-        <a href="/api/events/${ev.id}/ics" download="event-${ev.id}.ics" style="font-size:.68rem;color:var(--muted);text-decoration:none;" data-tip="Добавить в календарь">📅 .ics</a>
+        <span style="font-size:.72rem;color:var(--muted);">👥 ${pCount}${pMax ? '/' + pMax : ''} ${_t('участников', 'participants')}</span>
+        <a href="/api/events/${ev.id}/ics" download="event-${ev.id}.ics" style="font-size:.68rem;color:var(--muted);text-decoration:none;" data-tip="${_t('Добавить в календарь', 'Add to calendar')}">📅 .ics</a>
       </div>
       ${joinBtn}
     </div>`;
@@ -345,29 +378,29 @@ function renderEvents() {
 async function joinEvent(id, btn) {
   if (!_currentUser) { window.location.href = '/login.html'; return; }
   btn.disabled = true;
-  btn.textContent = 'Загрузка…';
+  btn.textContent = _t('Загрузка…', 'Loading…');
   try {
     const r = await fetch(`${API}/events/${id}/join`, {method:'POST', credentials:'include'});
     if (r.ok) {
-      btn.textContent = '✔ Вы записаны — отменить';
+      btn.textContent = _t('✔ Вы записаны — отменить', '✔ You joined — cancel');
       btn.style.background = 'rgba(46,230,155,.2)';
       btn.style.border = '1px solid rgba(46,230,155,.4)';
       btn.style.color = '#2ee69b';
       btn.onclick = () => leaveEvent(id, btn);
     } else {
       const d = await r.json().catch(() => ({}));
-      btn.textContent = d.detail || 'Ошибка';
+      btn.textContent = d.detail || _t('Ошибка', 'Error');
       btn.style.background = 'rgba(248,113,113,.2)';
       btn.disabled = false;
     }
-  } catch { btn.textContent = 'Ошибка'; btn.disabled = false; }
+  } catch { btn.textContent = _t('Ошибка', 'Error'); btn.disabled = false; }
 }
 
 async function leaveEvent(id, btn) {
   btn.disabled = true;
   try {
     await fetch(`${API}/events/${id}/leave`, {method:'DELETE', credentials:'include'});
-    btn.textContent = 'Записаться';
+    btn.textContent = _t('Записаться', 'Join');
     btn.style.background = 'linear-gradient(135deg,#6a001a,#a00022)';
     btn.style.border = 'none';
     btn.style.color = '#fff';

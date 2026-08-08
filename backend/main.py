@@ -515,6 +515,21 @@ async def rss_feed(db: AsyncSession = Depends(get_db)):
     )
     news_items = result.scalars().all()
 
+    # Events merged into the same feed alongside news (not a separate block) — reasonable
+    # choice: only "upcoming"/"active" events (an "ended"/"cancelled" event is stale news
+    # a feed reader gains nothing from), newest-announced first. created_at (when the
+    # event was added, same field news sorts on) is used as the item's pubDate/sort key
+    # rather than start_date — pubDate conventionally means "when this was published to
+    # the feed", not "when the thing described happens"; the actual start time is folded
+    # into the description text instead so readers still see it.
+    event_result = await db.execute(
+        select(Event)
+        .where(Event.status.in_(("upcoming", "active")))
+        .order_by(Event.created_at.desc())
+        .limit(20)
+    )
+    events = event_result.scalars().all()
+
     base_url = "https://v.just-skill.ru"
     # Try to read site URL from settings
     try:
@@ -526,25 +541,55 @@ async def rss_feed(db: AsyncSession = Depends(get_db)):
         pass
 
     _strip_html = re.compile(r"<[^>]+>")
-    items_xml = ""
+
+    def _xml_escape(text: str) -> str:
+        return (text or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    def _rfc822(dt):
+        if dt is None:
+            return "", datetime.min.replace(tzinfo=timezone.utc)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.strftime("%a, %d %b %Y %H:%M:%S +0000"), dt
+
+    # (sort_key, rendered <item>) pairs, merged and sorted below so events interleave
+    # with news in one reverse-chronological list instead of appearing as a separate block.
+    feed_entries = []
+
     for n in news_items:
-        title = (n.title or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        desc = _strip_html.sub("", n.content or "")[:300].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        title = _xml_escape(n.title)
+        desc = _xml_escape(_strip_html.sub("", n.content or "")[:300])
         link = f"{base_url}/?news={n.slug}"
-        pub_date = ""
-        if n.created_at:
-            dt = n.created_at
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
-            pub_date = dt.strftime("%a, %d %b %Y %H:%M:%S +0000")
-        items_xml += f"""
+        pub_date, sort_key = _rfc822(n.created_at)
+        feed_entries.append((sort_key, f"""
     <item>
       <title>{title}</title>
       <link>{link}</link>
       <description>{desc}</description>
       <pubDate>{pub_date}</pubDate>
       <guid>{link}</guid>
-    </item>"""
+    </item>"""))
+
+    for ev in events:
+        title = _xml_escape(ev.title)
+        when = _fmt_dt(ev.start_date) or ""
+        body = _strip_html.sub("", ev.description or "")[:250]
+        desc = _xml_escape(f"{when} — {body}" if body else when)
+        # events.html reads ?event=<id> to scroll to/highlight the matching card
+        # (see _scrollToDeepLinkedEvent in events.html).
+        link = f"{base_url}/events.html?event={ev.id}"
+        pub_date, sort_key = _rfc822(ev.created_at)
+        feed_entries.append((sort_key, f"""
+    <item>
+      <title>{title}</title>
+      <link>{link}</link>
+      <description>{desc}</description>
+      <pubDate>{pub_date}</pubDate>
+      <guid>{link}</guid>
+    </item>"""))
+
+    feed_entries.sort(key=lambda entry: entry[0], reverse=True)
+    items_xml = "".join(entry[1] for entry in feed_entries)
 
     rss = f"""<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0">

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy import select
 
-from backend.auth import create_access_token, get_password_hash
+from backend.auth import COOKIE_NAME, create_access_token, get_password_hash
 from backend.models import Event, EventParticipant, User
 
 pytestmark = pytest.mark.asyncio
@@ -29,6 +29,14 @@ async def _make_user(db_session, username, role="user"):
 def _bearer(user):
     token = create_access_token({"sub": str(user.id)})
     return {"Authorization": f"Bearer {token}"}
+
+
+def _session_token(user):
+    # GET /api/events resolves the optional viewer (for is_joined) straight from the
+    # session cookie rather than via the get_current_user Bearer-or-cookie dependency
+    # used by the auth-required endpoints — see the manual jose_jwt.decode block in
+    # list_events. A Bearer Authorization header alone is invisible to it.
+    return create_access_token({"sub": str(user.id)})
 
 
 async def _make_event(db_session, creator, title="Blood Moon Tournament", status="upcoming",
@@ -347,3 +355,72 @@ async def test_my_next_event_prioritizes_active_over_later_upcoming(client, db_s
     r = await client.get("/api/events/mine/next", headers=_bearer(user))
     assert r.status_code == 200
     assert r.json()["event"]["title"] == "Ongoing Active"
+
+
+# ─── Batched participant-count / is_joined resolution (list_events) ─────────────
+# list_events used to run one COUNT query and (for a logged-in viewer) one membership
+# query PER event in the page — an N+1. It was rewritten to a single grouped-count query
+# plus a single membership query for the whole page. This is a correctness regression
+# test for that rewrite, not a query-count test (aiosqlite doesn't make query-counting
+# practical here) — it seeds several events with different participant counts, has the
+# viewer join only some of them, and asserts every event's participant_count/is_joined
+# still comes out right when resolved in a batch instead of one row at a time.
+
+async def test_list_events_batched_counts_and_is_joined_across_many_events(client, db_session):
+    admin = await _make_user(db_session, "EventAdminBatch", role="admin")
+    viewer = await _make_user(db_session, "ViewerBatch", role="user")
+    bystanders = [await _make_user(db_session, f"Bystander{i}", role="user") for i in range(4)]
+
+    await _make_event(db_session, admin, title="Batch Event A")  # 0 participants
+    ev_b = await _make_event(db_session, admin, title="Batch Event B")  # 2 participants, viewer joined
+    ev_c = await _make_event(db_session, admin, title="Batch Event C")  # 3 participants, viewer NOT joined
+    ev_d = await _make_event(db_session, admin, title="Batch Event D")  # 1 participant, viewer joined
+
+    # ev_b: viewer + 1 bystander
+    db_session.add(EventParticipant(event_id=ev_b.id, user_id=viewer.id))
+    db_session.add(EventParticipant(event_id=ev_b.id, user_id=bystanders[0].id))
+    # ev_c: 3 bystanders, no viewer
+    for b in bystanders[1:4]:
+        db_session.add(EventParticipant(event_id=ev_c.id, user_id=b.id))
+    # ev_d: viewer only
+    db_session.add(EventParticipant(event_id=ev_d.id, user_id=viewer.id))
+    await db_session.commit()
+
+    client.cookies.set(COOKIE_NAME, _session_token(viewer))
+    try:
+        r = await client.get("/api/events", params={"status": "upcoming", "per_page": 50})
+    finally:
+        client.cookies.clear()
+    assert r.status_code == 200
+    by_title = {i["title"]: i for i in r.json()["items"]}
+
+    assert by_title["Batch Event A"]["participant_count"] == 0
+    assert by_title["Batch Event A"]["is_joined"] is False
+
+    assert by_title["Batch Event B"]["participant_count"] == 2
+    assert by_title["Batch Event B"]["is_joined"] is True
+
+    assert by_title["Batch Event C"]["participant_count"] == 3
+    assert by_title["Batch Event C"]["is_joined"] is False
+
+    assert by_title["Batch Event D"]["participant_count"] == 1
+    assert by_title["Batch Event D"]["is_joined"] is True
+
+
+async def test_admin_event_participants_batched_lookup_multiple_users(client, db_session):
+    admin = await _make_user(db_session, "EventAdminBatch2", role="admin")
+    ev = await _make_event(db_session, admin, title="Multi Roster Event")
+    joiners = [await _make_user(db_session, f"RosterUser{i}", role="user") for i in range(3)]
+
+    for u in joiners:
+        r = await client.post(f"/api/events/{ev.id}/join", headers=_bearer(u))
+        assert r.status_code == 200
+
+    r = await client.get(f"/api/admin/events/{ev.id}/participants", headers=_bearer(admin))
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body) == 3
+    got = {(row["user_id"], row["username"]) for row in body}
+    expected = {(u.id, u.username) for u in joiners}
+    assert got == expected
+    assert all(row["registered_at"] for row in body)

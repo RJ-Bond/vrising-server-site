@@ -1,3 +1,5 @@
+import html
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -8,11 +10,17 @@ from sqlalchemy import select, func, delete
 from jose import jwt as jose_jwt
 
 from ..database import get_db
-from ..models import User, Event, EventParticipant, RevokedToken
+from ..models import User, Event, EventParticipant, RevokedToken, Setting
 from ..auth import get_admin_user, get_current_user, SECRET_KEY, ALGORITHM, COOKIE_NAME
 from ..helpers import _fmt_dt, _audit, activity_broadcast
 
 router = APIRouter()
+
+# Repo mount path for frontend/events.html inside the production container — mirrors
+# main.py's _INDEX_HTML_PATH (used by /api/news-embed). Kept local to this router
+# rather than imported from main.py to avoid a circular import (main.py imports this
+# router module at startup).
+_EVENTS_HTML_PATH = "/opt/vrising-site/frontend/events.html"
 
 
 # ─── Events & Tournaments ─────────────────────────────────────────────────────
@@ -61,27 +69,38 @@ async def list_events(
     except Exception:
         pass
 
-    items = []
-    for ev in rows:
-        cnt = (await db.execute(
-            select(func.count(EventParticipant.user_id)).where(EventParticipant.event_id == ev.id)
-        )).scalar_one()
-        is_joined = False
+    # Batch both per-event lookups that used to run once per row (an N+1 for the
+    # count, and another N+1 for the viewer's own membership check) into two queries
+    # total for the whole page, then assemble in Python below.
+    event_ids = [ev.id for ev in rows]
+    participant_counts: dict[int, int] = {}
+    joined_ids: set[int] = set()
+    if event_ids:
+        count_rows = (await db.execute(
+            select(EventParticipant.event_id, func.count())
+            .where(EventParticipant.event_id.in_(event_ids))
+            .group_by(EventParticipant.event_id)
+        )).all()
+        participant_counts = {eid: cnt for eid, cnt in count_rows}
         if current_user_id:
-            ep = (await db.execute(
-                select(EventParticipant).where(
-                    EventParticipant.event_id == ev.id,
+            joined_rows = (await db.execute(
+                select(EventParticipant.event_id).where(
+                    EventParticipant.event_id.in_(event_ids),
                     EventParticipant.user_id == current_user_id,
                 )
-            )).scalar_one_or_none()
-            is_joined = ep is not None
+            )).scalars().all()
+            joined_ids = set(joined_rows)
+
+    items = []
+    for ev in rows:
         items.append({
             "id": ev.id, "title": ev.title, "description": ev.description,
             "event_type": ev.event_type, "start_date": _fmt_dt(ev.start_date),
             "end_date": _fmt_dt(ev.end_date), "max_participants": ev.max_participants,
             "status": ev.status, "cover_url": ev.cover_url,
             "created_by": ev.created_by, "created_at": _fmt_dt(ev.created_at),
-            "participant_count": cnt, "is_joined": is_joined,
+            "participant_count": participant_counts.get(ev.id, 0),
+            "is_joined": ev.id in joined_ids,
         })
     return {"items": items, "total": total}
 
@@ -301,9 +320,15 @@ async def admin_event_participants(
         select(EventParticipant).where(EventParticipant.event_id == event_id)
         .order_by(EventParticipant.registered_at.asc())
     )).scalars().all()
+    # Single batched user lookup instead of one db.get(User, ...) per row.
+    user_ids = [ep.user_id for ep in rows]
+    users_by_id: dict[int, User] = {}
+    if user_ids:
+        user_rows = (await db.execute(select(User).where(User.id.in_(user_ids)))).scalars().all()
+        users_by_id = {u.id: u for u in user_rows}
     result = []
     for ep in rows:
-        u = await db.get(User, ep.user_id)
+        u = users_by_id.get(ep.user_id)
         result.append({
             "user_id": ep.user_id,
             "username": u.username if u else str(ep.user_id),
@@ -311,6 +336,70 @@ async def admin_event_participants(
             "registered_at": _fmt_dt(ep.registered_at),
         })
     return result
+
+
+# ─── Link-unfurl embed ───────────────────────────────────────────────────────
+# Mirrors GET /api/news-embed in backend/main.py: link-unfurlers (Discord/Telegram/VK/
+# Twitter, most search bots) don't run JS, so they never see events.html's client-side
+# setEventsJsonLd()/meta swap and would otherwise always show the generic events-list
+# title/description/image for every shared event link, no matter which event it was.
+# Re-uses frontend/events.html itself (read from the repo mount) so layout/styling never
+# drifts out of sync — only the meta tag values are swapped before serving. Kept in this
+# router rather than main.py (unlike news-embed) since this slice's scope is limited to
+# events.py/events.html; wiring nginx's crawler-UA map (see nginx/nginx*.conf's
+# $is_crawler_ua, which currently only proxies "/?news=" requests to /api/news-embed) to
+# also route "/events.html?event=" crawler requests here is a follow-up outside that
+# scope — the endpoint itself is functional and tested standalone in the meantime.
+_EVENTS_EMBED_META_PATTERNS = [
+    (re.compile(r'(<title id="page-title">).*?(</title>)'), "title"),
+    (re.compile(r'(<meta id="meta-description"[^>]*content=")[^"]*(")'), "desc"),
+    (re.compile(r'(<link rel="canonical" href=")[^"]*(")'), "url"),
+    (re.compile(r'(<meta property="og:url" content=")[^"]*(")'), "url"),
+    (re.compile(r'(<meta id="meta-og-title"[^>]*content=")[^"]*(")'), "title"),
+    (re.compile(r'(<meta id="meta-og-description"[^>]*content=")[^"]*(")'), "desc"),
+    (re.compile(r'(<meta property="og:image" content=")[^"]*(")'), "image"),
+]
+
+
+@router.get("/api/events-embed")
+async def events_embed(id: int, db: AsyncSession = Depends(get_db)):
+    """Server-rendered <head> meta for one event, for crawlers that don't run JS. Falls
+    back to the page's default meta for an unknown/missing event id, same as news-embed."""
+    try:
+        with open(_EVENTS_HTML_PATH, "r", encoding="utf-8") as f:
+            page = f.read()
+    except OSError as e:
+        raise HTTPException(status_code=404, detail="events.html not found") from e
+
+    ev = (await db.execute(select(Event).where(Event.id == id))).scalar_one_or_none()
+    if ev is None:
+        return Response(content=page, media_type="text/html; charset=utf-8")
+
+    base_url = "https://v.just-skill.ru"
+    try:
+        su_res = await db.execute(select(Setting).where(Setting.key == "https_domain"))
+        su = su_res.scalar_one_or_none()
+        if su and su.value.strip():
+            base_url = f"https://{su.value.strip()}"
+    except Exception:
+        pass
+
+    image = ev.cover_url or f"{base_url}/uploads/og-default.png"
+    if image.startswith("/"):
+        image = base_url + image
+    plain_desc = re.sub(r"<[^>]+>", "", ev.description or ev.title).strip()[:160]
+    link = f"{base_url}/events.html?event={ev.id}"
+
+    values = {
+        "title": html.escape(f"{ev.title} — V Rising"),
+        "desc": html.escape(plain_desc),
+        "url": html.escape(link),
+        "image": html.escape(image),
+    }
+    for pattern, key in _EVENTS_EMBED_META_PATTERNS:
+        page = pattern.sub(lambda m, v=values[key]: m.group(1) + v + m.group(2), page, count=1)
+
+    return Response(content=page, media_type="text/html; charset=utf-8")
 
 
 # ─── Calendar export (.ics) ─────────────────────────────────────────────────────
