@@ -68,6 +68,13 @@
     .region-card.open { border-color:rgba(200,0,42,0.4); box-shadow:0 0 18px rgba(130,0,22,0.1),-2px 0 10px rgba(130,0,22,0.07); }
     .region-arrow { color:var(--gold); transition:transform .25s; flex-shrink:0; }
     .region-card.open .region-arrow { transform:rotate(180deg); }
+    .region-copy-btn {
+      display:inline-flex; align-items:center; justify-content:center; width:1.6rem; height:1.6rem;
+      border-radius:.4rem; border:1px solid transparent; background:none; color:var(--muted);
+      cursor:pointer; transition:all .2s; flex-shrink:0; font-size:.78rem; line-height:1;
+    }
+    .region-copy-btn:hover { color:var(--text); background:rgba(150,0,28,0.12); border-color:rgba(160,0,35,0.35); }
+    .region-copy-btn.copied { color:#2ee69b; }
     .region-more {
       max-height:0; overflow:hidden; transition:max-height .3s ease;
       font-size:.76rem; color:var(--muted); line-height:1.6;
@@ -97,49 +104,53 @@
 <!-- NAV -->
 <div class="mobile-overlay" :class="{ open: mobNavOpen }" @click="mobNavOpen = false"></div>
 <div class="mobile-drawer" :class="{ open: mobNavOpen }">
-  <a href="/">🏠 Главная</a>
-  <a href="/servers.html">🖥️ Сервера</a>
-  <a href="/leaderboard.html">🏆 Игроки</a>
-  <a href="/clans.html">🛡️ Кланы</a>
-  <a href="/bans.html">🚫 Баны</a>
-  <a href="/shop.html">🛒 Магазин</a>
+  <a href="/" data-i18n-ru="🏠 Главная" data-i18n-en="🏠 Home">🏠 Главная</a>
+  <a href="/servers.html" data-i18n-ru="🖥️ Сервера" data-i18n-en="🖥️ Servers">🖥️ Сервера</a>
+  <a href="/leaderboard.html" data-i18n-ru="🏆 Игроки" data-i18n-en="🏆 Players">🏆 Игроки</a>
+  <a href="/clans.html" data-i18n-ru="🛡️ Кланы" data-i18n-en="🛡️ Clans">🛡️ Кланы</a>
+  <a href="/bans.html" data-i18n-ru="🚫 Баны" data-i18n-en="🚫 Bans">🚫 Баны</a>
+  <a href="/shop.html" data-i18n-ru="🛒 Магазин" data-i18n-en="🛒 Shop">🛒 Магазин</a>
   <a href="/map.html">🗺️ Карта</a>
-  <a href="/faq.html">❓ FAQ</a>
-  <a href="/events.html">📅 События</a>
-  <a href="/profile.html">👤 Профиль</a>
-  <a href="#" onclick="openGlobalSearch();return false;">🔍 Поиск</a>
+  <a href="/faq.html" data-i18n-ru="❓ FAQ" data-i18n-en="❓ FAQ">❓ FAQ</a>
+  <a href="/events.html" data-i18n-ru="📅 События" data-i18n-en="📅 Events">📅 События</a>
+  <a href="/profile.html" data-i18n-ru="👤 Профиль" data-i18n-en="👤 Profile">👤 Профиль</a>
+  <a href="#" onclick="openGlobalSearch();return false;" data-i18n-ru="🔍 Поиск" data-i18n-en="🔍 Search">🔍 Поиск</a>
 </div>
 <nav class="glass-nav">
   <div style="max-width:1000px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);"></a>
     <div class="nav-links">
-      <a href="/" class="topnav-link">🏠 Главная</a>
-      <a href="/servers.html" class="topnav-link">🖥️ Сервера</a>
-      <a href="/leaderboard.html" class="topnav-link">🏆 Игроки</a>
-      <a href="/clans.html" class="topnav-link">🛡️ Кланы</a>
-      <a href="/bans.html" class="topnav-link">🚫 Баны</a>
-      <a href="/shop.html" class="topnav-link">🛒 Магазин</a>
+      <a href="/" class="topnav-link" data-i18n-ru="🏠 Главная" data-i18n-en="🏠 Home">🏠 Главная</a>
+      <a href="/servers.html" class="topnav-link" data-i18n-ru="🖥️ Сервера" data-i18n-en="🖥️ Servers">🖥️ Сервера</a>
+      <a href="/leaderboard.html" class="topnav-link" data-i18n-ru="🏆 Игроки" data-i18n-en="🏆 Players">🏆 Игроки</a>
+      <a href="/clans.html" class="topnav-link" data-i18n-ru="🛡️ Кланы" data-i18n-en="🛡️ Clans">🛡️ Кланы</a>
+      <a href="/bans.html" class="topnav-link" data-i18n-ru="🚫 Баны" data-i18n-en="🚫 Bans">🚫 Баны</a>
+      <a href="/shop.html" class="topnav-link" data-i18n-ru="🛒 Магазин" data-i18n-en="🛒 Shop">🛒 Магазин</a>
       <div class="nav-dropdown">
-        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)">Ещё ▾</button>
+        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)" data-i18n-ru="Ещё ▾" data-i18n-en="More ▾">Ещё ▾</button>
         <div class="nav-dropdown-menu">
           <a href="/map.html" class="nav-dropdown-item">🗺️ Карта</a>
-          <a href="/faq.html" class="nav-dropdown-item">❓ FAQ</a>
-          <a href="/events.html" class="nav-dropdown-item">📅 События</a>
+          <a href="/faq.html" class="nav-dropdown-item" data-i18n-ru="❓ FAQ" data-i18n-en="❓ FAQ">❓ FAQ</a>
+          <a href="/events.html" class="nav-dropdown-item" data-i18n-ru="📅 События" data-i18n-en="📅 Events">📅 События</a>
         </div>
       </div>
-      <button type="button" class="nav-icon-btn" onclick="openGlobalSearch()" aria-label="Поиск по сайту" data-tip="Поиск (Ctrl+K)">
+      <button type="button" class="nav-icon-btn" onclick="openGlobalSearch()" aria-label="Поиск по сайту" data-tip="Поиск (Ctrl+K)" data-i18n-aria-ru="Поиск по сайту" data-i18n-aria-en="Site search">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-search"></use></svg>
       </button>
       <div id="nav-profile-link" class="nav-dropdown" style="display:none;">
-        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)">👤 Профиль ▾</button>
+        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)" data-i18n-ru="👤 Профиль ▾" data-i18n-en="👤 Profile ▾">👤 Профиль ▾</button>
         <div class="nav-dropdown-menu">
-          <a href="/profile.html" class="nav-dropdown-item">Мой профиль</a>
-          <a href="#" class="nav-dropdown-item" onclick="logout();return false;">Выйти</a>
+          <a href="/profile.html" class="nav-dropdown-item" data-i18n-ru="Мой профиль" data-i18n-en="My profile">Мой профиль</a>
+          <a href="#" class="nav-dropdown-item" onclick="logout();return false;" data-i18n-ru="Выйти" data-i18n-en="Log out">Выйти</a>
         </div>
       </div>
-      <a id="nav-login-link" href="/login.html" class="topnav-link">Войти</a>
+      <a id="nav-login-link" href="/login.html" class="topnav-link" data-i18n-ru="Войти" data-i18n-en="Log in">Войти</a>
     </div>
-    <button class="nav-burger" @click="mobNavOpen = !mobNavOpen" aria-label="Меню">☰</button>
+    <button id="lang-toggle-btn" onclick="toggleLanguage()" title="English UI (site content stays Russian)"
+      style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;padding:0 .5rem;height:2rem;font-size:.7rem;font-weight:700;letter-spacing:.05em;cursor:pointer;color:#9488a8;transition:all .2s;"
+      onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
+      onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">EN</button>
+    <button class="nav-burger" @click="mobNavOpen = !mobNavOpen" aria-label="Меню" data-i18n-aria-ru="Меню" data-i18n-aria-en="Menu">☰</button>
   </div>
 </nav>
 
@@ -147,14 +158,14 @@
   <div style="text-align:center;margin-bottom:1.5rem;">
     <div style="display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:.5rem;">
       <span style="height:1px;width:36px;background:linear-gradient(90deg,transparent,var(--gold));"></span>
-      <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;">Карта мира Вардоран</h1>
+      <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;" data-i18n-ru="Карта мира Вардоран" data-i18n-en="Map of Vardoran">Карта мира Вардоран</h1>
       <span style="height:1px;width:36px;background:linear-gradient(90deg,var(--gold),transparent);"></span>
     </div>
-    <p style="font-size:.8rem;color:var(--muted);">Краткий гид по регионам — куда идти и чего остерегаться</p>
+    <p style="font-size:.8rem;color:var(--muted);" data-i18n-ru="Краткий гид по регионам — куда идти и чего остерегаться" data-i18n-en="A quick regional guide — where to go and what to watch out for">Краткий гид по регионам — куда идти и чего остерегаться</p>
   </div>
 
   <div class="note-box">
-    ℹ️ Это общий обзор регионов базовой карты V Rising для новичков. Точный уровень опасности, лут и события могут отличаться в зависимости от настроек и модов нашего сервера — актуальные правила смотрите на <a href="/#rules-section" style="color:var(--gold);">главной странице</a>.
+    ℹ️ <span data-i18n-ru="Это общий обзор регионов базовой карты V Rising для новичков. Точный уровень опасности, лут и события могут отличаться в зависимости от настроек и модов нашего сервера — актуальные правила смотрите на" data-i18n-en="This is a general overview of V Rising's base-game regions for newcomers. Actual danger level, loot, and events may differ depending on our server's settings and mods — see the current rules on the">Это общий обзор регионов базовой карты V Rising для новичков. Точный уровень опасности, лут и события могут отличаться в зависимости от настроек и модов нашего сервера — актуальные правила смотрите на</span> <a href="/#rules-section" style="color:var(--gold);" data-i18n-ru="главной странице" data-i18n-en="home page">главной странице</a>.
   </div>
 
   <div class="region-grid">
@@ -162,120 +173,144 @@
     <div class="g-card region-card" id="region-1" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(1)" onkeydown="onRegionKey(event,1)">
       <div class="region-head">
         <span class="region-icon">🌲</span>
-        <span class="region-name">Farbane Woods</span>
-        <span class="region-tier low">Старт</span>
+        <span class="region-name" data-i18n-ru="Farbane Woods" data-i18n-en="Farbane Woods">Farbane Woods</span>
+        <span class="region-tier low" data-i18n-ru="Старт" data-i18n-en="Start">Старт</span>
+        <button type="button" class="region-copy-btn" onclick="copyRegionLink(event,1)" aria-label="Скопировать ссылку на регион" data-i18n-aria-ru="Скопировать ссылку на регион" data-i18n-aria-en="Copy link to this region" data-tip="Скопировать ссылку">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </button>
         <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
-      <p class="region-desc">Стартовый регион почти всех персонажей. Леса, болота и первые поселения бандитов — здесь добывается базовый материал и проходятся первые боссы V крови.</p>
+      <p class="region-desc" data-i18n-ru="Стартовый регион почти всех персонажей. Леса, болота и первые поселения бандитов — здесь добывается базовый материал и проходятся первые боссы V крови." data-i18n-en="The starting region for almost every character. Forests, swamps, and the first bandit camps — this is where you gather basic materials and take down the first V Blood bosses.">Стартовый регион почти всех персонажей. Леса, болота и первые поселения бандитов — здесь добывается базовый материал и проходятся первые боссы V крови.</p>
       <div class="region-more" id="region-more-1"><div class="region-more-inner">
-        <span class="region-more-label">Снаряжение:</span> достаточно базового, добытого в первые часы.<br>
-        <span class="region-more-label">Ландшафт:</span> смешанные леса, болота, руины людских поселений и бандитские лагеря.<br>
-        <span class="region-more-label">Боссы:</span> первые V Blood здесь дают чертежи для стартового вампирского снаряжения и первых построек замка.
+        <span class="region-more-label" data-i18n-ru="Снаряжение:" data-i18n-en="Gear:">Снаряжение:</span> <span data-i18n-ru="достаточно базового, добытого в первые часы." data-i18n-en="basic equipment gathered in the first few hours is enough.">достаточно базового, добытого в первые часы.</span><br>
+        <span class="region-more-label" data-i18n-ru="Ландшафт:" data-i18n-en="Terrain:">Ландшафт:</span> <span data-i18n-ru="смешанные леса, болота, руины людских поселений и бандитские лагеря." data-i18n-en="mixed forests, swamps, ruined human settlements, and bandit camps.">смешанные леса, болота, руины людских поселений и бандитские лагеря.</span><br>
+        <span class="region-more-label" data-i18n-ru="Боссы:" data-i18n-en="Bosses:">Боссы:</span> <span data-i18n-ru="первые V Blood здесь дают чертежи для стартового вампирского снаряжения и первых построек замка." data-i18n-en="the first V Bloods here drop blueprints for starter vampire gear and the earliest castle structures.">первые V Blood здесь дают чертежи для стартового вампирского снаряжения и первых построек замка.</span>
       </div></div>
     </div>
 
     <div class="g-card region-card" id="region-2" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(2)" onkeydown="onRegionKey(event,2)">
       <div class="region-head">
         <span class="region-icon">🌾</span>
-        <span class="region-name">Dunley Farmlands</span>
-        <span class="region-tier mid">Средний</span>
+        <span class="region-name" data-i18n-ru="Dunley Farmlands" data-i18n-en="Dunley Farmlands">Dunley Farmlands</span>
+        <span class="region-tier mid" data-i18n-ru="Средний" data-i18n-en="Mid">Средний</span>
+        <button type="button" class="region-copy-btn" onclick="copyRegionLink(event,2)" aria-label="Скопировать ссылку на регион" data-i18n-aria-ru="Скопировать ссылку на регион" data-i18n-aria-en="Copy link to this region" data-tip="Скопировать ссылку">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </button>
         <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
-      <p class="region-desc">Фермерские земли с мельницами и церквями. Местные жители и охотники на нежить становятся серьёзнее — пригодится защита от серебра.</p>
+      <p class="region-desc" data-i18n-ru="Фермерские земли с мельницами и церквями. Местные жители и охотники на нежить становятся серьёзнее — пригодится защита от серебра." data-i18n-en="Farmland dotted with mills and churches. Locals and undead hunters get tougher here — silver resistance comes in handy.">Фермерские земли с мельницами и церквями. Местные жители и охотники на нежить становятся серьёзнее — пригодится защита от серебра.</p>
       <div class="region-more" id="region-more-2"><div class="region-more-inner">
-        <span class="region-more-label">Снаряжение:</span> желательна базовая защита от серебра — здесь оно встречается заметно чаще, чем в Farbane.<br>
-        <span class="region-more-label">Ландшафт:</span> открытые поля, мельницы, фермы и небольшие церкви.<br>
-        <span class="region-more-label">Боссы:</span> охотники на нежить организованы лучше — держитесь укрытий и избегайте открытых полей днём.
+        <span class="region-more-label" data-i18n-ru="Снаряжение:" data-i18n-en="Gear:">Снаряжение:</span> <span data-i18n-ru="желательна базовая защита от серебра — здесь оно встречается заметно чаще, чем в Farbane." data-i18n-en="basic silver resistance is recommended — it shows up noticeably more often here than in Farbane.">желательна базовая защита от серебра — здесь оно встречается заметно чаще, чем в Farbane.</span><br>
+        <span class="region-more-label" data-i18n-ru="Ландшафт:" data-i18n-en="Terrain:">Ландшафт:</span> <span data-i18n-ru="открытые поля, мельницы, фермы и небольшие церкви." data-i18n-en="open fields, mills, farms, and small churches.">открытые поля, мельницы, фермы и небольшие церкви.</span><br>
+        <span class="region-more-label" data-i18n-ru="Боссы:" data-i18n-en="Bosses:">Боссы:</span> <span data-i18n-ru="охотники на нежить организованы лучше — держитесь укрытий и избегайте открытых полей днём." data-i18n-en="undead hunters are better organized here — stick to cover and avoid open fields during the day.">охотники на нежить организованы лучше — держитесь укрытий и избегайте открытых полей днём.</span>
       </div></div>
     </div>
 
     <div class="g-card region-card" id="region-3" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(3)" onkeydown="onRegionKey(event,3)">
       <div class="region-head">
         <span class="region-icon">⛪</span>
-        <span class="region-name">Silverlight Hills</span>
-        <span class="region-tier mid">Средний</span>
+        <span class="region-name" data-i18n-ru="Silverlight Hills" data-i18n-en="Silverlight Hills">Silverlight Hills</span>
+        <span class="region-tier mid" data-i18n-ru="Средний" data-i18n-en="Mid">Средний</span>
+        <button type="button" class="region-copy-btn" onclick="copyRegionLink(event,3)" aria-label="Скопировать ссылку на регион" data-i18n-aria-ru="Скопировать ссылку на регион" data-i18n-aria-en="Copy link to this region" data-tip="Скопировать ссылку">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </button>
         <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
-      <p class="region-desc">Святые холмы паладинов. Серебряное оружие наносит вампирам повышенный урон — заходите подготовленными и избегайте света без укрытия.</p>
+      <p class="region-desc" data-i18n-ru="Святые холмы паладинов. Серебряное оружие наносит вампирам повышенный урон — заходите подготовленными и избегайте света без укрытия." data-i18n-en="The paladins' holy hills. Silver weapons deal increased damage to vampires — come prepared and avoid daylight without cover.">Святые холмы паладинов. Серебряное оружие наносит вампирам повышенный урон — заходите подготовленными и избегайте света без укрытия.</p>
       <div class="region-more" id="region-more-3"><div class="region-more-inner">
-        <span class="region-more-label">Снаряжение:</span> максимально доступное сопротивление серебру, надёжное укрытие от солнца в пути.<br>
-        <span class="region-more-label">Ландшафт:</span> холмы, паладинские заставы и святые постройки.<br>
-        <span class="region-more-label">Боссы:</span> один из самых опасных регионов этого уровня — высокая концентрация серебряного и святого урона.
+        <span class="region-more-label" data-i18n-ru="Снаряжение:" data-i18n-en="Gear:">Снаряжение:</span> <span data-i18n-ru="максимально доступное сопротивление серебру, надёжное укрытие от солнца в пути." data-i18n-en="the highest silver resistance you can get, plus reliable sun cover for travel.">максимально доступное сопротивление серебру, надёжное укрытие от солнца в пути.</span><br>
+        <span class="region-more-label" data-i18n-ru="Ландшафт:" data-i18n-en="Terrain:">Ландшафт:</span> <span data-i18n-ru="холмы, паладинские заставы и святые постройки." data-i18n-en="hills, paladin outposts, and holy structures.">холмы, паладинские заставы и святые постройки.</span><br>
+        <span class="region-more-label" data-i18n-ru="Боссы:" data-i18n-en="Bosses:">Боссы:</span> <span data-i18n-ru="один из самых опасных регионов этого уровня — высокая концентрация серебряного и святого урона." data-i18n-en="one of the most dangerous regions at this tier — a high concentration of silver and holy damage.">один из самых опасных регионов этого уровня — высокая концентрация серебряного и святого урона.</span>
       </div></div>
     </div>
 
     <div class="g-card region-card" id="region-4" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(4)" onkeydown="onRegionKey(event,4)">
       <div class="region-head">
         <span class="region-icon">☠️</span>
-        <span class="region-name">Cursed Forest</span>
-        <span class="region-tier high">Опасно</span>
+        <span class="region-name" data-i18n-ru="Cursed Forest" data-i18n-en="Cursed Forest">Cursed Forest</span>
+        <span class="region-tier high" data-i18n-ru="Опасно" data-i18n-en="Dangerous">Опасно</span>
+        <button type="button" class="region-copy-btn" onclick="copyRegionLink(event,4)" aria-label="Скопировать ссылку на регион" data-i18n-aria-ru="Скопировать ссылку на регион" data-i18n-aria-en="Copy link to this region" data-tip="Скопировать ссылку">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </button>
         <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
-      <p class="region-desc">Заражённый чумой лес. Враги наносят урон ядом и порчей — без сопротивления к чуме лучше не задерживаться надолго.</p>
+      <p class="region-desc" data-i18n-ru="Заражённый чумой лес. Враги наносят урон ядом и порчей — без сопротивления к чуме лучше не задерживаться надолго." data-i18n-en="A forest ravaged by plague. Enemies deal poison and blight damage — without plague resistance, it's best not to linger.">Заражённый чумой лес. Враги наносят урон ядом и порчей — без сопротивления к чуме лучше не задерживаться надолго.</p>
       <div class="region-more" id="region-more-4"><div class="region-more-inner">
-        <span class="region-more-label">Снаряжение:</span> сопротивление яду/чуме крайне желательно перед долгим пребыванием.<br>
-        <span class="region-more-label">Ландшафт:</span> мёртвые деревья, топи и заражённые чумой поселения.<br>
-        <span class="region-more-label">Боссы:</span> урон гниением и порчей стакается — не задерживайтесь в очагах заражения без резиста.
+        <span class="region-more-label" data-i18n-ru="Снаряжение:" data-i18n-en="Gear:">Снаряжение:</span> <span data-i18n-ru="сопротивление яду/чуме крайне желательно перед долгим пребыванием." data-i18n-en="poison/plague resistance is strongly recommended before spending much time here.">сопротивление яду/чуме крайне желательно перед долгим пребыванием.</span><br>
+        <span class="region-more-label" data-i18n-ru="Ландшафт:" data-i18n-en="Terrain:">Ландшафт:</span> <span data-i18n-ru="мёртвые деревья, топи и заражённые чумой поселения." data-i18n-en="dead trees, bogs, and plague-ridden settlements.">мёртвые деревья, топи и заражённые чумой поселения.</span><br>
+        <span class="region-more-label" data-i18n-ru="Боссы:" data-i18n-en="Bosses:">Боссы:</span> <span data-i18n-ru="урон гниением и порчей стакается — не задерживайтесь в очагах заражения без резиста." data-i18n-en="rot and blight damage stacks — don't linger in infection pockets without resistance.">урон гниением и порчей стакается — не задерживайтесь в очагах заражения без резиста.</span>
       </div></div>
     </div>
 
     <div class="g-card region-card" id="region-5" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(5)" onkeydown="onRegionKey(event,5)">
       <div class="region-head">
         <span class="region-icon">🏔️</span>
-        <span class="region-name">Hallowed Mountains</span>
-        <span class="region-tier high">Опасно</span>
+        <span class="region-name" data-i18n-ru="Hallowed Mountains" data-i18n-en="Hallowed Mountains">Hallowed Mountains</span>
+        <span class="region-tier high" data-i18n-ru="Опасно" data-i18n-en="Dangerous">Опасно</span>
+        <button type="button" class="region-copy-btn" onclick="copyRegionLink(event,5)" aria-label="Скопировать ссылку на регион" data-i18n-aria-ru="Скопировать ссылку на регион" data-i18n-aria-en="Copy link to this region" data-tip="Скопировать ссылку">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </button>
         <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
-      <p class="region-desc">Заснеженные горы со священными орденами. Сильные противники и суровый климат — нужна тёплая экипировка и серьёзное снаряжение.</p>
+      <p class="region-desc" data-i18n-ru="Заснеженные горы со священными орденами. Сильные противники и суровый климат — нужна тёплая экипировка и серьёзное снаряжение." data-i18n-en="Snow-covered mountains held by holy orders. Powerful enemies and a harsh climate — you'll need warm gear and serious equipment.">Заснеженные горы со священными орденами. Сильные противники и суровый климат — нужна тёплая экипировка и серьёзное снаряжение.</p>
       <div class="region-more" id="region-more-5"><div class="region-more-inner">
-        <span class="region-more-label">Снаряжение:</span> сопротивление холоду и высокий общий уровень защиты.<br>
-        <span class="region-more-label">Ландшафт:</span> заснеженные пики, ледяные пещеры и укреплённые лагеря священных орденов.<br>
-        <span class="region-more-label">Боссы:</span> один из самых высоких показателей урона на базовой карте — соло без подготовки крайне рискованно.
+        <span class="region-more-label" data-i18n-ru="Снаряжение:" data-i18n-en="Gear:">Снаряжение:</span> <span data-i18n-ru="сопротивление холоду и высокий общий уровень защиты." data-i18n-en="cold resistance and a high overall level of protection.">сопротивление холоду и высокий общий уровень защиты.</span><br>
+        <span class="region-more-label" data-i18n-ru="Ландшафт:" data-i18n-en="Terrain:">Ландшафт:</span> <span data-i18n-ru="заснеженные пики, ледяные пещеры и укреплённые лагеря священных орденов." data-i18n-en="snowy peaks, ice caves, and fortified holy-order camps.">заснеженные пики, ледяные пещеры и укреплённые лагеря священных орденов.</span><br>
+        <span class="region-more-label" data-i18n-ru="Боссы:" data-i18n-en="Bosses:">Боссы:</span> <span data-i18n-ru="один из самых высоких показателей урона на базовой карте — соло без подготовки крайне рискованно." data-i18n-en="some of the highest damage output on the base map — soloing unprepared is extremely risky.">один из самых высоких показателей урона на базовой карте — соло без подготовки крайне рискованно.</span>
       </div></div>
     </div>
 
     <div class="g-card region-card" id="region-6" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(6)" onkeydown="onRegionKey(event,6)">
       <div class="region-head">
         <span class="region-icon">⚙️</span>
-        <span class="region-name">Gloomrot</span>
-        <span class="region-tier high">Опасно</span>
+        <span class="region-name" data-i18n-ru="Gloomrot" data-i18n-en="Gloomrot">Gloomrot</span>
+        <span class="region-tier high" data-i18n-ru="Опасно" data-i18n-en="Dangerous">Опасно</span>
+        <button type="button" class="region-copy-btn" onclick="copyRegionLink(event,6)" aria-label="Скопировать ссылку на регион" data-i18n-aria-ru="Скопировать ссылку на регион" data-i18n-aria-en="Copy link to this region" data-tip="Скопировать ссылку">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </button>
         <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
-      <p class="region-desc">Индустриальный регион с огнестрельным оружием и техникой. Враги бьют издалека — укрытия и мобильность решают больше, чем броня.</p>
+      <p class="region-desc" data-i18n-ru="Индустриальный регион с огнестрельным оружием и техникой. Враги бьют издалека — укрытия и мобильность решают больше, чем броня." data-i18n-en="An industrial region with firearms and machinery. Enemies hit from range — cover and mobility matter more than armor.">Индустриальный регион с огнестрельным оружием и техникой. Враги бьют издалека — укрытия и мобильность решают больше, чем броня.</p>
       <div class="region-more" id="region-more-6"><div class="region-more-inner">
-        <span class="region-more-label">Снаряжение:</span> мобильность и укрытия важнее чистой брони — урон в основном дальний.<br>
-        <span class="region-more-label">Ландшафт:</span> заводы, электростанции и промзоны северной и южной частей региона.<br>
-        <span class="region-more-label">Боссы:</span> противники применяют огнестрельное оружие и технику — бой на открытом пространстве опасен.
+        <span class="region-more-label" data-i18n-ru="Снаряжение:" data-i18n-en="Gear:">Снаряжение:</span> <span data-i18n-ru="мобильность и укрытия важнее чистой брони — урон в основном дальний." data-i18n-en="mobility and cover matter more than raw armor — damage here is mostly ranged.">мобильность и укрытия важнее чистой брони — урон в основном дальний.</span><br>
+        <span class="region-more-label" data-i18n-ru="Ландшафт:" data-i18n-en="Terrain:">Ландшафт:</span> <span data-i18n-ru="заводы, электростанции и промзоны северной и южной частей региона." data-i18n-en="factories, power plants, and industrial zones across the region's northern and southern parts.">заводы, электростанции и промзоны северной и южной частей региона.</span><br>
+        <span class="region-more-label" data-i18n-ru="Боссы:" data-i18n-en="Bosses:">Боссы:</span> <span data-i18n-ru="противники применяют огнестрельное оружие и технику — бой на открытом пространстве опасен." data-i18n-en="enemies use firearms and machinery — fighting in the open is dangerous.">противники применяют огнестрельное оружие и технику — бой на открытом пространстве опасен.</span>
       </div></div>
     </div>
 
     <div class="g-card region-card" id="region-7" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(7)" onkeydown="onRegionKey(event,7)">
       <div class="region-head">
         <span class="region-icon">🏰</span>
-        <span class="region-name">Brighthaven</span>
-        <span class="region-tier end">Эндгейм</span>
+        <span class="region-name" data-i18n-ru="Brighthaven" data-i18n-en="Brighthaven">Brighthaven</span>
+        <span class="region-tier end" data-i18n-ru="Эндгейм" data-i18n-en="Endgame">Эндгейм</span>
+        <button type="button" class="region-copy-btn" onclick="copyRegionLink(event,7)" aria-label="Скопировать ссылку на регион" data-i18n-aria-ru="Скопировать ссылку на регион" data-i18n-aria-en="Copy link to this region" data-tip="Скопировать ссылку">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </button>
         <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
-      <p class="region-desc">Город паладинов поздней игры — плотная застройка, сильные гарнизоны и одни из самых опасных охотников на вампиров во всём Вардоране.</p>
+      <p class="region-desc" data-i18n-ru="Город паладинов поздней игры — плотная застройка, сильные гарнизоны и одни из самых опасных охотников на вампиров во всём Вардоране." data-i18n-en="A late-game paladin city — dense construction, strong garrisons, and some of the most dangerous vampire hunters in all of Vardoran.">Город паладинов поздней игры — плотная застройка, сильные гарнизоны и одни из самых опасных охотников на вампиров во всём Вардоране.</p>
       <div class="region-more" id="region-more-7"><div class="region-more-inner">
-        <span class="region-more-label">Снаряжение:</span> топовое снаряжение поздней игры и стабильный доступ к качественной крови.<br>
-        <span class="region-more-label">Ландшафт:</span> плотная городская застройка с патрулями и укреплёнными гарнизонами.<br>
-        <span class="region-more-label">Боссы:</span> заходить стоит подготовленной группой — плотность и сила противников здесь одни из самых высоких.
+        <span class="region-more-label" data-i18n-ru="Снаряжение:" data-i18n-en="Gear:">Снаряжение:</span> <span data-i18n-ru="топовое снаряжение поздней игры и стабильный доступ к качественной крови." data-i18n-en="top-tier late-game equipment and steady access to quality blood.">топовое снаряжение поздней игры и стабильный доступ к качественной крови.</span><br>
+        <span class="region-more-label" data-i18n-ru="Ландшафт:" data-i18n-en="Terrain:">Ландшафт:</span> <span data-i18n-ru="плотная городская застройка с патрулями и укреплёнными гарнизонами." data-i18n-en="dense urban construction with patrols and fortified garrisons.">плотная городская застройка с патрулями и укреплёнными гарнизонами.</span><br>
+        <span class="region-more-label" data-i18n-ru="Боссы:" data-i18n-en="Bosses:">Боссы:</span> <span data-i18n-ru="заходить стоит подготовленной группой — плотность и сила противников здесь одни из самых высоких." data-i18n-en="best entered with a prepared group — enemy density and strength here are among the highest.">заходить стоит подготовленной группой — плотность и сила противников здесь одни из самых высоких.</span>
       </div></div>
     </div>
 
     <div class="g-card region-card" id="region-8" role="button" tabindex="0" aria-expanded="false" onclick="toggleRegion(8)" onkeydown="onRegionKey(event,8)">
       <div class="region-head">
         <span class="region-icon">🩸</span>
-        <span class="region-name">Руины и подземелья</span>
-        <span class="region-tier end">Эндгейм</span>
+        <span class="region-name" data-i18n-ru="Руины и подземелья" data-i18n-en="Ruins & Dungeons">Руины и подземелья</span>
+        <span class="region-tier end" data-i18n-ru="Эндгейм" data-i18n-en="Endgame">Эндгейм</span>
+        <button type="button" class="region-copy-btn" onclick="copyRegionLink(event,8)" aria-label="Скопировать ссылку на регион" data-i18n-aria-ru="Скопировать ссылку на регион" data-i18n-aria-en="Copy link to this region" data-tip="Скопировать ссылку">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        </button>
         <svg class="region-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
-      <p class="region-desc">Разбросанные по карте подземелья, крипты и руины с уникальным лутом и боссами V крови — основной источник прогрессии в позднем эндгейме.</p>
+      <p class="region-desc" data-i18n-ru="Разбросанные по карте подземелья, крипты и руины с уникальным лутом и боссами V крови — основной источник прогрессии в позднем эндгейме." data-i18n-en="Dungeons, crypts, and ruins scattered across the map with unique loot and V Blood bosses — the main source of progression in the late endgame.">Разбросанные по карте подземелья, крипты и руины с уникальным лутом и боссами V крови — основной источник прогрессии в позднем эндгейме.</p>
       <div class="region-more" id="region-more-8"><div class="region-more-inner">
-        <span class="region-more-label">Снаряжение:</span> зависит от конкретного подземелья — от среднего уровня до полностью эндгеймного.<br>
-        <span class="region-more-label">Ландшафт:</span> крипты, катакомбы и руины, разбросанные по всей карте, а не сосредоточенные в одном регионе.<br>
-        <span class="region-more-label">Боссы:</span> здесь встречаются уникальные V Blood и чертежи, отсутствующие на открытой карте.
+        <span class="region-more-label" data-i18n-ru="Снаряжение:" data-i18n-en="Gear:">Снаряжение:</span> <span data-i18n-ru="зависит от конкретного подземелья — от среднего уровня до полностью эндгеймного." data-i18n-en="depends on the specific dungeon — anywhere from mid-tier to fully endgame.">зависит от конкретного подземелья — от среднего уровня до полностью эндгеймного.</span><br>
+        <span class="region-more-label" data-i18n-ru="Ландшафт:" data-i18n-en="Terrain:">Ландшафт:</span> <span data-i18n-ru="крипты, катакомбы и руины, разбросанные по всей карте, а не сосредоточенные в одном регионе." data-i18n-en="crypts, catacombs, and ruins scattered across the whole map rather than concentrated in one region.">крипты, катакомбы и руины, разбросанные по всей карте, а не сосредоточенные в одном регионе.</span><br>
+        <span class="region-more-label" data-i18n-ru="Боссы:" data-i18n-en="Bosses:">Боссы:</span> <span data-i18n-ru="здесь встречаются уникальные V Blood и чертежи, отсутствующие на открытой карте." data-i18n-en="unique V Bloods and blueprints found here are absent from the open map.">здесь встречаются уникальные V Blood и чертежи, отсутствующие на открытой карте.</span>
       </div></div>
     </div>
 
@@ -285,6 +320,10 @@
 <script>
 const API = '/api';
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
+// Small local i18n helper for strings this page generates at runtime (toast feedback) —
+// _applyI18n() in common.js only handles static data-i18n-ru/-en markup. Same pattern
+// as faq.html's own _t().
+function _t(ru, en) { return localStorage.getItem('_lang') === 'en' ? en : ru; }
 
 function toggleRegion(i) {
   const card = document.getElementById(`region-${i}`);
@@ -301,6 +340,45 @@ function onRegionKey(e, i) {
     toggleRegion(i);
   }
 }
+
+// Deep link: copies a URL with ?region=<n> so a visitor lands with that region
+// already expanded (see openRegionFromQuery() below). Stops propagation so the
+// click doesn't also toggle/collapse the card it sits inside.
+function copyRegionLink(e, i) {
+  e.stopPropagation();
+  const btn = e.currentTarget;
+  const url = `${location.origin}${location.pathname}?region=${i}`;
+  const onCopied = () => {
+    showToast(_t('Ссылка на регион скопирована', 'Region link copied'), 'success');
+    btn.classList.add('copied');
+    setTimeout(() => btn.classList.remove('copied'), 1200);
+  };
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(url).then(onCopied).catch(() => _copyRegionLinkFallback(url, onCopied));
+  } else {
+    _copyRegionLinkFallback(url, onCopied);
+  }
+}
+function _copyRegionLinkFallback(text, onCopied) {
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); onCopied(); } catch {}
+  document.body.removeChild(ta);
+}
+
+// On load, open the region named by ?region=<n> (matching the region-<n> id scheme)
+// and scroll it into view — makes region cards deep-linkable via copyRegionLink()'s
+// generated URLs (and any hand-written link using the same param).
+function openRegionFromQuery() {
+  const n = parseInt(new URLSearchParams(location.search).get('region'), 10);
+  if (!(n >= 1 && n <= 8)) return;
+  const card = document.getElementById(`region-${n}`);
+  if (!card) return;
+  toggleRegion(n);
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+openRegionFromQuery();
 
 function applySiteBackground(bg) {
   bg = (bg || '').trim();
