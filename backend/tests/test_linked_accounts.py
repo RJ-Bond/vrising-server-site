@@ -120,3 +120,28 @@ async def test_unlink_steam_404_for_unknown_user(client, db_session):
     admin = await _make_admin(db_session)
     r = await client.post("/api/admin/users/999999/unlink-steam", headers=_bearer(admin))
     assert r.status_code == 404
+
+
+# ─── Pagination (page/per_page + X-Total-Count header) ─────────────────────
+
+async def test_linked_accounts_pagination_pages_dont_overlap(client, db_session):
+    admin = await _make_admin(db_session)
+    for i in range(5):
+        await _make_linked_user(db_session, f"Linked{i}", f"7656119800000010{i}")
+
+    page1 = await client.get(
+        "/api/admin/linked-accounts", params={"page": 1, "per_page": 2}, headers=_bearer(admin)
+    )
+    page2 = await client.get(
+        "/api/admin/linked-accounts", params={"page": 2, "per_page": 2}, headers=_bearer(admin)
+    )
+    assert page1.status_code == 200 and page2.status_code == 200
+    usernames_1 = [row["username"] for row in page1.json()]
+    usernames_2 = [row["username"] for row in page2.json()]
+    assert len(usernames_1) == 2
+    assert len(usernames_2) == 2
+    assert set(usernames_1).isdisjoint(usernames_2)
+    # Total row count (5 linked accounts) is exposed via the header, not the body —
+    # the body stays a bare array so existing callers (admin.html) are unaffected.
+    assert page1.headers["x-total-count"] == "5"
+    assert page2.headers["x-total-count"] == "5"

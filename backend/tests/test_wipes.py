@@ -77,6 +77,14 @@ async def test_create_wipe_requires_admin(client, db_session):
     assert r.status_code == 403
 
 
+async def test_create_wipe_requires_auth(client, db_session):
+    r = await client.post(
+        "/api/admin/wipes",
+        json={"server_num": 1, "wipe_type": "full", "wipe_date": "2026-01-01T00:00:00"},
+    )
+    assert r.status_code == 401
+
+
 async def test_create_wipe_happy_path(client, db_session):
     admin = await _make_user(db_session, "WipeAdmin1", role="admin")
     r = await client.post(
@@ -111,6 +119,15 @@ async def test_delete_wipe_requires_admin(client, db_session):
     w = await _make_wipe(db_session, datetime(2025, 5, 1))
     r = await client.delete(f"/api/admin/wipes/{w.id}", headers=_bearer(user))
     assert r.status_code == 403
+
+    still_there = await db_session.get(Wipe, w.id)
+    assert still_there is not None
+
+
+async def test_delete_wipe_requires_auth(client, db_session):
+    w = await _make_wipe(db_session, datetime(2025, 5, 1))
+    r = await client.delete(f"/api/admin/wipes/{w.id}")
+    assert r.status_code == 401
 
     still_there = await db_session.get(Wipe, w.id)
     assert still_there is not None

@@ -418,6 +418,34 @@ async def test_admin_bans_active_includes_null_unbanned_at_field(client, db_sess
     assert r.json()["bans"][0]["unbanned_at"] is None
 
 
+async def test_admin_bans_pagination_pages_dont_overlap_and_total_is_correct(client, db_session):
+    now = datetime.utcnow()
+    db_session.add_all([
+        Ban(server_num=1, steam_id=f"page-steam-{i}", character_name=f"P{i}",
+            admin_name="A", reason="r", banned_at=now - timedelta(minutes=i), unban_at=None)
+        for i in range(5)
+    ])
+    await db_session.commit()
+
+    admin = await _make_admin(db_session)
+    page1 = await client.get(
+        "/api/admin/bans", params={"page": 1, "per_page": 2}, headers=_bearer(admin)
+    )
+    page2 = await client.get(
+        "/api/admin/bans", params={"page": 2, "per_page": 2}, headers=_bearer(admin)
+    )
+    assert page1.status_code == 200 and page2.status_code == 200
+    body1, body2 = page1.json(), page2.json()
+    assert body1["total"] == 5
+    assert body2["total"] == 5
+    assert body1["page"] == 1 and body1["per_page"] == 2
+    assert body2["page"] == 2 and body2["per_page"] == 2
+    ids_1 = {b["steam_id"] for b in body1["bans"]}
+    ids_2 = {b["steam_id"] for b in body2["bans"]}
+    assert len(ids_1) == 2 and len(ids_2) == 2
+    assert ids_1.isdisjoint(ids_2)
+
+
 # ─── POST /api/admin/bans/{id}/unban ────────────────────────────────────────
 
 async def test_admin_unban_requires_admin_auth(client, db_session):

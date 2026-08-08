@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, text, or_
 
@@ -22,10 +22,26 @@ router = APIRouter()
 
 @router.get("/api/admin/users", response_model=list[UserOut])
 async def list_users(
+    response: Response,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(200, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_moderator_user),
 ):
-    result = await db.execute(select(User).order_by(User.created_at.desc()))
+    """Bounded via page/per_page rather than the page/per_page/total/items wrapper used
+    elsewhere in this router (e.g. GET /api/admin/audit-log) — admin.html's loadUsers()/
+    renderUsersTable() fetch this expecting a bare JSON array and do their own client-side
+    sort/filter/paginate over the full result set; wrapping the response in an object would
+    break every one of those call sites. per_page defaults generously (200) so realistic
+    current usage is unaffected, but the endpoint can no longer return a literally unbounded
+    number of rows as the users table grows. Total row count is exposed via the
+    X-Total-Count response header instead — additive, doesn't change the JSON shape."""
+    total = (await db.execute(select(func.count(User.id)))).scalar_one()
+    response.headers["X-Total-Count"] = str(total)
+    result = await db.execute(
+        select(User).order_by(User.created_at.desc())
+        .offset((page - 1) * per_page).limit(per_page)
+    )
     return [UserOut.model_validate(u) for u in result.scalars().all()]
 
 
@@ -115,11 +131,20 @@ async def revoke_user_sessions(
 
 @router.get("/api/admin/linked-accounts", response_model=list[LinkedAccountOut])
 async def list_linked_accounts(
+    response: Response,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(200, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
+    """Same page/per_page + X-Total-Count-header convention as GET /api/admin/users just
+    above, for the same reason: admin.html's linked-accounts view expects a bare array."""
+    filters = (User.steam_id.isnot(None),)
+    total = (await db.execute(select(func.count(User.id)).where(*filters))).scalar_one()
+    response.headers["X-Total-Count"] = str(total)
     result = await db.execute(
-        select(User).where(User.steam_id.isnot(None)).order_by(User.username.asc())
+        select(User).where(*filters).order_by(User.username.asc())
+        .offset((page - 1) * per_page).limit(per_page)
     )
     return [LinkedAccountOut.model_validate(u) for u in result.scalars().all()]
 

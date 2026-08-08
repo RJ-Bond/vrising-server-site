@@ -256,3 +256,37 @@ async def test_resolve_404_for_already_resolved_appeal(client, db_session):
         headers=_bearer(admin),
     )
     assert second.status_code == 404
+
+
+# ─── Pagination (page/per_page/total, same convention as GET /api/admin/bans) ──
+
+async def test_admin_appeals_pagination_pages_dont_overlap_and_total_is_correct(client, db_session):
+    # Inserted directly rather than via POST /api/appeals — that endpoint is rate-limited
+    # to 3/hour per IP, too tight for a 5-row pagination fixture.
+    for i in range(5):
+        db_session.add(BanAppeal(
+            steam_id=f"page-appeal-{i}",
+            character_name="X",
+            message="m",
+            status="pending",
+            created_at=datetime.utcnow() - timedelta(minutes=i),
+        ))
+    await db_session.commit()
+
+    admin = await _make_admin(db_session)
+    page1 = await client.get(
+        "/api/admin/appeals", params={"page": 1, "per_page": 2}, headers=_bearer(admin)
+    )
+    page2 = await client.get(
+        "/api/admin/appeals", params={"page": 2, "per_page": 2}, headers=_bearer(admin)
+    )
+    assert page1.status_code == 200 and page2.status_code == 200
+    body1, body2 = page1.json(), page2.json()
+    assert body1["total"] == 5
+    assert body2["total"] == 5
+    assert body1["page"] == 1 and body1["per_page"] == 2
+    assert body2["page"] == 2 and body2["per_page"] == 2
+    ids_1 = {a["steam_id"] for a in body1["appeals"]}
+    ids_2 = {a["steam_id"] for a in body2["appeals"]}
+    assert len(ids_1) == 2 and len(ids_2) == 2
+    assert ids_1.isdisjoint(ids_2)

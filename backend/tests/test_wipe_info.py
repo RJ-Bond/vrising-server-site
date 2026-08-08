@@ -31,6 +31,12 @@ async def test_wipe_info_requires_plugin_key(client, db_session):
     assert r.status_code == 401
 
 
+async def test_wipe_info_wrong_plugin_key_is_rejected(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.get("/api/plugin/wipe-info", headers=_hdr("not-the-real-key"))
+    assert r.status_code == 401
+
+
 async def test_wipe_info_null_when_unset(client, db_session):
     await _set_plugin_key(db_session)
     r = await client.get("/api/plugin/wipe-info", params={"server_num": 1}, headers=_hdr())

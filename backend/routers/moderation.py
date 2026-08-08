@@ -297,6 +297,8 @@ async def plugin_log_action(
 @router.get("/api/admin/bans")
 async def list_bans(
     status: str = Query(default="active"),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
@@ -311,19 +313,34 @@ async def list_bans(
     (same server_num -> real-name lookup used by GET /api/clans) so the admin page doesn't
     need a second round-trip just to label the server column. linked_username (null unless
     the banned steam_id matches a registered, active site account) lets bans.html link the
-    character name to that account's public profile."""
+    character name to that account's public profile.
+
+    page/per_page (same page/per_page/offset().limit() convention as GET /api/admin/
+    audit-log) were added so this can't return an unbounded number of rows once the ban
+    table has years of history — "bans" keeps its original list-under-a-key shape (no
+    existing caller needs to change), with "total"/"page"/"per_page" added alongside it
+    for a future paginated UI."""
     server_names = await _get_server_names(db)
-    query = select(Ban).order_by(Ban.banned_at.desc())
+    query = select(Ban)
+    count_query = select(func.count(Ban.id))
     if status == "resolved":
         query = query.where(Ban.unbanned_at.is_not(None))
+        count_query = count_query.where(Ban.unbanned_at.is_not(None))
     elif status == "all":
         pass
     else:
         query = query.where(Ban.unbanned_at.is_(None))
-    result = await db.execute(query)
+        count_query = count_query.where(Ban.unbanned_at.is_(None))
+    total = (await db.execute(count_query)).scalar_one()
+    result = await db.execute(
+        query.order_by(Ban.banned_at.desc()).offset((page - 1) * per_page).limit(per_page)
+    )
     bans = result.scalars().all()
     linked_usernames = await _get_linked_usernames(db, (b.steam_id for b in bans))
     return {
+        "total": total,
+        "page": page,
+        "per_page": per_page,
         "bans": [
             {
                 "id": b.id,
@@ -409,16 +426,27 @@ async def submit_ban_appeal(request: Request, body: BanAppealCreate, db: AsyncSe
 @router.get("/api/admin/appeals")
 async def list_ban_appeals(
     status: Optional[str] = Query(default=None),
+    page: int = Query(1, ge=1),
+    per_page: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
     """Most-recent-first; status query param optionally filters to "pending"/"approved"/
     "rejected" (default: all). ban_reason/ban_admin_name are joined through ban_id for
-    admin context — null if the underlying Ban row is somehow gone."""
-    q = select(BanAppeal).order_by(BanAppeal.created_at.desc())
+    admin context — null if the underlying Ban row is somehow gone.
+
+    page/per_page (same convention as GET /api/admin/bans/audit-log) bound this so it
+    can't return every appeal ever filed once the table has years of history — "appeals"
+    keeps its original list-under-a-key shape, "total"/"page"/"per_page" are additive."""
+    q = select(BanAppeal)
+    count_q = select(func.count(BanAppeal.id))
     if status:
         q = q.where(BanAppeal.status == status)
-    result = await db.execute(q)
+        count_q = count_q.where(BanAppeal.status == status)
+    total = (await db.execute(count_q)).scalar_one()
+    result = await db.execute(
+        q.order_by(BanAppeal.created_at.desc()).offset((page - 1) * per_page).limit(per_page)
+    )
     appeals = result.scalars().all()
 
     ban_ids = {a.ban_id for a in appeals if a.ban_id is not None}
@@ -428,6 +456,9 @@ async def list_ban_appeals(
         bans_by_id = {b.id: b for b in ban_result.scalars().all()}
 
     return {
+        "total": total,
+        "page": page,
+        "per_page": per_page,
         "appeals": [
             {
                 "id": a.id,
