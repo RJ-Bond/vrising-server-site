@@ -1394,6 +1394,17 @@
       opacity:0; transition:opacity .7s ease;
       pointer-events:none;
     }
+    /* Without this, an admin-set custom hero photo (background-size:cover) gets
+       clipped hard by .hero's overflow:hidden bottom edge — any texture/detail in
+       the photo near that edge reads as a visibly torn seam against the flat
+       --bg color starting right below the hero. .hero-bg's own procedural gradient
+       already tapers into dark tones near the bottom on its own, so it never showed
+       this; a real photo has no such built-in fade. */
+    .hero-bg-img::after {
+      content:''; position:absolute; inset:0;
+      background:linear-gradient(to bottom, transparent 0%, transparent 55%, var(--bg) 100%);
+      pointer-events:none;
+    }
 
     /* ── Modal close button ── */
     .modal-btn {
