@@ -1,15 +1,16 @@
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from ..database import get_db
-from ..models import User
+from ..models import Comment, PointsTransaction, ShopRedemption, User
 from ..auth import get_current_user, is_at_least
 from ..rate_limit import limiter
 from ..helpers import UPLOAD_DIR, _fmt_dt, _explicit_logouts, optimize_image_bytes
@@ -212,6 +213,88 @@ async def set_badge_style(
     user.badge_style = body.style
     await db.commit()
     return {"badge_style": user.badge_style}
+
+
+# ─── Personal data export ─────────────────────────────────────────────────────
+# Self-service "download my data" — scoped strictly to current_user.id everywhere
+# below; never accepts a caller-supplied user id, so there is no way to pull
+# another account's rows through this endpoint. Only fields that make sense as a
+# personal export are included (e.g. ShopRedemption.admin_note/resolved_by are
+# admin-facing and skipped; Comment includes only this user's own comments, via
+# author_id, not other users' replies to them).
+
+@router.get("/api/profile/export")
+async def export_my_data(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    tx_result = await db.execute(
+        select(PointsTransaction)
+        .where(PointsTransaction.user_id == current_user.id)
+        .order_by(PointsTransaction.created_at)
+    )
+    transactions = tx_result.scalars().all()
+
+    redemption_result = await db.execute(
+        select(ShopRedemption)
+        .where(ShopRedemption.user_id == current_user.id)
+        .order_by(ShopRedemption.created_at)
+    )
+    redemptions = redemption_result.scalars().all()
+
+    comment_result = await db.execute(
+        select(Comment)
+        .where(Comment.author_id == current_user.id)
+        .order_by(Comment.created_at)
+    )
+    comments = comment_result.scalars().all()
+
+    data = {
+        "exported_at": _fmt_dt(datetime.now(timezone.utc)),
+        "account": {
+            "username": current_user.username,
+            "email": current_user.email,
+            "created_at": _fmt_dt(current_user.created_at),
+            "bio": current_user.bio,
+            "game_nickname": current_user.game_nickname,
+            "points_balance": current_user.points_balance,
+        },
+        "points_transactions": [
+            {
+                "delta": t.delta,
+                "balance_after": t.balance_after,
+                "reason": t.reason,
+                "detail": t.detail,
+                "created_at": _fmt_dt(t.created_at),
+            }
+            for t in transactions
+        ],
+        "shop_redemptions": [
+            {
+                "item_name": r.item_name_snapshot,
+                "cost": r.cost_snapshot,
+                "status": r.status,
+                "player_note": r.player_note,
+                "created_at": _fmt_dt(r.created_at),
+                "resolved_at": _fmt_dt(r.resolved_at),
+            }
+            for r in redemptions
+        ],
+        "comments": [
+            {
+                "content": c.content,
+                "news_id": c.news_id,
+                "created_at": _fmt_dt(c.created_at),
+            }
+            for c in comments
+        ],
+    }
+    body = json.dumps(data, ensure_ascii=False, indent=2)
+    return Response(
+        content=body,
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="my-data.json"'},
+    )
 
 
 # ─── Newsletter opt-in ────────────────────────────────────────────────────────
