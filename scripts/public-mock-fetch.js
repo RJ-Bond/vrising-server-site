@@ -82,6 +82,19 @@
     };
   };
 
+  // ClanMembershipEventOut shape (backend/schemas.py) — GET /api/clans/{id}/history,
+  // backing clans.html's "Последние изменения состава" list in the clan-detail modal.
+  // Newest first (reverse-chronological), mixing "joined"/"left" so both row colors
+  // render in the screenshot.
+  const clanHistory = (id) => {
+    const base = clans.find(c => c.id === Number(id)) || clans[0];
+    return [
+      { id: 5, clan_name: base.name, steam_id: '3', character_name: 'Dracarys', event_type: 'joined', recorded_at: iso(2 * 3600 * 1000) },
+      { id: 4, clan_name: base.name, steam_id: '7', character_name: 'OldMember', event_type: 'left', recorded_at: iso(26 * 3600 * 1000) },
+      { id: 3, clan_name: base.name, steam_id: '2', character_name: 'Shadowfang', event_type: 'joined', recorded_at: iso(3 * 24 * 3600 * 1000) },
+    ];
+  };
+
   const events = {
     items: [
       { id: 1, title: 'Полный вайп сервера', description: 'Готовьтесь к новому циклу — сервер будет сброшен полностью.', event_type: 'wipe', start_date: iso(-2 * 24 * 3600 * 1000), end_date: null, max_participants: null, status: 'upcoming', cover_url: null, created_by: 1, created_at: iso(10 * 24 * 3600 * 1000), participant_count: 34, is_joined: false },
@@ -318,6 +331,7 @@
     [/\/api\/users\/[^/]+$/, () => userProfile],
     [/\/api\/servers\/\d+\/restart-status/, (url) => restartStatus(Number(url.match(/\/api\/servers\/(\d+)\/restart-status/)[1]))],
     [/\/api\/clans\/leaderboard/, (url) => clanLeaderboard(url.includes('server=2') ? 2 : (url.includes('server=1') ? 1 : null))],
+    [/\/api\/clans\/\d+\/history/, (url) => clanHistory(url.match(/\/api\/clans\/(\d+)\/history/)[1])],
     [/\/api\/clans\/\d+$/, (url) => clanDetail(url.match(/\/api\/clans\/(\d+)/)[1])],
     [/\/api\/clans(\?|$)/, () => clans],
     [/\/api\/events/, () => events],

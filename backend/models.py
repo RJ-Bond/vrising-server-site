@@ -145,6 +145,36 @@ class GameClanBase(Base):
     __table_args__ = (Index("ix_game_clan_bases_clan", "clan_id"),)
 
 
+class ClanMembershipEvent(Base):
+    """Append-only join/leave log for game_clans, purely additive alongside POST
+    /api/plugin/clans/sync's existing delete-and-reinsert of GameClan/GameClanMember
+    (see that endpoint's docstring). GameClanMember only ever reflects the CURRENT
+    roster — every sync wholesale replaces it — so without this table there is no way
+    to answer "who joined/left and when"; this is that history. Rows are written by
+    diffing the OLD member steam_ids against the NEW payload's steam_ids per clan_guid,
+    right before the old roster is wiped, and are keyed by clan_guid/server_num (not
+    GameClanMember.clan_id) since the GameClan row itself gets deleted and reinserted
+    with a new id every sync cycle — clan_guid is the only identifier stable across that
+    churn. No FK to game_clans for the same reason: a clan_guid can legitimately have no
+    matching GameClan row for a while (e.g. between sync cycles, or after a clan is
+    disbanded in-game and stops being reported), and this history should keep existing
+    either way. Writing a row must never block or fail the actual sync — see the
+    try/except around the diff logic in plugin_clans_sync()."""
+
+    __tablename__ = "clan_membership_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    server_num = Column(Integer, nullable=False, default=1)
+    clan_guid = Column(String(36), nullable=False, index=True)
+    clan_name = Column(String(64), nullable=False)  # snapshot — the clan may since be renamed
+    steam_id = Column(String(32), nullable=False, index=True)
+    character_name = Column(String(64), nullable=False)  # snapshot — the character may since be renamed
+    event_type = Column(String(8), nullable=False)  # "joined" | "left"
+    recorded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    __table_args__ = (Index("ix_clan_membership_events_guid_recorded", "clan_guid", "recorded_at"),)
+
+
 class News(Base):
     __tablename__ = "news"
 

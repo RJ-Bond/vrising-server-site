@@ -3,9 +3,10 @@ POST /api/plugin/clans/sync (gated by the shared plugin_api_key secret, pushes t
 plugin's FULL current clan roster for one server_num) and the read-only public
 GET /api/clans / GET /api/clans/{id} endpoints that read back the synced data."""
 import pytest
+from sqlalchemy import func, select
 
 from backend.auth import get_password_hash
-from backend.models import Setting, User
+from backend.models import ClanMembershipEvent, Setting, User
 
 pytestmark = pytest.mark.asyncio
 
@@ -423,3 +424,100 @@ async def test_repeated_sync_with_different_member_replaces_not_adds(client, db_
     assert len(members) == 1
     assert members[0]["steam_id"] == "999"
     assert members[0]["character_name"] == "NewMember"
+
+
+# ─── Clan membership history (ClanMembershipEvent) ────────────────────────────
+# See models.py's ClanMembershipEvent and plugin_clans_sync()'s
+# _record_clan_membership_events() call — purely additive logging alongside the
+# existing delete-and-reinsert sync, diffing the old roster against each new payload.
+
+async def test_sync_new_members_produce_joined_events(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.post("/api/plugin/clans/sync", json=_sync_body(), headers=_hdr())
+    assert r.status_code == 200
+
+    events = (await db_session.execute(select(ClanMembershipEvent))).scalars().all()
+    assert {e.steam_id for e in events} == {"111", "222"}
+    assert all(e.event_type == "joined" for e in events)
+    assert all(e.clan_guid == "guid-alpha" for e in events)
+    assert all(e.clan_name == "Alpha Clan" for e in events)
+
+
+async def test_sync_dropped_member_produces_left_event(client, db_session):
+    await _set_plugin_key(db_session)
+    await client.post("/api/plugin/clans/sync", json=_sync_body(), headers=_hdr())  # 111, 222 both join
+
+    # Second sync for the same clan_guid drops steam_id 222.
+    second = {
+        "server_num": 1,
+        "clans": [{
+            "clan_guid": "guid-alpha", "name": "Alpha Clan", "motto": "First!",
+            "members": [{"steam_id": "111", "character_name": "AlphaLeader", "role": "leader"}],
+        }],
+    }
+    r = await client.post("/api/plugin/clans/sync", json=second, headers=_hdr())
+    assert r.status_code == 200
+
+    events_222 = (await db_session.execute(
+        select(ClanMembershipEvent).where(ClanMembershipEvent.steam_id == "222").order_by(ClanMembershipEvent.id)
+    )).scalars().all()
+    assert [e.event_type for e in events_222] == ["joined", "left"]
+
+    events_111 = (await db_session.execute(
+        select(ClanMembershipEvent).where(ClanMembershipEvent.steam_id == "111")
+    )).scalars().all()
+    assert [e.event_type for e in events_111] == ["joined"]  # still present — no new event
+
+
+async def test_sync_with_unchanged_roster_produces_no_new_events(client, db_session):
+    await _set_plugin_key(db_session)
+    await client.post("/api/plugin/clans/sync", json=_sync_body(), headers=_hdr())
+    count_after_first = (await db_session.execute(select(func.count(ClanMembershipEvent.id)))).scalar_one()
+    assert count_after_first == 2  # 111 joined, 222 joined
+
+    # Same exact roster synced again — no membership actually changed.
+    await client.post("/api/plugin/clans/sync", json=_sync_body(), headers=_hdr())
+    count_after_second = (await db_session.execute(select(func.count(ClanMembershipEvent.id)))).scalar_one()
+    assert count_after_second == count_after_first
+
+
+async def test_clan_history_endpoint_returns_reverse_chronological(client, db_session):
+    await _set_plugin_key(db_session)
+    await client.post("/api/plugin/clans/sync", json=_sync_body(), headers=_hdr())  # 111, 222 join
+
+    list_r = await client.get("/api/clans")
+    clan_id = list_r.json()[0]["id"]
+
+    # Second sync: 222 leaves, 333 joins.
+    second = {
+        "server_num": 1,
+        "clans": [{
+            "clan_guid": "guid-alpha", "name": "Alpha Clan", "motto": "First!",
+            "members": [
+                {"steam_id": "111", "character_name": "AlphaLeader", "role": "leader"},
+                {"steam_id": "333", "character_name": "NewGuy", "role": "member"},
+            ],
+        }],
+    }
+    await client.post("/api/plugin/clans/sync", json=second, headers=_hdr())
+
+    hist_r = await client.get(f"/api/clans/{clan_id}/history")
+    assert hist_r.status_code == 200
+    events = hist_r.json()
+    assert len(events) == 4
+
+    recorded_ats = [e["recorded_at"] for e in events]
+    assert recorded_ats == sorted(recorded_ats, reverse=True)
+
+    # The two most recent rows (index 0-1) are from the second sync (222 left, 333 joined);
+    # the two oldest (index 2-3) are from the first sync (111 joined, 222 joined).
+    newest_pair, oldest_pair = events[:2], events[2:]
+    assert {e["steam_id"] for e in newest_pair} == {"222", "333"}
+    assert {e["event_type"] for e in newest_pair} == {"joined", "left"}
+    assert {e["steam_id"] for e in oldest_pair} == {"111", "222"}
+    assert all(e["event_type"] == "joined" for e in oldest_pair)
+
+
+async def test_clan_history_endpoint_404_for_missing_clan(client, db_session):
+    r = await client.get("/api/clans/999999/history")
+    assert r.status_code == 404

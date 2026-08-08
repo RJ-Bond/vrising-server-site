@@ -5,10 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case
 
 from ..database import get_db
-from ..models import User, GameClan, GameClanMember, GameClanBase
+from ..models import User, GameClan, GameClanMember, GameClanBase, ClanMembershipEvent
 from ..auth import get_current_user
 from ..helpers import _get_server_names
-from ..schemas import GameClanOut, GameClanDetailOut, GameClanLeaderboardOut
+from ..schemas import GameClanOut, GameClanDetailOut, GameClanLeaderboardOut, ClanMembershipEventOut
 
 # Leaders/officers first, then alphabetical by character name — used both for
 # GET /api/clans's small per-card member preview and GET /api/clans/{id}'s full list.
@@ -20,6 +20,10 @@ _MEMBER_PREVIEW_SIZE = 4
 # for a list this small.
 _LEADERBOARD_DEFAULT_LIMIT = 20
 _LEADERBOARD_MAX_LIMIT = 50
+# Cap for GET /api/clans/{id}/history — a small recent-activity list, not a full
+# paginated audit log.
+_HISTORY_DEFAULT_LIMIT = 30
+_HISTORY_MAX_LIMIT = 100
 
 router = APIRouter()
 
@@ -276,3 +280,24 @@ async def get_clan(clan_id: int, db: AsyncSession = Depends(get_db)):
     if clan is None:
         raise HTTPException(status_code=404, detail="Клан не найден")
     return await _game_clan_out(db, clan, with_members=True)
+
+
+@router.get("/api/clans/{clan_id}/history", response_model=list[ClanMembershipEventOut])
+async def get_clan_history(clan_id: int, limit: Optional[int] = None, db: AsyncSession = Depends(get_db)):
+    """Recent join/leave activity for one clan — see models.py's ClanMembershipEvent for
+    how these rows get written (POST /api/plugin/clans/sync diffs the old roster against
+    each incoming payload). Looked up by clan_guid/server_num rather than GameClan.id
+    since GameClanMembershipEvent has no FK to game_clans (that row's id churns every
+    sync cycle — see the model's docstring), so this must resolve today's GameClan.id
+    from the request to the stable clan_guid first."""
+    clan = (await db.execute(select(GameClan).where(GameClan.id == clan_id))).scalar_one_or_none()
+    if clan is None:
+        raise HTTPException(status_code=404, detail="Клан не найден")
+    limit = _HISTORY_DEFAULT_LIMIT if limit is None else max(1, min(limit, _HISTORY_MAX_LIMIT))
+    rows = (await db.execute(
+        select(ClanMembershipEvent)
+        .where(ClanMembershipEvent.clan_guid == clan.clan_guid, ClanMembershipEvent.server_num == clan.server_num)
+        .order_by(ClanMembershipEvent.recorded_at.desc(), ClanMembershipEvent.id.desc())
+        .limit(limit)
+    )).scalars().all()
+    return [ClanMembershipEventOut.model_validate(r) for r in rows]
