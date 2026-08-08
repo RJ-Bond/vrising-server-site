@@ -174,3 +174,34 @@ Three layers, loaded in this order (page inline `<style>` wins last):
 - **FOUC:** don't hard-code placeholder text (e.g. "V RISING") that JS overwrites
   from settings — it flashes on refresh. Leave it empty; JS fills it.
 - Line endings handled by `.gitattributes` (LF). `.shots/` is gitignored.
+
+## Checklist: adding a new public page
+
+Distilled from repeatedly having to add these to bans/user/events/profile/map/shop
+after the fact — cheaper to include from the start than retrofit:
+- **i18n**: `#lang-toggle-btn` in the nav (copy the exact markup from `faq.html` or
+  `bans.html`) + `data-i18n-ru`/`data-i18n-en` on static UI chrome (not on
+  admin-authored or JS-rendered dynamic content — see `profile.html`'s comment on
+  why dynamic strings are deliberately skipped). Check the nav container's
+  `max-width` against a working page (`grep 'max-width:.*margin:auto;padding:.7rem
+  1.5rem'` across `frontend/*.html`) — a narrower one can make the new toggle button
+  wrap onto its own line once added (bit `bans.html` once already).
+- **Accessibility**: any `<div onclick="...">` acting as a button needs
+  `role="button" tabindex="0"` plus an `onkeydown` handler firing the same action on
+  Enter/Space — see `map.html`'s region-cards for the reference pattern, since it's
+  been copied from there into leaderboard.html/clans.html/profile.html since.
+  Every visible `<label>`-worthy form field needs a real `<label for="...">`, not a
+  placeholder standing in for one.
+- **SEO**: `noindex` meta on anything that isn't meant to be indexed (utility/error
+  pages — see `404.html`); a real `<title>`/`og:*`/canonical block on anything that
+  is.
+- **Loading states**: reuse the shared `.skel` shimmer class (`components.css`,
+  `@keyframes skel-shimmer`) instead of a bare "Загрузка…" string — already used
+  across admin/bans/clans/leaderboard/servers/shop.html.
+- **Cache-busting**: if the page loads a shared CSS/JS file you're editing, bump its
+  `?v=N` in **every** page that loads it (`grep` the filename across
+  `frontend/*.html` first) — nginx serves them `immutable`.
+- **Verify before committing**: `bash scripts/check.sh` (HTML/CSS structural),
+  `bash scripts/lint_frontend.sh` (ESLint), and a real screenshot via
+  `scripts/preview.sh`/`preview-mock.sh`/`preview-admin.sh` as appropriate — don't
+  ship CSS/layout changes on reasoning alone, screenshot them.
