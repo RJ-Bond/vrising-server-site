@@ -420,6 +420,29 @@ async def export_bans(
     )
 
 
+@router.get("/api/admin/export/redemptions")
+async def export_redemptions(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_moderator_user),
+):
+    rows = (await db.execute(
+        select(ShopRedemption, User.username)
+        .join(User, User.id == ShopRedemption.user_id)
+        .order_by(ShopRedemption.created_at.desc())
+    )).all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["user", "item", "cost", "status", "created_at", "resolved_at", "resolved_by", "admin_note"])
+    for r, username in rows:
+        w.writerow([username, r.item_name_snapshot, r.cost_snapshot, r.status, r.created_at, r.resolved_at, r.resolved_by, r.admin_note])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=redemptions.csv"},
+    )
+
+
 # ─── Error log ────────────────────────────────────────────────────────────────
 
 @router.get("/api/admin/errors")

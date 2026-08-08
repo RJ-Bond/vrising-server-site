@@ -1664,6 +1664,21 @@
             <p class="s-desc">По умолчанию 25575. В V Rising включается в ServerHostSettings.json</p>
           </div>
           <div class="s-field">
+            <label>RCON Пароль (Сервер 2)</label>
+            <div class="s-field-row">
+              <input id="setting-rcon2_password" type="password" class="dark-input" placeholder="••••••">
+              <button class="s-save-btn" onclick="saveSetting('rcon2_password')">Сохранить</button>
+            </div>
+          </div>
+          <div class="s-field">
+            <label>RCON Порт (Сервер 2)</label>
+            <div class="s-field-row">
+              <input id="setting-rcon2_port" type="number" class="dark-input" placeholder="25575">
+              <button class="s-save-btn" onclick="saveSetting('rcon2_port')">Сохранить</button>
+            </div>
+            <p class="s-desc">По умолчанию 25575. В V Rising включается в ServerHostSettings.json</p>
+          </div>
+          <div class="s-field">
             <label>Команда</label>
             <div class="s-field-row">
               <select id="rcon-server-sel" class="dark-input" style="width:auto;flex-shrink:0;">
@@ -2726,6 +2741,7 @@
             <option value="">Все</option>
           </select>
           <button onclick="loadShopQueue(1)" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
+          <a href="/api/admin/export/redemptions" class="btn-ghost" style="font-size:.75rem;" download>⬇ CSV</a>
         </div>
       </div>
       <div class="glass-card" style="border-radius:.75rem;overflow:hidden;">
@@ -3454,7 +3470,7 @@ async function submitEditor() {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────
-const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','hero_logo_url','hero_subtitle','favicon_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','plugin_api_key','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time','maintenance_start_time','maintenance_fallback_image','nav_hidden','home_pitch','home_testimonials','home_gallery','site_launched_date','rules_tldr','daily_tips'];
+const SETTINGS_FIELD_KEYS = ['server_ip','server_port','server_game_port','server_connect_ip','server_name','server2_name','server2_ip','server2_port','server2_game_port','server2_connect_ip','site_title','site_tagline','site_description','site_logo_url','hero_logo_url','hero_subtitle','favicon_url','discord_url','discord_server_id','discord_webhook_url','max_url','bg_image_url','https_domain','https_email','wipe_date','wipe_type','wipe_date2','wipe_type2','event_active','event_title','event_text','event_color','timezone','time_format','date_format','rcon_password','rcon_port','rcon2_password','rcon2_port','plugin_api_key','maintenance_mode','maintenance_title','maintenance_message','maintenance_video_url','maintenance_end_time','maintenance_start_time','maintenance_fallback_image','nav_hidden','home_pitch','home_testimonials','home_gallery','site_launched_date','rules_tldr','daily_tips'];
 let _settingsBaseline = {};
 
 // Client-side filter over the existing .s-card blocks — cheaper and safer than
@@ -5776,7 +5792,7 @@ const _ALLOWED_SETTING_KEYS = new Set([
   'bg_image_url','wipe_date','wipe_type','wipe_date2','wipe_type2',
   'event_active','event_title','event_text','event_color',
   'rules','https_domain','https_email','timezone','time_format','date_format',
-  'rcon_password','rcon_port',
+  'rcon_password','rcon_port','rcon2_password','rcon2_port',
   'home_pitch','home_testimonials','home_gallery','site_launched_date','rules_tldr','daily_tips',
 ]);
 

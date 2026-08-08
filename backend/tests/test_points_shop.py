@@ -492,3 +492,50 @@ async def test_admin_create_update_delete_shop_item(client, db_session):
 
     r4 = await client.get("/api/admin/shop/items", headers=_bearer(admin))
     assert item_id not in [i["id"] for i in r4.json()]
+
+
+# ─── Admin redemptions CSV export ───────────────────────────────────────────
+
+async def test_export_redemptions_requires_login(client, db_session):
+    r = await client.get("/api/admin/export/redemptions")
+    assert r.status_code == 401
+
+
+async def test_export_redemptions_rejects_under_privileged_user(client, db_session):
+    user = await _make_user(db_session, "NotModExporter", role="user")
+    r = await client.get("/api/admin/export/redemptions", headers=_bearer(user))
+    assert r.status_code == 403
+
+
+async def test_export_redemptions_returns_csv_for_moderator(client, db_session):
+    # Fulfilling a redemption requires admin (get_admin_user), not moderator — use a
+    # separate admin to set up the fixture data, then verify the export endpoint itself
+    # (gated on the lower get_moderator_user tier, matching export/bans) is reachable
+    # by a plain moderator.
+    admin = await _make_user(db_session, "AdminFulfillerForExport", role="admin")
+    moderator = await _make_user(db_session, "ModExporter", role="moderator")
+    user = await _make_user(db_session, "ExportTarget", points_balance=100)
+    item = await _make_item(db_session, name="Export Item", cost=15)
+    redeem_r = await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+    redemption_id = redeem_r.json()["id"]
+    fulfill_r = await client.post(
+        f"/api/admin/shop/redemptions/{redemption_id}/fulfill",
+        json={"admin_note": "shipped"},
+        headers=_bearer(admin),
+    )
+    assert fulfill_r.status_code == 200
+
+    r = await client.get("/api/admin/export/redemptions", headers=_bearer(moderator))
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "attachment; filename=redemptions.csv" in r.headers["content-disposition"]
+
+    body = r.text
+    lines = body.strip().splitlines()
+    assert lines[0] == "user,item,cost,status,created_at,resolved_at,resolved_by,admin_note"
+    data_lines = lines[1:]
+    assert len(data_lines) == 1
+    row = data_lines[0]
+    assert row.startswith("ExportTarget,Export Item,15,fulfilled,")
+    assert "AdminFulfillerForExport" in row
+    assert "shipped" in row
