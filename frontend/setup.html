@@ -95,6 +95,24 @@
     .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     label { display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 0.35rem; }
     .glow-text { text-shadow: 0 0 24px rgba(200,0,40,0.7), 0 0 48px rgba(200,0,40,0.25); }
+    /* ── Password field UX (show/hide toggle, strength meter, live confirm-match) —
+       mirrors the pattern already used by login.html's registration form, so the
+       first-run admin-bootstrap form isn't worse than the ordinary one. ── */
+    .input-wrap { position: relative; }
+    .dark-input.has-toggle { padding-right: 2.8rem; }
+    .pw-toggle {
+      position: absolute; right: .7rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); padding: .15rem;
+      display: flex; align-items: center;
+      transition: color .18s;
+    }
+    .pw-toggle:hover { color: var(--text); }
+    .pw-strength { margin-top: .45rem; }
+    .pw-strength-bar { height: 3px; border-radius: 2px; background: rgba(110,0,20,0.2); overflow: hidden; margin-bottom: .3rem; }
+    .pw-strength-fill { height: 100%; border-radius: 2px; width: 0; transition: width .3s ease, background .3s ease; }
+    .pw-strength-label { font-size: .62rem; color: var(--muted); }
+    .confirm-hint { font-size: .68rem; margin-top: .32rem; min-height: 1em; }
     .error-box { background: rgba(140,0,20,0.25); border: 1px solid rgba(180,0,30,0.5); color: #fca5a5; border-radius: 0.5rem; padding: 0.6rem 0.9rem; font-size: 0.85rem; }
     .step-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(150,0,28,0.3); border: 1px solid rgba(150,0,28,0.5); transition: all 0.3s; }
     .step-dot.active { background: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
@@ -148,14 +166,29 @@
             placeholder="admin@example.com" class="dark-input" />
         </div>
         <div>
-          <label>Пароль</label>
-          <input id="s-password" type="password" required autocomplete="new-password"
-            placeholder="Минимум 6 символов" class="dark-input" />
+          <label for="s-password">Пароль</label>
+          <div class="input-wrap">
+            <input id="s-password" type="password" required autocomplete="new-password"
+              placeholder="Минимум 6 символов" class="dark-input has-toggle" oninput="onSetupPwInput()" />
+            <button type="button" class="pw-toggle" onclick="toggleSetupPw('s-password',this)" tabindex="-1">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-eye"></use></svg>
+            </button>
+          </div>
+          <div class="pw-strength" id="s-pw-strength" style="display:none;">
+            <div class="pw-strength-bar"><div class="pw-strength-fill" id="s-pw-fill"></div></div>
+            <div class="pw-strength-label" id="s-pw-label"></div>
+          </div>
         </div>
         <div>
-          <label>Повторите пароль</label>
-          <input id="s-confirm" type="password" required autocomplete="new-password"
-            placeholder="Повторите пароль" class="dark-input" />
+          <label for="s-confirm">Повторите пароль</label>
+          <div class="input-wrap">
+            <input id="s-confirm" type="password" required autocomplete="new-password"
+              placeholder="Повторите пароль" class="dark-input has-toggle" oninput="checkSetupConfirm()" />
+            <button type="button" class="pw-toggle" onclick="toggleSetupPw('s-confirm',this)" tabindex="-1">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-eye"></use></svg>
+            </button>
+          </div>
+          <div class="confirm-hint" id="s-confirm-hint"></div>
         </div>
         <div id="setup-error" class="error-box hidden"></div>
         <button type="submit" id="setup-btn" class="btn-primary" style="margin-top:.5rem;">
@@ -169,6 +202,64 @@
 </div>
 
 <script>
+// ── Password show/hide toggle ─────────────────────────────────────────────
+const setupEyeOpen  = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-eye"></use></svg>`;
+const setupEyeClosed = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-eye-off"></use></svg>`;
+function toggleSetupPw(inputId, btn) {
+  const input = document.getElementById(inputId);
+  const isText = input.type === 'text';
+  input.type = isText ? 'password' : 'text';
+  btn.innerHTML = isText ? setupEyeOpen : setupEyeClosed;
+}
+
+// ── Password strength ─────────────────────────────────────────────────────
+function setupPwStrength(pw) {
+  if (!pw) return 0;
+  let score = 0;
+  if (pw.length >= 6)  score++;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  return score;
+}
+function onSetupPwInput() {
+  const pw = document.getElementById('s-password').value;
+  const bar = document.getElementById('s-pw-strength');
+  const fill = document.getElementById('s-pw-fill');
+  const label = document.getElementById('s-pw-label');
+  if (!pw) { bar.style.display = 'none'; checkSetupConfirm(); return; }
+  bar.style.display = 'block';
+  const score = setupPwStrength(pw);
+  const levels = [
+    { w: '20%',  color: '#ef4444', text: 'Очень слабый' },
+    { w: '40%',  color: '#f97316', text: 'Слабый' },
+    { w: '60%',  color: '#eab308', text: 'Средний' },
+    { w: '80%',  color: '#84cc16', text: 'Хороший' },
+    { w: '100%', color: '#22c55e', text: 'Надёжный' },
+  ];
+  const lvl = levels[Math.min(score, 4)];
+  fill.style.width = lvl.w;
+  fill.style.background = lvl.color;
+  label.textContent = lvl.text;
+  label.style.color = lvl.color;
+  checkSetupConfirm();
+}
+
+// ── Confirm match ─────────────────────────────────────────────────────────
+function checkSetupConfirm() {
+  const pw  = document.getElementById('s-password').value;
+  const cfw = document.getElementById('s-confirm').value;
+  const hint = document.getElementById('s-confirm-hint');
+  const input = document.getElementById('s-confirm');
+  if (!cfw) { hint.textContent = ''; input.style.borderColor = ''; input.style.boxShadow = ''; return; }
+  const match = pw === cfw;
+  hint.textContent = match ? '✔ Пароли совпадают' : '✘ Пароли не совпадают';
+  hint.style.color = match ? '#86efac' : '#fca5a5';
+  input.style.borderColor = match ? 'rgba(0,180,40,0.5)' : 'rgba(180,0,30,0.6)';
+  input.style.boxShadow   = match ? '0 0 8px rgba(0,180,40,0.18)' : '0 0 8px rgba(180,0,30,0.18)';
+}
+
 function goStep2() {
   document.getElementById('step-1').classList.add('hidden');
   document.getElementById('step-2').classList.remove('hidden');

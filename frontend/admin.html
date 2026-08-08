@@ -5983,6 +5983,18 @@ loadWipeHistory().then(() => {
     const s2 = document.querySelector('#wf-server option[value="2"]');
     if (s1) s1.textContent = smap.server_name?.trim() || 'Сервер 1';
     if (s2) s2.textContent = smap.server2_name?.trim() || 'Сервер 2';
+    // Same real-name sync for the other server-filter dropdowns that were still
+    // hardcoded to the generic "Сервер 1"/"Сервер 2" placeholders (RCON command
+    // target, players-list filter, moderation-log filter) — falls back to the
+    // placeholder only when the setting itself is empty, same as #wf-server above.
+    const srvName  = smap.server_name?.trim()  || 'Сервер 1';
+    const srvName2 = smap.server2_name?.trim() || 'Сервер 2';
+    ['rcon-server-sel', 'players-server', 'modlog-server-filter'].forEach(id => {
+      const o1 = document.querySelector(`#${id} option[value="1"]`);
+      const o2 = document.querySelector(`#${id} option[value="2"]`);
+      if (o1) o1.textContent = srvName;
+      if (o2) o2.textContent = srvName2;
+    });
   }).catch(() => {});
 });
 
