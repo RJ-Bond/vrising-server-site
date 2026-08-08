@@ -396,6 +396,16 @@
           </button>
         </div>
       </div>
+      <div class="form-group" id="login-totp-group" style="display:none;">
+        <label class="form-label">Код 2FA</label>
+        <div class="input-wrap">
+          <span class="input-icon">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-shield"></use></svg>
+          </span>
+          <input id="login-totp" name="totp_code" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+            autocomplete="one-time-code" placeholder="6-значный код из приложения" class="dark-input" />
+        </div>
+      </div>
       <div class="login-meta">
         <label class="remember-label">
           <input type="checkbox" id="remember-me" checked>
@@ -403,7 +413,7 @@
         </label>
         <button type="button" class="forgot-link" onclick="switchTab('forgot')">Забыли пароль?</button>
       </div>
-      <div id="login-error" class="alert alert-error">
+      <div id="login-error" class="alert alert-error" role="alert" aria-live="polite">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><use href="/icons.svg#icon-alert-circle"></use></svg>
         <span id="login-error-text"></span>
       </div>
@@ -723,17 +733,40 @@ function extractError(data, fallback) {
 }
 
 // ── Login ─────────────────────────────────────────────────────────────────
+// Backend has no dedicated error code for "2FA code required" (see
+// backend/routers/auth.py `login()`) — it's a 401 with this exact Russian
+// detail string, reused for the "wrong/missing code" and "wrong code, retry"
+// cases alike. Matching on it is the pragmatic option until the backend
+// grows a structured error code.
+const TOTP_REQUIRED_DETAIL = 'Требуется код 2FA';
+
 async function submitLogin(e) {
   e.preventDefault();
   document.getElementById('login-error').classList.remove('show');
   const btn = document.getElementById('login-btn');
   btn.disabled = true; btn.textContent = 'Вход…';
   const fd = new FormData(e.target);
+  const totpGroup = document.getElementById('login-totp-group');
+  const totpVisible = totpGroup.style.display !== 'none';
   try {
-    const { res, data } = await apiPost(`${API}/auth/login`, {
-      username: fd.get('username'), password: fd.get('password'),
-    });
-    if (!res.ok) { showAlert('login-error', extractError(data, 'Неверный логин или пароль')); return; }
+    const body = { username: fd.get('username'), password: fd.get('password') };
+    const totpCode = (fd.get('totp_code') || '').trim();
+    if (totpCode) body.totp_code = totpCode;
+    const { res, data } = await apiPost(`${API}/auth/login`, body);
+    if (!res.ok) {
+      if (data.detail === TOTP_REQUIRED_DETAIL) {
+        totpGroup.style.display = 'block';
+        showAlert('login-error', totpVisible
+          ? 'Неверный код 2FA. Попробуйте снова.'
+          : 'Введите код двухфакторной аутентификации из приложения-аутентификатора');
+        const totpInput = document.getElementById('login-totp');
+        totpInput.focus();
+        totpInput.select();
+        return;
+      }
+      showAlert('login-error', extractError(data, 'Неверный логин или пароль'));
+      return;
+    }
     // Token is set via httpOnly cookie by the server; save user info for UI
     const store = document.getElementById('remember-me')?.checked !== false ? localStorage : sessionStorage;
     store.setItem('user', JSON.stringify(data.user));

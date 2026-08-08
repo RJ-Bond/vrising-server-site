@@ -314,7 +314,9 @@
         <form id="admin-login-form" onsubmit="adminLogin(event)" style="display:none;">
           <input id="al-user" class="al-input" type="text"     placeholder="Логин"  autocomplete="username">
           <input id="al-pass" class="al-input" type="password" placeholder="Пароль" autocomplete="current-password">
-          <div id="al-err"></div>
+          <input id="al-totp" class="al-input" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+            autocomplete="one-time-code" placeholder="Код 2FA" style="display:none;">
+          <div id="al-err" role="alert" aria-live="polite"></div>
           <button type="submit" id="al-btn">Войти</button>
         </form>
       </div>
@@ -436,23 +438,44 @@
     }
 
     // ── Admin login submit ────────────────────────────────────────
+    // Same backend as login.html — no dedicated error code for "2FA code
+    // required", just this exact 401 detail string. See the comment on
+    // TOTP_REQUIRED_DETAIL in login.html for why string-matching it is fine.
+    const TOTP_REQUIRED_DETAIL = 'Требуется код 2FA';
+
     async function adminLogin(e) {
       e.preventDefault();
       const btn = document.getElementById('al-btn');
       const err = document.getElementById('al-err');
       const user = document.getElementById('al-user').value.trim();
       const pass = document.getElementById('al-pass').value;
+      const totpInput = document.getElementById('al-totp');
+      const totpVisible = totpInput.style.display !== 'none';
+      const totp = totpInput.value.trim();
       if (!user || !pass) return;
       btn.disabled = true; btn.textContent = '…';
       err.style.display = 'none';
       try {
+        const body = { username: user, password: pass };
+        if (totp) body.totp_code = totp;
         const res = await fetch('/api/auth/login', {
           method:'POST', credentials:'include',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({username:user, password:pass})
+          body: JSON.stringify(body)
         });
         const d = await res.json();
         if (!res.ok) {
+          if (d.detail === TOTP_REQUIRED_DETAIL) {
+            totpInput.style.display = '';
+            err.textContent = totpVisible
+              ? 'Неверный код 2FA. Попробуйте снова.'
+              : 'Введите код двухфакторной аутентификации из приложения-аутентификатора';
+            err.style.display = '';
+            totpInput.focus();
+            totpInput.select();
+            btn.disabled = false; btn.textContent = 'Войти';
+            return;
+          }
           err.textContent = d.detail || 'Неверный логин или пароль';
           err.style.display = '';
           btn.disabled = false; btn.textContent = 'Войти';
