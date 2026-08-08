@@ -738,7 +738,7 @@ function clanLbRowHtml(row, i) {
   const members = row.member_count || 0;
   const onlineHtml = row.online_count > 0 ? `<span class="clan-lb-online-count">● ${row.online_count} онлайн</span>` : '';
   const power = Math.round(row.total_power || 0).toLocaleString('ru-RU');
-  return `<div class="clan-lb-row${rowCls}" style="animation:fade-up .35s ease both;animation-delay:${Math.min(i * 30, 300)}ms;" onclick="openClanDetail(${row.id})">
+  return `<div class="clan-lb-row${rowCls}" style="animation:fade-up .35s ease both;animation-delay:${Math.min(i * 30, 300)}ms;" role="button" tabindex="0" onclick="openClanDetail(${row.id})" onkeydown="onClanLbRowKey(event,${row.id})">
     <span class="clan-lb-rank ${rankCls}">${medal ? `<span class="clan-lb-medal">${medal}</span>` : rank}</span>
     <span class="clan-lb-avatar" style="background:${grad};">${initials}</span>
     <div class="clan-lb-name-col">
@@ -754,6 +754,15 @@ function clanLbRowHtml(row, i) {
       <span class="clan-lb-power-val">⚔ ${power}</span>
     </div>
   </div>`;
+}
+
+/* Keyboard-activation for clanLbRowHtml()'s clickable div rows (role="button" above) —
+   same Enter/Space-fires-click pattern as map.html's onRegionKey(). */
+function onClanLbRowKey(e, clanId) {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    openClanDetail(clanId);
+  }
 }
 
 function renderClanPowerLeaderboard(rows) {
