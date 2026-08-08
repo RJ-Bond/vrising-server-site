@@ -298,3 +298,11 @@ async def test_team_roster_excludes_moderators(client, db_session):
     assert "team_mod" not in usernames
     assert "team_admin" in usernames
     assert "team_super" in usernames
+
+
+async def test_team_roster_sets_cache_control(client, db_session):
+    """The staff roster changes rarely (a role change), so it carries a short public
+    Cache-Control to take load off repeat visitors — see backend/routers/profile.py."""
+    r = await client.get("/api/team")
+    assert r.status_code == 200
+    assert r.headers["Cache-Control"] == "public, max-age=120"

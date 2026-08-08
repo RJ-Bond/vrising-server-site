@@ -19,13 +19,14 @@ search-results page — so no pagination, no total counts.
 from typing import Literal
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
 from ..models import GameClan, News, User
+from ..rate_limit import limiter
 
 router = APIRouter()
 
@@ -40,7 +41,9 @@ class SearchResultOut(BaseModel):
 
 
 @router.get("/api/search", response_model=list[SearchResultOut])
+@limiter.limit("30/minute")
 async def search(
+    request: Request,
     q: str = Query(..., min_length=1, max_length=100),
     db: AsyncSession = Depends(get_db),
 ):

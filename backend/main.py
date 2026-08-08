@@ -6,7 +6,6 @@ import json
 import sys
 import time
 import asyncio
-import httpx
 import sentry_sdk
 from sentry_sdk.integrations.fastapi import FastApiIntegration
 from contextlib import asynccontextmanager
@@ -52,7 +51,7 @@ from slowapi.middleware import SlowAPIMiddleware
 # (e.g. _track_players writes Leaderboard data from inside what's filed as "Monitor").
 
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update, func
+from sqlalchemy import select, delete, update, func, text
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
@@ -417,6 +416,18 @@ app.include_router(admin_settings.router)
 app.include_router(admin_system.router)
 app.include_router(admin_misc.router)
 app.include_router(moderation.router)
+
+
+# ─── Health check ────────────────────────────────────────────────────────────
+# Unauthenticated liveness/readiness probe (uptime monitors, container orchestration).
+# Does a trivial real query rather than just returning a static 200 so it actually
+# reflects DB reachability, not merely "the process is alive" — deliberately cheap
+# (no ORM, no table scan) so it stays safe to poll frequently.
+
+@app.get("/healthz")
+async def healthz(db: AsyncSession = Depends(get_db)):
+    await db.execute(text("SELECT 1"))
+    return {"status": "ok"}
 
 
 # ─── Homepage trust stats ───────────────────────────────────────────────────
@@ -1383,39 +1394,11 @@ async def server_status2(db: AsyncSession = Depends(get_db)):
     return {"enabled": True, **data}
 
 
-# ─── Discord Webhook ─────────────────────────────────────────────────────────
-# _discord_webhook_news (the new-post announce helper) moved to
-# backend/routers/news.py — its only caller, POST /api/admin/news, lives there now.
-
-@app.post("/api/admin/test-webhook")
-async def test_discord_webhook(request: Request, current_user: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
-    try:
-        body_data = await request.json()
-        url = (body_data.get("url") or "").strip()
-    except Exception:
-        url = ""
-    if not url:
-        res = await db.execute(select(Setting).where(Setting.key == "discord_webhook_url"))
-        setting = res.scalar_one_or_none()
-        url = (setting.value or "").strip() if setting else ""
-    if not url or "discord" not in url or "/api/webhooks/" not in url:
-        raise HTTPException(status_code=400, detail="Discord Webhook URL не настроен — введите URL в поле выше")
-    try:
-        embed = {
-            "title": "✅ Тест вебхука — V Rising",
-            "description": "Вебхук настроен корректно. Уведомления о новостях будут появляться здесь.",
-            "color": 0x00B050,
-            "footer": {"text": "V Rising Admin Panel"},
-        }
-        async with httpx.AsyncClient() as client:
-            r = await client.post(url, json={"embeds": [embed]}, timeout=10.0)
-        if r.status_code not in (200, 204):
-            raise HTTPException(status_code=502, detail=f"Discord вернул {r.status_code}: {r.text[:300]}")
-        return {"ok": True}
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Ошибка запроса: {type(e).__name__}: {e}") from e
+# POST /api/admin/test-webhook lives in backend/routers/admin_misc.py — it used to be
+# duplicated here (identical path + function name, both registered), which threw a
+# "Duplicate Operation ID" warning on every startup/test run. Removed in favor of the
+# admin_misc.py copy, the intended home per the router split (see that file's own
+# Discord Webhook section header comment).
 
 
 # ─── Background tasks ────────────────────────────────────────────────────────
