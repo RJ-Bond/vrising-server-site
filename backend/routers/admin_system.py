@@ -629,3 +629,21 @@ async def create_backup_now(current_user: User = Depends(get_superadmin_user)):
     dst = BACKUP_DIR / f"vrising_{ts}.db"
     shutil.copy2(str(src), str(dst))
     return {"filename": dst.name, "size": dst.stat().st_size}
+
+
+@router.delete("/api/admin/backups/{filename}", status_code=204)
+async def delete_backup(filename: str, current_user: User = Depends(get_superadmin_user)):
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(400, "Invalid filename")
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    backup_dir_resolved = BACKUP_DIR.resolve()
+    path = (BACKUP_DIR / filename).resolve()
+    # Belt-and-braces on top of the "../" substring check above: resolve the final
+    # path and confirm it's actually still inside BACKUP_DIR before touching disk,
+    # so a client-supplied filename can never escape the backups directory.
+    if backup_dir_resolved not in path.parents and path != backup_dir_resolved:
+        raise HTTPException(400, "Invalid filename")
+    if not path.is_file():
+        raise HTTPException(404, "Backup not found")
+    path.unlink()
+    return None

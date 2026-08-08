@@ -57,7 +57,8 @@ services:
       #     admin routes (git pull self-update, nginx config templating for SSL).
       - maintenance_flag:/var/maintenance
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/version')"]
+      # See docker-compose.yml — /healthz does a real DB `SELECT 1`, /api/version doesn't.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
       interval: 30s
       timeout: 10s
       retries: 3

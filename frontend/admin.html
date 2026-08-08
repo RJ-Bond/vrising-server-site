@@ -2367,7 +2367,7 @@
       <div id="backup-msg" style="margin-bottom:.75rem;font-size:.85rem;"></div>
       <div class="glass-card rounded-xl overflow-hidden">
         <table>
-          <thead><tr><th>Файл</th><th>Размер</th><th>Дата</th><th>Скачать</th></tr></thead>
+          <thead><tr><th>Файл</th><th>Размер</th><th>Дата</th><th>Скачать</th><th>Действия</th></tr></thead>
           <tbody id="backups-table-body"></tbody>
         </table>
       </div>
@@ -6878,14 +6878,35 @@ async function loadBackups() {
   tableShowSkeleton('backups-table-body', 4);
   const data = await fetch(`${API}/admin/backups`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => []);
   const tbody = document.getElementById('backups-table-body');
-  if (!data.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Бэкапов нет</td></tr>'; return; }
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Бэкапов нет</td></tr>'; return; }
+  // Delete is superadmin-only (DELETE /api/admin/backups/{filename}) — same
+  // meetsRole() gate used for the role-management controls in the users table.
+  // Redundant with the section itself already being superadmin-gated (see
+  // SECTION_MIN_ROLE), kept for defense in depth / consistency with that pattern.
+  const canDelete = meetsRole('superadmin');
   tbody.innerHTML = data.map(b => `
     <tr>
       <td>${esc(b.filename)}</td>
       <td>${(b.size/1024).toFixed(1)} KB</td>
       <td>${fmtDateTime(b.created_at)}</td>
       <td><a href="${API}/admin/backups/${encodeURIComponent(b.filename)}" style="font-size:.78rem;color:#93c5fd;text-decoration:underline;">⬇ Скачать</a></td>
+      <td>${canDelete ? `<button onclick="deleteBackup('${esc(b.filename)}')" class="btn-ghost" style="font-size:.78rem;color:#f87171;">🗑 Удалить</button>` : ''}</td>
     </tr>`).join('');
+}
+function deleteBackup(filename) {
+  showConfirm({
+    title: 'Удалить бэкап?',
+    text: `Файл ${filename} будет удалён безвозвратно.`,
+    onOk: async () => {
+      const res = await fetch(`${API}/admin/backups/${encodeURIComponent(filename)}`, { method: 'DELETE', credentials: 'include', headers: authH() });
+      if (res.ok || res.status === 204) {
+        adminToast('Бэкап удалён', 'success');
+        loadBackups();
+      } else {
+        adminToast('Ошибка удаления бэкапа', 'error');
+      }
+    },
+  });
 }
 async function createBackup() {
   const r = await fetch(`${API}/admin/backups/create`, { method: 'POST', credentials: 'include', headers: authH() });

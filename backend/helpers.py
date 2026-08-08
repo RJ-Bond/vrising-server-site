@@ -8,6 +8,7 @@ import logging
 import os
 import shutil
 import subprocess
+import time
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from zoneinfo import ZoneInfo
@@ -128,6 +129,34 @@ def optimize_image_bytes(content: bytes, suffix: str) -> bytes:
     return optimized if len(optimized) < len(content) else content
 
 _totp_pending: dict[int, str] = {}
+
+# Per-account TOTP brute-force tracking, separate from the login endpoint's global
+# @limiter.limit("10/minute") (backend/routers/auth.py) — that quota is shared across
+# every failure mode (wrong password included) from any caller, so a focused attacker
+# guessing 6-digit codes against ONE known account isn't meaningfully slowed by it.
+# In-memory dict, same lightweight pattern as _totp_pending/_visitor_data above — this
+# is a soft secondary guard, not a security boundary that needs to survive a restart.
+_failed_totp_attempts: dict[int, list[float]] = {}  # user_id -> failure timestamps
+_TOTP_ATTEMPT_WINDOW = 300  # 5 minutes
+_TOTP_ATTEMPT_LIMIT = 5
+
+
+def _totp_attempts_exceeded(user_id: int) -> bool:
+    """True if user_id has racked up more than _TOTP_ATTEMPT_LIMIT failed TOTP
+    verifications within _TOTP_ATTEMPT_WINDOW seconds. Prunes stale entries first so the
+    dict doesn't grow unbounded across the process lifetime."""
+    now = time.time()
+    attempts = [ts for ts in _failed_totp_attempts.get(user_id, []) if now - ts < _TOTP_ATTEMPT_WINDOW]
+    _failed_totp_attempts[user_id] = attempts
+    return len(attempts) >= _TOTP_ATTEMPT_LIMIT
+
+
+def _record_failed_totp(user_id: int) -> None:
+    _failed_totp_attempts.setdefault(user_id, []).append(time.time())
+
+
+def _reset_failed_totp(user_id: int) -> None:
+    _failed_totp_attempts.pop(user_id, None)
 
 # Visitor-tracking state — logically part of the Who's-online domain (main.py, not yet
 # split out) but also written by POST /api/auth/logout (backend/routers/auth.py) to
