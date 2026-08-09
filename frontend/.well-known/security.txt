@@ -1,0 +1,8 @@
+# Responsible disclosure policy for v.just-skill.ru (RFC 9116).
+# No dedicated security mailbox exists yet — please report via the public GitHub
+# issue tracker below (mark the issue private/security-sensitive details out of
+# the initial report if it's a live vulnerability, and we'll follow up for detail).
+Contact: https://github.com/RJ-Bond/vrising-server-site/issues/new?labels=bug
+Expires: 2027-08-09T00:00:00.000Z
+Preferred-Languages: ru, en
+Canonical: https://v.just-skill.ru/.well-known/security.txt

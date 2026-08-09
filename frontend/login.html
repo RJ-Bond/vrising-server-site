@@ -449,11 +449,12 @@
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-lock"></use></svg>
           </span>
           <input id="reg-password" name="password" type="password" required autocomplete="new-password"
-            placeholder="Минимум 6 символов" class="dark-input has-toggle" oninput="onPwInput()" />
+            minlength="8" placeholder="Минимум 8 символов, буква и цифра" class="dark-input has-toggle" oninput="onPwInput()" />
           <button type="button" class="pw-toggle" onclick="togglePw('reg-password',this)" tabindex="-1">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-eye"></use></svg>
           </button>
         </div>
+        <div style="font-size:.62rem;color:var(--muted);margin-top:.3rem;">Минимум 8 символов, минимум одна буква и одна цифра</div>
         <div class="pw-strength" id="pw-strength" style="display:none;">
           <div class="pw-strength-bar"><div class="pw-strength-fill" id="pw-fill"></div></div>
           <div class="pw-strength-label" id="pw-label"></div>
@@ -669,8 +670,8 @@ function togglePw(inputId, btn) {
 function pwStrength(pw) {
   if (!pw) return 0;
   let score = 0;
-  if (pw.length >= 6)  score++;
-  if (pw.length >= 10) score++;
+  if (pw.length >= 8)  score++;  // matches the server-side minimum (backend/schemas.py)
+  if (pw.length >= 12) score++;
   if (/[A-Z]/.test(pw)) score++;
   if (/[0-9]/.test(pw)) score++;
   if (/[^A-Za-z0-9]/.test(pw)) score++;

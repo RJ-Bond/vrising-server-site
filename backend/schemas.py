@@ -46,9 +46,19 @@ class UserRegister(BaseModel):
 
     @field_validator("password")
     @classmethod
-    def password_length(cls, v: str) -> str:
-        if len(v) < 6:
-            raise ValueError("Password must be at least 6 characters")
+    def password_complexity(cls, v: str) -> str:
+        # Same length + composition bar as PluginRegister.password_complexity below
+        # (in-game `.register`) — length plus basic letter+digit coverage is the
+        # pragmatic modern guidance; deliberately not mandating special characters or
+        # uppercase, which is a UX-hostile pattern with weak security payoff.
+        if (
+            len(v) < 8
+            or not re.search(r"[a-zA-Zа-яА-ЯёЁ]", v)
+            or not re.search(r"\d", v)
+        ):
+            raise ValueError(
+                "Пароль: минимум 8 символов, должен содержать хотя бы одну букву и одну цифру"
+            )
         return v
 
 

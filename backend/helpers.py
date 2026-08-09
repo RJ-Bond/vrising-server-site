@@ -200,6 +200,15 @@ def _utc_ts(dt: datetime) -> float:
 
 _COOKIE_MAX_AGE = 60 * 60 * 24 * 7  # 7 days
 
+# Off by default so plain-HTTP setups (local dev, staging's nginx.staging.conf, which
+# is deliberately plain HTTP — see docker-compose.staging.yml's header comment) still
+# get a cookie back at all: a browser silently drops a `Secure` cookie set over a
+# non-HTTPS response, which would otherwise break login there with no visible error.
+# Set COOKIE_SECURE=true in the real HTTPS deploy's environment (docker-compose.yml,
+# fronted by nginx-ssl.conf/the `https_domain` admin setting) so the auth cookie only
+# ever travels over HTTPS.
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").strip().lower() in ("1", "true", "yes", "on")
+
 
 def _set_auth_cookie(response: Response, token: str) -> None:
     response.set_cookie(
@@ -208,7 +217,7 @@ def _set_auth_cookie(response: Response, token: str) -> None:
         max_age=_COOKIE_MAX_AGE,
         httponly=True,
         samesite="lax",
-        secure=False,  # True only with HTTPS; nginx handles TLS termination
+        secure=COOKIE_SECURE,
         path="/",
     )
 

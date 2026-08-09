@@ -32,6 +32,12 @@ services:
       - DATABASE_URL=sqlite+aiosqlite:////data/vrising.db
       - VRISING_SERVER_IP=${VRISING_SERVER_IP:-127.0.0.1}
       - VRISING_SERVER_PORT=${VRISING_SERVER_PORT:-27016}
+      # Hardcoded false, not `${COOKIE_SECURE:-false}` — staging (nginx.staging.conf,
+      # see this file's own header comment) serves plain HTTP on purpose and is never
+      # meant to go internet-facing, so a `Secure` cookie here would just break login
+      # (browsers silently drop `Secure` cookies set over a non-HTTPS response). Unlike
+      # docker-compose.yml, there's no scenario where this should ever flip to true.
+      - COOKIE_SECURE=false
       - SENTRY_DSN=${SENTRY_DSN:-}
       - SENTRY_TRACES_SAMPLE_RATE=${SENTRY_TRACES_SAMPLE_RATE:-0.1}
       # Defaults to the staging port below rather than prod's :80/:443 — override in

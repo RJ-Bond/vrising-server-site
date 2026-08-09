@@ -1,0 +1,7 @@
+# RFC 9116 mandates /.well-known/security.txt (see that copy) — this root-level
+# duplicate exists only for the older tools/scanners that still look at /security.txt
+# directly. Keep both files in sync if this ever changes.
+Contact: https://github.com/RJ-Bond/vrising-server-site/issues/new?labels=bug
+Expires: 2027-08-09T00:00:00.000Z
+Preferred-Languages: ru, en
+Canonical: https://v.just-skill.ru/.well-known/security.txt

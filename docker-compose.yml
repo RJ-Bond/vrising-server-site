@@ -10,6 +10,13 @@ services:
       - DATABASE_URL=sqlite+aiosqlite:////data/vrising.db
       - VRISING_SERVER_IP=${VRISING_SERVER_IP:-127.0.0.1}
       - VRISING_SERVER_PORT=${VRISING_SERVER_PORT:-27016}
+      # Marks the auth cookie `Secure` (backend/helpers.py's _set_auth_cookie) so
+      # browsers only ever send it over HTTPS. This compose file is the real
+      # HTTPS deploy (fronted by nginx/nginx-ssl.conf + the `https_domain` admin
+      # setting) — set COOKIE_SECURE=true in the server's .env once TLS is live.
+      # Defaults to false so a fresh HTTP-only install (before SSL is enabled)
+      # doesn't silently drop the login cookie.
+      - COOKIE_SECURE=${COOKIE_SECURE:-false}
       - SENTRY_DSN=${SENTRY_DSN:-}
       - SENTRY_TRACES_SAMPLE_RATE=${SENTRY_TRACES_SAMPLE_RATE:-0.1}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost}
