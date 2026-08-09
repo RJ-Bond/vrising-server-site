@@ -67,10 +67,25 @@
       display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:1rem;
     }
     .shop-item-card {
-      display:flex; flex-direction:column; padding:1.1rem; transition:border-color .2s, transform .2s;
+      position:relative; display:flex; flex-direction:column; padding:1.1rem; transition:border-color .2s, transform .2s;
     }
     .shop-item-card:hover { border-color:rgba(201,169,74,0.35); }
     .shop-item-card.disabled { opacity:.5; }
+    .shop-wishlist-btn {
+      position:absolute; top:.6rem; right:.6rem; width:1.9rem; height:1.9rem; border-radius:50%;
+      background:rgba(10,2,18,0.55); border:1px solid rgba(150,0,28,0.25); color:var(--muted);
+      font-size:1rem; line-height:1; display:flex; align-items:center; justify-content:center;
+      cursor:pointer; transition:all .15s; padding:0;
+    }
+    .shop-wishlist-btn:hover { color:#e0335c; border-color:rgba(224,51,92,0.45); }
+    .shop-wishlist-btn.active { color:#e0335c; border-color:rgba(224,51,92,0.5); background:rgba(150,0,28,0.22); }
+    .shop-item-limit { font-size:.68rem; color:var(--muted); margin-bottom:.5rem; }
+    .shop-item-limit.limit-zero { color:#e0335c; }
+    /* Category / favorites filter pills — same look as events.html's .cat-pill, reused
+       here since both pages filter an already-loaded list client-side. */
+    .cat-pill { background:none; border:1px solid rgba(110,0,150,.22); color:var(--muted); font-size:.72rem; font-weight:600; padding:.3rem .8rem; border-radius:9999px; cursor:pointer; transition:all .15s; font-family:'Inter',sans-serif; }
+    .cat-pill.active { background:rgba(200,0,42,.2); border-color:rgba(200,0,42,.5); color:var(--text); }
+    .cat-pill:hover:not(.active) { color:var(--text); border-color:rgba(160,0,200,.4); }
     .shop-item-image {
       width:100%; height:110px; border-radius:.6rem; object-fit:cover; margin-bottom:.75rem;
       background:rgba(14,3,24,0.6); border:1px solid rgba(150,0,28,0.15);
@@ -259,6 +274,11 @@
       </div>
       <p class="shop-section-desc" data-i18n-ru="Стоимость списывается сразу; выдача — вручную администрацией после подтверждения заявки." data-i18n-en="Cost is deducted immediately; fulfillment is done manually by the administration after the request is confirmed.">Стоимость списывается сразу; выдача — вручную администрацией после подтверждения заявки.</p>
     </div>
+    <!-- Category / favorites filter pills — built from the loaded item list in
+         renderShopFilterPills() (categories are admin-authored free content, not a
+         fixed i18n'd set like events.html's, so labels aren't translated — same
+         policy as item names/descriptions on this page). -->
+    <div id="shop-filter-pills" style="display:flex;gap:.4rem;margin-bottom:1rem;flex-wrap:wrap;"></div>
     <div id="shop-items-grid" class="shop-grid" style="margin:1rem 0 2rem;">
       <div class="skel-card"></div><div class="skel-card"></div><div class="skel-card"></div>
     </div>
@@ -421,20 +441,76 @@ function applySiteBackground(bg) {
 
 /* ── Mobile nav ── */
 /* ── Item grid ── */
+let _shopCurrentFilter = 'all'; // 'all' | '__wishlist__' | a category string
+
 function shopItemCardHtml(it) {
-  const disabled = it.cost > _shopBalance || it.stock === 0;
+  const weeklyLimitHit = it.weekly_limit_per_user != null && it.weekly_remaining != null && it.weekly_remaining <= 0;
+  const disabled = it.cost > _shopBalance || it.stock === 0 || weeklyLimitHit;
   const img = it.image_url
     ? `<img class="shop-item-image" src="${esc(it.image_url)}" alt="${esc(it.name)}" loading="lazy">`
     : `<div class="shop-item-image" style="display:flex;align-items:center;justify-content:center;font-size:1.8rem;opacity:.35;">🎁</div>`;
   const stockLabel = it.stock == null ? '' : `<div class="shop-item-stock">${_t('Осталось', 'Left')}: ${it.stock}</div>`;
+  const limitLabel = it.weekly_limit_per_user == null ? '' :
+    `<div class="shop-item-limit${weeklyLimitHit ? ' limit-zero' : ''}">${_t('Осталось на этой неделе', 'Left this week')}: ${it.weekly_remaining ?? it.weekly_limit_per_user}/${it.weekly_limit_per_user}</div>`;
+  const wishlisted = !!it.wishlisted;
+  const heartBtn = `<button type="button" class="shop-wishlist-btn${wishlisted ? ' active' : ''}" onclick="toggleWishlist(${it.id}, this)" aria-label="${_t('В избранное', 'Add to wishlist')}" data-tip="${_t('В избранное', 'Wishlist')}">${wishlisted ? '♥' : '♡'}</button>`;
+  let redeemLabel = _t('Обменять', 'Redeem');
+  if (it.stock === 0) redeemLabel = _t('Нет в наличии', 'Out of stock');
+  else if (weeklyLimitHit) redeemLabel = _t('Лимит исчерпан', 'Limit reached');
   return `<div class="g-card shop-item-card${disabled ? ' disabled' : ''}">
+    ${heartBtn}
     ${img}
     <div class="shop-item-name">${esc(it.name)}</div>
     ${it.description ? `<div class="shop-item-desc">${esc(it.description)}</div>` : '<div class="shop-item-desc"></div>'}
     ${stockLabel}
+    ${limitLabel}
     <div class="shop-item-cost">⚡ ${it.cost}</div>
-    <button class="btn-redeem" ${disabled ? 'disabled' : ''} onclick="redeemItem(${it.id}, this)">${it.stock === 0 ? _t('Нет в наличии', 'Out of stock') : _t('Обменять', 'Redeem')}</button>
+    <button class="btn-redeem" ${disabled ? 'disabled' : ''} onclick="redeemItem(${it.id}, this)">${redeemLabel}</button>
   </div>`;
+}
+
+function renderShopFilterPills() {
+  const pillsEl = document.getElementById('shop-filter-pills');
+  if (!pillsEl) return;
+  const cats = [...new Set(_shopItemsCache.map(i => i.category).filter(Boolean))];
+  const pill = (value, label) => `<button type="button" class="cat-pill${_shopCurrentFilter === value ? ' active' : ''}" onclick="filterShopCategory('${value.replace(/'/g, "\\'")}',this)">${label}</button>`;
+  pillsEl.innerHTML = pill('all', _t('Все', 'All'))
+    + cats.map(c => pill(c, esc(c))).join('')
+    + pill('__wishlist__', _t('♥ Избранное', '♥ Favorites'));
+}
+
+function filterShopCategory(cat, btn) {
+  _shopCurrentFilter = cat;
+  document.querySelectorAll('#shop-filter-pills .cat-pill').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderShopItemsGrid();
+}
+
+function renderShopItemsGrid() {
+  const grid = document.getElementById('shop-items-grid');
+  const empty = document.getElementById('shop-items-empty');
+  if (!grid) return;
+  let items = _shopItemsCache;
+  if (_shopCurrentFilter === '__wishlist__') items = items.filter(i => i.wishlisted);
+  else if (_shopCurrentFilter !== 'all') items = items.filter(i => i.category === _shopCurrentFilter);
+  if (!items.length) {
+    // Wishlist tab gets its own inline empty message (built here, not the shared
+    // #shop-items-empty block, so its data-i18n-ru/en text for "no items in the
+    // catalog at all" stays untouched for the other filters).
+    if (_shopCurrentFilter === '__wishlist__') {
+      if (empty) empty.style.display = 'none';
+      grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem 1rem;">
+        <div style="font-size:2.4rem;margin-bottom:.7rem;opacity:.5;">♡</div>
+        <p style="font-size:.85rem;color:var(--muted);">${_t('В избранном пока пусто — нажмите ♡ на карточке товара, чтобы добавить его сюда.', 'Your wishlist is empty — click ♡ on an item card to add it here.')}</p>
+      </div>`;
+    } else {
+      grid.innerHTML = '';
+      if (empty) empty.style.display = '';
+    }
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  grid.innerHTML = items.map(shopItemCardHtml).join('');
 }
 
 async function loadShopItems() {
@@ -446,11 +522,28 @@ async function loadShopItems() {
   try {
     const items = await fetch(`${API}/shop/items`, { credentials: 'include' }).then(r => { if (!r.ok) throw new Error(); return r.json(); });
     _shopItemsCache = items;
-    if (!items.length) { grid.innerHTML = ''; empty.style.display = ''; return; }
-    grid.innerHTML = items.map(shopItemCardHtml).join('');
+    renderShopFilterPills();
+    renderShopItemsGrid();
   } catch {
     grid.innerHTML = '';
     error.style.display = 'block';
+  }
+}
+
+async function toggleWishlist(id, btnEl) {
+  const item = _shopItemsCache.find(i => i.id === id);
+  if (!item) return;
+  const wasWishlisted = !!item.wishlisted;
+  item.wishlisted = !wasWishlisted;
+  if (btnEl) { btnEl.classList.toggle('active', item.wishlisted); btnEl.textContent = item.wishlisted ? '♥' : '♡'; }
+  try {
+    const res = await fetch(`${API}/shop/wishlist/${id}`, { method: wasWishlisted ? 'DELETE' : 'POST', credentials: 'include' });
+    if (!res.ok) throw new Error();
+    if (_shopCurrentFilter === '__wishlist__') renderShopItemsGrid();
+  } catch {
+    item.wishlisted = wasWishlisted;
+    if (btnEl) { btnEl.classList.toggle('active', item.wishlisted); btnEl.textContent = item.wishlisted ? '♥' : '♡'; }
+    if (typeof showToast === 'function') showToast(_t('Не удалось обновить избранное', 'Failed to update wishlist'), 'error');
   }
 }
 

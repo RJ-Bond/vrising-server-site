@@ -769,6 +769,8 @@ class ShopItem(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     stock = Column(Integer, nullable=True)  # NULL = unlimited
     sort_order = Column(Integer, nullable=False, default=0)
+    category = Column(String(32), nullable=True)  # NULL = uncategorized, always shown in "all" filter view
+    weekly_limit_per_user = Column(Integer, nullable=True)  # NULL = unlimited; else max redemptions/user per trailing 7 days
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -798,3 +800,26 @@ class ShopRedemption(Base):
     resolved_by = Column(String(64), nullable=True)
 
     __table_args__ = (Index("ix_shop_redemptions_status_created", "status", "created_at"),)
+
+
+class ShopWishlistItem(Base):
+    """A player's saved-for-later shop item ("Мои избранные" tab in shop.html). Unlike
+    ShopRedemption there is no snapshot to preserve here — nothing was purchased, so
+    there's nothing worth keeping once the catalog item itself is gone. That's why,
+    unlike ShopRedemption.shop_item_id (SET NULL, to keep purchase history readable),
+    this FK is declared ON DELETE CASCADE: deleting a ShopItem should also delete any
+    wishlist rows that pointed at it, which is simpler and more correct for a wishlist
+    specifically. NOTE: like every other ondelete= in this file, SQLite does not actually
+    enforce this at the DB level unless a connection has run `PRAGMA foreign_keys = ON`
+    (this app's engine never does — see GameClanMember.clan_id's docstring for the fuller
+    explanation), so DELETE /api/admin/shop/items/{id} (routers/points_shop.py) deletes
+    matching ShopWishlistItem rows explicitly rather than relying on this cascade.
+    created_at is naive UTC (this repo's usual DateTime convention)."""
+    __tablename__ = "shop_wishlist_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    shop_item_id = Column(Integer, ForeignKey("shop_items.id", ondelete="CASCADE"), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint("user_id", "shop_item_id", name="uq_shop_wishlist_user_item"),)

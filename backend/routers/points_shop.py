@@ -1,14 +1,14 @@
 import asyncio
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, or_, update
+from sqlalchemy import select, func, or_, update, delete
 
 from ..database import get_db
-from ..models import User, PointsTransaction, ShopItem, ShopRedemption, Notification
+from ..models import User, PointsTransaction, ShopItem, ShopRedemption, ShopWishlistItem, Notification
 from ..auth import get_admin_user, get_current_user
 from ..helpers import _audit, _award_points, _fmt_dt, activity_broadcast, send_push
 from ..rate_limit import limiter
@@ -19,6 +19,7 @@ from ..schemas import (
     ShopRedeemIn,
     ShopRedemptionResolveIn,
     ShopRedemptionOut,
+    ShopWishlistStatusOut,
     PointsGrantIn,
     PointsGrantBulkIn,
     PointsGrantBulkEntryResult,
@@ -53,7 +54,8 @@ async def create_shop_item(
     item = ShopItem(
         name=body.name, description=body.description, cost=body.cost,
         image_url=body.image_url, is_active=body.is_active, stock=body.stock,
-        sort_order=body.sort_order,
+        sort_order=body.sort_order, category=body.category,
+        weekly_limit_per_user=body.weekly_limit_per_user,
     )
     db.add(item)
     await db.commit()
@@ -87,11 +89,18 @@ async def delete_shop_item(
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """shop_item_id is ON DELETE SET NULL on ShopRedemption — past redemption history
-    (item_name_snapshot/cost_snapshot) survives a catalog item being removed."""
+    """shop_item_id is declared ON DELETE SET NULL on ShopRedemption (past redemption
+    history — item_name_snapshot/cost_snapshot — survives a catalog item being removed)
+    and ON DELETE CASCADE on ShopWishlistItem. Neither is actually enforced by the live
+    DB though: SQLite only applies ON DELETE behavior on connections that have run
+    `PRAGMA foreign_keys = ON`, and this app's engine (backend/database.py) never sets
+    that — same caveat as GameClanMember.clan_id's docstring. So the wishlist cleanup
+    below is done explicitly rather than relied upon; ShopRedemption.shop_item_id is
+    left as-is (nothing joins back through it, so a dangling id is harmless there)."""
     item = (await db.execute(select(ShopItem).where(ShopItem.id == item_id))).scalar_one_or_none()
     if item is None:
         raise HTTPException(404, "Item not found")
+    await db.execute(delete(ShopWishlistItem).where(ShopWishlistItem.shop_item_id == item_id))
     await _audit(db, current_user.id, "shop.item.delete", target_type="shop_item", target_id=item.id, detail=item.name)
     await db.delete(item)
     await db.commit()
@@ -332,16 +341,106 @@ async def list_points_transactions_admin(
 
 # ─── Points economy — shop (player-facing) ─────────────────────────────────────
 
+async def _shop_items_with_user_state(db: AsyncSession, items: list[ShopItem], user_id: int) -> list[ShopItemOut]:
+    """Shared annotation step for GET /api/shop/items and GET /api/shop/wishlist/me —
+    stamps each ShopItemOut with this user's wishlist state and, for items carrying a
+    weekly_limit_per_user, how many redemptions they have left in the trailing 7 days
+    (same window/exclusion rule as the 409 check in POST /api/shop/redeem below —
+    cancelled redemptions don't count against the limit)."""
+    if not items:
+        return []
+    wishlist_ids = set((await db.execute(
+        select(ShopWishlistItem.shop_item_id).where(ShopWishlistItem.user_id == user_id)
+    )).scalars().all())
+    limited_ids = [i.id for i in items if i.weekly_limit_per_user is not None]
+    counts: dict[int, int] = {}
+    if limited_ids:
+        cutoff = datetime.utcnow() - timedelta(days=7)
+        rows = (await db.execute(
+            select(ShopRedemption.shop_item_id, func.count(ShopRedemption.id))
+            .where(
+                ShopRedemption.user_id == user_id,
+                ShopRedemption.shop_item_id.in_(limited_ids),
+                ShopRedemption.status != "cancelled",
+                ShopRedemption.created_at >= cutoff,
+            )
+            .group_by(ShopRedemption.shop_item_id)
+        )).all()
+        counts = dict(rows)
+    out = []
+    for i in items:
+        o = ShopItemOut.model_validate(i)
+        o.wishlisted = i.id in wishlist_ids
+        if i.weekly_limit_per_user is not None:
+            o.weekly_remaining = max(0, i.weekly_limit_per_user - counts.get(i.id, 0))
+        out.append(o)
+    return out
+
+
 @router.get("/api/shop/items", response_model=list[ShopItemOut])
 async def list_shop_items_public(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
     """Active items only. stock is included but NOT filtered out at stock=0 — the
     front-end greys those out instead of hiding them, so a player can still see what
     exists even when temporarily out of stock."""
     result = await db.execute(select(ShopItem).where(ShopItem.is_active == True).order_by(ShopItem.sort_order, ShopItem.id))
-    return [ShopItemOut.model_validate(i) for i in result.scalars().all()]
+    items = result.scalars().all()
+    return await _shop_items_with_user_state(db, items, current_user.id)
+
+
+@router.post("/api/shop/wishlist/{item_id}", response_model=ShopWishlistStatusOut, status_code=201)
+async def add_shop_wishlist_item(
+    item_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Idempotent add — wishlisting an item that's already saved is a success no-op, not
+    an error, so a double-click (or the heart icon re-firing before its state updates)
+    never surfaces an error toast."""
+    exists = (await db.execute(select(ShopItem.id).where(ShopItem.id == item_id))).scalar_one_or_none()
+    if exists is None:
+        raise HTTPException(404, "Item not found")
+    already = (await db.execute(
+        select(ShopWishlistItem.id).where(ShopWishlistItem.user_id == current_user.id, ShopWishlistItem.shop_item_id == item_id)
+    )).scalar_one_or_none()
+    if already is None:
+        db.add(ShopWishlistItem(user_id=current_user.id, shop_item_id=item_id))
+        await db.commit()
+    return ShopWishlistStatusOut(shop_item_id=item_id, wishlisted=True)
+
+
+@router.delete("/api/shop/wishlist/{item_id}", response_model=ShopWishlistStatusOut)
+async def remove_shop_wishlist_item(
+    item_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Idempotent remove — removing an item that was never (or no longer) wishlisted is
+    also a success no-op, same reasoning as the add endpoint above."""
+    await db.execute(
+        delete(ShopWishlistItem).where(ShopWishlistItem.user_id == current_user.id, ShopWishlistItem.shop_item_id == item_id)
+    )
+    await db.commit()
+    return ShopWishlistStatusOut(shop_item_id=item_id, wishlisted=False)
+
+
+@router.get("/api/shop/wishlist/me", response_model=list[ShopItemOut])
+async def my_shop_wishlist(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Same ShopItemOut shape as GET /api/shop/items (via the shared annotation helper
+    above) so shop.html can reuse its existing card-render function unchanged. Includes
+    inactive items too — unlike the public catalog, a player's own saved list shouldn't
+    silently drop something they favourited just because an admin toggled it off."""
+    rows = (await db.execute(
+        select(ShopItem).join(ShopWishlistItem, ShopWishlistItem.shop_item_id == ShopItem.id)
+        .where(ShopWishlistItem.user_id == current_user.id)
+        .order_by(ShopItem.sort_order, ShopItem.id)
+    )).scalars().all()
+    return await _shop_items_with_user_state(db, rows, current_user.id)
 
 
 @router.post("/api/shop/redeem", response_model=ShopRedemptionOut, status_code=201)
@@ -363,6 +462,19 @@ async def redeem_shop_item(
     item = item_res.scalar_one_or_none()
     if item is None or not item.is_active:
         raise HTTPException(404, "Item not found")
+
+    if item.weekly_limit_per_user is not None:
+        cutoff = datetime.utcnow() - timedelta(days=7)
+        recent_count = (await db.execute(
+            select(func.count(ShopRedemption.id)).where(
+                ShopRedemption.user_id == current_user.id,
+                ShopRedemption.shop_item_id == item.id,
+                ShopRedemption.status != "cancelled",
+                ShopRedemption.created_at >= cutoff,
+            )
+        )).scalar_one()
+        if recent_count >= item.weekly_limit_per_user:
+            raise HTTPException(409, "Weekly limit for this item reached — try again later")
 
     result = await db.execute(
         update(User).where(User.id == current_user.id, User.points_balance >= item.cost)

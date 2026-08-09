@@ -11,7 +11,7 @@ import pytest
 from sqlalchemy import select
 
 from backend.auth import create_access_token, get_password_hash
-from backend.models import PlayerDailyActivity, PlayerRecord, PointsTransaction, Setting, ShopItem, ShopRedemption, User
+from backend.models import PlayerDailyActivity, PlayerRecord, PointsTransaction, Setting, ShopItem, ShopRedemption, ShopWishlistItem, User
 
 pytestmark = pytest.mark.asyncio
 
@@ -155,8 +155,8 @@ async def test_auth_me_returns_points_balance(client, db_session):
 
 # ─── Shop catalog + redeem ──────────────────────────────────────────────────
 
-async def _make_item(db_session, name="Blood Rose Seeds", cost=50, stock=None, is_active=True):
-    item = ShopItem(name=name, cost=cost, stock=stock, is_active=is_active)
+async def _make_item(db_session, name="Blood Rose Seeds", cost=50, stock=None, is_active=True, category=None, weekly_limit_per_user=None):
+    item = ShopItem(name=name, cost=cost, stock=stock, is_active=is_active, category=category, weekly_limit_per_user=weekly_limit_per_user)
     db_session.add(item)
     await db_session.commit()
     await db_session.refresh(item)
@@ -619,3 +619,175 @@ async def test_export_redemptions_returns_csv_for_moderator(client, db_session):
     assert row.startswith("ExportTarget,Export Item,15,fulfilled,")
     assert "AdminFulfillerForExport" in row
     assert "shipped" in row
+
+
+# ─── Shop wishlist ────────────────────────────────────────────────────────
+
+async def test_wishlist_add_then_remove_toggles_state(client, db_session):
+    user = await _make_user(db_session, "WishToggle", points_balance=100)
+    item = await _make_item(db_session, name="Wish Item")
+
+    r = await client.post(f"/api/shop/wishlist/{item.id}", headers=_bearer(user))
+    assert r.status_code == 201
+    assert r.json() == {"shop_item_id": item.id, "wishlisted": True}
+
+    rows = (await db_session.execute(select(ShopWishlistItem).where(ShopWishlistItem.user_id == user.id))).scalars().all()
+    assert len(rows) == 1
+
+    r2 = await client.delete(f"/api/shop/wishlist/{item.id}", headers=_bearer(user))
+    assert r2.status_code == 200
+    assert r2.json() == {"shop_item_id": item.id, "wishlisted": False}
+
+    rows2 = (await db_session.execute(select(ShopWishlistItem).where(ShopWishlistItem.user_id == user.id))).scalars().all()
+    assert rows2 == []
+
+
+async def test_wishlist_add_is_idempotent(client, db_session):
+    user = await _make_user(db_session, "WishDupe", points_balance=100)
+    item = await _make_item(db_session, name="Dupe Item")
+
+    r1 = await client.post(f"/api/shop/wishlist/{item.id}", headers=_bearer(user))
+    assert r1.status_code == 201
+    r2 = await client.post(f"/api/shop/wishlist/{item.id}", headers=_bearer(user))
+    assert r2.status_code == 201
+    assert r2.json()["wishlisted"] is True
+
+    rows = (await db_session.execute(select(ShopWishlistItem).where(ShopWishlistItem.user_id == user.id))).scalars().all()
+    assert len(rows) == 1  # the unique constraint didn't 500 on the second call — it was a no-op
+
+
+async def test_wishlist_remove_of_never_added_item_is_idempotent(client, db_session):
+    user = await _make_user(db_session, "WishNeverAdded", points_balance=100)
+    item = await _make_item(db_session, name="Never Added Item")
+
+    r = await client.delete(f"/api/shop/wishlist/{item.id}", headers=_bearer(user))
+    assert r.status_code == 200
+    assert r.json()["wishlisted"] is False
+
+
+async def test_wishlist_me_returns_only_current_user_items(client, db_session):
+    user1 = await _make_user(db_session, "WishOwner", points_balance=100)
+    user2 = await _make_user(db_session, "WishOther", points_balance=100)
+    item1 = await _make_item(db_session, name="Owner Item")
+    item2 = await _make_item(db_session, name="Other Item")
+
+    r1 = await client.post(f"/api/shop/wishlist/{item1.id}", headers=_bearer(user1))
+    assert r1.status_code == 201
+    r2 = await client.post(f"/api/shop/wishlist/{item2.id}", headers=_bearer(user2))
+    assert r2.status_code == 201
+
+    r = await client.get("/api/shop/wishlist/me", headers=_bearer(user1))
+    assert r.status_code == 200
+    body = r.json()
+    names = [i["name"] for i in body]
+    assert names == ["Owner Item"]
+    assert body[0]["wishlisted"] is True
+
+
+async def test_wishlist_add_to_nonexistent_item_404s(client, db_session):
+    user = await _make_user(db_session, "WishGhost", points_balance=100)
+    r = await client.post("/api/shop/wishlist/999999", headers=_bearer(user))
+    assert r.status_code == 404
+
+
+async def test_wishlist_survives_and_does_not_500_when_item_later_deleted(client, db_session):
+    """This slice picked CASCADE for ShopWishlistItem.shop_item_id (unlike
+    ShopRedemption's SET NULL, since there's no purchase snapshot worth preserving for a
+    plain wishlist row) — deleting the catalog item should quietly drop the wishlist row
+    rather than error, and GET /api/shop/wishlist/me must not 500 afterward."""
+    admin = await _make_user(db_session, "WishDeleteAdmin", role="admin")
+    user = await _make_user(db_session, "WishDeleteUser", points_balance=100)
+    item = await _make_item(db_session, name="Doomed Item")
+
+    r = await client.post(f"/api/shop/wishlist/{item.id}", headers=_bearer(user))
+    assert r.status_code == 201
+
+    del_r = await client.delete(f"/api/admin/shop/items/{item.id}", headers=_bearer(admin))
+    assert del_r.status_code == 204
+
+    r2 = await client.get("/api/shop/wishlist/me", headers=_bearer(user))
+    assert r2.status_code == 200
+    assert r2.json() == []
+
+    rows = (await db_session.execute(select(ShopWishlistItem).where(ShopWishlistItem.user_id == user.id))).scalars().all()
+    assert rows == []
+
+
+async def test_wishlist_requires_login(client, db_session):
+    r = await client.get("/api/shop/wishlist/me")
+    assert r.status_code == 401
+
+
+# ─── Shop per-item weekly purchase limit ────────────────────────────────────
+
+async def test_weekly_limit_blocks_redemption_once_reached(client, db_session):
+    user = await _make_user(db_session, "WeeklyLimited", points_balance=1000)
+    item = await _make_item(db_session, name="Limited Weekly Item", cost=10, weekly_limit_per_user=2)
+
+    r1 = await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+    assert r1.status_code == 201
+    r2 = await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+    assert r2.status_code == 201
+    r3 = await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+    assert r3.status_code == 409
+
+    await db_session.refresh(user)
+    assert user.points_balance == 980  # only the first two redemptions deducted
+
+
+async def test_weekly_limit_cancelled_redemption_does_not_count(client, db_session):
+    admin = await _make_user(db_session, "WeeklyLimitAdmin", role="admin")
+    user = await _make_user(db_session, "WeeklyLimitCancelUser", points_balance=1000)
+    item = await _make_item(db_session, name="Cancel-Exempt Item", cost=10, weekly_limit_per_user=1)
+
+    r1 = await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+    assert r1.status_code == 201
+    redemption_id = r1.json()["id"]
+
+    cancel_r = await client.post(f"/api/admin/shop/redemptions/{redemption_id}/cancel", json={}, headers=_bearer(admin))
+    assert cancel_r.status_code == 200
+
+    # Limit is 1/week; the only redemption so far was cancelled, so a fresh one should
+    # be allowed again immediately, without waiting out the 7-day window.
+    r2 = await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+    assert r2.status_code == 201
+
+
+async def test_weekly_limit_resets_after_seven_days(client, db_session):
+    user = await _make_user(db_session, "WeeklyLimitResetUser", points_balance=1000)
+    item = await _make_item(db_session, name="Reset Item", cost=10, weekly_limit_per_user=1)
+
+    r1 = await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+    assert r1.status_code == 201
+
+    # Backdate the redemption past the trailing-7-day window so the limit should no
+    # longer apply to it.
+    redemption = (await db_session.execute(select(ShopRedemption).where(ShopRedemption.user_id == user.id))).scalar_one()
+    redemption.created_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=8)
+    await db_session.commit()
+
+    r2 = await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+    assert r2.status_code == 201
+
+
+async def test_weekly_limit_none_is_unaffected(client, db_session):
+    user = await _make_user(db_session, "NoWeeklyLimitUser", points_balance=1000)
+    item = await _make_item(db_session, name="Unlimited Weekly Item", cost=10, weekly_limit_per_user=None)
+
+    for _ in range(5):
+        r = await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+        assert r.status_code == 201
+
+
+async def test_weekly_remaining_surfaced_on_public_listing(client, db_session):
+    user = await _make_user(db_session, "WeeklyRemainingUser", points_balance=1000)
+    item = await _make_item(db_session, name="Remaining Item", cost=10, weekly_limit_per_user=3)
+
+    r1 = await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+    assert r1.status_code == 201
+
+    r = await client.get("/api/shop/items", headers=_bearer(user))
+    assert r.status_code == 200
+    out = next(i for i in r.json() if i["id"] == item.id)
+    assert out["weekly_limit_per_user"] == 3
+    assert out["weekly_remaining"] == 2

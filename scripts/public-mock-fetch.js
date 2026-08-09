@@ -213,15 +213,29 @@
   };
 
   // ShopItemOut shape (backend/schemas.py) — GET /api/shop/items. shop.html is
-  // login-gated (redirects to the login gate on a 401 /api/auth/me, which this mock
-  // always returns for the anonymous-visitor case below), so these routes aren't
-  // exercised by the default anonymous preview — kept here so a future authenticated
-  // mock mode (or a page that browses items while logged out) has canned data ready,
-  // matching this file's existing convention of covering every new-endpoint shape.
+  // login-gated (redirects to the login gate on a 401 /api/auth/me), so — unlike every
+  // other page this file mocks — it needs an authenticated /api/auth/me response to
+  // actually render past the gate. Scoped narrowly to shop.html only (see
+  // _mockAuthedUser below): every other page in this file stays a true anonymous
+  // visitor, so their own login-gate/CTA screenshots are unaffected.
+  // category/weekly_limit_per_user/weekly_remaining/wishlisted cover the filter pills,
+  // weekly-limit label, and heart-icon states added alongside this mock update.
   const shopItems = [
-    { id: 1, name: 'Waypoint Shard', description: 'Телепорт-камень для быстрого перемещения.', cost: 50, image_url: null, is_active: true, stock: null, sort_order: 0, created_at: iso(10 * 24 * 3600 * 1000), updated_at: iso(2 * 24 * 3600 * 1000) },
-    { id: 2, name: 'Blood Rose Seeds', description: 'Редкие семена для фермы крови.', cost: 120, image_url: null, is_active: true, stock: 4, sort_order: 1, created_at: iso(8 * 24 * 3600 * 1000), updated_at: iso(8 * 24 * 3600 * 1000) },
+    { id: 1, name: 'Waypoint Shard', description: 'Телепорт-камень для быстрого перемещения.', cost: 50, image_url: null, is_active: true, stock: null, sort_order: 0, category: 'Телепорт', weekly_limit_per_user: null, weekly_remaining: null, wishlisted: true, created_at: iso(10 * 24 * 3600 * 1000), updated_at: iso(2 * 24 * 3600 * 1000) },
+    { id: 2, name: 'Blood Rose Seeds', description: 'Редкие семена для фермы крови.', cost: 120, image_url: null, is_active: true, stock: 4, sort_order: 1, category: 'Ресурсы', weekly_limit_per_user: null, weekly_remaining: null, wishlisted: false, created_at: iso(8 * 24 * 3600 * 1000), updated_at: iso(8 * 24 * 3600 * 1000) },
+    { id: 3, name: 'Плащ вампира', description: 'Косметический плащ — не влияет на характеристики.', cost: 300, image_url: null, is_active: true, stock: null, sort_order: 2, category: 'Косметика', weekly_limit_per_user: 2, weekly_remaining: 1, wishlisted: false, created_at: iso(5 * 24 * 3600 * 1000), updated_at: iso(24 * 3600 * 1000) },
+    { id: 4, name: 'Смена внешности', description: 'Полная перекройка персонажа в игре.', cost: 200, image_url: null, is_active: true, stock: null, sort_order: 3, category: 'Косметика', weekly_limit_per_user: 1, weekly_remaining: 0, wishlisted: true, created_at: iso(15 * 24 * 3600 * 1000), updated_at: iso(3 * 24 * 3600 * 1000) },
   ];
+  const shopWishlist = shopItems.filter(i => i.wishlisted);
+  // UserOut shape (backend/schemas.py) — GET /api/auth/me for shop.html's authenticated
+  // preview only (see _mockAuthedUser below).
+  const shopAuthedUser = {
+    id: 1, username: 'Vortigern', email: 'vortigern@example.com', role: 'user', is_active: true,
+    created_at: iso(240 * 24 * 3600 * 1000), avatar_url: null, cover_url: null,
+    rules_accepted_at: iso(240 * 24 * 3600 * 1000), game_nickname: 'Vortigern', admin_title: null,
+    last_active_at: iso(5 * 60000), badge_icon_url: null, badge_style: 'default', totp_enabled: false,
+    bio: null, points_balance: 340, newsletter_opt_in: true,
+  };
   const myShopRedemptions = {
     total: 1, page: 1, per_page: 20,
     items: [
@@ -354,14 +368,36 @@
     [/\/api\/wipes$/, () => wipes],
     [/\/api\/bans/, () => bans],
     [/\/api\/shop\/items$/, () => shopItems],
+    [/\/api\/shop\/wishlist\/me$/, () => shopWishlist],
     [/\/api\/shop\/redemptions\/me/, () => myShopRedemptions],
   ];
+
+  // shop.html is the one page this file mocks as a logged-in visitor rather than
+  // anonymous — its entire content is behind an auth gate with no anonymous fallback
+  // (unlike every other page here), so previewing the category/wishlist/weekly-limit UI
+  // added alongside this mock update needs GET /api/auth/me to actually succeed.
+  const _mockAuthedUser = /shop\.html/.test(location.pathname);
 
   const realFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
     const url = typeof input === 'string' ? input : (input && input.url) || '';
     if (/\/api\/auth\/me$/.test(url)) {
+      if (_mockAuthedUser) {
+        return Promise.resolve(new Response(JSON.stringify(shopAuthedUser), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      }
       return Promise.resolve(new Response('{"detail":"Not authenticated"}', { status: 401, headers: { 'Content-Type': 'application/json' } }));
+    }
+    // POST adds / DELETE removes a wishlist entry (backend/routers/points_shop.py) —
+    // same URL for both methods, so this needs to branch on init.method rather than
+    // living in the plain GET-shaped `routes` table above.
+    const wishlistMatch = url.match(/\/api\/shop\/wishlist\/(\d+)$/);
+    if (wishlistMatch) {
+      const method = ((init && init.method) || 'GET').toUpperCase();
+      const wishlisted = method === 'POST';
+      return Promise.resolve(new Response(
+        JSON.stringify({ shop_item_id: Number(wishlistMatch[1]), wishlisted }),
+        { status: wishlisted ? 201 : 200, headers: { 'Content-Type': 'application/json' } },
+      ));
     }
     for (const [pattern, respond] of routes) {
       if (pattern.test(url)) {
