@@ -4,13 +4,14 @@ from typing import Optional
 
 from pydantic import BaseModel, field_validator
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 
 from ..database import get_db
 from ..models import User, Message, Notification
 from ..auth import get_current_user, get_admin_user
-from ..helpers import _audit, send_push
+from ..helpers import _audit, _dm_sse_clients, dm_broadcast, send_push
 from ..rate_limit import limiter
 from ..schemas import strip_html_tags
 
@@ -64,6 +65,14 @@ async def send_message(
         }, ensure_ascii=False),
     ))
     await db.commit()
+    # Real-time push to the recipient's open /api/messages/stream connection(s), if
+    # any — replaces index.js's old 5s poll of the open conversation. Payload mirrors
+    # the Notification.data above; the client re-fetches on receipt rather than
+    # trusting this raw payload as the source of truth (see dm_broadcast()'s docstring).
+    dm_broadcast(recipient.id, {
+        "from_username": current_user.username,
+        "preview": msg.content[:100],
+    })
     asyncio.create_task(send_push(
         recipient.id,
         "Новое сообщение",
@@ -125,6 +134,10 @@ async def broadcast_message(
                  detail=f"{len(recipients)} получателей ({body.role or 'все'}): {content[:100]}")
     await db.commit()
     for recipient in recipients:
+        dm_broadcast(recipient.id, {
+            "from_username": current_user.username,
+            "preview": content[:100],
+        })
         asyncio.create_task(send_push(
             recipient.id,
             "Сообщение от администрации",
@@ -263,3 +276,42 @@ async def delete_message(
         raise HTTPException(status_code=404, detail="Сообщение не найдено")
     await db.delete(msg)
     await db.commit()
+
+
+@router.get("/api/messages/stream")
+async def messages_stream(current_user: User = Depends(get_current_user)):
+    """Push a small notice to the current user whenever they receive a new DM
+    (helpers.dm_broadcast(), called from send_message()/broadcast_message() above),
+    instead of index.js re-polling GET /api/messages/with/<partner> on a 5s timer
+    while a DM panel is open. Same shape as GET /api/activity-feed/stream (bounded
+    per-client queue, 25s keepalive comment, X-Accel-Buffering: no) with one
+    difference: this stream is per-user, not a public flat broadcast, so it's
+    behind get_current_user (same auth dependency every other /api/messages/*
+    route uses) and registers its queue under _dm_sse_clients[current_user.id]
+    rather than in a single flat set. EventSource can't send an Authorization
+    header, but it does send cookies on same-origin requests by default, and this
+    site's auth is cookie-based (see auth.py's COOKIE_NAME) — so get_current_user
+    resolves the same way here as it does for a normal fetch() call."""
+    queue: asyncio.Queue = asyncio.Queue(maxsize=20)
+    _dm_sse_clients.setdefault(current_user.id, set()).add(queue)
+
+    async def generate():
+        try:
+            while True:
+                try:
+                    data = await asyncio.wait_for(queue.get(), timeout=25)
+                    yield f"data: {data}\n\n"
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"
+        finally:
+            queues = _dm_sse_clients.get(current_user.id)
+            if queues is not None:
+                queues.discard(queue)
+                if not queues:
+                    _dm_sse_clients.pop(current_user.id, None)
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

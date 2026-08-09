@@ -451,11 +451,22 @@ function _statusInfo(iso) {
     return d;
   }
 
+  /* Category display order, label, and icon per result `type` — keep in sync with
+     the Literal[...] in backend/routers/search.py's SearchResultOut. */
+  const _CATEGORIES = [
+    { type: 'player',   label: 'Игроки',  icon: '👤' },
+    { type: 'news',     label: 'Новости', icon: '📰' },
+    { type: 'clan',     label: 'Кланы',   icon: '🛡' },
+    { type: 'server',   label: 'Серверы', icon: '🖥' },
+    { type: 'event',    label: 'События', icon: '📅' },
+    { type: 'shop_item', label: 'Магазин', icon: '🛒' },
+  ];
+
   /* Main search — GET /api/search?q= (backend/routers/search.py) returns a single
-     flat list of {type:"news"|"player"|"clan", title, url, snippet}, already capped
-     per category server-side. Used to be three separate fetches to /api/users,
-     /api/news, /api/clans (each with its own ?search= param and its own response
-     shape to normalise) — consolidated into one round-trip. */
+     flat list of {type, title, url, snippet}, already capped per category
+     server-side. Used to be three separate fetches to /api/users, /api/news,
+     /api/clans (each with its own ?search= param and its own response shape to
+     normalise) — consolidated into one round-trip. */
   async function _doSearch(q) {
     if (q.length < 2) { _showPlaceholder(); return; }
     _showSpinner();
@@ -469,36 +480,18 @@ function _statusInfo(iso) {
       items = [];
     }
 
-    const players = items.filter(i => i.type === 'player');
-    const news    = items.filter(i => i.type === 'news');
-    const clans   = items.filter(i => i.type === 'clan');
-
     _results.innerHTML = '';
     let total = 0;
 
-    if (players.length) {
-      _results.appendChild(_catHeader('Игроки'));
-      players.forEach(p => {
-        _results.appendChild(_item(p.url, '👤', p.title || '', p.snippet || ''));
+    _CATEGORIES.forEach(({ type, label, icon }) => {
+      const group = items.filter(i => i.type === type);
+      if (!group.length) return;
+      _results.appendChild(_catHeader(label));
+      group.forEach(g => {
+        _results.appendChild(_item(g.url, icon, g.title || '', g.snippet || ''));
         total++;
       });
-    }
-
-    if (news.length) {
-      _results.appendChild(_catHeader('Новости'));
-      news.forEach(n => {
-        _results.appendChild(_item(n.url, '📰', n.title || '', n.snippet || ''));
-        total++;
-      });
-    }
-
-    if (clans.length) {
-      _results.appendChild(_catHeader('Кланы'));
-      clans.forEach(c => {
-        _results.appendChild(_item(c.url, '🛡', c.title || '', c.snippet || ''));
-        total++;
-      });
-    }
+    });
 
     if (total === 0) {
       _results.innerHTML = `<div style="padding:.9rem 1.1rem;font-size:.75rem;color:#9488a8;text-align:center;">Ничего не найдено</div>`;

@@ -484,6 +484,7 @@ if (localStorage.getItem('_leftPanelCompact') === '1') {
         setInterval(loadNotifications, 60000);
         loadDmUnread();
         setInterval(loadDmUnread, 30000);
+        startDmSSE();
         loadContinueWidget();
         loadMyClanCard();
         initPushNudge();
@@ -3468,6 +3469,17 @@ let _dmHasMore = false;
 let _dmLastMsgCount = 0;
 let _tabFlashInterval = null;
 let _dmOrigTitle = document.title;
+// SSE connection + health flag for startDmSSE() (defined below, near openDmChat()).
+// startDmSSE() is called from the auth-verified `fetch('/api/auth/me').then(...)`
+// callback up near the top of the file — unlike startActivityFeedSSE()/
+// startStatusSSE() (called synchronously from the unconditional Init block, which is
+// why _activitySseConn has to be declared before that block runs, see its own
+// comment), that callback only ever runs after the whole script has finished its
+// synchronous top-to-bottom pass, so every top-level `let` — including these two,
+// wherever they're declared — is already initialized by the time it fires. Declared
+// here anyway, next to the rest of the DM state, purely for readability.
+let _dmSseConn = null;
+let _dmSseConnected = false;
 
 // ── Sound ──
 function _playDmSound() {
@@ -3574,6 +3586,50 @@ async function loadDmUnread() {
   } catch {}
 }
 
+// SSE push for new DMs (backend/helpers.py's dm_broadcast(), fired from
+// POST /api/messages and POST /api/admin/broadcast — see that helper's docstring),
+// replacing the old unconditional 5s poll of the open conversation. Started once per
+// session (from the auth-verified init block near the top of this file, right after
+// the first loadDmUnread()) rather than only while a chat is open — a DM notice needs
+// to update the unread badge/inbox list even with no conversation open. Per-user, not
+// public like /api/activity-feed/stream — EventSource can't send an Authorization
+// header, but this site's auth is cookie-based (see auth.py's COOKIE_NAME) and
+// EventSource sends cookies by default on a same-origin request, so the server-side
+// get_current_user dependency on /api/messages/stream resolves the same way it does
+// for any other fetch() call here.
+function startDmSSE() {
+  if (_dmSseConn || !getUser()) return;
+  try {
+    _dmSseConn = new EventSource('/api/messages/stream');
+    _dmSseConn.onopen = () => {
+      _dmSseConnected = true;
+      // SSE is delivering now — the 5s poll (if openDmChat() had to start one before
+      // this connected) was only ever a bridge until we got here.
+      if (_dmPollInterval) { clearInterval(_dmPollInterval); _dmPollInterval = null; }
+    };
+    _dmSseConn.onmessage = (e) => {
+      if (!e.data) return;
+      // Payload only carries from_username/preview (see dm_broadcast() call sites in
+      // messages.py) — always re-fetch rather than trust it as the source of truth,
+      // same "just re-fetch" choice as startActivityFeedSSE().
+      loadDmUnread();
+      if (_dmPanelOpen) loadDmInbox();
+      if (_dmPartner) _refreshDmChat();
+    };
+    _dmSseConn.onerror = () => {
+      _dmSseConn.close();
+      _dmSseConn = null;
+      _dmSseConnected = false;
+      // Fall back to polling immediately if a chat is open right now, same resilience
+      // pattern as startStatusSSE()/startActivityFeedSSE() elsewhere in this file —
+      // the existing poll interval is the ultimate fallback for a connection SSE
+      // never manages to get through (proxy buffering, etc).
+      if (_dmPartner && !_dmPollInterval) _dmPollInterval = setInterval(_refreshDmChat, 5000);
+      setTimeout(startDmSSE, 30000);
+    };
+  } catch { _dmSseConnected = false; }
+}
+
 // ── Open chat ──
 async function openDmChat(username) {
   const bg = document.getElementById('dm-modal-bg');
@@ -3606,7 +3662,10 @@ async function openDmChat(username) {
   _dmPanelOpen = false;
   await _refreshDmChat(true);
   clearInterval(_dmPollInterval);
-  _dmPollInterval = setInterval(_refreshDmChat, 5000);
+  // SSE (startDmSSE(), started once at page init) delivers new messages for the open
+  // conversation already — the 5s poll only needs to run when that connection isn't
+  // currently up, same fallback-only role the other SSE consumers give their poll.
+  _dmPollInterval = _dmSseConnected ? null : setInterval(_refreshDmChat, 5000);
   setTimeout(() => { const el=document.getElementById('dm-input'); if(el) el.focus(); }, 50);
 }
 
@@ -3792,6 +3851,38 @@ function _notifPreviewText(n) {
   }
 }
 
+// Click-through target for each notification type, built from whatever that type's
+// `data` payload (see the matching Notification(type=..., data=json.dumps({...}))
+// call in backend/routers/*.py) actually carries — never fabricates a link to a field
+// that isn't there. reply/mention carry news_slug (+comment_id) so they link straight
+// to the comment; message has no conversation id, only the other user's username, so
+// it opens the DM panel via openDmChat() instead of a URL; shop_fulfilled/
+// shop_cancelled/points_grant all land on profile.html's points tab (redemption +
+// points history live there, see #tab-panel-points); appeal_resolved has no appeal/ban
+// id in its payload (just approved + admin_response), so it links to the general
+// appeal page rather than a specific appeal it can't identify.
+function _notifActionHtml(n) {
+  if (n.data?.news_slug) {
+    const commentQs = n.data?.comment_id ? '&comment=' + n.data.comment_id : '';
+    return `<a href="/?news=${esc(n.data.news_slug)}${commentQs}" style="font-size:.65rem;color:#c8002a;text-decoration:none;">Перейти →</a>`;
+  }
+  switch (n.type) {
+    case 'message': {
+      const uname = n.data?.from_username || '';
+      if (!uname) return '';
+      return `<a href="#" onclick="event.preventDefault();toggleNotifPanel();openDmChat('${uname.replace(/'/g, "\\'")}');" style="font-size:.65rem;color:#c8002a;text-decoration:none;">Открыть переписку →</a>`;
+    }
+    case 'shop_fulfilled':
+    case 'shop_cancelled':
+    case 'points_grant':
+      return `<a href="/profile.html?tab=points" style="font-size:.65rem;color:#c8002a;text-decoration:none;">Мои очки и заявки →</a>`;
+    case 'appeal_resolved':
+      return `<a href="/appeal.html" style="font-size:.65rem;color:#c8002a;text-decoration:none;">Апелляции →</a>`;
+    default:
+      return '';
+  }
+}
+
 async function loadNotifications() {
   const res = await fetch('/api/notifications', {credentials:'include'});
   if (!res.ok) return;
@@ -3827,7 +3918,7 @@ async function loadNotifications() {
             ${n.type==='reply'?`<strong>@${esc(n.data?.from_username||'')}</strong> ответил на ваш комментарий`:n.type==='mention'?`<strong>@${esc(n.data?.from_username||'')}</strong> упомянул вас в комментарии`:n.type==='message'?`<strong>@${esc(n.data?.from_username||'')}</strong> отправил вам сообщение`:n.type==='shop_fulfilled'?`Заявка на «${esc(n.data?.item_name||'')}» выполнена`:n.type==='shop_cancelled'?`Заявка на «${esc(n.data?.item_name||'')}» отменена, очки возвращены`:n.type==='points_grant'?`Начислено ${(n.data?.delta||0)>0?'+':''}${n.data?.delta||0} очков`:n.type==='appeal_resolved'?(n.data?.approved?'Апелляция одобрена, бан снят':'Апелляция отклонена'):'Новое уведомление'}
           </div>
           ${n.data?.preview ? `<div style="font-size:.68rem;color:#9488a8;margin-top:.2rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(n.data.preview)}</div>` : ''}
-          ${n.data?.news_slug ? `<a href="/?news=${esc(n.data.news_slug)}${n.data?.comment_id ? '&comment='+n.data.comment_id : ''}" style="font-size:.65rem;color:#c8002a;text-decoration:none;">Перейти →</a>` : ''}
+          ${_notifActionHtml(n)}
         </div>`).join('');
     }
   }

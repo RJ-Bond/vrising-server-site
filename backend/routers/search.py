@@ -1,14 +1,21 @@
 """GET /api/search?q=... — unified sitewide search across news, players (site
-accounts), and clans, backing the Ctrl+K global search dropdown
-(frontend/common.js's openGlobalSearch()/_doSearch()). Before this endpoint
-existed, that dropdown fanned out to three separate endpoints itself
-(/api/users, /api/news, /api/clans, each with their own ?search= param — see
-the "Public user search" comment in routers/users.py); this consolidates that
-into one round-trip and adds a `snippet` field none of those three expose
-uniformly. The three original endpoints are left as-is (still used elsewhere:
-/api/news?search= backs the news page's own filter box, /api/clans?search=
-the clans page's, /api/users?search= nothing else yet) — this is additive,
-not a replacement for them.
+accounts), clans, monitored servers, points-shop items, and events, backing
+the Ctrl+K global search dropdown (frontend/common.js's
+openGlobalSearch()/_doSearch()). Before this endpoint existed, that dropdown
+fanned out to three separate endpoints itself (/api/users, /api/news,
+/api/clans, each with their own ?search= param — see the "Public user
+search" comment in routers/users.py); this consolidates that into one
+round-trip and adds a `snippet` field none of those three expose uniformly.
+The original endpoints are left as-is (still used elsewhere: /api/news?search=
+backs the news page's own filter box, /api/clans?search= the clans page's,
+/api/users?search= nothing else yet) — this is additive, not a replacement
+for them.
+
+FAQ content is deliberately NOT indexed here: frontend/faq.html's questions
+are static markup with no backend model or table behind them (see that
+file — there's no FAQ router/model in backend/), so there is nothing for a
+DB-backed search endpoint to query. Standing up a backend-managed FAQ
+content model purely to make it searchable is out of scope for this slice.
 
 Public, unauthenticated — same visibility as the leaderboard/clans list/news
 feed, all of which already show this data to anyone. Capped to a handful of
@@ -25,16 +32,21 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..models import GameClan, News, User
+from ..models import Event, GameClan, News, Setting, ShopItem, User
 from ..rate_limit import limiter
 
 router = APIRouter()
 
 _PER_CATEGORY = 5
 
+# Admin-configured server display-name settings (see backend/routers/admin_settings.py's
+# ALLOWED_SETTING_KEYS and main.py's _monitor_poll_cycle) — server_num -> Setting.key,
+# same two-server layout the monitor/status endpoints hard-code.
+_SERVER_NAME_SETTING_KEYS = {1: "server_name", 2: "server2_name"}
+
 
 class SearchResultOut(BaseModel):
-    type: Literal["news", "player", "clan"]
+    type: Literal["news", "player", "clan", "server", "shop_item", "event"]
     title: str
     url: str
     snippet: str = ""
@@ -97,6 +109,52 @@ async def search(
     for clan_id, name, motto in clan_rows:
         results.append(SearchResultOut(
             type="clan", title=name, url=f"/clans.html?clan={clan_id}", snippet=(motto or "").strip(),
+        ))
+
+    # Servers: matched on the admin-configured display name (Setting rows
+    # "server_name"/"server2_name" — see _SERVER_NAME_SETTING_KEYS above), not the
+    # live monitor payload (that's runtime status, not searchable content). A server
+    # with no name configured yet has nothing to match against and is simply absent
+    # from results, same as any other empty field elsewhere in this endpoint.
+    server_setting_rows = (await db.execute(
+        select(Setting.key, Setting.value)
+        .where(Setting.key.in_(_SERVER_NAME_SETTING_KEYS.values()), Setting.value.ilike(like))
+    )).all()
+    server_names_by_key = {key: value for key, value in server_setting_rows}
+    for server_num, key in _SERVER_NAME_SETTING_KEYS.items():
+        name = server_names_by_key.get(key)
+        if not name:
+            continue
+        results.append(SearchResultOut(
+            type="server", title=name, url="/servers.html", snippet=f"Сервер {server_num}",
+        ))
+
+    # Points-shop items: match name or description, active/purchasable items only —
+    # a deactivated catalog entry isn't something a player can currently redeem, same
+    # visibility rule the shop page's own listing applies.
+    shop_rows = (await db.execute(
+        select(ShopItem.name, ShopItem.description)
+        .where(ShopItem.is_active == True, or_(ShopItem.name.ilike(like), ShopItem.description.ilike(like)))  # noqa: E712
+        .order_by(ShopItem.sort_order, ShopItem.name)
+        .limit(_PER_CATEGORY)
+    )).all()
+    for name, description in shop_rows:
+        results.append(SearchResultOut(
+            type="shop_item", title=name, url="/shop.html", snippet=(description or "").strip(),
+        ))
+
+    # Events: match title or description. events.html reads ?event=<id> to scroll to
+    # and highlight the matching card (see _scrollToDeepLinkedEvent() there), so a
+    # search hit lands directly on the event instead of just the generic listing page.
+    event_rows = (await db.execute(
+        select(Event.id, Event.title, Event.description)
+        .where(or_(Event.title.ilike(like), Event.description.ilike(like)))
+        .order_by(Event.start_date.desc())
+        .limit(_PER_CATEGORY)
+    )).all()
+    for event_id, title, description in event_rows:
+        results.append(SearchResultOut(
+            type="event", title=title, url=f"/events.html?event={event_id}", snippet=(description or "").strip(),
         ))
 
     return results
