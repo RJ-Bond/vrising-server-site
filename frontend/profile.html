@@ -522,9 +522,30 @@
           <button onclick="disableTwoFA()" class="btn btn-ghost" style="font-size:.75rem;border-color:rgba(200,0,42,.4);color:#fca5a5;" data-i18n-ru="Отключить 2FA" data-i18n-en="Disable 2FA">Отключить 2FA</button>
         </div>
         <div id="twofa-disable-msg" style="font-size:.75rem;margin-top:.4rem;display:none;"></div>
+        <div style="margin-top:.9rem;padding-top:.9rem;border-top:1px solid rgba(110,0,150,.15);">
+          <button onclick="toggleRecoveryRegenForm()" class="btn btn-ghost" style="font-size:.72rem;" data-i18n-ru="Обновить резервные коды" data-i18n-en="Regenerate recovery codes">Обновить резервные коды</button>
+          <div id="twofa-regen-form" style="display:none;margin-top:.6rem;">
+            <div style="font-size:.72rem;color:var(--muted);margin-bottom:.5rem;" data-i18n-ru="Старые резервные коды перестанут работать. Введите код из приложения для подтверждения:" data-i18n-en="Old recovery codes will stop working. Enter the code from the app to confirm:">Старые резервные коды перестанут работать. Введите код из приложения для подтверждения:</div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+              <input id="twofa-regen-code" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="6" class="field" placeholder="123456" style="width:130px;">
+              <button onclick="regenerateRecoveryCodes()" class="btn" style="font-size:.72rem;" data-i18n-ru="Подтвердить" data-i18n-en="Confirm">Подтвердить</button>
+            </div>
+            <div id="twofa-regen-msg" style="font-size:.72rem;margin-top:.4rem;display:none;"></div>
+          </div>
+        </div>
       </div>
       <div id="twofa-actions" style="display:none;margin-top:.25rem;">
         <button onclick="startTwofaSetup()" class="btn" style="font-size:.75rem;" data-i18n-ru="Включить 2FA" data-i18n-en="Enable 2FA">Включить 2FA</button>
+      </div>
+      <div id="twofa-recovery-reveal" style="display:none;margin-top:1.1rem;padding-top:1rem;border-top:1px solid rgba(110,0,150,.2);">
+        <div style="font-size:.78rem;color:#fbbf24;font-weight:600;margin-bottom:.5rem;" data-i18n-ru="⚠ Сохраните эти резервные коды — они больше не будут показаны" data-i18n-en="⚠ Save these recovery codes — they will not be shown again">⚠ Сохраните эти резервные коды — они больше не будут показаны</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.75rem;" data-i18n-ru="Каждый код можно использовать один раз вместо кода из приложения — например, если вы потеряете доступ к нему." data-i18n-en="Each code can be used once in place of your app code — for example, if you lose access to it.">Каждый код можно использовать один раз вместо кода из приложения — например, если вы потеряете доступ к нему.</div>
+        <div id="twofa-recovery-codes-list" style="font-family:monospace;background:rgba(8,0,14,0.7);border:1px solid rgba(110,0,150,0.3);border-radius:.5rem;padding:.75rem 1rem;font-size:.85rem;color:#c4b5fd;letter-spacing:.05em;display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:.4rem;margin-bottom:.75rem;"></div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+          <button onclick="copyRecoveryCodes()" id="recovery-copy-btn" class="btn btn-ghost" style="font-size:.72rem;" data-i18n-ru="Скопировать" data-i18n-en="Copy">Скопировать</button>
+          <button onclick="downloadRecoveryCodes()" class="btn btn-ghost" style="font-size:.72rem;" data-i18n-ru="Скачать .txt" data-i18n-en="Download .txt">Скачать .txt</button>
+          <button onclick="dismissRecoveryReveal()" class="btn" style="font-size:.72rem;" data-i18n-ru="Я сохранил(а) коды" data-i18n-en="I've saved these codes">Я сохранил(а) коды</button>
+        </div>
       </div>
     </div>
 
@@ -1534,6 +1555,7 @@ async function enableTwoFA() {
     const d = await res.json().catch(()=>({}));
     if (!res.ok) return show(d.detail||'Неверный код', false);
     show('2FA включена!', true);
+    if (Array.isArray(d.recovery_codes)) _showRecoveryCodes(d.recovery_codes);
     setTimeout(() => _initTwoFACard(true), 1500);
   } catch { show('Ошибка соединения', false); }
 }
@@ -1548,7 +1570,76 @@ async function disableTwoFA() {
     const d = await res.json().catch(()=>({}));
     if (!res.ok) return show(d.detail||'Неверный код', false);
     show('2FA отключена', true);
+    dismissRecoveryReveal();
     setTimeout(() => _initTwoFACard(false), 1500);
+  } catch { show('Ошибка соединения', false); }
+}
+
+// ── 2FA recovery codes ──────────────────────────────────────────────────────
+// Shown once right after enabling 2FA (enableTwoFA() above) or after an explicit
+// regenerate (regenerateRecoveryCodes() below) — the backend never returns
+// plaintext codes a second time (backend/routers/auth.py), so this is the only
+// chance the user gets to copy/download them.
+let _lastRecoveryCodes = [];
+
+function _showRecoveryCodes(codes) {
+  _lastRecoveryCodes = codes || [];
+  const list = document.getElementById('twofa-recovery-codes-list');
+  list.innerHTML = _lastRecoveryCodes.map(c => `<div>${c}</div>`).join('');
+  const reveal = document.getElementById('twofa-recovery-reveal');
+  reveal.style.display = '';
+  reveal.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function dismissRecoveryReveal() {
+  document.getElementById('twofa-recovery-reveal').style.display = 'none';
+  document.getElementById('twofa-recovery-codes-list').innerHTML = '';
+  _lastRecoveryCodes = [];
+}
+
+function copyRecoveryCodes() {
+  if (!_lastRecoveryCodes.length) return;
+  const text = _lastRecoveryCodes.join('\n');
+  const btn = document.getElementById('recovery-copy-btn');
+  const orig = btn.textContent;
+  navigator.clipboard?.writeText(text).then(() => {
+    btn.textContent = '✔ Скопировано';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  }).catch(() => { prompt('Резервные коды:', text); });
+}
+
+function downloadRecoveryCodes() {
+  if (!_lastRecoveryCodes.length) return;
+  const text = _lastRecoveryCodes.join('\n') + '\n';
+  const blob = new Blob([text], {type:'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'vrising-recovery-codes.txt';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function toggleRecoveryRegenForm() {
+  const form = document.getElementById('twofa-regen-form');
+  form.style.display = form.style.display === 'none' ? '' : 'none';
+}
+
+async function regenerateRecoveryCodes() {
+  const code = document.getElementById('twofa-regen-code').value.trim();
+  const msg = document.getElementById('twofa-regen-msg');
+  const show = (t, ok) => { msg.textContent=t; msg.style.color=ok?'#4ade80':'#f87171'; msg.style.display=''; };
+  if (code.length !== 6) return show('Введите 6-значный код', false);
+  try {
+    const res = await fetch(`${API}/auth/2fa/recovery-codes/regenerate`, {method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code})});
+    const d = await res.json().catch(()=>({}));
+    if (!res.ok) return show(d.detail||'Неверный код', false);
+    document.getElementById('twofa-regen-code').value = '';
+    document.getElementById('twofa-regen-form').style.display = 'none';
+    msg.style.display = 'none';
+    if (Array.isArray(d.recovery_codes)) _showRecoveryCodes(d.recovery_codes);
   } catch { show('Ошибка соединения', false); }
 }
 

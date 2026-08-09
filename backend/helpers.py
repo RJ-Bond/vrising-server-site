@@ -6,6 +6,8 @@ import asyncio
 import json
 import logging
 import os
+import re
+import secrets
 import shutil
 import subprocess
 import time
@@ -19,11 +21,11 @@ from fastapi import Depends, HTTPException, Request, Response
 from PIL import Image
 from pywebpush import webpush, WebPushException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update
 
 from .database import get_db
-from .models import User, AuditLog, ServerApiKey, Setting, PointsTransaction, Ban, PluginHeartbeat, ScheduledRestart, PushSubscription, News
-from .auth import COOKIE_NAME
+from .models import User, AuditLog, ServerApiKey, Setting, PointsTransaction, Ban, PluginHeartbeat, ScheduledRestart, PushSubscription, News, TotpRecoveryCode
+from .auth import COOKIE_NAME, get_password_hash, verify_password
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +159,74 @@ def _record_failed_totp(user_id: int) -> None:
 
 def _reset_failed_totp(user_id: int) -> None:
     _failed_totp_attempts.pop(user_id, None)
+
+
+# ─── 2FA recovery codes ────────────────────────────────────────────────────────
+# Escape hatch for a user who enabled TOTP (backend/routers/auth.py `totp_enable()`)
+# and later loses their authenticator device — without this, login() would have no
+# way back in short of an admin editing the DB by hand (and there is currently no
+# admin-side "disable 2FA for this user" endpoint either). Issued as a batch at
+# enable-time and on explicit regeneration; each code is single-use and hashed at
+# rest with the same bcrypt helper as the account password.
+_RECOVERY_CODE_COUNT = 10
+
+
+def _generate_recovery_codes() -> tuple[list[str], list[str]]:
+    """Returns (raw_codes, formatted_codes). raw_codes (8 lowercase hex chars each,
+    no separator) are what actually gets hashed/stored/compared; formatted_codes
+    (same value, "XXXX-XXXX" and upper-cased) are what the user is shown — purely
+    cosmetic, easier to read/copy than a bare 8-char blob."""
+    raw = [secrets.token_hex(4) for _ in range(_RECOVERY_CODE_COUNT)]
+    formatted = [f"{code[:4]}-{code[4:]}".upper() for code in raw]
+    return raw, formatted
+
+
+def _normalize_recovery_code(code: str) -> str:
+    """Strips whitespace/dashes and lower-cases so a code still verifies whether the
+    user types/pastes it with or without the "XXXX-XXXX" formatting, or in either
+    case — matches how it was hashed by _generate_recovery_codes()."""
+    return re.sub(r"[\s-]", "", code or "").lower()
+
+
+async def _issue_recovery_codes(db: AsyncSession, user_id: int) -> list[str]:
+    """Invalidates any still-unused recovery codes for user_id (bulk UPDATE, not a
+    DELETE — keeps a row-level audit trail of every batch ever issued) and adds a
+    fresh batch of _RECOVERY_CODE_COUNT. Returns the plaintext formatted codes for
+    the one-time-reveal response; caller must still await db.commit(). Shared by
+    both totp_enable() (first batch) and the recovery-codes/regenerate endpoint."""
+    await db.execute(
+        update(TotpRecoveryCode)
+        .where(TotpRecoveryCode.user_id == user_id, TotpRecoveryCode.used_at.is_(None))
+        .values(used_at=datetime.now(timezone.utc))
+    )
+    raw, formatted = _generate_recovery_codes()
+    for code in raw:
+        db.add(TotpRecoveryCode(user_id=user_id, code_hash=get_password_hash(code)))
+    return formatted
+
+
+async def _consume_recovery_code(db: AsyncSession, user_id: int, submitted: str) -> bool:
+    """Linear scan over user_id's *unused* recovery codes (a small bounded set — at
+    most _RECOVERY_CODE_COUNT, not a performance concern) checking `submitted`
+    against each bcrypt hash, since a salted hash can't be looked up directly. On a
+    match, marks that row used_at=now() so it can never be consumed again and
+    returns True; caller must still await db.commit() for that to persist. Returns
+    False (never raises) for a malformed/empty/non-matching submission."""
+    candidate = _normalize_recovery_code(submitted)
+    if not candidate:
+        return False
+    result = await db.execute(
+        select(TotpRecoveryCode).where(
+            TotpRecoveryCode.user_id == user_id,
+            TotpRecoveryCode.used_at.is_(None),
+        )
+    )
+    for row in result.scalars().all():
+        if verify_password(candidate, row.code_hash):
+            row.used_at = datetime.now(timezone.utc)
+            return True
+    return False
+
 
 # Visitor-tracking state — logically part of the Who's-online domain (main.py, not yet
 # split out) but also written by POST /api/auth/logout (backend/routers/auth.py) to

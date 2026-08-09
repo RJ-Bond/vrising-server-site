@@ -335,6 +335,23 @@ class PasswordReset(Base):
     used = Column(Boolean, default=False, nullable=False)
 
 
+class TotpRecoveryCode(Base):
+    """One-time-use 2FA recovery codes, issued as a batch whenever a user enables TOTP
+    (POST /api/auth/2fa/enable) or explicitly regenerates them (POST
+    /api/auth/2fa/recovery-codes/regenerate) — see backend/routers/auth.py. code_hash is
+    bcrypt via get_password_hash(), same helper as the account password itself; plaintext
+    is only ever returned once, in that endpoint's response. used_at doubles as "consumed
+    at login" and "invalidated by a later regenerate" — both mean the row can never be
+    used again, and this table only needs to answer "is this code still valid", not which
+    of those two things happened."""
+    __tablename__ = "totp_recovery_codes"
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    code_hash = Column(String(256), nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+
 class CommentReaction(Base):
     __tablename__ = "comment_reactions"
     id = Column(Integer, primary_key=True, index=True)
