@@ -916,6 +916,8 @@ class ShopItemCreate(BaseModel):
     is_active: bool = True
     stock: Optional[int] = None
     sort_order: int = 0
+    category: Optional[str] = None
+    weekly_limit_per_user: Optional[int] = None
 
     @field_validator("name")
     @classmethod
@@ -939,6 +941,21 @@ class ShopItemCreate(BaseModel):
             raise ValueError("stock cannot be negative")
         return v
 
+    @field_validator("category")
+    @classmethod
+    def category_clean(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.strip()
+        return v[:32] or None
+
+    @field_validator("weekly_limit_per_user")
+    @classmethod
+    def weekly_limit_positive(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v <= 0:
+            raise ValueError("weekly_limit_per_user must be greater than 0")
+        return v
+
 
 class ShopItemUpdate(BaseModel):
     """Body for PUT /api/admin/shop/items/{id} — every field optional (partial update),
@@ -950,6 +967,8 @@ class ShopItemUpdate(BaseModel):
     is_active: Optional[bool] = None
     stock: Optional[int] = None
     sort_order: Optional[int] = None
+    category: Optional[str] = None
+    weekly_limit_per_user: Optional[int] = None
 
     @field_validator("name")
     @classmethod
@@ -975,6 +994,21 @@ class ShopItemUpdate(BaseModel):
             raise ValueError("stock cannot be negative")
         return v
 
+    @field_validator("category")
+    @classmethod
+    def category_clean(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.strip()
+        return v[:32] or None
+
+    @field_validator("weekly_limit_per_user")
+    @classmethod
+    def weekly_limit_positive(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v <= 0:
+            raise ValueError("weekly_limit_per_user must be greater than 0")
+        return v
+
 
 class ShopItemOut(BaseModel):
     id: int
@@ -985,8 +1019,16 @@ class ShopItemOut(BaseModel):
     is_active: bool
     stock: Optional[int] = None
     sort_order: int = 0
+    category: Optional[str] = None
+    weekly_limit_per_user: Optional[int] = None
     created_at: datetime
     updated_at: datetime
+    # Both populated only on the player-facing endpoints (GET /api/shop/items,
+    # GET /api/shop/wishlist/me) that know the requesting user — set manually after
+    # model_validate, same pattern as ShopRedemptionOut.username below. Absent (None)
+    # on the admin catalog view, which isn't scoped to one player.
+    weekly_remaining: Optional[int] = None
+    wishlisted: Optional[bool] = None
 
     model_config = {"from_attributes": True}
 
@@ -1029,6 +1071,14 @@ class ShopRedemptionOut(BaseModel):
     username: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+
+class ShopWishlistStatusOut(BaseModel):
+    """Response body for POST/DELETE /api/shop/wishlist/{item_id} — just confirms the
+    resulting state, since the frontend already has the item's own data cached
+    (_shopItemsCache in shop.html) and doesn't need a full item echoed back."""
+    shop_item_id: int
+    wishlisted: bool
 
 
 class PointsLeaderboardEntryOut(BaseModel):

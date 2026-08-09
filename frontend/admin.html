@@ -2572,10 +2572,10 @@
         <div style="overflow-x:auto;">
           <table>
             <thead><tr>
-              <th>Название</th><th>Стоимость</th><th>Остаток</th><th>Активен</th><th>Действия</th>
+              <th>Название</th><th>Категория</th><th>Стоимость</th><th>Остаток</th><th>Лимит/нед</th><th>Активен</th><th>Действия</th>
             </tr></thead>
             <tbody id="shop-items-tbody">
-              <tr><td colspan="5" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
+              <tr><td colspan="7" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
             </tbody>
           </table>
         </div>
@@ -2764,6 +2764,20 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
               <div><label>Стоимость (очков)</label><input id="si-cost" class="dark-input" type="number" min="1" placeholder="50"></div>
               <div><label>Остаток (пусто — без ограничений)</label><input id="si-stock" class="dark-input" type="number" min="0" placeholder="Без ограничений"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+              <div>
+                <label>Категория</label>
+                <select id="si-category" class="dark-input">
+                  <option value="">Без категории</option>
+                  <option value="Телепорт">Телепорт</option>
+                  <option value="Ресурсы">Ресурсы</option>
+                  <option value="Косметика">Косметика</option>
+                  <option value="Экипировка">Экипировка</option>
+                  <option value="Прочее">Прочее</option>
+                </select>
+              </div>
+              <div><label>Лимит в неделю на игрока (пусто — без ограничений)</label><input id="si-weekly-limit" class="dark-input" type="number" min="1" placeholder="Без ограничений"></div>
             </div>
             <div><label>URL изображения (необязательно)</label><input id="si-image" class="dark-input" type="url" placeholder="https://..."></div>
             <div style="display:flex;align-items:center;gap:.5rem;">
@@ -6654,11 +6668,13 @@ async function loadShopCatalog() {
   tableShowSkeleton('shop-items-tbody', 5);
   try {
     const items = await fetch(`${API}/admin/shop/items`, {credentials:'include', headers:authH()}).then(r => { if (!r.ok) { handleAuth(r); throw new Error(); } return r.json(); });
-    if (!items.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Товаров нет</td></tr>'; return; }
+    if (!items.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Товаров нет</td></tr>'; return; }
     tbody.innerHTML = items.map(it => `<tr>
       <td><span style="font-weight:600;">${esc(it.name)}</span></td>
+      <td style="font-size:.78rem;color:var(--muted);">${it.category ? esc(it.category) : '—'}</td>
       <td style="font-size:.78rem;color:var(--gold);">${it.cost}</td>
       <td style="font-size:.78rem;">${it.stock == null ? '∞' : it.stock}</td>
+      <td style="font-size:.78rem;">${it.weekly_limit_per_user == null ? '—' : it.weekly_limit_per_user}</td>
       <td>${it.is_active ? '<span style="color:#4ade80;font-size:.75rem;">Да</span>' : '<span style="color:var(--muted);font-size:.75rem;">Нет</span>'}</td>
       <td>
         <div style="display:flex;gap:.35rem;">
@@ -6667,7 +6683,7 @@ async function loadShopCatalog() {
         </div>
       </td>
     </tr>`).join('');
-  } catch { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+  } catch { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
 
   loadEconomyConfig();
   loadGrantUserList();
@@ -6700,6 +6716,8 @@ async function openShopItemEditor(id) {
   ['si-name', 'si-desc', 'si-image'].forEach(i => { const el = document.getElementById(i); if (el) el.value = ''; });
   document.getElementById('si-cost').value = '';
   document.getElementById('si-stock').value = '';
+  document.getElementById('si-category').value = '';
+  document.getElementById('si-weekly-limit').value = '';
   document.getElementById('si-active').checked = true;
   const msg = document.getElementById('si-save-msg');
   if (msg) msg.style.display = 'none';
@@ -6712,6 +6730,8 @@ async function openShopItemEditor(id) {
         document.getElementById('si-desc').value = it.description || '';
         document.getElementById('si-cost').value = it.cost;
         document.getElementById('si-stock').value = it.stock == null ? '' : it.stock;
+        document.getElementById('si-category').value = it.category || '';
+        document.getElementById('si-weekly-limit').value = it.weekly_limit_per_user == null ? '' : it.weekly_limit_per_user;
         document.getElementById('si-image').value = it.image_url || '';
         document.getElementById('si-active').checked = !!it.is_active;
       }
@@ -6729,11 +6749,14 @@ async function saveShopItem() {
   const msg = document.getElementById('si-save-msg');
   const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = 'inline'; };
   const stockVal = document.getElementById('si-stock').value;
+  const weeklyLimitVal = document.getElementById('si-weekly-limit').value;
   const body = {
     name: document.getElementById('si-name').value.trim(),
     description: document.getElementById('si-desc').value.trim() || null,
     cost: parseInt(document.getElementById('si-cost').value) || 0,
     stock: stockVal === '' ? null : parseInt(stockVal),
+    category: document.getElementById('si-category').value || null,
+    weekly_limit_per_user: weeklyLimitVal === '' ? null : parseInt(weeklyLimitVal),
     image_url: document.getElementById('si-image').value.trim() || null,
     is_active: document.getElementById('si-active').checked,
   };
