@@ -257,3 +257,80 @@ async def test_export_never_contains_another_users_data(client, db_session):
     assert all(tx["detail"] != "bob-only" for tx in body["points_transactions"])
     assert body["shop_redemptions"] == []
     assert body["comments"] == []
+
+
+# ── DELETE /api/profile/me ──────────────────────────────────────────────────
+# Self-service account deletion — password re-confirmation gated, scoped strictly to
+# current_user (no user-id parameter to target anyone else). See the module-level
+# comment above delete_my_account() in backend/routers/profile.py for why comments
+# are explicitly nulled-out (not cascade-deleted) rather than just relying on the
+# schema's declared ondelete= rules: this app's SQLite connection never enforces
+# foreign keys, so those rules don't fire on their own.
+
+async def test_delete_account_requires_auth(client, db_session):
+    r = await client.request("DELETE", "/api/profile/me", json={"password": "whatever"})
+    assert r.status_code == 401
+
+
+async def test_delete_account_wrong_password_rejected_and_account_survives(client, db_session):
+    user = await _make_user(db_session, "DeleteWrongPw")
+    r = await client.request("DELETE", "/api/profile/me", json={"password": "not-the-password"}, headers=_bearer(user))
+    assert r.status_code == 400
+
+    result = await db_session.execute(select(User).where(User.id == user.id))
+    assert result.scalar_one_or_none() is not None, "account must NOT be deleted when the password check fails"
+
+
+async def test_delete_account_correct_password_deletes_and_clears_cookie(client, db_session):
+    user = await _make_user(db_session, "DeleteCorrectPw")
+    token = _bearer(user)["Authorization"].removeprefix("Bearer ")
+
+    r = await client.request("DELETE", "/api/profile/me", json={"password": "password1"}, headers=_bearer(user))
+    assert r.status_code == 204
+
+    set_cookie = r.headers.get("set-cookie", "")
+    assert "vrising_token" in set_cookie
+    assert "max-age=0" in set_cookie.lower()
+
+    result = await db_session.execute(select(User).where(User.id == user.id))
+    assert result.scalar_one_or_none() is None, "account row must actually be gone"
+
+    # A deleted user's token must be rejected on its very next request.
+    r_me = await client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
+    assert r_me.status_code == 401
+
+
+async def test_delete_account_preserves_comments_via_set_null(client, db_session):
+    author = await _make_user(db_session, "DeleteCommentAuthor")
+    news_author = await _make_user(db_session, "DeleteCommentNewsAuthor", role="admin")
+    news = News(title="Survives", slug="delete-account-comment-survives", summary="s", content="c", author_id=news_author.id)
+    db_session.add(news)
+    await db_session.commit()
+    await db_session.refresh(news)
+    comment = Comment(news_id=news.id, author_id=author.id, content="This comment should outlive my account")
+    db_session.add(comment)
+    await db_session.commit()
+    await db_session.refresh(comment)
+
+    r = await client.request("DELETE", "/api/profile/me", json={"password": "password1"}, headers=_bearer(author))
+    assert r.status_code == 204
+
+    await db_session.refresh(comment)
+    assert comment.content == "This comment should outlive my account"
+    assert comment.author_id is None, "author_id must be nulled out, not left dangling"
+
+
+async def test_delete_account_blocked_while_user_has_authored_news(client, db_session):
+    # News.author_id is NOT NULL with no ondelete rule (a news post must always have
+    # a byline) — deletion is refused outright rather than corrupting the row or
+    # silently reassigning authorship.
+    admin = await _make_user(db_session, "DeleteBlockedNewsAuthor", role="admin")
+    news = News(title="My article", slug="delete-account-blocked-news", summary="s", content="c", author_id=admin.id)
+    db_session.add(news)
+    await db_session.commit()
+
+    r = await client.request("DELETE", "/api/profile/me", json={"password": "password1"}, headers=_bearer(admin))
+    assert r.status_code == 400
+
+    result = await db_session.execute(select(User).where(User.id == admin.id))
+    assert result.scalar_one_or_none() is not None, "account must survive while it still owns news content"

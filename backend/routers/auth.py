@@ -190,6 +190,44 @@ async def change_password(
     return {"ok": True, "access_token": token}
 
 
+@router.post("/api/auth/logout-everywhere")
+@limiter.limit("5/minute")
+async def logout_everywhere(
+    request: Request,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Self-service "log out of all my other devices" — the same revoke_before
+    mechanism as POST /api/admin/users/{user_id}/revoke-sessions
+    (backend/routers/users.py), just reachable by a normal user acting on
+    themselves: no target-user-id parameter, so there's no way to touch anyone
+    else's sessions through this endpoint. Real per-device session tracking (a list
+    of "active sessions" with device/location) isn't feasible without building actual
+    session storage — this app is stateless-JWT-in-a-cookie plus this one
+    revoke_before cutoff column, nothing per-token — so that's deliberately not
+    attempted here; this just makes the existing all-or-nothing mechanism
+    self-service instead of admin-only.
+
+    Same 1-second backdate + immediate token reissue as change_password just above,
+    and for the same reason: create_access_token's `iat` is a whole-second JWT
+    NumericDate, but `revoke_before` here has microsecond precision, so an
+    un-backdated "now" cutoff could end up *later* than the `iat` of a token minted
+    in the same wall-clock second — including this request's own still-in-flight
+    token, and the freshly reissued one below — which would paradoxically log the
+    caller themselves out. Reissuing (not just avoiding revocation) also mirrors
+    login: the browser tab that clicked the button gets a fresh cookie, so it stays
+    signed in while every OTHER token issued before this moment is rejected on its
+    next request.
+    """
+    now_utc = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
+    await db.execute(text("UPDATE users SET revoke_before = :ts WHERE id = :uid"), {"ts": now_utc, "uid": current_user.id})
+    await db.commit()
+    token = create_access_token({"sub": str(current_user.id)})
+    _set_auth_cookie(response, token)
+    return {"ok": True, "access_token": token}
+
+
 @router.post("/api/auth/change-email")
 @limiter.limit("5/minute")
 async def change_email(

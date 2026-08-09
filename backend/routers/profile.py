@@ -7,13 +7,30 @@ from typing import Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete, update, func
 
 from ..database import get_db
-from ..models import Comment, PointsTransaction, ShopRedemption, User
-from ..auth import get_current_user, is_at_least
+from ..models import (
+    Comment,
+    CommentReaction,
+    Clan,
+    Event,
+    EventParticipant,
+    Message,
+    News,
+    Notification,
+    PasswordReset,
+    PointsTransaction,
+    PollVote,
+    PushSubscription,
+    Reaction,
+    Report,
+    ShopRedemption,
+    User,
+)
+from ..auth import get_current_user, is_at_least, verify_password
 from ..rate_limit import limiter
-from ..helpers import UPLOAD_DIR, _fmt_dt, _explicit_logouts, optimize_image_bytes
+from ..helpers import UPLOAD_DIR, _fmt_dt, _explicit_logouts, optimize_image_bytes, log_audit, _clear_auth_cookie
 
 router = APIRouter()
 
@@ -298,6 +315,102 @@ async def export_my_data(
         media_type="application/json",
         headers={"Content-Disposition": 'attachment; filename="my-data.json"'},
     )
+
+
+# ─── Self-service account deletion ────────────────────────────────────────────
+# Mirrors DELETE /api/admin/users/{user_id} (backend/routers/users.py) but scoped to
+# the caller's own account (no target-user-id parameter — there is no way to make
+# this act on anyone else) and gated by a live password re-check instead of an
+# admin/superadmin role dependency, the same "prove it's really you" friction
+# change_password/change_email above already add for sensitive self-service actions.
+#
+# The admin endpoint just does `await db.delete(user)` with no explicit cleanup of
+# rows that reference the user — that "works" today only because it hasn't been
+# exercised on an account with the right shape of data, not because the schema's
+# declared `ondelete=` rules actually fire: this app's SQLite connection never runs
+# `PRAGMA foreign_keys = ON` (see the comment on that pragma in backend/database.py,
+# and models.py's own note on it), so every `ForeignKey("users.id", ondelete=...)`
+# below is DDL documentation only — deleting a User row through the ORM does not
+# cascade or null out anything by itself; a naive `await db.delete(user)` here would
+# leave every one of these rows behind with a dangling, now-nonexistent user_id.
+# Self-service deletion makes that reachable by any user (not just an admin acting
+# deliberately on someone else), so the gap is closed explicitly below rather than
+# inherited silently:
+#   - Comment.author_id / Report.reporter_id are declared SET NULL — comments and
+#     reports are meant to survive their author's account disappearing (same reason
+#     Ban.admin_name / AuditLog.admin_username are plain snapshot strings instead of
+#     a User FK) — nulled out explicitly since the DB won't do it on its own.
+#   - News.author_id has neither an ondelete rule nor NULL allowed (site content, a
+#     news post is meant to always have a byline). Leaving it dangling would corrupt
+#     the row (GET /api/news/{slug}'s JSON-LD block in main.py dereferences
+#     `news.author.username` unguarded and would 500) and silently reassigning
+#     authorship to someone else isn't this endpoint's call to make — so deletion is
+#     blocked outright while the account has authored articles, with a message
+#     pointing at asking an admin to reassign/remove them first.
+#   - Everything else FK'd to users.id is declared CASCADE (Reaction, CommentReaction,
+#     Notification, PushSubscription, PollVote, EventParticipant, PasswordReset,
+#     Message, ShopRedemption, PointsTransaction, Event.created_by, Clan.leader_id) —
+#     genuinely personal/owned rows, not shared site content, so they're deleted
+#     explicitly here to match the schema's own declared intent instead of being left
+#     behind as orphaned rows nothing will ever clean up.
+
+class DeleteAccountBody(BaseModel):
+    password: str
+
+
+@router.delete("/api/profile/me", status_code=204)
+@limiter.limit("5/minute")
+async def delete_my_account(
+    request: Request,
+    body: DeleteAccountBody,
+    response: Response,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verify_password(body.password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Неверный пароль")
+
+    uid = current_user.id
+
+    news_count = (await db.execute(
+        select(func.count(News.id)).where(News.author_id == uid)
+    )).scalar_one()
+    if news_count:
+        raise HTTPException(
+            status_code=400,
+            detail="Нельзя удалить аккаунт: с ним связаны опубликованные новости. Обратитесь к администратору, чтобы переназначить авторство перед удалением.",
+        )
+
+    # Content that must survive the account — SET NULL, enforced here in Python
+    # (see the module-level comment above for why the DB won't do this itself).
+    await db.execute(update(Comment).where(Comment.author_id == uid).values(author_id=None))
+    await db.execute(update(Report).where(Report.reporter_id == uid).values(reporter_id=None))
+
+    # Personal/owned rows — declared CASCADE, deleted explicitly for the same reason.
+    await db.execute(delete(Reaction).where(Reaction.user_id == uid))
+    await db.execute(delete(CommentReaction).where(CommentReaction.user_id == uid))
+    await db.execute(delete(Notification).where(Notification.user_id == uid))
+    await db.execute(delete(PushSubscription).where(PushSubscription.user_id == uid))
+    await db.execute(delete(PollVote).where(PollVote.user_id == uid))
+    await db.execute(delete(EventParticipant).where(EventParticipant.user_id == uid))
+    await db.execute(delete(PasswordReset).where(PasswordReset.user_id == uid))
+    await db.execute(delete(Message).where((Message.sender_id == uid) | (Message.recipient_id == uid)))
+    await db.execute(delete(ShopRedemption).where(ShopRedemption.user_id == uid))
+    await db.execute(delete(PointsTransaction).where(PointsTransaction.user_id == uid))
+    await db.execute(delete(Event).where(Event.created_by == uid))
+    await db.execute(delete(Clan).where(Clan.leader_id == uid))
+
+    # AuditLog only ever stores a username snapshot (see admin_username above), so
+    # this is safe to record even though the User row it's about is gone a moment
+    # later.
+    await log_audit(db, current_user, "user.self_delete", current_user.username)
+
+    result = await db.execute(select(User).where(User.id == uid))
+    user = result.scalar_one()
+    await db.delete(user)
+    await db.commit()
+
+    _clear_auth_cookie(response)
 
 
 # ─── Newsletter opt-in ────────────────────────────────────────────────────────
