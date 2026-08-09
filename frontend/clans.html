@@ -136,7 +136,7 @@
        member/online counts are all already in that response) — no new backend endpoint
        needed. Visual language + class-naming pattern ported from leaderboard.html's
        player-comparison feature (_compareMode/openCompareModal/compareRowHtml,
-       lb-compare-*/lb-cmp-* classes) with a clan-compare-*/clan-cmp-* prefix instead.
+       lb-compare-* / lb-cmp-* classes) with a clan-compare-* / clan-cmp-* prefix instead.
        The small compareRowHtml()-style row renderer is duplicated here rather than
        factored into a shared frontend module — this repo's backend already prefers
        "routers don't import each other, duplicate small helpers" over a shared-utility
@@ -916,7 +916,7 @@ async function loadClanPowerLeaderboard(serverNum) {
 }
 
 /* ── Clan comparison — pick up to 2 clans from the power leaderboard above and see
-   their stats side by side. See the CSS comment above (clan-compare-*/clan-cmp-*)
+   their stats side by side. See the CSS comment above (clan-compare-* / clan-cmp-*)
    for why this mirrors leaderboard.html's player-comparison feature class-for-class
    instead of sharing code with it. ── */
 let _clanPowerRows = []; // last-rendered GET /api/clans/leaderboard rows, kept for lookups
