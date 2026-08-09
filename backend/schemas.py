@@ -559,6 +559,36 @@ class CommentUpdate(BaseModel):
         return v
 
 
+class CommentBulkDeleteIn(BaseModel):
+    """Body for POST /api/admin/comments/bulk-delete — bulk variant of
+    DELETE /api/admin/comments/{id}. See that endpoint for why this is a per-id
+    success/failure result rather than an all-or-nothing transaction (same reasoning
+    as PointsGrantBulkIn)."""
+    ids: list[int]
+
+    @field_validator("ids")
+    @classmethod
+    def ids_bounds(cls, v: list[int]) -> list[int]:
+        cleaned = list(dict.fromkeys(v))  # dedupe, preserve order
+        if not cleaned:
+            raise ValueError("ids must not be empty")
+        if len(cleaned) > 500:
+            raise ValueError("too many ids (max 500)")
+        return cleaned
+
+
+class CommentBulkResult(BaseModel):
+    id: int
+    success: bool
+    error: Optional[str] = None
+
+
+class CommentBulkDeleteOut(BaseModel):
+    results: list[CommentBulkResult]
+    succeeded: int
+    failed: int
+
+
 class CommentOut(BaseModel):
     id: int
     content: str
@@ -847,6 +877,85 @@ class ReportReview(BaseModel):
         if v not in ("reviewed", "dismissed"):
             raise ValueError("status must be reviewed or dismissed")
         return v
+
+
+class AutoFlagRuleCreate(BaseModel):
+    keyword: str
+
+    @field_validator("keyword")
+    @classmethod
+    def keyword_not_empty(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("keyword cannot be empty")
+        if len(v) > 128:
+            raise ValueError("keyword too long (max 128 chars)")
+        return v
+
+
+class AutoFlagRuleUpdate(BaseModel):
+    keyword: Optional[str] = None
+    is_active: Optional[bool] = None
+
+    @field_validator("keyword")
+    @classmethod
+    def keyword_not_empty(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        v = v.strip()
+        if not v:
+            raise ValueError("keyword cannot be empty")
+        return v[:128]
+
+
+class AutoFlagRuleOut(BaseModel):
+    id: int
+    keyword: str
+    created_by: Optional[str] = None
+    created_at: datetime
+    is_active: bool
+
+    model_config = {"from_attributes": True}
+
+
+class ReportBulkReviewIn(BaseModel):
+    """Body for POST /api/admin/reports/bulk-review — bulk variant of
+    PATCH /api/admin/reports/{id} applying one shared status/admin_note to many
+    reports at once. Per-id success/failure result (see CommentBulkDeleteIn's
+    docstring for the reasoning: a report already reviewed by someone else, or a
+    stale id, shouldn't fail the rest of the batch)."""
+    ids: list[int]
+    status: str
+    admin_note: Optional[str] = None
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, v: str) -> str:
+        if v not in ("reviewed", "dismissed"):
+            raise ValueError("status must be reviewed or dismissed")
+        return v
+
+    @field_validator("ids")
+    @classmethod
+    def ids_bounds(cls, v: list[int]) -> list[int]:
+        cleaned = list(dict.fromkeys(v))
+        if not cleaned:
+            raise ValueError("ids must not be empty")
+        if len(cleaned) > 500:
+            raise ValueError("too many ids (max 500)")
+        return cleaned
+
+
+class ReportBulkResult(BaseModel):
+    id: int
+    success: bool
+    error: Optional[str] = None
+
+
+class ReportBulkReviewOut(BaseModel):
+    results: list[ReportBulkResult]
+    succeeded: int
+    failed: int
 
 
 class ReportOut(BaseModel):

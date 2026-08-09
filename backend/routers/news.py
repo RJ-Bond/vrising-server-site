@@ -16,7 +16,7 @@ from sqlalchemy.orm import selectinload
 from jose import jwt as jose_jwt
 
 from ..database import get_db
-from ..models import User, News, Comment, PageView, Reaction, RevokedToken, CommentReaction, Notification, Setting
+from ..models import User, News, Comment, PageView, Reaction, RevokedToken, CommentReaction, Notification, Setting, AutoFlagRule, Report
 from ..auth import get_admin_user, get_current_user, is_at_least, SECRET_KEY, ALGORITHM, COOKIE_NAME
 from ..rate_limit import limiter
 from ..helpers import _audit, _fmt_dt, _send_notification_email, activity_broadcast, send_push
@@ -284,6 +284,33 @@ async def get_comments(
     return {"items": [serialize_comment(c) for c in page_items], "total": total, "page": page, "pages": pages}
 
 
+async def _check_auto_flag_rules(db: AsyncSession, comment: Comment) -> None:
+    """Case-insensitive substring check of comment.content against every active
+    AutoFlagRule.keyword (see that model's docstring). Creates a Report — reusing the
+    existing report/moderation-queue flow rather than a parallel one — on the FIRST
+    matching rule only, so one comment can't spam the queue with a duplicate Report per
+    keyword it happens to contain. A match never blocks/rejects the comment itself: a
+    false positive shouldn't silently eat someone's post, so it's just surfaced for a
+    human moderator to review via GET /api/admin/reports, same as a user-submitted
+    report would be."""
+    rules = (await db.execute(
+        select(AutoFlagRule).where(AutoFlagRule.is_active == True)
+    )).scalars().all()
+    if not rules:
+        return
+    content_lower = comment.content.lower()
+    for rule in rules:
+        if rule.keyword.lower() in content_lower:
+            db.add(Report(
+                reporter_id=None,
+                target_type="comment",
+                target_id=comment.id,
+                reason=f"Автоматическая пометка: совпадение по ключевому слову «{rule.keyword}»",
+            ))
+            await db.commit()
+            break
+
+
 @router.post("/api/news/{slug}/comments", response_model=CommentOut, status_code=201)
 @limiter.limit("20/minute")
 async def add_comment(
@@ -303,6 +330,7 @@ async def add_comment(
     await db.refresh(comment)
     # eager load author
     await db.refresh(comment, ["author"])
+    await _check_auto_flag_rules(db, comment)
     if body.parent_id:
         parent_c = await db.get(Comment, body.parent_id)
         if parent_c and parent_c.author_id and parent_c.author_id != current_user.id:
