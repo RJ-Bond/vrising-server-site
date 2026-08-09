@@ -374,7 +374,7 @@
     <!-- Login form -->
     <form id="form-login" onsubmit="submitLogin(event)">
       <div class="form-group">
-        <label class="form-label">Имя пользователя</label>
+        <label class="form-label" for="login-username">Имя пользователя</label>
         <div class="input-wrap">
           <span class="input-icon">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-user"></use></svg>
@@ -384,7 +384,7 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Пароль</label>
+        <label class="form-label" for="login-password">Пароль</label>
         <div class="input-wrap">
           <span class="input-icon">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-lock"></use></svg>
@@ -423,27 +423,27 @@
     <!-- Register form -->
     <form id="form-register" onsubmit="submitRegister(event)" style="display:none;">
       <div class="form-group">
-        <label class="form-label">Имя пользователя</label>
+        <label class="form-label" for="reg-username">Имя пользователя</label>
         <div class="input-wrap">
           <span class="input-icon">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-user"></use></svg>
           </span>
-          <input name="username" type="text" required autocomplete="username"
+          <input id="reg-username" name="username" type="text" required autocomplete="username"
             placeholder="3–32 символа, буквы, цифры, _" class="dark-input" />
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Email</label>
+        <label class="form-label" for="reg-email">Email</label>
         <div class="input-wrap">
           <span class="input-icon">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           </span>
-          <input name="email" type="email" required autocomplete="email"
+          <input id="reg-email" name="email" type="email" required autocomplete="email"
             placeholder="your@email.com" class="dark-input" />
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Пароль</label>
+        <label class="form-label" for="reg-password">Пароль</label>
         <div class="input-wrap">
           <span class="input-icon">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-lock"></use></svg>
@@ -460,7 +460,7 @@
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Повторите пароль</label>
+        <label class="form-label" for="reg-confirm">Повторите пароль</label>
         <div class="input-wrap">
           <span class="input-icon">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-lock"></use></svg>
@@ -474,7 +474,7 @@
         <div class="confirm-hint" id="confirm-hint"></div>
       </div>
       <div class="form-group">
-        <label class="form-label">Игровой ник (необязательно)</label>
+        <label class="form-label" for="reg-game-nick">Игровой ник (необязательно)</label>
         <div class="input-wrap">
           <span class="input-icon">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5z"/><path d="M20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5z"/><path d="M3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5z"/><path d="M15.5 19H14v1.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5-.67-1.5-1.5-1.5z"/><path d="M10 9.5C10 8.67 9.33 8 8.5 8h-5C2.67 8 2 8.67 2 9.5S2.67 11 3.5 11h5c.83 0 1.5-.67 1.5-1.5z"/><path d="M8.5 5H10V3.5C10 2.67 9.33 2 8.5 2S7 2.67 7 3.5 7.67 5 8.5 5z"/></svg>
@@ -484,11 +484,11 @@
         </div>
         <div style="font-size:.62rem;color:var(--muted);margin-top:.3rem;">Для привязки статистики с игрового сервера</div>
       </div>
-      <div id="register-error" class="alert alert-error">
+      <div id="register-error" class="alert alert-error" role="alert" aria-live="polite">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><use href="/icons.svg#icon-alert-circle"></use></svg>
         <span id="register-error-text"></span>
       </div>
-      <div id="register-success" class="alert alert-success">
+      <div id="register-success" class="alert alert-success" role="alert" aria-live="polite">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
         <span id="register-success-text"></span>
       </div>
@@ -501,7 +501,7 @@
         Введите email от вашего аккаунта. Если SMTP настроен на сервере — ссылка придёт автоматически. Иначе обратитесь к администратору в Discord.
       </p>
       <div class="form-group">
-        <label class="form-label">Email</label>
+        <label class="form-label" for="forgot-email">Email</label>
         <div class="input-wrap">
           <span class="input-icon">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -510,11 +510,11 @@
             placeholder="your@email.com" class="dark-input" />
         </div>
       </div>
-      <div id="forgot-error" class="alert alert-error">
+      <div id="forgot-error" class="alert alert-error" role="alert" aria-live="polite">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><use href="/icons.svg#icon-alert-circle"></use></svg>
         <span id="forgot-error-text"></span>
       </div>
-      <div id="forgot-success" class="alert alert-success">
+      <div id="forgot-success" class="alert alert-success" role="alert" aria-live="polite">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="20 6 9 17 4 12"/></svg>
         <span id="forgot-success-text"></span>
       </div>
