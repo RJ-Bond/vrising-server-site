@@ -188,6 +188,42 @@
     }
     .lb-filter-chip:hover { color:var(--text); border-color:rgba(200,0,40,0.3); }
     .lb-filter-chip.active { background:linear-gradient(135deg,#7a001c,var(--crimson)); color:#fff; border-color:transparent; }
+    .lb-filter-chip:disabled { opacity:.4; cursor:not-allowed; }
+
+    /* ── "Leaderboard as of a past date" — secondary/collapsed power-user control,
+       deliberately smaller and lower-contrast than the period toggle above so it never
+       competes with "all time / month / week / today" for visual priority. Toggled open
+       by the lb-asof-toggle chip; GET /api/leaderboard/snapshot-range feeds the date
+       input's min so the picker can't be aimed at a date with no PlayerRankSnapshot
+       behind it (the emptyState() branch in loadLeaderboard() is the defense-in-depth
+       fallback if it somehow is anyway). ── */
+    .lb-asof-panel {
+      display:none; align-items:center; gap:.5rem; flex-wrap:wrap;
+      background:var(--panel); border:1px solid rgba(255,255,255,0.08); border-radius:.55rem;
+      padding:.55rem .7rem; margin:-.35rem 0 1rem;
+    }
+    .lb-asof-panel.open { display:flex; }
+    .lb-asof-input {
+      background:rgba(14,5,22,0.85); border:1px solid rgba(110,0,150,0.25); border-radius:.4rem;
+      padding:.32rem .5rem; color:var(--text); font-size:.76rem; font-family:'Inter',sans-serif;
+      color-scheme:dark;
+    }
+    .lb-asof-apply-btn {
+      background:linear-gradient(135deg,#7a001c,var(--crimson)); color:#fff; border:none;
+      border-radius:.4rem; padding:.32rem .7rem; font-size:.72rem; font-weight:600; cursor:pointer;
+    }
+    .lb-asof-hint { font-size:.62rem; color:var(--muted); flex-basis:100%; }
+    .lb-asof-banner {
+      display:none; align-items:center; gap:.5rem; flex-wrap:wrap;
+      background:rgba(201,169,74,0.1); border:1px solid rgba(201,169,74,0.3); border-radius:.5rem;
+      padding:.5rem .75rem; font-size:.76rem; color:var(--gold); margin-bottom:.75rem;
+    }
+    .lb-asof-banner.open { display:flex; }
+    .lb-asof-banner button {
+      margin-left:auto; background:none; border:1px solid rgba(201,169,74,0.4); color:var(--gold);
+      border-radius:.4rem; padding:.2rem .55rem; font-size:.68rem; cursor:pointer; white-space:nowrap;
+    }
+    .lb-toggle.lb-disabled { opacity:.4; pointer-events:none; }
 
     /* ── Player comparison — pick up to 2 rows, see a side-by-side panel ── */
     .lb-compare-check-wrap { display:none; flex-shrink:0; align-items:center; margin-right:.15rem; }
@@ -516,6 +552,19 @@
       <button class="lb-filter-chip" id="lb-verified-filter" onclick="toggleVerifiedFilter()" data-i18n-ru="✔ Только подтверждённые" data-i18n-en="✔ Verified only">✔ Только подтверждённые</button>
       <button class="lb-filter-chip" id="lb-myclan-filter" onclick="toggleMyClanFilter()" style="display:none;" data-i18n-ru="🏰 Только мой клан" data-i18n-en="🏰 My clan only">🏰 Только мой клан</button>
       <button class="lb-filter-chip" id="lb-compare-toggle" onclick="toggleCompareMode()" data-i18n-ru="🆚 Сравнить игроков" data-i18n-en="🆚 Compare players">🆚 Сравнить игроков</button>
+      <button class="lb-filter-chip" id="lb-asof-toggle" onclick="toggleAsOfPanel()" data-i18n-ru="📅 На дату" data-i18n-en="📅 As of date">📅 На дату</button>
+    </div>
+    <!-- Historical "view as of a past date" picker — collapsed by default, see the
+         .lb-asof-panel CSS comment for why. -->
+    <div class="lb-asof-panel" id="lb-asof-panel">
+      <label for="lb-asof-input" style="font-size:.72rem;color:var(--muted);" data-i18n-ru="Показать рейтинг на дату:" data-i18n-en="Show leaderboard as of:">Показать рейтинг на дату:</label>
+      <input type="date" id="lb-asof-input" class="lb-asof-input">
+      <button type="button" class="lb-asof-apply-btn" onclick="applyAsOf()" data-i18n-ru="Показать" data-i18n-en="Show">Показать</button>
+      <span class="lb-asof-hint" id="lb-asof-hint"></span>
+    </div>
+    <div class="lb-asof-banner" id="lb-asof-banner">
+      <span id="lb-asof-banner-text"></span>
+      <button type="button" onclick="clearAsOf()" data-i18n-ru="✕ Вернуться к текущему" data-i18n-en="✕ Back to live">✕ Вернуться к текущему</button>
     </div>
     <div id="lb-col-header" style="display:flex;align-items:center;gap:.9rem;padding:.2rem .5rem .35rem;font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;border-bottom:1px solid rgba(255,255,255,0.05);margin-bottom:.2rem;">
       <span style="width:2.2rem;flex-shrink:0;"></span>
@@ -544,6 +593,10 @@ let _server = 1, _period = 'all', _page = 1, _metric = 'playtime';
 let _allPlayers = [];
 let _onlineNames = new Set();
 let _searchTimer = null;
+// "View as of a past date" — see the .lb-asof-panel CSS comment + applyAsOf()/
+// clearAsOf()/loadSnapshotRange() below. _asOf is a 'YYYY-MM-DD' string or null (live).
+let _asOf = null;
+let _earliestSnapshotDate = null; // from GET /api/leaderboard/snapshot-range, per _server
 let _fetchBarTimer = null;
 let _meUsername = (function() { const u = (typeof getUser === 'function' ? getUser() : null); return u ? (u.username || '') : ''; })();
 // Filters: verified-only is purely client-side over already-fetched rows; my-clan-only
@@ -927,6 +980,9 @@ function setMetric(metric, btn) {
   // — not per-server, not time-bucketed — so the server/period toggles don't apply.
   document.getElementById('lb-server-toggle').style.display = isPoints ? 'none' : '';
   document.getElementById('lb-period-toggle').style.display = isPoints ? 'none' : '';
+  // Points is a single global balance, not tied to a server's PlayerRankSnapshot
+  // history either — the as-of-date picker doesn't apply, same reasoning as above.
+  if (isPoints && _asOf) clearAsOf();
   document.getElementById('lb-col-value').textContent = isPoints ? _t('Очки', 'Points') : _t('Время', 'Time');
   document.getElementById('lb-stat-leader-label').textContent = isPoints ? _t('Лидер по очкам', 'Points leader') : _t('Лидер сервера', 'Server leader');
   document.getElementById('lb-subtitle').textContent = isPoints
@@ -942,8 +998,10 @@ function updateFilterVisibility() {
   const isPoints = _metric === 'points';
   const vBtn = document.getElementById('lb-verified-filter');
   const cBtn = document.getElementById('lb-myclan-filter');
+  const aBtn = document.getElementById('lb-asof-toggle');
   if (vBtn) vBtn.style.display = isPoints ? 'none' : '';
   if (cBtn) cBtn.style.display = (!isPoints && _myClanId) ? '' : 'none';
+  if (aBtn) aBtn.style.display = isPoints ? 'none' : '';
 }
 async function resolveMyClan(username) {
   if (!username) return;
@@ -971,11 +1029,89 @@ function toggleMyClanFilter() {
 function setServer(num, btn) {
   _server = num; _page = 1;
   document.querySelectorAll('#lb-server-toggle .lb-toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
+  // PlayerRankSnapshot history is per-server — a date picked for server 1 may not
+  // exist (or mean the same standings) for server 2, so historical mode is cleared
+  // on switch rather than silently reused. loadSnapshotRange() refreshes the picker's
+  // min date for the newly selected server either way.
+  if (_asOf) clearAsOf();
+  loadSnapshotRange();
   loadLeaderboard();
 }
 function setPeriod(period, btn) {
   _period = period; _page = 1;
   document.querySelectorAll('#lb-period-toggle .lb-toggle-btn').forEach(b => b.classList.toggle('active', b === btn));
+  loadLeaderboard();
+}
+
+/* ── "View leaderboard as of a past date" — GET /api/leaderboard?as_of=YYYY-MM-DD,
+   backed by PlayerRankSnapshot (see backend/routers/leaderboard.py). Power-user/
+   secondary feature: collapsed by default (toggleAsOfPanel), and its own banner makes
+   it unambiguous the table isn't live once applied. ── */
+function toggleAsOfPanel() {
+  document.getElementById('lb-asof-panel')?.classList.toggle('open');
+  document.getElementById('lb-asof-toggle')?.classList.toggle('active');
+}
+
+// Fetches the earliest date with PlayerRankSnapshot data for the current server, so
+// the date input can't be aimed below it (the emptyState() branch in loadLeaderboard()
+// is the fallback if it somehow is anyway — e.g. a stale picker before this resolves).
+async function loadSnapshotRange() {
+  const input = document.getElementById('lb-asof-input');
+  const hint = document.getElementById('lb-asof-hint');
+  const toggleBtn = document.getElementById('lb-asof-toggle');
+  try {
+    const d = await fetch(`${API}/leaderboard/snapshot-range?server=${_server}`).then(r => r.json());
+    _earliestSnapshotDate = d.earliest_date || null;
+  } catch { _earliestSnapshotDate = null; }
+  const todayIso = new Date().toISOString().slice(0, 10);
+  if (input) {
+    input.max = todayIso;
+    if (_earliestSnapshotDate) input.min = _earliestSnapshotDate;
+    else input.removeAttribute('min');
+  }
+  if (!_earliestSnapshotDate) {
+    if (toggleBtn) { toggleBtn.disabled = true; toggleBtn.title = _t('Исторических данных пока нет', 'No historical data yet'); }
+    if (hint) hint.textContent = _t('Снимков пока нет — появятся после первой ночной синхронизации.', 'No snapshots yet — the first one appears after tonight’s sync.');
+  } else {
+    if (toggleBtn) { toggleBtn.disabled = false; toggleBtn.title = ''; }
+    if (hint) hint.textContent = _t(`Доступно с ${_earliestSnapshotDate}`, `Available from ${_earliestSnapshotDate}`);
+  }
+}
+
+function updateAsOfBanner() {
+  const banner = document.getElementById('lb-asof-banner');
+  const text = document.getElementById('lb-asof-banner-text');
+  const periodToggle = document.getElementById('lb-period-toggle');
+  if (banner) banner.classList.toggle('open', !!_asOf);
+  if (text && _asOf) text.textContent = _t('Показано на: ', 'Shown as of: ') + _asOf + _t(' · период не применяется', ' · period filter not applied');
+  // Period buttons are ignored server-side once as_of is set (snapshots only ever
+  // store the cumulative all-time total) — visually disable them rather than leave
+  // them clickable with no effect.
+  if (periodToggle) periodToggle.classList.toggle('lb-disabled', !!_asOf);
+}
+
+function applyAsOf() {
+  const input = document.getElementById('lb-asof-input');
+  const val = input?.value;
+  if (!val) { showToast(_t('Выберите дату', 'Pick a date'), 'info'); return; }
+  const todayIso = new Date().toISOString().slice(0, 10);
+  if (val > todayIso) { showToast(_t('Нельзя выбрать будущую дату', 'Cannot pick a future date'), 'info'); return; }
+  if (_earliestSnapshotDate && val < _earliestSnapshotDate) {
+    showToast(_t(`Нет данных за эту дату — доступно с ${_earliestSnapshotDate}`, `No data that far back — available from ${_earliestSnapshotDate}`), 'info');
+    return;
+  }
+  _asOf = val;
+  _page = 1;
+  updateAsOfBanner();
+  loadLeaderboard();
+}
+
+function clearAsOf() {
+  _asOf = null;
+  const input = document.getElementById('lb-asof-input');
+  if (input) input.value = '';
+  updateAsOfBanner();
+  _page = 1;
   loadLeaderboard();
 }
 function changePage(delta) {
@@ -1225,8 +1361,9 @@ async function loadLeaderboard() {
       // the logged-in user's clan — refetches the underlying dataset rather than
       // filtering client-side, since the current page's rows may not even be clanmates.
       const clanParam = (_clanOnly && _myClanId) ? `&clan_id=${_myClanId}` : '';
+      const asOfParam = _asOf ? `&as_of=${_asOf}` : '';
       const [pItems] = await Promise.all([
-        fetch(`${API}/leaderboard?server=${_server}&period=${_period}&page=${_page}&per_page=${PER_PAGE}${clanParam}`).then(r => r.json()),
+        fetch(`${API}/leaderboard?server=${_server}&period=${_period}&page=${_page}&per_page=${PER_PAGE}${clanParam}${asOfParam}`).then(r => r.json()),
         loadOnlineStatus(),
       ]);
       items = pItems.map(p => ({ ...p, metricValue: p.total_seconds }));
@@ -1236,6 +1373,13 @@ async function loadLeaderboard() {
         list.innerHTML = emptyState('📜', _t('Конец списка', 'End of list'), _t('Больше игроков нет на этой странице', 'No more players on this page'));
       } else if (isPoints) {
         list.innerHTML = emptyState('💎', _t('Таблица пуста', 'Table is empty'), _t('Пока никто не заработал очки — играйте, чтобы попасть в рейтинг', 'No one has earned points yet — play to make the rankings'));
+      } else if (_asOf) {
+        // Distinct from the generic empty states below — this means the picked date is
+        // simply older than any PlayerRankSnapshot for this server, not "no data ever".
+        list.innerHTML = emptyState('📅', _t('Нет данных за эту дату', 'No data for this date'),
+          _earliestSnapshotDate
+            ? _t(`Самая ранняя доступная дата: ${_earliestSnapshotDate}`, `Earliest available date: ${_earliestSnapshotDate}`)
+            : _t('Исторических снимков для этого сервера пока нет', 'No historical snapshots for this server yet'));
       } else if (_clanOnly && _myClanId) {
         list.innerHTML = emptyState('🏰', _t('В клане пока никого нет', 'No one in the clan yet'), _t('Статистика по вашему клану ещё не накопилась', 'Stats for your clan haven’t accumulated yet'));
       } else if (_period !== 'all') {
@@ -1259,7 +1403,7 @@ async function loadLeaderboard() {
     const periodEl = document.getElementById('lb-stat-period-val');
     if (onlineEl) onlineEl.textContent = isPoints ? '—' : (_onlineNames.size > 0 ? _onlineNames.size : '0');
     if (leaderEl && items.length) leaderEl.textContent = items[0].player_name || '—';
-    if (periodEl) periodEl.textContent = isPoints ? _t('Всё время', 'All time') : (_period === 'week' ? _t('Неделя', 'Week') : _period === 'month' ? _t('Месяц', 'Month') : _period === 'day' ? _t('Сутки', 'Day') : _t('Всё время', 'All time'));
+    if (periodEl) periodEl.textContent = _asOf ? _asOf : (isPoints ? _t('Всё время', 'All time') : (_period === 'week' ? _t('Неделя', 'Week') : _period === 'month' ? _t('Месяц', 'Month') : _period === 'day' ? _t('Сутки', 'Day') : _t('Всё время', 'All time')));
     pag.style.display = (items.length === PER_PAGE || _page > 1) ? 'flex' : 'none';
     document.getElementById('lb-page-label').textContent = `${_t('Стр.', 'Page')} ${_page}`;
     document.getElementById('lb-prev').disabled = _page <= 1;
@@ -1312,6 +1456,7 @@ async function findMe() {
   if (btn.textContent === 'Ищем…') btn.textContent = original;
 }
 
+loadSnapshotRange();
 loadLeaderboard();
 
 // ── Notification bell ──────────────────────────────────────────────────────

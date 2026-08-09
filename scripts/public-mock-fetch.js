@@ -340,6 +340,12 @@
     [/\/api\/events/, () => events],
     [/\/api\/leaderboard\/points/, () => pointsLeaderboardPage()],
     [/\/api\/leaderboard\/trend/, (url) => { const m = url.match(/days=(\d+)/); return leaderboardTrend(m ? Number(m[1]) : 14); }],
+    // GET /api/leaderboard/snapshot-range — feeds leaderboard.html's "as of a past
+    // date" picker (min date + hint text). Registered before the generic
+    // /api/leaderboard pattern below, same ordering reason as /points and /trend
+    // (a substring match on the broader regex would otherwise win first and return
+    // an array of player rows instead of {earliest_date}).
+    [/\/api\/leaderboard\/snapshot-range/, () => ({ earliest_date: iso(30 * 24 * 3600 * 1000).slice(0, 10) })],
     [/\/api\/leaderboard/, (url) => leaderboardPage(url.includes('server=2') ? 2 : 1)],
     [/\/api\/monitor\/status2/, () => ({ enabled: true, ...monitorStatus('[RU] Just-Skill.Ru | Brutal PvE', 6, '127.0.0.1', 27017) })],
     [/\/api\/monitor\/status$/, () => monitorStatus('[RU] Just-Skill.Ru | Standart PvE', 14, '127.0.0.1', 27016)],

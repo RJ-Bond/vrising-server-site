@@ -130,6 +130,94 @@
     .clan-lb-power-val { font-size:.95rem; font-weight:600; }
     @media (max-width:480px) { .clan-lb-meta .server-pill { display:none; } }
 
+    /* ── Clan comparison — pick up to 2 clans from the power leaderboard above and see
+       them side by side. Entirely client-side over rows already fetched for
+       loadClanPowerLeaderboard()'s GET /api/clans/leaderboard call (total/avg power,
+       member/online counts are all already in that response) — no new backend endpoint
+       needed. Visual language + class-naming pattern ported from leaderboard.html's
+       player-comparison feature (_compareMode/openCompareModal/compareRowHtml,
+       lb-compare-*/lb-cmp-* classes) with a clan-compare-*/clan-cmp-* prefix instead.
+       The small compareRowHtml()-style row renderer is duplicated here rather than
+       factored into a shared frontend module — this repo's backend already prefers
+       "routers don't import each other, duplicate small helpers" over a shared-utility
+       layer for exactly this kind of small, page-local formatting function, and pulling
+       one 8-line function into common.js for its second use isn't worth the coupling
+       (every page loading common.js would carry it) or the risk of touching
+       leaderboard.html while another slice of this batch may also be working in it. ── */
+    .clan-compare-toggle-btn {
+      margin-left:auto; background:var(--panel); border:1px solid rgba(255,255,255,0.1); color:var(--muted);
+      border-radius:.5rem; padding:.35rem .7rem; font-size:.68rem; font-weight:600;
+      cursor:pointer; transition:all .15s; font-family:'Inter',sans-serif; white-space:nowrap;
+    }
+    .clan-compare-toggle-btn:hover { color:var(--text); border-color:rgba(200,0,40,0.3); }
+    .clan-compare-toggle-btn.active { background:linear-gradient(135deg,#7a001c,var(--crimson)); color:#fff; border-color:transparent; }
+
+    .clan-compare-check-wrap { display:none; flex-shrink:0; align-items:center; margin-right:.15rem; }
+    #clan-power-lb-rows.compare-mode .clan-compare-check-wrap { display:flex; }
+    .clan-compare-check { width:1rem; height:1rem; accent-color:var(--crimson); cursor:pointer; }
+    .clan-compare-check:disabled { opacity:.35; cursor:not-allowed; }
+
+    .clan-compare-bar {
+      position:fixed; left:50%; bottom:1.1rem; transform:translateX(-50%); z-index:500;
+      background:rgba(10,2,18,0.97); border:1px solid rgba(180,0,35,0.45); border-radius:.85rem;
+      box-shadow:0 10px 32px rgba(0,0,0,0.55); padding:.65rem .85rem;
+      max-width:calc(100vw - 2rem); animation:fade-up .25s ease both;
+    }
+    .clan-compare-bar-inner { display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
+    .clan-compare-bar-label { font-size:.72rem; color:var(--muted); white-space:nowrap; }
+    .clan-compare-chips { display:flex; gap:.35rem; flex-wrap:wrap; }
+    .clan-compare-chip {
+      display:inline-flex; align-items:center; gap:.3rem; font-size:.72rem; font-weight:600;
+      background:rgba(150,0,28,0.14); border:1px solid rgba(180,0,35,0.35); color:#ece3f7;
+      border-radius:.5rem; padding:.22rem .3rem .22rem .55rem;
+    }
+    .clan-compare-chip button {
+      background:none; border:none; color:var(--muted); cursor:pointer; font-size:.68rem;
+      line-height:1; padding:.15rem; border-radius:50%; transition:color .15s;
+    }
+    .clan-compare-chip button:hover { color:#fca5a5; }
+    .clan-compare-go-btn {
+      background:linear-gradient(135deg,#7a001c,var(--crimson)); color:#fff; border:none;
+      border-radius:.5rem; padding:.45rem .9rem; font-size:.76rem; font-weight:700; cursor:pointer;
+      white-space:nowrap; transition:opacity .15s;
+    }
+    .clan-compare-go-btn:disabled { opacity:.4; cursor:not-allowed; }
+    .clan-compare-clear-btn {
+      background:none; border:1px solid rgba(255,255,255,0.12); color:var(--muted);
+      border-radius:.5rem; padding:.45rem .7rem; font-size:.72rem; cursor:pointer; white-space:nowrap;
+    }
+    .clan-compare-clear-btn:hover { color:var(--text); }
+
+    .clan-compare-modal-overlay { position:fixed; inset:0; z-index:9999; display:flex; align-items:flex-start; justify-content:center; padding:3rem 1rem; overflow-y:auto; }
+    .clan-compare-modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.75); backdrop-filter:blur(5px); }
+    .clan-compare-modal {
+      position:relative; background:rgba(10,2,18,.97); border:1px solid rgba(180,0,35,.4);
+      border-radius:1rem; padding:1.75rem 1.25rem; max-width:480px; width:100%;
+      box-shadow:0 8px 48px rgba(0,0,0,.7); animation:fade-up .3s ease both;
+    }
+    .clan-compare-modal-close {
+      position:absolute; top:1rem; right:1rem; background:none; border:none; color:#9488a8;
+      cursor:pointer; font-size:1.1rem; line-height:1; padding:.2rem;
+    }
+    .clan-cmp-heads { display:flex; align-items:center; justify-content:space-between; gap:.5rem; margin-bottom:1.25rem; }
+    .clan-cmp-head { display:flex; flex-direction:column; align-items:center; gap:.35rem; text-decoration:none; flex:1; min-width:0; }
+    .clan-cmp-avatar { width:3rem; height:3rem; border-radius:.65rem; object-fit:cover; display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:1.1rem; color:var(--gold); border:2px solid rgba(180,0,35,.4); }
+    .clan-cmp-name { font-size:.8rem; font-family:'Cinzel',serif; font-weight:700; color:var(--text); max-width:9rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .clan-cmp-server { font-size:.6rem; color:var(--muted); max-width:9rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .clan-cmp-vs { font-family:'Cinzel',serif; font-size:.78rem; color:var(--gold); letter-spacing:.1em; flex-shrink:0; }
+    .clan-cmp-rows { display:flex; flex-direction:column; gap:.1rem; }
+    .clan-cmp-row { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:.5rem; padding:.55rem .2rem; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .clan-cmp-row:last-child { border-bottom:none; }
+    .clan-cmp-val { font-size:.82rem; font-weight:600; color:var(--text); text-align:center; }
+    .clan-cmp-val.win { color:#2ee69b; }
+    .clan-cmp-crown { font-size:.7rem; }
+    .clan-cmp-label { font-size:.62rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; text-align:center; white-space:nowrap; }
+    @media (max-width:480px) {
+      .clan-compare-modal { padding:1.4rem .8rem; }
+      .clan-cmp-name, .clan-cmp-server { max-width:6.5rem; }
+      .clan-cmp-label { font-size:.56rem; }
+    }
+
     /* ── Clan card ── */
     .clan-card {
       padding:1.25rem; cursor:pointer;
@@ -307,6 +395,7 @@
     <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.6rem;">
       <span style="font-size:1.05rem;">🏆</span>
       <h2 class="gothic" style="font-size:.86rem;font-weight:700;letter-spacing:.06em;color:var(--text);text-transform:uppercase;" data-i18n-ru="Топ кланов по мощи" data-i18n-en="Top clans by power">Топ кланов по мощи</h2>
+      <button type="button" class="clan-compare-toggle-btn" id="clan-compare-toggle" onclick="toggleClanCompareMode()" data-i18n-ru="🆚 Сравнить кланы" data-i18n-en="🆚 Compare clans">🆚 Сравнить кланы</button>
     </div>
     <div id="clan-power-lb-rows"></div>
   </div>
@@ -738,7 +827,15 @@ function clanLbRowHtml(row, i) {
   const members = row.member_count || 0;
   const onlineHtml = row.online_count > 0 ? `<span class="clan-lb-online-count">● ${row.online_count} онлайн</span>` : '';
   const power = Math.round(row.total_power || 0).toLocaleString('ru-RU');
+  // Compare-mode checkbox state — always rendered (hidden via CSS unless
+  // #clan-power-lb-rows has .compare-mode), so toggling compare mode doesn't require
+  // a re-render. Mirrors leaderboard.html's lb-row checkbox pattern exactly.
+  const cmpChecked = isClanCompareSelected(row.id);
+  const cmpDisabled = !cmpChecked && _clanCompareSelection.length >= 2;
   return `<div class="clan-lb-row${rowCls}" style="animation:fade-up .35s ease both;animation-delay:${Math.min(i * 30, 300)}ms;" role="button" tabindex="0" onclick="openClanDetail(${row.id})" onkeydown="onClanLbRowKey(event,${row.id})">
+    <label class="clan-compare-check-wrap" onclick="event.stopPropagation()" data-tip="${_t('Добавить к сравнению','Add to comparison')}">
+      <input type="checkbox" class="clan-compare-check" data-clan-id="${row.id}" onchange="toggleClanCompareSelect(this)"${cmpChecked ? ' checked' : ''}${cmpDisabled ? ' disabled' : ''} aria-label="${_t('Добавить к сравнению','Add to comparison')}: ${esc(row.name || '')}">
+    </label>
     <span class="clan-lb-rank ${rankCls}">${medal ? `<span class="clan-lb-medal">${medal}</span>` : rank}</span>
     <span class="clan-lb-avatar" style="background:${grad};">${initials}</span>
     <div class="clan-lb-name-col">
@@ -777,8 +874,13 @@ function renderClanPowerLeaderboard(rows) {
   // Reverts to showing automatically the moment real power data starts flowing in.
   const hasRealPower = Array.isArray(rows) && rows.some(r => (r.total_power || 0) > 0);
   if (!rows || !rows.length || !hasRealPower) { section.style.display = 'none'; return; }
+  // Snapshot for the compare feature below — selections are stored as full row objects
+  // (see _clanCompareSelection), so this must stay in sync with whatever was last
+  // rendered (e.g. after a server-tab switch reloads the leaderboard for that server).
+  _clanPowerRows = rows;
   list.innerHTML = rows.map(clanLbRowHtml).join('');
   section.style.display = '';
+  list.classList.toggle('compare-mode', _clanCompareMode);
 }
 
 async function loadClanPowerLeaderboard(serverNum) {
@@ -794,6 +896,160 @@ async function loadClanPowerLeaderboard(serverNum) {
     const section = document.getElementById('clan-power-lb');
     if (section) section.style.display = 'none';
   }
+}
+
+/* ── Clan comparison — pick up to 2 clans from the power leaderboard above and see
+   their stats side by side. See the CSS comment above (clan-compare-*/clan-cmp-*)
+   for why this mirrors leaderboard.html's player-comparison feature class-for-class
+   instead of sharing code with it. ── */
+let _clanPowerRows = []; // last-rendered GET /api/clans/leaderboard rows, kept for lookups
+let _clanCompareMode = false;
+let _clanCompareSelection = []; // up to 2 clan row objects, snapshotted at selection time
+
+function isClanCompareSelected(clanId) {
+  return _clanCompareSelection.some(c => c.id === clanId);
+}
+
+function toggleClanCompareMode() {
+  _clanCompareMode = !_clanCompareMode;
+  document.getElementById('clan-compare-toggle')?.classList.toggle('active', _clanCompareMode);
+  document.getElementById('clan-power-lb-rows')?.classList.toggle('compare-mode', _clanCompareMode);
+  if (!_clanCompareMode) { _clanCompareSelection = []; updateClanCompareBar(); }
+  syncClanCompareCheckboxes();
+}
+
+function toggleClanCompareSelect(checkbox) {
+  const clanId = Number(checkbox.dataset.clanId);
+  if (checkbox.checked) {
+    if (_clanCompareSelection.length >= 2) {
+      checkbox.checked = false;
+      showToast(_t('Можно сравнить только 2 клана за раз', 'You can compare only 2 clans at a time'), 'info');
+      return;
+    }
+    const clan = _clanPowerRows.find(c => c.id === clanId);
+    if (clan) _clanCompareSelection.push(clan);
+  } else {
+    _clanCompareSelection = _clanCompareSelection.filter(c => c.id !== clanId);
+  }
+  updateClanCompareBar();
+  syncClanCompareCheckboxes();
+}
+
+function removeClanCompareSelection(clanId) {
+  _clanCompareSelection = _clanCompareSelection.filter(c => c.id !== clanId);
+  updateClanCompareBar();
+  syncClanCompareCheckboxes();
+}
+
+function clearClanCompareSelection() {
+  _clanCompareSelection = [];
+  updateClanCompareBar();
+  syncClanCompareCheckboxes();
+}
+
+// Keeps already-rendered row checkboxes in sync with _clanCompareSelection (checked
+// state + disabling unchecked boxes once 2 are picked) without a full list re-render.
+function syncClanCompareCheckboxes() {
+  document.querySelectorAll('.clan-compare-check').forEach(cb => {
+    const selected = isClanCompareSelected(Number(cb.dataset.clanId));
+    cb.checked = selected;
+    cb.disabled = !selected && _clanCompareSelection.length >= 2;
+  });
+}
+
+function updateClanCompareBar() {
+  let bar = document.getElementById('clan-compare-bar');
+  if (!_clanCompareMode || _clanCompareSelection.length === 0) {
+    if (bar) bar.remove();
+    return;
+  }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'clan-compare-bar';
+    bar.className = 'clan-compare-bar';
+    document.body.appendChild(bar);
+  }
+  const chips = _clanCompareSelection.map(c => `
+    <span class="clan-compare-chip">${esc(c.name)}<button type="button" data-clan-id="${c.id}" onclick="removeClanCompareSelection(Number(this.dataset.clanId))" aria-label="${_t('Убрать из сравнения','Remove from comparison')}">✕</button></span>
+  `).join('');
+  const canCompare = _clanCompareSelection.length === 2;
+  bar.innerHTML = `
+    <div class="clan-compare-bar-inner">
+      <span class="clan-compare-bar-label" data-i18n-ru="Сравнение кланов:" data-i18n-en="Comparing clans:">${_t('Сравнение кланов:', 'Comparing clans:')}</span>
+      <div class="clan-compare-chips">${chips}</div>
+      <button type="button" class="clan-compare-go-btn" ${canCompare ? '' : 'disabled'} onclick="openClanCompareModal()" data-i18n-ru="Сравнить →" data-i18n-en="Compare →">${_t('Сравнить →', 'Compare →')}</button>
+      <button type="button" class="clan-compare-clear-btn" onclick="clearClanCompareSelection()" data-i18n-ru="Очистить" data-i18n-en="Clear">${_t('Очистить', 'Clear')}</button>
+    </div>`;
+}
+
+// One comparison row: aVal/bVal drive which side "wins" (numeric, null-safe); aDisplay/
+// bDisplay are the pre-formatted strings actually shown. Duplicated from (not shared
+// with) leaderboard.html's compareRowHtml() — see the CSS comment above for why.
+function clanCompareRowHtml(label, aVal, bVal, aDisplay, bDisplay, higherIsBetter = true) {
+  let aWin = false, bWin = false;
+  if (aVal !== null && aVal !== undefined && bVal !== null && bVal !== undefined && aVal !== bVal) {
+    aWin = higherIsBetter ? aVal > bVal : aVal < bVal;
+    bWin = higherIsBetter ? bVal > aVal : bVal < aVal;
+  }
+  const crown = ' <span class="clan-cmp-crown">👑</span>';
+  return `<div class="clan-cmp-row">
+    <span class="clan-cmp-val${aWin ? ' win' : ''}">${aDisplay}${aWin ? crown : ''}</span>
+    <span class="clan-cmp-label">${label}</span>
+    <span class="clan-cmp-val${bWin ? ' win' : ''}">${bDisplay}${bWin ? crown : ''}</span>
+  </div>`;
+}
+
+function buildClanCompareModalHtml(a, b) {
+  const nameA = a.name || '?', nameB = b.name || '?';
+  const badgeHtml = (name) => {
+    const grad = (typeof nameGradient === 'function') ? nameGradient(name) : '#3a0060';
+    const initials = esc((name || '?').trim().slice(0, 2).toUpperCase());
+    return `<span class="clan-cmp-avatar" style="background:${grad}">${initials}</span>`;
+  };
+  // avg_power already rides along on GET /api/clans/leaderboard rows, but recomputed
+  // from total_power/member_count here too so the comparison stays correct even if a
+  // future caller passes in a plain {id,name,total_power,member_count} object without it.
+  const avgA = a.member_count ? (a.total_power || 0) / a.member_count : (a.avg_power || 0);
+  const avgB = b.member_count ? (b.total_power || 0) / b.member_count : (b.avg_power || 0);
+  const rows = [
+    clanCompareRowHtml(_t('Общая мощь', 'Total power'), a.total_power || 0, b.total_power || 0,
+      `⚔ ${Math.round(a.total_power || 0).toLocaleString('ru-RU')}`, `⚔ ${Math.round(b.total_power || 0).toLocaleString('ru-RU')}`, true),
+    clanCompareRowHtml(_t('Средняя мощь', 'Avg. power'), avgA, avgB,
+      Math.round(avgA).toLocaleString('ru-RU'), Math.round(avgB).toLocaleString('ru-RU'), true),
+    clanCompareRowHtml(_t('Участники', 'Members'), a.member_count || 0, b.member_count || 0,
+      `👥 ${a.member_count || 0}`, `👥 ${b.member_count || 0}`, true),
+    clanCompareRowHtml(_t('Онлайн сейчас', 'Online now'), a.online_count || 0, b.online_count || 0,
+      `🟢 ${a.online_count || 0}`, `🟢 ${b.online_count || 0}`, true),
+  ];
+  return `
+    <div class="clan-compare-modal-backdrop" onclick="closeClanCompareModal()"></div>
+    <div class="clan-compare-modal" role="dialog" aria-modal="true" aria-label="${_t('Сравнение кланов', 'Clan comparison')}">
+      <button type="button" class="clan-compare-modal-close" onclick="closeClanCompareModal()" aria-label="${_t('Закрыть', 'Close')}">✕</button>
+      <div class="clan-cmp-heads">
+        <a class="clan-cmp-head" href="/clans.html?clan=${a.id}">${badgeHtml(nameA)}<span class="clan-cmp-name">${esc(nameA)}</span><span class="clan-cmp-server">${esc(shortServerLabel(a.server_name))}</span></a>
+        <span class="clan-cmp-vs">VS</span>
+        <a class="clan-cmp-head" href="/clans.html?clan=${b.id}">${badgeHtml(nameB)}<span class="clan-cmp-name">${esc(nameB)}</span><span class="clan-cmp-server">${esc(shortServerLabel(b.server_name))}</span></a>
+      </div>
+      <div class="clan-cmp-rows">${rows.join('')}</div>
+    </div>`;
+}
+
+function _clanCompareModalEscHandler(e) { if (e.key === 'Escape') closeClanCompareModal(); }
+
+function openClanCompareModal() {
+  if (_clanCompareSelection.length !== 2) return;
+  closeClanCompareModal();
+  const modal = document.createElement('div');
+  modal.id = 'clan-compare-modal';
+  modal.className = 'clan-compare-modal-overlay';
+  modal.innerHTML = buildClanCompareModalHtml(_clanCompareSelection[0], _clanCompareSelection[1]);
+  document.body.appendChild(modal);
+  document.addEventListener('keydown', _clanCompareModalEscHandler);
+}
+function closeClanCompareModal() {
+  const modal = document.getElementById('clan-compare-modal');
+  if (modal) modal.remove();
+  document.removeEventListener('keydown', _clanCompareModalEscHandler);
 }
 
 /* ── Render grid ── */
