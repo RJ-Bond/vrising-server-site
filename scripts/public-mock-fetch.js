@@ -218,12 +218,15 @@
 
   // SearchResultOut shape (backend/routers/search.py) — GET /api/search?q=, backing
   // the Ctrl+K global search dropdown (frontend/common.js openGlobalSearch()). One
-  // canned result per category so the dropdown's three grouped sections + snippet
+  // canned result per category so the dropdown's six grouped sections + snippet
   // text are all visible regardless of what the operator types.
   const searchResults = [
     { type: 'player', title: 'Vortigern', url: '/user.html?u=Vortigern', snippet: 'superadmin' },
     { type: 'news', title: 'Обновление сервера 1.2', url: '/?news=obnovlenie-servera-1-2', snippet: 'Список изменений и исправлений в последнем патче.' },
     { type: 'clan', title: 'Кровавые Клыки', url: '/clans.html?clan=1', snippet: 'Старейший клан сервера. Ищем активных игроков для рейдов.' },
+    { type: 'server', title: 'V Rising PvP #1', url: '/servers.html', snippet: 'Сервер 1' },
+    { type: 'event', title: 'Турнир кланов «Кровавая арена»', url: '/events.html?event=1', snippet: 'Ежемесячное PvP событие с призами.' },
+    { type: 'shop_item', title: 'Waypoint Shard', url: '/shop.html', snippet: 'Осколок телепорта для быстрого перемещения.' },
   ];
 
   // ActivityFeedItemOut shape (backend/routers/activity_feed.py) — GET /api/activity-feed,

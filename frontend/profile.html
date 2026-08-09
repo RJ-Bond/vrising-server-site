@@ -687,7 +687,7 @@
   </div>
 </div>
 
-<script src="/common.js?v=14"></script>
+<script src="/common.js?v=15"></script>
 <script>
 const API = '/api';
 
@@ -1062,8 +1062,11 @@ async function loadProfile() {
       bioCounter.textContent = bioInput.value.length + '/160';
     });
   }
-  // Default active tab
-  switchProfileTab('profile');
+  // Default active tab — or whichever one a notification link deep-linked to via
+  // ?tab=points etc. (see index.js's notification click-through for shop_fulfilled/
+  // shop_cancelled/points_grant, which land here).
+  const requestedTab = new URLSearchParams(location.search).get('tab');
+  switchProfileTab(['profile', 'security', 'points', 'admin'].includes(requestedTab) ? requestedTab : 'profile');
 
   try {
     const res = await fetch(`${API}/auth/me`, { credentials: 'include' });

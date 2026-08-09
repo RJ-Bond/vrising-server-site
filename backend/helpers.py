@@ -567,6 +567,42 @@ def activity_broadcast(item: dict) -> None:
     _activity_sse_clients.difference_update(dead)
 
 
+# ─── DM live push ──────────────────────────────────────────────────────────────
+# Per-recipient SSE fan-out for direct messages (backend/routers/messages.py),
+# replacing index.js's old 5s poll of GET /api/messages/with/<partner> while a DM
+# panel is open. Unlike _activity_sse_clients (a flat set — every connected client
+# gets every broadcast, it's a public feed), a DM push is only ever relevant to its
+# one recipient, so this is keyed by user_id: dm_broadcast() only fans out to that
+# user's own connected queues. A user with no open tab right now (or several open
+# tabs — each gets its own queue in the set) is simply absent/present in the dict;
+# either way the call below is a plain no-op/fan-out with no special-casing needed.
+_dm_sse_clients: dict[int, set] = {}  # user_id -> set[asyncio.Queue]
+
+
+def dm_broadcast(user_id: int, item: dict) -> None:
+    """Push one new-DM notice to every connected /api/messages/stream queue for
+    `user_id` (the recipient, never the sender — see the call site in messages.py).
+    Payload is intentionally minimal (just enough for the frontend to know whose
+    conversation changed); the client re-fetches the open conversation/inbox on
+    receipt rather than trying to splice a raw message into the DOM from the SSE
+    payload, same "just re-fetch" choice as activity_broadcast(). Fire-and-forget:
+    a full queue just drops that client's update, same non-blocking contract as
+    activity_broadcast()/send_push()."""
+    queues = _dm_sse_clients.get(user_id)
+    if not queues:
+        return
+    payload = json.dumps(item, default=str, ensure_ascii=False)
+    dead = set()
+    for q in queues:
+        try:
+            q.put_nowait(payload)
+        except asyncio.QueueFull:
+            dead.add(q)
+    queues.difference_update(dead)
+    if not queues:
+        _dm_sse_clients.pop(user_id, None)
+
+
 # ─── Game Plugin Integration ──────────────────────────────────────────────────
 # Server-to-site channel used by the BepInEx plugin (vrising-bepinex-plugin) for the
 # in-game .register/.login chat commands. Authenticated via a shared secret sent as the
