@@ -127,14 +127,34 @@ Three layers, loaded in this order (page inline `<style>` wins last):
   check.sh, lint_frontend) locally before a commit lands, not just in CI.
   `pip install pre-commit && pre-commit install` once per clone; opt-in, not
   enforced server-side.
-- **Alembic** (`alembic/`) is set up (env.py bridges its sync migration
-  context to the app's async engine via `run_sync`) with one verified initial
-  migration reproducing today's 41-table schema exactly — but it is **not
-  yet wired into the startup path**. `main.py`'s `lifespan()` still calls
-  `Base.metadata.create_all()` on every boot (fine for fresh installs, does
-  nothing for existing tables/columns on prod). Until that integration
-  happens, a schema change still needs the same manual care it always has;
-  don't assume `alembic upgrade head` runs anywhere in prod yet.
+- **Alembic** (`alembic/`) **is** wired into the real deploy path — this used
+  to not be true (an earlier version of this file said so; if you're reading
+  a stale copy elsewhere, this is the correction). `main.py`'s `lifespan()`
+  calls `_run_db_migrations()` on every boot, which shells out to
+  `python -m backend.db_migrate` (subprocess, not an in-process Alembic call
+  — `alembic/env.py` calls `fileConfig()` on `alembic.ini`, which would
+  otherwise clobber this app's own logging setup). `backend/db_migrate.py`
+  handles the one-time adoption problem: a pre-Alembic production DB has the
+  full schema but no `alembic_version` table yet, so a plain
+  `alembic upgrade head` would try to `CREATE TABLE` everything and fail
+  immediately — it detects that case (real tables present, no
+  `alembic_version`) and runs `alembic stamp head` once before deferring to
+  a normal `upgrade head`, which is then correctly a no-op that first run
+  and applies whatever's new on every deploy after. `install.sh`'s deploy
+  flow (`sudo js`) calls the same module, so there's one source of truth,
+  not two copies of the decision logic.
+  **Practical effect for you:** a schema change now needs a real migration
+  file, not just a `models.py` edit — `Base.metadata.create_all()` is gone
+  from the startup path entirely, so a new column/table/index with no
+  matching migration silently never applies anywhere, fresh install or not.
+  Generate one with `DATABASE_URL="sqlite+aiosqlite:////tmp/gen.db" uv run
+  --python 3.12 --with-requirements requirements.txt --with alembic alembic
+  upgrade head` (builds a throwaway DB at the current head) then `... alembic
+  revision --autogenerate -m "..."` (diffs your models.py change against it)
+  — verify with `... alembic check` (must say "No new upgrade operations
+  detected") before trusting the generated file, autogenerate misses some
+  changes (e.g. table/column renames look like a drop+add) and needs a
+  human read either way.
 - **Pillow-based upload optimization** (`optimize_image_bytes()` in
   `backend/helpers.py`) downscales any upload wider than 2000px and
   re-compresses it, called from all 4 raster-upload endpoints (admin generic
