@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta, timezone
+from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +13,30 @@ from ..helpers import _site_timezone
 from ..schemas import PlayerRecordOut, PointsLeaderboardEntryOut
 
 router = APIRouter()
+
+
+async def _closest_prior_snapshot_totals(db: AsyncSession, server: int, cutoff: datetime) -> dict[str, int]:
+    """Each player's total_seconds from their most recent PlayerRankSnapshot at or
+    before `cutoff` — the "closest prior data point" logic shared by the rank-delta
+    indicator below (cutoff ~7 days ago) and by GET /api/leaderboard's `as_of` mode
+    (cutoff = end of the requested day), so a snapshot interval that doesn't land
+    exactly on the requested boundary still resolves to the nearest earlier one
+    instead of nothing."""
+    sub = (
+        select(PlayerRankSnapshot.player_name, func.max(PlayerRankSnapshot.recorded_at).label("max_ts"))
+        .where(PlayerRankSnapshot.server_num == server, PlayerRankSnapshot.recorded_at <= cutoff)
+        .group_by(PlayerRankSnapshot.player_name)
+        .subquery()
+    )
+    rows = (await db.execute(
+        select(PlayerRankSnapshot.player_name, PlayerRankSnapshot.total_seconds)
+        .join(sub, and_(
+            PlayerRankSnapshot.player_name == sub.c.player_name,
+            PlayerRankSnapshot.recorded_at == sub.c.max_ts,
+        ))
+        .where(PlayerRankSnapshot.server_num == server)
+    )).all()
+    return {name: total for name, total in rows}
 
 
 def _current_streak(activity_dates: set[str], today: date) -> int:
@@ -39,26 +64,80 @@ async def get_leaderboard(
     clan_id: Optional[int] = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
+    as_of: Optional[date] = Query(
+        None,
+        description="Reconstruct the leaderboard as it stood at/before this date from "
+        "PlayerRankSnapshot instead of live PlayerRecord totals — each player's closest "
+        "prior snapshot is used when there's no exact snapshot for the date (see "
+        "_closest_prior_snapshot_totals). Ignores `period`: snapshots only ever store the "
+        "cumulative all-time total, so there's no historical day/week/month window to "
+        "slice. A date with no snapshot at or before it (older than any recorded data) "
+        "returns an empty list rather than an error. Omitting this param leaves today's "
+        "live behavior byte-for-byte unchanged.",
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    query = select(PlayerRecord).where(PlayerRecord.server_num == server)
-    if period in ("day", "week", "month"):
-        cutoff = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        cutoff -= timedelta(days=1 if period == "day" else 7 if period == "week" else 30)
-        query = query.where(PlayerRecord.last_seen >= cutoff)
-    if q.strip():
-        query = query.where(PlayerRecord.player_name.ilike(f"%{q.strip()}%"))
-    if clan_id is not None:
-        member_steam_ids = (await db.execute(
-            select(GameClanMember.steam_id).where(GameClanMember.clan_id == clan_id)
-        )).scalars().all()
-        # No members (or an unknown clan_id) must mean "zero results", not "unfiltered" —
-        # an empty IN-list would otherwise match nothing anyway, but PlayerRecord.steam_id
-        # is nullable (A2S-only rows), so being explicit here avoids relying on that.
-        query = query.where(PlayerRecord.steam_id.in_(member_steam_ids) if member_steam_ids else False)
-    query = query.order_by(PlayerRecord.total_seconds.desc()).offset((page - 1) * per_page).limit(per_page)
-    result = await db.execute(query)
-    records = result.scalars().all()
+    if as_of is not None:
+        # ── Historical reconstruction from PlayerRankSnapshot ──────────────────────
+        cutoff = datetime(as_of.year, as_of.month, as_of.day, 23, 59, 59, tzinfo=timezone.utc)
+        totals = await _closest_prior_snapshot_totals(db, server, cutoff)
+        names = list(totals.keys())
+        if q.strip():
+            qlow = q.strip().lower()
+            names = [n for n in names if qlow in n.lower()]
+
+        # Pull whatever current PlayerRecord metadata (id/steam_id/last_seen/session
+        # stats) still exists for these names — a player who has since been wiped/
+        # deleted from PlayerRecord still shows up in the historical view (they were
+        # there on that date), just without that extra metadata.
+        pr_map: dict[str, PlayerRecord] = {}
+        if names:
+            pr_rows = (await db.execute(
+                select(PlayerRecord).where(PlayerRecord.server_num == server, PlayerRecord.player_name.in_(names))
+            )).scalars().all()
+            pr_map = {r.player_name: r for r in pr_rows}
+
+        if clan_id is not None:
+            member_steam_ids = set((await db.execute(
+                select(GameClanMember.steam_id).where(GameClanMember.clan_id == clan_id)
+            )).scalars().all())
+            names = [n for n in names if pr_map.get(n) and pr_map[n].steam_id in member_steam_ids]
+
+        names.sort(key=lambda n: totals[n], reverse=True)
+        page_names = names[(page - 1) * per_page: (page - 1) * per_page + per_page]
+        records = [
+            SimpleNamespace(
+                id=(pr_map[n].id if n in pr_map else 0),
+                server_num=server,
+                player_name=n,
+                total_seconds=totals[n],
+                last_seen=(pr_map[n].last_seen if n in pr_map else None),
+                last_duration=(pr_map[n].last_duration if n in pr_map else 0),
+                session_count=(pr_map[n].session_count if n in pr_map else 0),
+                steam_id=(pr_map[n].steam_id if n in pr_map else None),
+            )
+            for n in page_names
+        ]
+    else:
+        # ── Live leaderboard — unchanged from before `as_of` existed ───────────────
+        query = select(PlayerRecord).where(PlayerRecord.server_num == server)
+        if period in ("day", "week", "month"):
+            cutoff = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+            cutoff -= timedelta(days=1 if period == "day" else 7 if period == "week" else 30)
+            query = query.where(PlayerRecord.last_seen >= cutoff)
+        if q.strip():
+            query = query.where(PlayerRecord.player_name.ilike(f"%{q.strip()}%"))
+        if clan_id is not None:
+            member_steam_ids = (await db.execute(
+                select(GameClanMember.steam_id).where(GameClanMember.clan_id == clan_id)
+            )).scalars().all()
+            # No members (or an unknown clan_id) must mean "zero results", not "unfiltered" —
+            # an empty IN-list would otherwise match nothing anyway, but PlayerRecord.steam_id
+            # is nullable (A2S-only rows), so being explicit here avoids relying on that.
+            query = query.where(PlayerRecord.steam_id.in_(member_steam_ids) if member_steam_ids else False)
+        query = query.order_by(PlayerRecord.total_seconds.desc()).offset((page - 1) * per_page).limit(per_page)
+        result = await db.execute(query)
+        records = result.scalars().all()
 
     avatar_map = {}
     if records:
@@ -107,25 +186,15 @@ async def get_leaderboard(
             by_steam_id.setdefault(row.steam_id, set()).add(row.activity_date)
         streak_map = {sid: _current_streak(dates, today) for sid, dates in by_steam_id.items()}
 
+    # Rank-delta-vs-~7-days-ago indicator — meaningless (and skipped) in `as_of` mode:
+    # the point of that mode is a fixed historical view, not "climbed/dropped since",
+    # and computing a delta relative to *today's* live standings while showing a past
+    # date's totals would be misleading.
     hist_rank_map = {}
-    if period == "all" and records:
+    if as_of is None and period == "all" and records:
         cutoff = datetime.now(timezone.utc) - timedelta(days=7)
-        sub = (
-            select(PlayerRankSnapshot.player_name, func.max(PlayerRankSnapshot.recorded_at).label("max_ts"))
-            .where(PlayerRankSnapshot.server_num == server, PlayerRankSnapshot.recorded_at <= cutoff)
-            .group_by(PlayerRankSnapshot.player_name)
-            .subquery()
-        )
-        hist_result = await db.execute(
-            select(PlayerRankSnapshot.player_name, PlayerRankSnapshot.total_seconds)
-            .join(sub, and_(
-                PlayerRankSnapshot.player_name == sub.c.player_name,
-                PlayerRankSnapshot.recorded_at == sub.c.max_ts,
-            ))
-            .where(PlayerRankSnapshot.server_num == server)
-        )
-        hist_rows = hist_result.all()
-        for rank_then, (name, _secs) in enumerate(sorted(hist_rows, key=lambda row: row.total_seconds, reverse=True), start=1):
+        totals_7d_ago = await _closest_prior_snapshot_totals(db, server, cutoff)
+        for rank_then, (name, _secs) in enumerate(sorted(totals_7d_ago.items(), key=lambda kv: kv[1], reverse=True), start=1):
             hist_rank_map[name] = rank_then
 
     out = []
@@ -133,7 +202,7 @@ async def get_leaderboard(
         item = PlayerRecordOut.model_validate(r)
         item.avatar_url = avatar_map.get(r.player_name)
         item.verified = r.steam_id is not None
-        if period == "all" and r.player_name in hist_rank_map:
+        if as_of is None and period == "all" and r.player_name in hist_rank_map:
             current_rank = (page - 1) * per_page + i + 1
             item.rank_delta = hist_rank_map[r.player_name] - current_rank
         clan_info = clan_map.get(r.steam_id) if r.steam_id else None
@@ -146,6 +215,20 @@ async def get_leaderboard(
         item.streak_days = streak_map.get(r.steam_id, 0) if r.steam_id else 0
         out.append(item)
     return out
+
+
+@router.get("/api/leaderboard/snapshot-range")
+async def get_leaderboard_snapshot_range(server: int = Query(1), db: AsyncSession = Depends(get_db)):
+    """Earliest PlayerRankSnapshot date recorded for this server — lets the frontend's
+    `as_of` date picker (GET /api/leaderboard?as_of=YYYY-MM-DD) disable/reject dates
+    with no data behind them instead of silently rendering an empty leaderboard.
+    {"earliest_date": null} means the nightly snapshot task hasn't run yet at all for
+    this server (day-1-of-the-feature state, same case test_rank_delta_before_any_
+    snapshot_exists covers for the rank-delta indicator)."""
+    earliest = (await db.execute(
+        select(func.min(PlayerRankSnapshot.recorded_at)).where(PlayerRankSnapshot.server_num == server)
+    )).scalar_one_or_none()
+    return {"earliest_date": earliest.date().isoformat() if earliest else None}
 
 
 @router.get("/api/leaderboard/trend")
