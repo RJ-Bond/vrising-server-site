@@ -23,6 +23,14 @@ jobs:
         run: bash scripts/check_backend.sh
       - name: pytest (backend/tests)
         run: bash scripts/test_backend.sh
+      # Visibility only, not a gate: pip-audit queries the PyPI advisory DB for every
+      # pinned version in requirements.txt. continue-on-error so a pre-existing
+      # transitive advisory (which nobody's had a chance to triage yet) doesn't block
+      # unrelated PRs — see the "Dependabot" section in CLAUDE.md for the complementary
+      # weekly-PR mechanism that actually bumps versions.
+      - name: Dependency vulnerability scan (pip-audit)
+        continue-on-error: true
+        run: uv run --python 3.12 --with pip-audit pip-audit -r requirements.txt
 
   frontend:
     name: Frontend (HTML/CSS validation)
@@ -39,6 +47,13 @@ jobs:
         run: npm ci
       - name: Lint (eslint) frontend/*.js
         run: bash scripts/lint_frontend.sh
+      # Visibility only, not a gate (see the pip-audit step in the backend job for the
+      # same reasoning). package.json currently has no "dependencies" — only
+      # devDependencies (eslint, playwright, pixelmatch, …), so `--production` would
+      # audit nothing; plain `npm audit` covers what's actually installed here.
+      - name: Dependency vulnerability scan (npm audit)
+        continue-on-error: true
+        run: npm audit
       # Visual regression: screenshots index/leaderboard/clans at desktop (1280)
       # + mobile (390) against the committed baselines in
       # .github/visual-baselines/, using mocked API responses (see

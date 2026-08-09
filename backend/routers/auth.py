@@ -1,3 +1,4 @@
+import logging
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -29,6 +30,9 @@ from ..helpers import (
     _clear_auth_cookie,
     _send_reset_email,
     optimize_image_bytes,
+    _totp_attempts_exceeded,
+    _record_failed_totp,
+    _reset_failed_totp,
 )
 from ..schemas import (
     UserRegister,
@@ -42,6 +46,7 @@ from ..schemas import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # ─── Auth ───────────────────────────────────────────────────────────────────
@@ -73,16 +78,29 @@ async def register(request: Request, body: UserRegister, response: Response, db:
 @router.post("/api/auth/login", response_model=TokenOut)
 @limiter.limit("10/minute")
 async def login(request: Request, body: UserLogin, response: Response, db: AsyncSession = Depends(get_db)):
+    client_ip = request.client.host if request.client else "unknown"
     result = await db.execute(select(User).where(User.username == body.username))
     user = result.scalar_one_or_none()
     if user is None or not verify_password(body.password, user.hashed_password):
+        logger.warning("Failed login for username=%r from ip=%s (invalid credentials)", body.username, client_ip)
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if not user.is_active:
         raise HTTPException(status_code=403, detail="Ваш аккаунт был заблокирован.")
     if user.totp_enabled:
         import pyotp
+        # Secondary, per-account guard on top of the endpoint-wide @limiter.limit
+        # above: that 10/minute quota is shared across every failure mode (wrong
+        # password included) from anyone, so it doesn't stop a focused attacker who
+        # already has the password from grinding through 6-digit TOTP codes for one
+        # specific account. Independent of and in addition to that global limit.
+        if _totp_attempts_exceeded(user.id):
+            logger.warning("Failed login for username=%r from ip=%s (TOTP attempts exceeded)", body.username, client_ip)
+            raise HTTPException(status_code=401, detail="Слишком много неверных попыток 2FA, попробуйте позже")
         if not body.totp_code or not pyotp.TOTP(user.totp_secret).verify(body.totp_code, valid_window=1):
+            _record_failed_totp(user.id)
+            logger.warning("Failed login for username=%r from ip=%s (invalid TOTP code)", body.username, client_ip)
             raise HTTPException(status_code=401, detail="Требуется код 2FA")
+        _reset_failed_totp(user.id)
     token = create_access_token({"sub": str(user.id)})
     _set_auth_cookie(response, token)
     return TokenOut(access_token=token, user=UserOut.model_validate(user))

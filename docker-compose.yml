@@ -33,7 +33,10 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - maintenance_flag:/var/maintenance
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/version')"]
+      # /healthz (backend/main.py) does an actual `SELECT 1` against the DB, unlike
+      # /api/version which only proves the ASGI app is up — so this now catches a
+      # wedged/unreachable DB connection too, not just a crashed process.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
       interval: 30s
       timeout: 10s
       retries: 3
