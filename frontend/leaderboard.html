@@ -370,6 +370,22 @@
     @keyframes podium-in { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
     @keyframes podium-rise { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
     @media (max-width:480px) { .podium-avatar { width:2.6rem; height:2.6rem; font-size:1rem; } .podium-name { font-size:.68rem; max-width:80px; } .podium-pillar { min-width:60px; } }
+
+    /* ── prefers-reduced-motion ── same pattern as index.css: collapse every
+       animation/transition duration to ~0ms rather than animation:none, so
+       fill-mode:both entrances (.g-card, podium-in/rank-in rows, the compare
+       modal's fade-up, skel-shimmer) still land on their end state instead of
+       vanishing or sticking at frame 0. Row/rank ordering, the podium, and the
+       compare-modal open/close remain fully functional, just instant. The
+       canvas trend chart's own redraw loop is untouched — this is CSS-only. */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
   </style>
 </head>
 <body x-data="{ mobNavOpen: false }" x-init="$watch('mobNavOpen', v => document.body.style.overflow = v ? 'hidden' : '')">

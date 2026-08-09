@@ -366,6 +366,22 @@
       from { opacity:0; transform:translateY(8px); }
       to   { opacity:1; transform:translateY(0); }
     }
+
+    /* ── prefers-reduced-motion ── same pattern as index.css: collapse every
+       animation/transition duration to ~0ms rather than animation:none, so
+       fill-mode:both entrances (.g-card, .srv-metric stagger, skel-shimmer)
+       still land on their end state, and the online-dot pulse / wipe-critical
+       pulse / capacity-bar / odometer digit-flip (which listens for its own
+       'animationend' to swap panels — still fires, just near-instant) keep
+       working, just without the perceptible motion. */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
   </style>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#06000f">

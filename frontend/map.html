@@ -97,6 +97,21 @@
       .note-box { font-size:.8rem; padding:.75rem 1rem; }
       .region-name { font-size:.88rem; }
     }
+
+    /* ── prefers-reduced-motion ── same pattern as index.css: collapse every
+       animation/transition duration to ~0ms rather than animation:none, so the
+       region-card expand/collapse (.region-more's max-height transition, the
+       .region-arrow rotate) and border/shadow hover transitions still change
+       state — expand/collapse stays fully functional — just without the
+       animated motion. */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
   </style>
 </head>
 <body x-data="{ mobNavOpen: false }" x-init="$watch('mobNavOpen', v => document.body.style.overflow = v ? 'hidden' : '')">

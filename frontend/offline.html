@@ -14,14 +14,54 @@
     h1 { font-family:Georgia,'Times New Roman',serif; font-size:1.5rem; color:#c9a94a; margin-bottom:.75rem; }
     p { color:#9488a8; font-size:.9rem; max-width:320px; margin:0 auto 1.5rem; line-height:1.6; }
     a { display:inline-block; padding:.6rem 1.5rem; background:linear-gradient(135deg,#6a001a,#a00022); color:#fff; border-radius:.5rem; text-decoration:none; font-size:.85rem; font-weight:700; }
+    .cached-news { list-style:none; max-width:340px; margin:0 auto 1.5rem; text-align:left; }
+    .cached-news li { border-bottom:1px solid rgba(255,255,255,0.08); padding:.55rem 0; }
+    .cached-news li:last-child { border-bottom:none; }
+    .cached-news a.news-link { display:block; padding:0; background:none; color:#e2d8f0; font-size:.85rem; font-weight:400; text-decoration:none; }
+    .cached-news a.news-link:hover { color:#c9a94a; }
+    .cached-label { color:#9488a8; font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; margin-bottom:.6rem; }
   </style>
 </head>
 <body>
   <div>
     <div style="font-size:3rem;margin-bottom:1rem;filter:drop-shadow(0 0 20px rgba(200,0,42,.4));">⚔️</div>
     <h1>Нет соединения</h1>
-    <p>Проверьте подключение к интернету и попробуйте снова.</p>
+    <p id="offline-msg">Проверьте подключение к интернету и попробуйте снова.</p>
+    <div id="cached-news-wrap"></div>
     <a href="/" onclick="location.reload()">Обновить страницу</a>
   </div>
+  <script>
+    // If sw.js already cached a GET /api/news response (network-first, cache fallback —
+    // see the CACHE_NAME comment in sw.js), show a short "shown from cache" list of the
+    // last few article titles instead of just the bare offline message. On a first-ever
+    // visit that happened to already be offline, nothing is cached yet, so this silently
+    // no-ops and the plain message above stays as-is.
+    (async function showCachedNews() {
+      try {
+        if (!('caches' in window)) return;
+        const cacheNames = await caches.keys();
+        for (const name of cacheNames) {
+          const cache = await caches.open(name);
+          const requests = await cache.keys();
+          const newsReq = requests.find(r => {
+            try { return new URL(r.url).pathname === '/api/news'; } catch { return false; }
+          });
+          if (!newsReq) continue;
+          const resp = await cache.match(newsReq);
+          if (!resp) continue;
+          const data = await resp.json();
+          const items = (data && data.items || []).slice(0, 5);
+          if (!items.length) return;
+          document.getElementById('offline-msg').textContent = 'Нет соединения. Показаны последние новости из кэша:';
+          const wrap = document.getElementById('cached-news-wrap');
+          const list = items.map(n =>
+            `<li><a class="news-link" href="/?news=${encodeURIComponent(n.slug)}">${String(n.title).replace(/</g, '&lt;')}</a></li>`
+          ).join('');
+          wrap.innerHTML = `<div class="cached-label">Показано из кэша</div><ul class="cached-news">${list}</ul>`;
+          return;
+        }
+      } catch (e) { /* keep the default offline message */ }
+    })();
+  </script>
 </body>
 </html>
