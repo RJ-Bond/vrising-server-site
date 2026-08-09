@@ -497,6 +497,14 @@ async def sitemap(request: Request, db: AsyncSession = Depends(get_db)):
         select(News.slug, News.updated_at).where(News.published == True).order_by(News.updated_at.desc())
     )
     slugs = result.all()
+    # Same status filter as the RSS feed's event inclusion (upcoming/active only —
+    # an "ended"/"cancelled" event is stale, a sitemap entry for it is just noise).
+    event_result = await db.execute(
+        select(Event.id, Event.created_at)
+        .where(Event.status.in_(("upcoming", "active")))
+        .order_by(Event.created_at.desc())
+    )
+    events = event_result.all()
     base = str(request.base_url).rstrip("/")
     urls = [
         f"  <url><loc>{base}/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>",
@@ -511,6 +519,9 @@ async def sitemap(request: Request, db: AsyncSession = Depends(get_db)):
     for slug, updated_at in slugs:
         lastmod = updated_at.strftime("%Y-%m-%d") if updated_at else ""
         urls.append(f"  <url><loc>{base}/?news={slug}</loc><lastmod>{lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>")
+    for event_id, created_at in events:
+        lastmod = created_at.strftime("%Y-%m-%d") if created_at else ""
+        urls.append(f"  <url><loc>{base}/events.html?event={event_id}</loc><lastmod>{lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.6</priority></url>")
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     xml += "\n".join(urls) + "\n</urlset>"
     return Response(content=xml, media_type="application/xml")

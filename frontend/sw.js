@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vrising-v6';
+const CACHE_NAME = 'vrising-v7';
 const STATIC_ASSETS = [
   '/', '/index.html', '/servers.html', '/profile.html', '/events.html',
   '/offline.html', '/manifest.json', '/common.js',
@@ -32,8 +32,27 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Never cache API calls — always network
+  // API calls: network-only by default — never cache, since most of this API is
+  // auth-scoped, live server/monitor status, or mutating (POST/etc). One narrow
+  // exception: the homepage's own news list (GET /api/news, whatever query string —
+  // page/tag/search/sort all share the same cache bucket by URL) is read-only,
+  // unauthenticated, and still useful stale, so it's cached network-first with a
+  // cache fallback. offline.html reads this same cache to render a short
+  // "shown from cache" list instead of a bare offline message. Nothing else here
+  // changes: still no images (see the destination==='image' guard above), still no
+  // auth/live-status caching, still no POST caching.
   if (url.pathname.startsWith('/api/')) {
+    if (e.request.method === 'GET' && url.pathname === '/api/news') {
+      e.respondWith(
+        fetch(e.request)
+          .then(resp => {
+            if (resp.ok) caches.open(CACHE_NAME).then(c => c.put(e.request, resp.clone()));
+            return resp;
+          })
+          .catch(() => caches.match(e.request).then(r => r || new Response('{"error":"offline"}', {headers:{'Content-Type':'application/json'}})))
+      );
+      return;
+    }
     e.respondWith(fetch(e.request).catch(() => new Response('{"error":"offline"}', {headers:{'Content-Type':'application/json'}})));
     return;
   }

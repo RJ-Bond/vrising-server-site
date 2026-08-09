@@ -226,6 +226,21 @@
       /* Prevent iOS Safari zoom-on-focus for the clan create/search inputs. */
       input, textarea, select { font-size:16px !important; }
     }
+
+    /* ── prefers-reduced-motion ── same pattern as index.css: collapse every
+       animation/transition duration to ~0ms rather than animation:none, so
+       fill-mode:both entrances (podium-in cards, fade-up leaderboard rows,
+       skel-shimmer) still land on their end state instead of vanishing or
+       sticking at frame 0; hover/detail-panel transitions stay functional,
+       just instant. */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
   </style>
 </head>
 <body x-data="{ mobNavOpen: false }" x-init="$watch('mobNavOpen', v => document.body.style.overflow = v ? 'hidden' : '')">
