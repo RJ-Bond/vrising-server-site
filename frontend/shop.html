@@ -313,25 +313,12 @@
 
 </div>
 
-<!-- Themed confirm modal (replaces the plain browser confirm() previously used by
-     redeemItem() — see showShopConfirm()/closeShopConfirm() below. Same dark-panel/
-     gold-crimson visual language as admin.html's own #confirm-modal, scoped to this
-     page with its own IDs. -->
-<div id="shop-confirm-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;opacity:0;transition:opacity .18s;">
-  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);" onclick="closeShopConfirm(false)"></div>
-  <div style="position:relative;background:rgba(14,5,22,0.97);border:1px solid rgba(180,0,35,0.4);border-radius:1rem;padding:2rem 2rem 1.5rem;max-width:380px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.7),0 0 32px rgba(180,0,35,0.15);text-align:center;">
-    <div style="font-size:2rem;margin-bottom:.75rem;">🛒</div>
-    <h3 class="gothic" style="font-size:.95rem;font-weight:700;color:var(--gold);letter-spacing:.06em;margin-bottom:.55rem;" data-i18n-ru="Подтверждение" data-i18n-en="Confirm">Подтверждение</h3>
-    <p style="font-size:.82rem;color:var(--muted);line-height:1.5;margin-bottom:1.5rem;" id="shop-confirm-text"></p>
-    <div style="display:flex;gap:.65rem;justify-content:center;">
-      <button onclick="closeShopConfirm(false)" style="background:rgba(40,10,60,0.6);border:1px solid rgba(110,0,150,0.3);border-radius:.55rem;padding:.5rem 1.2rem;color:var(--muted);font-size:.8rem;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'" data-i18n-ru="Отмена" data-i18n-en="Cancel">Отмена</button>
-      <button onclick="closeShopConfirm(true)" style="background:linear-gradient(135deg,#7a0015,#b8001e);border:none;border-radius:.55rem;padding:.5rem 1.4rem;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;box-shadow:0 0 16px rgba(180,0,30,0.45);transition:all .2s;font-family:'Inter',sans-serif;" onmouseover="this.style.boxShadow='0 0 28px rgba(210,0,40,0.7)'" onmouseout="this.style.boxShadow='0 0 16px rgba(180,0,30,0.45)'" data-i18n-ru="Обменять" data-i18n-en="Redeem">Обменять</button>
-    </div>
-  </div>
-</div>
+<!-- Themed confirm modal — built dynamically by showConfirm() in common.js
+     (used to be this page's own #shop-confirm-modal markup, see
+     showShopConfirm() below, which is now a thin call to the shared version). -->
 
 <script src="/alpine.min.js"></script>
-<script src="/common.js?v=15"></script>
+<script src="/common.js?v=16"></script>
 <script>
 const API = '/api';
 let _shopBalance = 0;
@@ -581,32 +568,20 @@ async function redeemItem(id, btnEl) {
 }
 
 /* ── Themed confirm modal (replaces the plain browser confirm() this used to call).
-   No shared confirm-modal helper exists in common.js — admin.html has its own
-   #confirm-modal/showConfirm(), but it's wired to admin.html's own page-local DOM
-   IDs and callback style, not something other pages can import. Scoped to this
-   page only (own IDs, own function names) rather than retrofitting a sitewide
-   component — same dark-panel/gold-crimson visual language as admin.html's modal
-   and this page's own .g-card/.btn-redeem styling. Promise-based since redeemItem()
-   just needs a yes/no answer, same call shape confirm() used to have. ── */
-let _shopConfirmResolve = null;
+   Thin wrapper over the shared showConfirm() in common.js (previously this
+   page's own #shop-confirm-modal markup + Promise plumbing, duplicated near-
+   identically in admin.html and profile.html — all three now share one
+   implementation, see common.js). Labels translated via this page's own _t()
+   since they used to be static data-i18n-ru/-en markup that no longer exists. ── */
 function showShopConfirm(text) {
-  return new Promise(resolve => {
-    _shopConfirmResolve = resolve;
-    document.getElementById('shop-confirm-text').textContent = text;
-    const m = document.getElementById('shop-confirm-modal');
-    m.style.display = 'flex';
-    requestAnimationFrame(() => { m.style.opacity = '1'; });
+  return showConfirm({
+    title: _t('Подтверждение', 'Confirm'),
+    text,
+    icon: '🛒',
+    okLabel: _t('Обменять', 'Redeem'),
+    cancelLabel: _t('Отмена', 'Cancel'),
   });
 }
-function closeShopConfirm(result) {
-  const m = document.getElementById('shop-confirm-modal');
-  m.style.opacity = '0';
-  setTimeout(() => { m.style.display = 'none'; }, 180);
-  if (_shopConfirmResolve) { const resolve = _shopConfirmResolve; _shopConfirmResolve = null; resolve(result); }
-}
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && document.getElementById('shop-confirm-modal')?.style.display === 'flex') closeShopConfirm(false);
-});
 
 /* ── My redemptions strip ── */
 const SHOP_REDEMPTION_STATUS_LABELS = { pending: 'Ожидает', fulfilled: 'Выдано', cancelled: 'Отменено' };

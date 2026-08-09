@@ -2870,7 +2870,7 @@
 <script src="/quill.min.js"></script>
 <script src="/chart.min.js"></script>
 <script src="/charts.js?v=2"></script>
-<script src="/common.js?v=15"></script>
+<script src="/common.js?v=16"></script>
 <script>
 const API = '/api';
 // esc — defined in common.js
@@ -3213,23 +3213,10 @@ async function loadAdminNews(page = 1) {
 }
 
 // showToast — defined in common.js
+// showConfirm / closeConfirm — shared themed confirm modal, defined in common.js
+// (used to be admin.html-local; profile.html/shop.html each had their own
+// near-duplicate — consolidated into one implementation, see common.js).
 
-let _confirmOnCancel = null;
-function showConfirm({ title, text, icon = '🗑', okLabel = 'Удалить', onOk, onCancel = null }) {
-  document.getElementById('confirm-title').textContent = title;
-  document.getElementById('confirm-text').textContent  = text;
-  document.getElementById('confirm-icon').textContent  = icon;
-  document.getElementById('confirm-ok').textContent    = okLabel;
-  document.getElementById('confirm-ok').onclick = () => { _confirmOnCancel = null; closeConfirm(); onOk(); };
-  _confirmOnCancel = onCancel;
-  const m = document.getElementById('confirm-modal');
-  m.style.display = 'flex';
-  requestAnimationFrame(() => { m.style.opacity = '1'; });
-}
-function closeConfirm() {
-  document.getElementById('confirm-modal').style.display = 'none';
-  if (_confirmOnCancel) { const cb = _confirmOnCancel; _confirmOnCancel = null; cb(); }
-}
 // Closing every modal on Escape, not just the confirm dialog, so pressing it
 // anywhere in admin.html does the expected thing — previously only the confirm
 // modal and news preview responded, event/shop-item/template editors were stuck
@@ -4570,19 +4557,12 @@ async function _doSaveSetting(key, value, opts = {}) {
 }
 
 // ─── adminConfirm (custom modal Promise) ──────────────────────────────────
+// showConfirm() itself now returns a Promise<boolean> (see common.js), so this
+// is just a thin title/desc-shaped wrapper — the previous version had to patch
+// the cancel button's onclick by hand because the old local showConfirm() was
+// callback-only.
 function adminConfirm(title, desc) {
-  return new Promise(resolve => {
-    showConfirm({
-      title, text: desc, icon: '⚠', okLabel: 'Подтвердить',
-      onOk: () => resolve(true),
-    });
-    // patch cancel to resolve false
-    const cancelBtn = document.querySelector('#confirm-modal button:first-child');
-    if (cancelBtn) {
-      const oldOnclick = cancelBtn.onclick;
-      cancelBtn.onclick = () => { closeConfirm(); resolve(false); };
-    }
-  });
+  return showConfirm({ title, text: desc, icon: '⚠', okLabel: 'Подтвердить' });
 }
 
 // ─── Ban reason modal ──────────────────────────────────────────────────────
@@ -7339,18 +7319,7 @@ async function loadErrors(page = 1) {
   </div>
 </div>
 
-<!-- Confirm modal -->
-<div id="confirm-modal" style="display:none;position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;">
-  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);" onclick="closeConfirm()"></div>
-  <div style="position:relative;background:rgba(14,5,22,0.97);border:1px solid rgba(180,0,35,0.4);border-radius:1rem;padding:2rem 2rem 1.5rem;max-width:380px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.7),0 0 32px rgba(180,0,35,0.15);text-align:center;">
-    <div style="font-size:2rem;margin-bottom:.75rem;" id="confirm-icon">🗑</div>
-    <h3 style="font-family:'Cinzel',serif;font-size:.95rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;margin-bottom:.55rem;" id="confirm-title">Подтверждение</h3>
-    <p style="font-size:.82rem;color:#9488a8;line-height:1.5;margin-bottom:1.5rem;" id="confirm-text"></p>
-    <div style="display:flex;gap:.65rem;justify-content:center;">
-      <button onclick="closeConfirm()" style="background:rgba(40,10,60,0.6);border:1px solid rgba(110,0,150,0.3);border-radius:.55rem;padding:.5rem 1.2rem;color:#9488a8;font-size:.8rem;cursor:pointer;transition:all .2s;" onmouseover="this.style.color='#e2d8f0'" onmouseout="this.style.color='#9488a8'">Отмена</button>
-      <button id="confirm-ok" style="background:linear-gradient(135deg,#7a0015,#b8001e);border:none;border-radius:.55rem;padding:.5rem 1.4rem;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;box-shadow:0 0 16px rgba(180,0,30,0.45);transition:all .2s;" onmouseover="this.style.boxShadow='0 0 28px rgba(210,0,40,0.7)'" onmouseout="this.style.boxShadow='0 0 16px rgba(180,0,30,0.45)'">Удалить</button>
-    </div>
-  </div>
-</div>
+<!-- Confirm modal — built dynamically by showConfirm() in common.js, no static
+     markup needed here anymore (was previously admin.html-local markup). -->
 </body>
 </html>

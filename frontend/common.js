@@ -563,6 +563,96 @@ function showToast(msg, type = 'info', duration = 4500) {
   }, duration);
 }
 
+/* ── Shared themed confirm modal (replaces the plain browser confirm()) ──────
+   Single implementation for admin.html/profile.html/shop.html. Three separate
+   agents working in isolated worktrees this session each built a near-identical
+   dark-panel/gold-crimson confirm dialog: admin.html's callback-style
+   showConfirm({title,text,icon,okLabel,onOk,onCancel}) (30+ call sites), and
+   profile.html's/shop.html's Promise-based showProfileConfirm(text)/
+   showShopConfirm(text). Consolidated here on admin's parameterized call shape
+   (the more flexible of the two — per-call title/icon/okLabel — and already
+   what the majority of call sites use) plus profile/shop's Promise return +
+   fade transition, adding a cancelLabel param and return-focus-on-close that
+   none of the three originals had. Builds its own DOM lazily on first call —
+   no per-page markup needed. Element id stays "confirm-modal" (matching
+   admin.html's original id) since admin.html's own <style> has a mobile
+   media-query keyed to it (`#confirm-modal > div:last-child`). */
+let _confirmModalEl = null;
+let _confirmResolve = null;
+let _confirmReturnFocus = null;
+
+function _buildConfirmModal() {
+  if (_confirmModalEl) return _confirmModalEl;
+  const el = document.createElement('div');
+  el.id = 'confirm-modal';
+  el.style.cssText = 'display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;opacity:0;transition:opacity .18s;';
+  el.innerHTML = `
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);" id="confirm-modal-backdrop"></div>
+    <div style="position:relative;background:rgba(14,5,22,0.97);border:1px solid rgba(180,0,35,0.4);border-radius:1rem;padding:2rem 2rem 1.5rem;max-width:380px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.7),0 0 32px rgba(180,0,35,0.15);text-align:center;font-family:'Inter',sans-serif;" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-text">
+      <div style="font-size:2rem;margin-bottom:.75rem;" id="confirm-icon">🗑</div>
+      <h3 style="font-family:'Cinzel',serif;font-size:.95rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;margin-bottom:.55rem;" id="confirm-title">Подтверждение</h3>
+      <p style="font-size:.82rem;color:#9488a8;line-height:1.5;margin-bottom:1.5rem;" id="confirm-text"></p>
+      <div style="display:flex;gap:.65rem;justify-content:center;">
+        <button id="confirm-cancel" style="background:rgba(40,10,60,0.6);border:1px solid rgba(110,0,150,0.3);border-radius:.55rem;padding:.5rem 1.2rem;color:#9488a8;font-size:.8rem;cursor:pointer;transition:all .2s;" onmouseover="this.style.color='#e2d8f0'" onmouseout="this.style.color='#9488a8'">Отмена</button>
+        <button id="confirm-ok" style="background:linear-gradient(135deg,#7a0015,#b8001e);border:none;border-radius:.55rem;padding:.5rem 1.4rem;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;box-shadow:0 0 16px rgba(180,0,30,0.45);transition:all .2s;" onmouseover="this.style.boxShadow='0 0 28px rgba(210,0,40,0.7)'" onmouseout="this.style.boxShadow='0 0 16px rgba(180,0,30,0.45)'">Удалить</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  el.querySelector('#confirm-modal-backdrop').addEventListener('click', () => closeConfirm());
+  el.querySelector('#confirm-cancel').addEventListener('click', () => closeConfirm());
+  _confirmModalEl = el;
+  return el;
+}
+
+/* result defaults to false (cancel) so admin.html's own multi-modal Escape
+   handler (which also closes ban/event/template/etc modals) can keep calling
+   closeConfirm() with no args alongside this module's own Escape listener
+   below — both are safe no-ops once the modal is already closed. */
+function closeConfirm(result = false) {
+  if (!_confirmModalEl || !_confirmResolve) return;
+  _confirmModalEl.style.opacity = '0';
+  const el = _confirmModalEl;
+  setTimeout(() => { el.style.display = 'none'; }, 180);
+  const resolve = _confirmResolve;
+  _confirmResolve = null;
+  const returnFocus = _confirmReturnFocus;
+  _confirmReturnFocus = null;
+  if (returnFocus && typeof returnFocus.focus === 'function') {
+    try { returnFocus.focus({ preventScroll: true }); } catch {}
+  }
+  resolve(result);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && _confirmModalEl && _confirmModalEl.style.display === 'flex') closeConfirm();
+});
+
+/* Themed confirm dialog. Returns a Promise<boolean> — `await showConfirm({...})` —
+   and also invokes onOk/onCancel callbacks if given, so both the callback style
+   (admin.html's original 30+ call sites) and the newer await style work unchanged. */
+function showConfirm({ title = 'Подтверждение', text = '', icon = '🗑', okLabel = 'Удалить', cancelLabel = 'Отмена', onOk = null, onCancel = null } = {}) {
+  const el = _buildConfirmModal();
+  document.getElementById('confirm-icon').textContent = icon;
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-text').textContent = text;
+  const okBtn = document.getElementById('confirm-ok');
+  const cancelBtn = document.getElementById('confirm-cancel');
+  okBtn.textContent = okLabel;
+  cancelBtn.textContent = cancelLabel;
+
+  _confirmReturnFocus = document.activeElement;
+
+  return new Promise(resolve => {
+    _confirmResolve = (result) => {
+      if (result) { if (onOk) onOk(); } else if (onCancel) onCancel();
+      resolve(result);
+    };
+    okBtn.onclick = () => closeConfirm(true);
+    el.style.display = 'flex';
+    requestAnimationFrame(() => { el.style.opacity = '1'; okBtn.focus({ preventScroll: true }); });
+  });
+}
+
 /* Presence heartbeat — reports this visitor (+ their current page) to
    /api/online/ping every 30s, keeping the homepage's "who's online" widget and
    last_active_at fresh. Used to live only in index.js, so every OTHER page's visits
