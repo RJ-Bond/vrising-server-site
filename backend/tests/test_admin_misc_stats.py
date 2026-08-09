@@ -6,7 +6,7 @@ and GET /api/admin/errors. Each is admin-gated (export/bans is moderator-gated)
 and checked for correct shape and role enforcement."""
 import csv
 import io
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -65,6 +65,66 @@ async def test_admin_stats_returns_counts(client, db_session):
     assert body["comment_count"] == 1
     assert len(body["recent_comments"]) == 1
     assert body["recent_comments"][0]["news_slug"] == "stats-post"
+
+
+# ─── POST /api/admin/comments/bulk-delete ────────────────────────────────────
+
+async def test_bulk_delete_comments_requires_moderator(client, db_session):
+    user = await _make_user(db_session, "BulkDelUser1", role="user")
+    r = await client.post("/api/admin/comments/bulk-delete", json={"ids": [1]}, headers=_bearer(user))
+    assert r.status_code == 403
+
+
+async def test_bulk_delete_comments_happy_path(client, db_session):
+    moderator = await _make_user(db_session, "BulkDelMod1", role="moderator")
+    news = await _make_news(db_session, moderator, slug="bulk-delete-post")
+    c1 = Comment(news_id=news.id, author_id=moderator.id, content="one")
+    c2 = Comment(news_id=news.id, author_id=moderator.id, content="two")
+    db_session.add_all([c1, c2])
+    await db_session.commit()
+    await db_session.refresh(c1)
+    await db_session.refresh(c2)
+
+    r = await client.post(
+        "/api/admin/comments/bulk-delete",
+        json={"ids": [c1.id, c2.id]},
+        headers=_bearer(moderator),
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["succeeded"] == 2
+    assert body["failed"] == 0
+    assert all(res["success"] for res in body["results"])
+
+
+async def test_bulk_delete_comments_partial_failure_does_not_500(client, db_session):
+    """One stale/nonexistent id in the batch must not fail the whole request — the
+    other valid ids should still be deleted, with the bad one reported as failed."""
+    moderator = await _make_user(db_session, "BulkDelMod2", role="moderator")
+    news = await _make_news(db_session, moderator, slug="bulk-delete-partial")
+    c1 = Comment(news_id=news.id, author_id=moderator.id, content="real")
+    db_session.add(c1)
+    await db_session.commit()
+    await db_session.refresh(c1)
+
+    r = await client.post(
+        "/api/admin/comments/bulk-delete",
+        json={"ids": [c1.id, 999999]},
+        headers=_bearer(moderator),
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["succeeded"] == 1
+    assert body["failed"] == 1
+    by_id = {res["id"]: res for res in body["results"]}
+    assert by_id[c1.id]["success"] is True
+    assert by_id[999999]["success"] is False
+
+
+async def test_bulk_delete_comments_rejects_empty_ids(client, db_session):
+    moderator = await _make_user(db_session, "BulkDelMod3", role="moderator")
+    r = await client.post("/api/admin/comments/bulk-delete", json={"ids": []}, headers=_bearer(moderator))
+    assert r.status_code == 422
 
 
 # ─── GET /api/admin/audit-log & /actions ────────────────────────────────────
@@ -145,7 +205,40 @@ async def test_analytics_returns_expected_shape_and_totals(client, db_session):
     paths = {p["path"] for p in body["top_pages"]}
     assert "/news/analytics-post" in paths
     assert "top_news" in body
-    assert "users_by_day" in body
+
+
+async def test_analytics_top_pages_breakdown_counts_and_orders_by_views(client, db_session):
+    """The admin 'most-visited pages' card (frontend/admin.html's Аналитика section)
+    reads top_pages straight off this endpoint — verify the grouping/count/order and
+    that the days window actually excludes rows outside it."""
+    admin = await _make_user(db_session, "AnalyticsAdmin2", role="admin")
+    now = datetime.now(timezone.utc)
+    old = now - timedelta(days=15)
+    # /popular gets 3 views inside the window, /rare gets 1 — /popular must sort first.
+    db_session.add(PageView(path="/popular", ip_hash="a1", created_at=now))
+    db_session.add(PageView(path="/popular", ip_hash="a2", created_at=now))
+    db_session.add(PageView(path="/popular", ip_hash="a3", created_at=now))
+    db_session.add(PageView(path="/rare", ip_hash="b1", created_at=now))
+    # Outside the 7-day window entirely — must not count toward /old-page at all.
+    db_session.add(PageView(path="/old-page", ip_hash="c1", created_at=old))
+    await db_session.commit()
+
+    r = await client.get("/api/admin/analytics", params={"days": 7}, headers=_bearer(admin))
+    assert r.status_code == 200
+    top_pages = r.json()["top_pages"]
+    by_path = {p["path"]: p["views"] for p in top_pages}
+    assert by_path["/popular"] == 3
+    assert by_path["/rare"] == 1
+    assert "/old-page" not in by_path
+    # /popular (3 views) must rank above /rare (1 view).
+    assert [p["path"] for p in top_pages].index("/popular") < [p["path"] for p in top_pages].index("/rare")
+
+    # The wider 30-day window picks up the older row too.
+    r30 = await client.get("/api/admin/analytics", params={"days": 30}, headers=_bearer(admin))
+    assert r30.status_code == 200
+    paths_30 = {p["path"] for p in r30.json()["top_pages"]}
+    assert "/old-page" in paths_30
+    assert "users_by_day" in r30.json()
 
 
 # ─── GET /api/admin/economy-stats ────────────────────────────────────────────

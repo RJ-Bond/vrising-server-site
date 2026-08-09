@@ -395,6 +395,24 @@ class Message(Base):
     recipient = relationship("User", foreign_keys=[recipient_id], lazy="selectin")
 
 
+class AutoFlagRule(Base):
+    """Keyword-based auto-flagging rule, checked against every new Comment on creation
+    (see the case-insensitive substring check in POST /api/news/{slug}/comments,
+    backend/routers/news.py). A match creates a Report (target_type="comment") rather
+    than blocking/rejecting the comment outright — a false positive shouldn't silently
+    eat someone's post, so it's surfaced in the normal moderation queue
+    (GET /api/admin/reports) for a human to review instead. created_by is the
+    admin/moderator username who added the rule (audit trail only, same convention as
+    Ban.admin_name/AuditLog.admin_username — no user_id FK)."""
+    __tablename__ = "auto_flag_rules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    keyword = Column(String(128), nullable=False)
+    created_by = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+
 class Report(Base):
     __tablename__ = "reports"
     id = Column(Integer, primary_key=True, index=True)

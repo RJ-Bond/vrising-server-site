@@ -2129,7 +2129,12 @@ function editComment(id) {
   const textEl = document.getElementById(`ct-${id}`);
   const ca = document.getElementById(`ca-${id}`);
   if (!textEl) return;
-  const currentText = textEl.textContent;
+  // .dataset.raw (not .textContent) — since _renderCommentMarkdown() now renders
+  // **bold**/*italic*/[text](url) into real <strong>/<em>/<a> tags, .textContent
+  // would return the rendered plain text with the markdown syntax already stripped
+  // out by the browser, losing it on every edit. data-raw carries the original
+  // source (browsers auto-decode entities read back through .dataset).
+  const currentText = textEl.dataset.raw || textEl.textContent;
   if (ca) ca.style.display = 'none';
   textEl.innerHTML = `
     <textarea id="cedit-${id}" style="width:100%;background:rgba(12,2,20,0.75);border:1px solid rgba(110,0,20,0.4);border-radius:6px;color:var(--text);font-size:.8rem;font-family:'Inter',sans-serif;padding:.45rem .6rem;resize:vertical;min-height:64px;outline:none;transition:border-color .2s;box-sizing:border-box;" onfocus="this.style.borderColor='rgba(180,0,30,0.65)'" onblur="this.style.borderColor='rgba(110,0,20,0.4)'">${esc(currentText)}</textarea>
@@ -2179,7 +2184,7 @@ function renderCommentForm(slug) {
     return;
   }
   el.innerHTML = `<div class="comment-form">
-    <textarea id="comment-input" placeholder="Ваш комментарий…" maxlength="2000" oninput="document.getElementById('comment-char-count').textContent = this.value.length + ' / 2000'" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();submitComment('${slug}');}"></textarea>
+    <textarea id="comment-input" placeholder="Ваш комментарий… (**жирный**, *курсив*, [ссылка](https://...))" maxlength="2000" oninput="document.getElementById('comment-char-count').textContent = this.value.length + ' / 2000'" onkeydown="if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)){event.preventDefault();submitComment('${slug}');}"></textarea>
     <div style="display:flex;align-items:center;justify-content:flex-end;gap:.6rem;">
       <span id="comment-char-count" style="font-size:.65rem;color:var(--muted);">0 / 2000</span>
       <button onclick="submitComment('${slug}')">Отправить</button>
@@ -2251,6 +2256,23 @@ async function toggleReaction(commentId, emoji, btn) {
 }
 
 // ── Single comment renderer ────────────────────────────────────────────────
+// Minimal comment markdown: **bold**, *italic*, [text](https://url). Deliberately
+// nothing beyond that — comments are short, this is basic emphasis/links, not a full
+// markdown engine, and pulling in a library for 3 rules doesn't fit this repo's
+// no-build-step, no-heavy-dependency posture. CRITICAL ordering: esc() runs FIRST,
+// then these regexes operate on the already-escaped text — a comment body containing
+// literal `<img src=x onerror=...>` becomes inert `&lt;img ...&gt;` text before any of
+// these rules ever see it, so there is no way for raw HTML to come back out through a
+// markdown substitution. The link rule only ever matches an explicit http(s):// href,
+// so a `javascript:`-scheme link can't be constructed this way either.
+function _renderCommentMarkdown(raw) {
+  let html = esc(raw);
+  html = html.replace(/\[([^[\]]+)\]\((https?:\/\/[^\s()]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer nofollow">$1</a>');
+  html = html.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  return html;
+}
+
 function renderSingleComment(c, slug, depth = 0) {
   const name = c.author ? esc(c.author.username) : 'Удалённый пользователь';
   const profileHref = c.author ? `/user.html?u=${encodeURIComponent(c.author.username)}` : null;
@@ -2280,7 +2302,7 @@ function renderSingleComment(c, slug, depth = 0) {
         <span class="comment-time">${fmtDate(c.created_at)}</span>
         ${actions}
       </div>
-      <div class="comment-text" id="ct-${c.id}">${esc(c.content)}</div>
+      <div class="comment-text" id="ct-${c.id}" data-raw="${esc(c.content)}">${_renderCommentMarkdown(c.content)}</div>
       ${replyBtn}
       ${reactionsHtml}
     </div>

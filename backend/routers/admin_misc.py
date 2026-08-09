@@ -12,7 +12,8 @@ from sqlalchemy import select, func, or_, case
 from ..database import get_db
 from ..models import User, News, Comment, Setting, AuditLog, PageView, ErrorLog, PointsTransaction, ShopRedemption
 from ..auth import get_admin_user, get_moderator_user
-from ..helpers import UPLOAD_DIR, send_newsletter_digest
+from ..helpers import UPLOAD_DIR, send_newsletter_digest, _audit
+from ..schemas import CommentBulkDeleteIn, CommentBulkResult, CommentBulkDeleteOut
 
 router = APIRouter()
 
@@ -160,6 +161,38 @@ async def admin_delete_comment(
         raise HTTPException(status_code=404, detail="Comment not found")
     await db.delete(comment)
     await db.commit()
+
+
+@router.post("/api/admin/comments/bulk-delete", response_model=CommentBulkDeleteOut)
+async def admin_bulk_delete_comments(
+    body: CommentBulkDeleteIn,
+    current_user: User = Depends(get_moderator_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bulk variant of DELETE /api/admin/comments/{id} — same moderator tier. Per-id
+    success/failure rather than one all-or-nothing transaction: some ids in the batch
+    might already be deleted (by another moderator, or the author themselves) or never
+    have existed, and that shouldn't 500 the rest of the batch — same defensive pattern
+    as POST /api/admin/points/grant-bulk in routers/points_shop.py."""
+    results: list[CommentBulkResult] = []
+    deleted_ids: list[int] = []
+    for cid in body.ids:
+        result = await db.execute(select(Comment).where(Comment.id == cid))
+        comment = result.scalar_one_or_none()
+        if comment is None:
+            results.append(CommentBulkResult(id=cid, success=False, error="Комментарий не найден"))
+            continue
+        await db.delete(comment)
+        deleted_ids.append(cid)
+        results.append(CommentBulkResult(id=cid, success=True))
+    if deleted_ids:
+        await _audit(
+            db, current_user.id, "comment.bulk_delete", target_type="comment",
+            detail=f"{len(deleted_ids)} ids: {deleted_ids[:50]}",
+        )
+    await db.commit()
+    succeeded = sum(1 for r in results if r.success)
+    return CommentBulkDeleteOut(results=results, succeeded=succeeded, failed=len(results) - succeeded)
 
 
 # ─── Audit log ───────────────────────────────────────────────────────────────

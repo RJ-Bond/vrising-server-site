@@ -1685,7 +1685,8 @@
                 <option value="1">Сервер 1</option>
                 <option value="2">Сервер 2</option>
               </select>
-              <input id="rcon-cmd-input" type="text" class="dark-input" placeholder="announcerestart 60" onkeydown="if(event.key==='Enter')execRcon()">
+              <input id="rcon-cmd-input" type="text" class="dark-input" placeholder="announcerestart 60" list="rcon-cmd-history-list" autocomplete="off" onkeydown="rconInputKeydown(event)">
+              <datalist id="rcon-cmd-history-list"></datalist>
               <button onclick="execRcon()" class="s-save-btn">▶ Выполнить</button>
             </div>
           </div>
@@ -2278,6 +2279,25 @@
         </table>
       </div>
       <div id="reports-pagination" class="flex gap-2 mt-4"></div>
+
+      <!-- Auto-flag rules: keyword-based rules checked against every new comment on
+           creation (backend/routers/news.py's _check_auto_flag_rules). A match creates
+           a Report above rather than blocking the comment — this card just manages the
+           keyword list. -->
+      <div class="glass-card rounded-xl overflow-hidden" style="margin-top:1.5rem;">
+        <div style="padding:.85rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
+          <span style="font-size:.72rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;">Автопометка по ключевым словам</span>
+          <div style="display:flex;gap:.5rem;">
+            <input id="auto-flag-new-keyword" type="text" class="dark-input" placeholder="Ключевое слово…" style="width:auto;max-width:200px;font-size:.82rem;padding:.4rem .7rem;" onkeydown="if(event.key==='Enter')addAutoFlagRule()">
+            <button onclick="addAutoFlagRule()" class="s-save-btn" style="font-size:.78rem;">+ Добавить</button>
+          </div>
+        </div>
+        <p style="padding:.6rem 1rem 0;font-size:.72rem;color:var(--muted);">Новый комментарий, содержащий активное ключевое слово (без учёта регистра), не блокируется — вместо этого на него автоматически создаётся жалоба в очереди выше.</p>
+        <table>
+          <thead><tr><th>Ключевое слово</th><th>Активно</th><th>Добавил</th><th>Дата</th><th></th></tr></thead>
+          <tbody id="auto-flag-rules-body"><tr><td colspan="5" style="text-align:center;color:var(--muted);">Загрузка…</td></tr></tbody>
+        </table>
+      </div>
     </div>
 
     <!-- ANALYTICS -->
@@ -2315,6 +2335,23 @@
         <table>
           <thead><tr><th>#</th><th>Новость</th><th>Просмотры</th><th>Комментарии</th></tr></thead>
           <tbody id="analytics-top-news"></tbody>
+        </table>
+      </div>
+
+      <!-- Most-visited pages breakdown: GET /api/admin/analytics's existing top_pages
+           (grouped by PageView.path over the selected window) — same days=7/30
+           period-selector convention as the Economy section's economy-days select. -->
+      <div class="glass-card" style="border-radius:.75rem;overflow:hidden;margin-top:1.25rem;">
+        <div style="padding:.85rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
+          <span style="font-size:.72rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;">Самые посещаемые страницы</span>
+          <select id="analytics-pages-days" onchange="loadAnalytics()" style="background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:.4rem;color:var(--text);font-size:.75rem;padding:.3rem .5rem;">
+            <option value="7" selected>7 дней</option>
+            <option value="30">30 дней</option>
+          </select>
+        </div>
+        <table>
+          <thead><tr><th>#</th><th>Страница</th><th>Просмотры</th></tr></thead>
+          <tbody id="analytics-top-pages"></tbody>
         </table>
       </div>
     </div>
@@ -3099,7 +3136,7 @@ function showSection(name) {
     _target.style.animation = '';
   }
   if (name === 'editor')   document.getElementById('btn-news').className = 'sidebar-btn active';
-  if (name === 'settings') { loadSettings(); loadRules(); loadMaintenanceStatuses(); loadMaintenanceHistory(); if (meetsRole('superadmin')) checkForUpdate(); }
+  if (name === 'settings') { loadSettings(); loadRules(); loadMaintenanceStatuses(); loadMaintenanceHistory(); _renderRconHistoryDatalist(); if (meetsRole('superadmin')) checkForUpdate(); }
   if (name === 'plugin')   { loadSettings(); loadPluginSection(); loadLinkedAccounts(); }
   if (name === 'users')    loadUsers();
   if (name === 'news')     loadAdminNews(adminNewsPage);
@@ -3110,7 +3147,7 @@ function showSection(name) {
   if (name === 'log')        loadAuditLog(1);
   if (name === 'resets')     loadPasswordResets();
   if (name === 'clans')      loadAdminClans();
-  if (name === 'reports')    loadReports(1);
+  if (name === 'reports')    { loadReports(1); loadAutoFlagRules(); }
   if (name === 'analytics')  loadAnalytics();
   if (name === 'economy')    loadEconomyStats();
   if (name === 'backups')    loadBackups();
@@ -5184,11 +5221,61 @@ async function sendNewsletterDigestNow(btn) {
 }
 
 // ─── RCON ─────────────────────────────────────────────────────────────────
+// Command history is client-side only (localStorage) — operator convenience for
+// Up/Down recall and autocomplete, NOT an audit trail. There is no server-side log
+// of RCON commands executed from this console today (a real audit trail would need a
+// backend endpoint + table, out of scope here).
+const RCON_HISTORY_KEY = 'rcon_cmd_history';
+const RCON_HISTORY_MAX = 20;
+let _rconHistoryIdx = -1;   // -1 = browsing has not started (fresh/edited input)
+let _rconHistoryDraft = ''; // input's content right before the first ArrowUp press
+
+function _rconHistoryLoad() {
+  try { return JSON.parse(localStorage.getItem(RCON_HISTORY_KEY) || '[]'); } catch { return []; }
+}
+function _rconHistorySave(cmd) {
+  const hist = _rconHistoryLoad().filter(c => c !== cmd);
+  hist.unshift(cmd);
+  localStorage.setItem(RCON_HISTORY_KEY, JSON.stringify(hist.slice(0, RCON_HISTORY_MAX)));
+  _renderRconHistoryDatalist();
+}
+function _renderRconHistoryDatalist() {
+  const dl = document.getElementById('rcon-cmd-history-list');
+  if (!dl) return;
+  dl.innerHTML = _rconHistoryLoad().map(c => `<option value="${esc(c)}"></option>`).join('');
+}
+function rconInputKeydown(event) {
+  if (event.key === 'Enter') { execRcon(); return; }
+  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+  const hist = _rconHistoryLoad();
+  if (!hist.length) return;
+  const input = event.target;
+  event.preventDefault();
+  if (event.key === 'ArrowUp') {
+    if (_rconHistoryIdx === -1) _rconHistoryDraft = input.value;
+    _rconHistoryIdx = Math.min(_rconHistoryIdx + 1, hist.length - 1);
+    input.value = hist[_rconHistoryIdx];
+  } else {
+    if (_rconHistoryIdx <= 0) {
+      _rconHistoryIdx = -1;
+      input.value = _rconHistoryDraft;
+    } else {
+      _rconHistoryIdx -= 1;
+      input.value = hist[_rconHistoryIdx];
+    }
+  }
+  // Cursor at the end, not selecting the whole recalled command
+  input.setSelectionRange(input.value.length, input.value.length);
+}
 async function execRcon() {
-  const cmd = document.getElementById('rcon-cmd-input')?.value?.trim();
+  const cmdInput = document.getElementById('rcon-cmd-input');
+  const cmd = cmdInput?.value?.trim();
   const srv = parseInt(document.getElementById('rcon-server-sel')?.value || '1');
   const out = document.getElementById('rcon-output');
   if (!cmd || !out) return;
+  _rconHistorySave(cmd);
+  _rconHistoryIdx = -1;
+  _rconHistoryDraft = '';
   out.style.display = '';
   out.textContent = '⏳ Выполняется…';
   try {
@@ -5530,20 +5617,21 @@ function _onCommentCheck() {
   if (countEl) countEl.textContent = `Выбрано: ${ids.length}`;
 }
 async function bulkDeleteComments() {
-  const ids = [...document.querySelectorAll('.comment-check:checked')].map(el => el.dataset.id);
+  const ids = [...document.querySelectorAll('.comment-check:checked')].map(el => Number(el.dataset.id));
   if (!ids.length) return;
   showConfirm({
     title: `Удалить ${ids.length} комментариев?`,
     text: 'Действие необратимо.',
     onOk: async () => {
-      // No bulk-delete endpoint on the backend for comments — N parallel single-DELETE
-      // requests instead of adding one, since a moderation batch is realistically tens
-      // of rows, not thousands, and this avoids a new endpoint for a rare admin action.
-      const results = await Promise.all(ids.map(id =>
-        fetch(`${API}/admin/comments/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() }).then(r => r.ok).catch(() => false)
-      ));
-      const okCount = results.filter(Boolean).length;
-      showToast(`Удалено: ${okCount} из ${ids.length}`, okCount === ids.length ? 'success' : 'error');
+      try {
+        const r = await fetch(`${API}/admin/comments/bulk-delete`, {
+          method: 'POST', credentials: 'include', headers: authH(),
+          body: JSON.stringify({ ids }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { showToast(d.detail || 'Ошибка удаления', 'error'); return; }
+        showToast(`Удалено: ${d.succeeded} из ${ids.length}`, d.failed ? 'error' : 'success');
+      } catch { showToast('Ошибка соединения', 'error'); }
       loadAdminComments(_commentsPage);
     },
   });
@@ -6520,17 +6608,74 @@ function _onReportCheck() {
   if (countEl) countEl.textContent = `Выбрано: ${ids.length}`;
 }
 async function bulkReviewReports(status) {
-  const ids = [...document.querySelectorAll('.report-check:checked')].map(el => el.dataset.id);
+  const ids = [...document.querySelectorAll('.report-check:checked')].map(el => Number(el.dataset.id));
   if (!ids.length) return;
-  await Promise.all(ids.map(id =>
-    fetch(`${API}/admin/reports/${id}`, { method: 'PATCH', credentials: 'include', headers: authH(), body: JSON.stringify({ status } ) }).catch(() => {})
-  ));
-  showToast(`Обновлено жалоб: ${ids.length}`, 'success');
+  try {
+    const r = await fetch(`${API}/admin/reports/bulk-review`, {
+      method: 'POST', credentials: 'include', headers: authH(),
+      body: JSON.stringify({ ids, status }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { showToast(d.detail || 'Ошибка обновления', 'error'); return; }
+    showToast(`Обновлено жалоб: ${d.succeeded} из ${ids.length}`, d.failed ? 'error' : 'success');
+  } catch { showToast('Ошибка соединения', 'error'); }
   loadReports(_reportsPage);
 }
 async function reviewReport(id, status) {
   await fetch(`${API}/admin/reports/${id}`, { method: 'PATCH', credentials: 'include', headers: authH(), body: JSON.stringify({ status }) });
   loadReports(_reportsPage);
+}
+
+// ─── Auto-flag rules ────────────────────────────────────────────────────────
+async function loadAutoFlagRules() {
+  const tbody = document.getElementById('auto-flag-rules-body');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>';
+  try {
+    const rules = await fetch(`${API}/admin/auto-flag-rules`, { credentials: 'include', headers: authH() }).then(r => r.json());
+    if (!rules.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Правил пока нет</td></tr>'; return; }
+    tbody.innerHTML = rules.map(rule => `
+      <tr>
+        <td style="font-weight:600;">${esc(rule.keyword)}</td>
+        <td><input type="checkbox" ${rule.is_active ? 'checked' : ''} onchange="toggleAutoFlagRule(${rule.id}, this.checked)" style="accent-color:var(--accent)"></td>
+        <td style="color:var(--muted);font-size:.78rem;">${esc(rule.created_by || '—')}</td>
+        <td style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${fmtDateTime(rule.created_at)}</td>
+        <td><button class="btn-danger" onclick="deleteAutoFlagRule(${rule.id})">Удалить</button></td>
+      </tr>`).join('');
+  } catch { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+}
+async function addAutoFlagRule() {
+  const input = document.getElementById('auto-flag-new-keyword');
+  const keyword = (input?.value || '').trim();
+  if (!keyword) return;
+  try {
+    const r = await fetch(`${API}/admin/auto-flag-rules`, {
+      method: 'POST', credentials: 'include', headers: authH(),
+      body: JSON.stringify({ keyword }),
+    });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); showToast(d.detail || 'Ошибка добавления', 'error'); return; }
+    input.value = '';
+    loadAutoFlagRules();
+  } catch { showToast('Ошибка соединения', 'error'); }
+}
+async function toggleAutoFlagRule(id, isActive) {
+  try {
+    const r = await fetch(`${API}/admin/auto-flag-rules/${id}`, {
+      method: 'PATCH', credentials: 'include', headers: authH(),
+      body: JSON.stringify({ is_active: isActive }),
+    });
+    if (!r.ok) { showToast('Ошибка обновления', 'error'); loadAutoFlagRules(); }
+  } catch { showToast('Ошибка соединения', 'error'); loadAutoFlagRules(); }
+}
+async function deleteAutoFlagRule(id) {
+  showConfirm({
+    title: 'Удалить правило?',
+    text: 'Ключевое слово больше не будет проверяться в новых комментариях.',
+    onOk: async () => {
+      await fetch(`${API}/admin/auto-flag-rules/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() });
+      loadAutoFlagRules();
+    },
+  });
 }
 
 // ─── Events ───────────────────────────────────────────────────────────────
@@ -6894,7 +7039,8 @@ function _shortDate(dateStr) {
 
 async function loadAnalytics() {
   try {
-    const d = await fetch(`${API}/admin/analytics`, {credentials:'include'}).then(r=>r.json());
+    const days = document.getElementById('analytics-pages-days')?.value || 7;
+    const d = await fetch(`${API}/admin/analytics?days=${days}`, {credentials:'include'}).then(r=>r.json());
 
     // KPIs
     const setKpi = (id, val) => { const el=document.getElementById(id); if(el) { if(val!=null && !isNaN(+val)) animateKpi(el,+val); else el.textContent=val??'—'; } };
@@ -6925,6 +7071,19 @@ async function loadAnalytics() {
         </tr>`).join('');
     } else if (tbody) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Нет данных</td></tr>';
+    }
+
+    // Most-visited pages
+    const pagesBody = document.getElementById('analytics-top-pages');
+    if (pagesBody && d.top_pages?.length) {
+      pagesBody.innerHTML = d.top_pages.map((p,i) => `
+        <tr>
+          <td style="color:var(--muted);font-size:.78rem;">${i+1}</td>
+          <td style="font-size:.82rem;">${esc(p.path)}</td>
+          <td style="text-align:center;font-weight:600;">${p.views||0}</td>
+        </tr>`).join('');
+    } else if (pagesBody) {
+      pagesBody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted);">Нет данных за этот период</td></tr>';
     }
   } catch(e) { console.error('Analytics error:', e); }
 }

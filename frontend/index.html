@@ -83,6 +83,7 @@
           <a href="/map.html" class="nav-dropdown-item">🗺️ Карта</a>
           <a href="/faq.html" class="nav-dropdown-item">❓ FAQ</a>
           <a href="/events.html" class="nav-dropdown-item">📅 События</a>
+          <a href="/status.html" class="nav-dropdown-item" data-i18n-ru="📶 Статус" data-i18n-en="📶 Status">📶 Статус</a>
         </div>
       </div>
       <button type="button" class="nav-icon-btn" onclick="openGlobalSearch()" aria-label="Поиск по сайту" data-tip="Поиск (Ctrl+K)">
@@ -580,6 +581,10 @@
       <a href="/events.html" class="nav-link-item" data-tip="События">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--crimson)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <span>События</span>
+      </a>
+      <a href="/status.html" class="nav-link-item" data-tip="Статус">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span>Статус</span>
       </a>
       <a href="#" onclick="openGlobalSearch();return false;" class="nav-link-item nav-link-item-action" data-tip="Поиск">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><use href="/icons.svg#icon-search"></use></svg>
@@ -1152,6 +1157,10 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1.5" fill="currentColor" stroke="none"/></svg>
         RSS
       </a>
+      <a href="/status.html" class="footer-link" title="Статус серверов">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <span data-i18n-ru="Статус серверов" data-i18n-en="Server status">Статус серверов</span>
+      </a>
       <!-- Manual install entry point for a visitor who dismissed/missed the automatic
            #pwa-install-banner but wants to install later on purpose. Hidden by default;
            index.js only reveals it once beforeinstallprompt has actually fired (same
@@ -1178,7 +1187,7 @@
 <script src="/anime.min.js"></script>
 <script src="/anim.js?v=1"></script>
 <script src="/common.js?v=15"></script>
-<script src="/index.js?v=23"></script>
+<script src="/index.js?v=24"></script>
 <div id="ow-hover-card"></div>
 
 <!-- ══ NEWS EDITOR MODAL ══════════════════════════════════════════════════════ -->

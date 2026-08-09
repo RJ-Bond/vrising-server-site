@@ -507,6 +507,7 @@ async def sitemap(request: Request, db: AsyncSession = Depends(get_db)):
         f"  <url><loc>{base}/faq.html</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>",
         f"  <url><loc>{base}/bans.html</loc><changefreq>weekly</changefreq><priority>0.4</priority></url>",
         f"  <url><loc>{base}/events.html</loc><changefreq>daily</changefreq><priority>0.6</priority></url>",
+        f"  <url><loc>{base}/status.html</loc><changefreq>hourly</changefreq><priority>0.4</priority></url>",
     ]
     for slug, updated_at in slugs:
         lastmod = updated_at.strftime("%Y-%m-%d") if updated_at else ""
@@ -1194,9 +1195,12 @@ async def _save_snapshot(db: AsyncSession, data: dict, server_num: int):
         await _upsert_setting(db, f"{peak_key}_date", datetime.now(timezone.utc).isoformat())
 
     await db.commit()
-    # prune old snapshots (keep 8 days)
+    # Prune old snapshots — kept 31 days (not just 8) so GET /api/monitor/stats can
+    # compute a real uptime_30d for the public status page (frontend/status.html),
+    # not just uptime_24h/uptime_7d. At SNAPSHOT_INTERVAL=300s (5 min) that's ~288
+    # rows/server/day, ~8.9k/server over 31 days — trivial for SQLite.
     cutoff = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-    cutoff -= timedelta(days=8)
+    cutoff -= timedelta(days=31)
     await db.execute(
         delete(ServerSnapshot).where(
             ServerSnapshot.server_num == server_num,
@@ -1275,14 +1279,26 @@ async def get_snapshots(server: int = Query(1), days: int = Query(default=7, ge=
 @app.get("/api/monitor/stats")
 async def get_monitor_stats(server: int = Query(1), db: AsyncSession = Depends(get_db)):
     now = datetime.now(timezone.utc)
-    day_ago  = now - timedelta(hours=24)
-    week_ago = now - timedelta(days=7)
+    day_ago   = now - timedelta(hours=24)
+    week_ago  = now - timedelta(days=7)
+    month_ago = now - timedelta(days=30)
 
     res_week = await db.execute(
         select(ServerSnapshot)
         .where(ServerSnapshot.server_num == server, ServerSnapshot.recorded_at >= week_ago)
     )
     snaps_week = res_week.scalars().all()
+
+    # Separate query rather than widening res_week to 30 days and filtering down for
+    # the week/day figures — snaps_week already feeds the hourly heatmap below, which
+    # is explicitly a "last 7 days" view, so keep it exactly that instead of piggy-
+    # backing a wider fetch onto it. _save_snapshot prunes at 31 days, so this is
+    # safely within retention (see that function's docstring/comment).
+    res_month = await db.execute(
+        select(ServerSnapshot)
+        .where(ServerSnapshot.server_num == server, ServerSnapshot.recorded_at >= month_ago)
+    )
+    snaps_month = res_month.scalars().all()
 
     def _naive(dt: datetime) -> datetime:
         return dt.replace(tzinfo=None) if dt and dt.tzinfo else dt
@@ -1325,6 +1341,7 @@ async def get_monitor_stats(server: int = Query(1), db: AsyncSession = Depends(g
     return {
         "uptime_24h": uptime_pct(res_day),
         "uptime_7d":  uptime_pct(snaps_week),
+        "uptime_30d": uptime_pct(snaps_month),
         "peak_24h":   peak_24h,
         "peak_7d":    peak_7d,
         "peak_alltime":      int(peak_alltime) if peak_alltime and peak_alltime.isdigit() else max(peak_7d, 0),

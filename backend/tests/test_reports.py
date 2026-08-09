@@ -161,3 +161,85 @@ async def test_review_report_rejects_invalid_status(client, db_session):
         headers=_bearer(moderator),
     )
     assert r.status_code == 422
+
+
+# ─── POST /api/admin/reports/bulk-review ─────────────────────────────────────
+
+async def test_bulk_review_reports_requires_moderator(client, db_session):
+    reporter = await _make_user(db_session, "Reporter8")
+    user = await _make_user(db_session, "PlainUser3")
+    report = await _make_report(db_session, reporter)
+
+    r = await client.post(
+        "/api/admin/reports/bulk-review",
+        json={"ids": [report.id], "status": "reviewed"},
+        headers=_bearer(user),
+    )
+    assert r.status_code == 403
+
+
+async def test_bulk_review_reports_happy_path(client, db_session):
+    reporter = await _make_user(db_session, "Reporter9")
+    moderator = await _make_user(db_session, "Mod6", role="moderator")
+    r1 = await _make_report(db_session, reporter, reason="one")
+    r2 = await _make_report(db_session, reporter, reason="two")
+
+    r = await client.post(
+        "/api/admin/reports/bulk-review",
+        json={"ids": [r1.id, r2.id], "status": "dismissed", "admin_note": "Не нарушение"},
+        headers=_bearer(moderator),
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["succeeded"] == 2
+    assert body["failed"] == 0
+
+    await db_session.refresh(r1)
+    await db_session.refresh(r2)
+    assert r1.status == "dismissed"
+    assert r2.status == "dismissed"
+    assert r1.admin_note == "Не нарушение"
+    assert r1.reviewed_at is not None
+
+
+async def test_bulk_review_reports_partial_failure_does_not_500(client, db_session):
+    """A stale/nonexistent id in the batch must not fail the whole request."""
+    reporter = await _make_user(db_session, "Reporter10")
+    moderator = await _make_user(db_session, "Mod7", role="moderator")
+    report = await _make_report(db_session, reporter)
+
+    r = await client.post(
+        "/api/admin/reports/bulk-review",
+        json={"ids": [report.id, 999999], "status": "reviewed"},
+        headers=_bearer(moderator),
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["succeeded"] == 1
+    assert body["failed"] == 1
+    by_id = {res["id"]: res for res in body["results"]}
+    assert by_id[report.id]["success"] is True
+    assert by_id[999999]["success"] is False
+
+
+async def test_bulk_review_reports_rejects_invalid_status(client, db_session):
+    reporter = await _make_user(db_session, "Reporter11")
+    moderator = await _make_user(db_session, "Mod8", role="moderator")
+    report = await _make_report(db_session, reporter)
+
+    r = await client.post(
+        "/api/admin/reports/bulk-review",
+        json={"ids": [report.id], "status": "bogus"},
+        headers=_bearer(moderator),
+    )
+    assert r.status_code == 422
+
+
+async def test_bulk_review_reports_rejects_empty_ids(client, db_session):
+    moderator = await _make_user(db_session, "Mod9", role="moderator")
+    r = await client.post(
+        "/api/admin/reports/bulk-review",
+        json={"ids": [], "status": "reviewed"},
+        headers=_bearer(moderator),
+    )
+    assert r.status_code == 422
