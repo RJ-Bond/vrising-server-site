@@ -494,6 +494,17 @@
       </div>
     </div>
 
+    <!-- Log out everywhere (self-service revoke_before bump, scoped to the caller —
+         see POST /api/auth/logout-everywhere in backend/routers/auth.py) -->
+    <div id="logout-everywhere-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Другие устройства —" data-i18n-en="— Other devices —">— Другие устройства —</h2>
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:.85rem;" data-i18n-ru="Завершить все сеансы на других устройствах и в других браузерах. Это устройство останется в системе." data-i18n-en="End all sessions on other devices and browsers. This device stays signed in.">Завершить все сеансы на других устройствах и в других браузерах. Это устройство останется в системе.</p>
+      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+        <button onclick="logoutEverywhere()" class="btn btn-ghost" style="font-size:.75rem;" data-i18n-ru="Выйти на всех других устройствах" data-i18n-en="Log out everywhere else">Выйти на всех других устройствах</button>
+        <span id="logout-everywhere-msg" style="font-size:.78rem;display:none;"></span>
+      </div>
+    </div>
+
     <!-- 2FA -->
     <div id="twofa-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
       <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Двухфакторная аутентификация —" data-i18n-en="— Two-factor authentication —">— Двухфакторная аутентификация —</h2>
@@ -575,6 +586,27 @@
       <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Мои данные —" data-i18n-en="— My data —">— Мои данные —</h2>
       <p style="font-size:.78rem;color:var(--muted);margin-bottom:.85rem;" data-i18n-ru="Скачайте копию своих данных на сайте: историю очков, заявки в магазине и комментарии." data-i18n-en="Download a copy of your data on the site: points history, shop redemptions and comments.">Скачайте копию своих данных на сайте: историю очков, заявки в магазине и комментарии.</p>
       <a href="/api/profile/export" download="my-data.json" class="btn btn-ghost" style="font-size:.75rem;" data-i18n-ru="⬇ Скачать мои данные" data-i18n-en="⬇ Download my data">⬇ Скачать мои данные</a>
+    </div>
+
+    <!-- Danger zone — self-service account deletion (DELETE /api/profile/me in
+         backend/routers/profile.py). Deliberately de-emphasized (muted border,
+         collapsed by default, small ghost button) — a destructive, irreversible
+         action shouldn't visually compete with the cards above it. -->
+    <div id="danger-zone-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;border-color:rgba(200,0,42,.25);">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:#f87171;text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Опасная зона —" data-i18n-en="— Danger zone —">— Опасная зона —</h2>
+      <button type="button" id="danger-zone-toggle" onclick="toggleDangerZone()" class="btn btn-ghost" style="font-size:.72rem;border-color:rgba(200,0,42,.3);color:var(--muted);" data-i18n-ru="Удалить аккаунт…" data-i18n-en="Delete account…">Удалить аккаунт…</button>
+      <div id="danger-zone-body" style="display:none;margin-top:1rem;">
+        <p style="font-size:.78rem;color:var(--muted);margin-bottom:.85rem;" data-i18n-ru="Аккаунт и связанные с ним личные данные (реакции, сообщения, обмены в магазине, история очков) будут удалены безвозвратно. Комментарии останутся на сайте без привязки к вашему имени. Действие необратимо." data-i18n-en="Your account and related personal data (reactions, messages, shop redemptions, points history) will be permanently deleted. Comments stay on the site, no longer attributed to your name. This cannot be undone.">Аккаунт и связанные с ним личные данные (реакции, сообщения, обмены в магазине, история очков) будут удалены безвозвратно. Комментарии останутся на сайте без привязки к вашему имени. Действие необратимо.</p>
+        <label for="delete-account-password" style="display:block;font-size:.72rem;color:var(--muted);margin-bottom:.4rem;" data-i18n-ru="Введите пароль для подтверждения" data-i18n-en="Enter your password to confirm">Введите пароль для подтверждения</label>
+        <div style="display:flex;flex-direction:column;gap:.6rem;max-width:320px;">
+          <input id="delete-account-password" class="field" type="password" placeholder="Пароль" data-i18n-ph-ru="Пароль" data-i18n-ph-en="Password" autocomplete="current-password"
+            onkeydown="if(event.key==='Enter')deleteMyAccount()">
+          <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+            <button onclick="deleteMyAccount()" class="btn btn-ghost" style="font-size:.75rem;border-color:rgba(200,0,42,.45);color:#fca5a5;" data-i18n-ru="Удалить аккаунт навсегда" data-i18n-en="Permanently delete account">Удалить аккаунт навсегда</button>
+            <span id="delete-account-msg" style="font-size:.78rem;display:none;"></span>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div><!-- /tab-panel-security -->
@@ -705,6 +737,24 @@
     <a href="/register.html" style="display:inline-flex;align-items:center;gap:.45rem;padding:.6rem 1.5rem;background:rgba(14,5,22,.7);border:1px solid rgba(180,0,35,.35);border-radius:.5rem;color:var(--muted);font-size:.85rem;font-weight:600;text-decoration:none;transition:filter .15s,color .15s;" onmouseover="this.style.color='var(--text)';this.style.filter='brightness(1.15)'" onmouseout="this.style.color='var(--muted)';this.style.filter=''" data-i18n-ru="📜 Зарегистрироваться" data-i18n-en="📜 Register">
       📜 Зарегистрироваться
     </a>
+  </div>
+</div>
+
+<!-- Themed confirm modal (replaces the plain browser confirm() previously used by
+     logoutEverywhere()/deleteMyAccount() below — see showProfileConfirm()/
+     closeProfileConfirm()). Same dark-panel/gold-crimson visual language as
+     admin.html's #confirm-modal and shop.html's #shop-confirm-modal, scoped to this
+     page with its own IDs. -->
+<div id="profile-confirm-modal" style="display:none;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;opacity:0;transition:opacity .18s;">
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);" onclick="closeProfileConfirm(false)"></div>
+  <div style="position:relative;background:rgba(14,5,22,0.97);border:1px solid rgba(180,0,35,0.4);border-radius:1rem;padding:2rem 2rem 1.5rem;max-width:380px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.7),0 0 32px rgba(180,0,35,0.15);text-align:center;">
+    <div style="font-size:2rem;margin-bottom:.75rem;">⚠️</div>
+    <h3 class="gothic" style="font-size:.95rem;font-weight:700;color:var(--gold);letter-spacing:.06em;margin-bottom:.55rem;" data-i18n-ru="Подтверждение" data-i18n-en="Confirm">Подтверждение</h3>
+    <p style="font-size:.82rem;color:var(--muted);line-height:1.5;margin-bottom:1.5rem;" id="profile-confirm-text"></p>
+    <div style="display:flex;gap:.65rem;justify-content:center;">
+      <button onclick="closeProfileConfirm(false)" style="background:rgba(40,10,60,0.6);border:1px solid rgba(110,0,150,0.3);border-radius:.55rem;padding:.5rem 1.2rem;color:var(--muted);font-size:.8rem;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'" data-i18n-ru="Отмена" data-i18n-en="Cancel">Отмена</button>
+      <button onclick="closeProfileConfirm(true)" style="background:linear-gradient(135deg,#7a0015,#b8001e);border:none;border-radius:.55rem;padding:.5rem 1.4rem;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;box-shadow:0 0 16px rgba(180,0,30,0.45);transition:all .2s;font-family:'Inter',sans-serif;" onmouseover="this.style.boxShadow='0 0 28px rgba(210,0,40,0.7)'" onmouseout="this.style.boxShadow='0 0 16px rgba(180,0,30,0.45)'" data-i18n-ru="Подтвердить" data-i18n-en="Confirm">Подтвердить</button>
+    </div>
   </div>
 </div>
 
@@ -1055,6 +1105,76 @@ async function changePassword() {
     show('Пароль успешно изменён', true);
     ['pw-old','pw-new','pw-confirm'].forEach(id => document.getElementById(id).value = '');
   } catch { show('Ошибка соединения', false); }
+}
+
+/* ── Themed confirm modal (shared by logoutEverywhere() and deleteMyAccount()) ── */
+let _profileConfirmResolve = null;
+function showProfileConfirm(text) {
+  return new Promise(resolve => {
+    _profileConfirmResolve = resolve;
+    document.getElementById('profile-confirm-text').textContent = text;
+    const m = document.getElementById('profile-confirm-modal');
+    m.style.display = 'flex';
+    requestAnimationFrame(() => { m.style.opacity = '1'; });
+  });
+}
+function closeProfileConfirm(result) {
+  const m = document.getElementById('profile-confirm-modal');
+  m.style.opacity = '0';
+  setTimeout(() => { m.style.display = 'none'; }, 180);
+  if (_profileConfirmResolve) { const resolve = _profileConfirmResolve; _profileConfirmResolve = null; resolve(result); }
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('profile-confirm-modal')?.style.display === 'flex') closeProfileConfirm(false);
+});
+
+/* ── Log out everywhere (POST /api/auth/logout-everywhere) ── */
+async function logoutEverywhere() {
+  const msg = document.getElementById('logout-everywhere-msg');
+  const show = (text, ok) => {
+    msg.textContent = text; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = '';
+    if (ok) setTimeout(() => { msg.style.display = 'none'; }, 4000);
+  };
+  const ok = await showProfileConfirm('Вы уверены? Все сеансы на других устройствах и в других браузерах будут завершены. Это устройство останется в системе.');
+  if (!ok) return;
+  try {
+    const res = await fetch(`${API}/auth/logout-everywhere`, { method: 'POST', credentials: 'include' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) return show(data.detail || 'Ошибка', false);
+    show('Готово — все остальные сеансы завершены', true);
+  } catch { show('Ошибка соединения', false); }
+}
+
+/* ── Danger zone: self-service account deletion (DELETE /api/profile/me) ── */
+function toggleDangerZone() {
+  const body = document.getElementById('danger-zone-body');
+  body.style.display = body.style.display === 'none' ? '' : 'none';
+}
+async function deleteMyAccount() {
+  const pwInput = document.getElementById('delete-account-password');
+  const msg = document.getElementById('delete-account-msg');
+  const show = (text, ok) => { msg.textContent = text; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = ''; };
+  const password = pwInput.value;
+  if (!password) return show('Введите пароль для подтверждения', false);
+  const ok = await showProfileConfirm('Это действие необратимо. Аккаунт и связанные с ним личные данные будут удалены навсегда. Продолжить?');
+  if (!ok) return;
+  try {
+    const res = await fetch(`${API}/profile/me`, {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    if (res.status === 204) {
+      localStorage.removeItem('user'); sessionStorage.removeItem('user');
+      localStorage.removeItem('token'); sessionStorage.removeItem('token');
+      window.location.href = '/index.html';
+      return;
+    }
+    const data = await res.json().catch(() => ({}));
+    show(data.detail || 'Ошибка', false);
+  } catch { show('Ошибка соединения', false); }
+  finally { pwInput.value = ''; }
 }
 
 function copyProfileLink(e) {
