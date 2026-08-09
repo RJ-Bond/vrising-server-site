@@ -358,6 +358,30 @@ function _updatePwaInstallEntryPoint() {
   if (link) link.style.display = _pwaDeferredPrompt ? '' : 'none';
 }
 
+// Collapses map.html/shop.html/faq.html/events.html/status.html behind an "Ещё"
+// toggle in the left sidebar — same idea as the top nav's own "Ещё ▾" dropdown
+// already used on every secondary page, applied here since this list grew to 11
+// flat links with no grouping. State persists per-browser (same localStorage-flag
+// pattern as toggleLeftPanelCompact() just below) so a visitor who opens it once
+// doesn't have to reopen it on every homepage load.
+function toggleNavMore() {
+  const group = document.getElementById('nav-more-group');
+  const caret = document.getElementById('nav-more-caret');
+  if (!group) return;
+  const open = group.style.display === 'none' || !group.style.display;
+  group.style.display = open ? 'flex' : 'none';
+  if (caret) caret.style.transform = open ? 'rotate(180deg)' : '';
+  localStorage.setItem('_navMoreOpen', open ? '1' : '0');
+}
+if (localStorage.getItem('_navMoreOpen') === '1') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const group = document.getElementById('nav-more-group');
+    const caret = document.getElementById('nav-more-caret');
+    if (group) group.style.display = 'flex';
+    if (caret) caret.style.transform = 'rotate(180deg)';
+  });
+}
+
 function toggleLeftPanelCompact() {
   const panel = document.getElementById('left-panel');
   if (!panel) return;
