@@ -1,4 +1,5 @@
 import json
+import logging
 import re
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -10,7 +11,8 @@ from sqlalchemy import select, func, delete, or_, update
 from ..database import get_db
 from ..models import (
     User, Setting, PlayerRecord, PluginHeartbeat, GameClan, GameClanMember, GameClanBase,
-    Announcement, ServerMessageTemplate, ScheduledRestart, PlayerDailyActivity, PointsTransaction,
+    ClanMembershipEvent, Announcement, ServerMessageTemplate, ScheduledRestart, PlayerDailyActivity,
+    PointsTransaction,
 )
 from ..auth import get_password_hash, verify_password
 from ..rate_limit import limiter
@@ -39,6 +41,7 @@ from ..schemas import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 # ─── Game Plugin Integration ──────────────────────────────────────────────────
@@ -309,6 +312,54 @@ async def plugin_report_session(
     return {"success": True}
 
 
+async def _record_clan_membership_events(db: AsyncSession, server_num: int, new_clans: list) -> None:
+    """Diffs the OLD GameClanMember roster (still in the DB at call time — must run
+    BEFORE the delete-and-reinsert below wipes it) against the NEW incoming payload's
+    roster, per clan_guid, and stages a ClanMembershipEvent row (via db.add(), not
+    committed here) for every steam_id that's newly present ("joined") or newly absent
+    ("left"). clan_guid (not GameClan.id) is the join key on both sides since the old
+    GameClan row is about to be deleted and a new one reinserted with a different id —
+    clan_guid is the only thing stable across that churn. Deliberately does not
+    db.commit(): the caller's own try/except decides whether these staged rows ride
+    along with the main sync's commit or get silently dropped on failure — see the call
+    site's docstring note for why a history-logging failure must never touch the actual
+    sync's core behavior."""
+    old_rows = (await db.execute(
+        select(GameClan.clan_guid, GameClan.name, GameClanMember.steam_id, GameClanMember.character_name)
+        .join(GameClanMember, GameClanMember.clan_id == GameClan.id)
+        .where(GameClan.server_num == server_num)
+    )).all()
+    old_by_guid: dict = {}  # clan_guid -> {steam_id: (clan_name, character_name)}
+    for clan_guid, clan_name, steam_id, character_name in old_rows:
+        old_by_guid.setdefault(clan_guid, {})[steam_id] = (clan_name, character_name)
+
+    new_by_guid: dict = {}
+    for clan_in in new_clans:
+        new_by_guid[clan_in.clan_guid] = {
+            member_in.steam_id: (clan_in.name, member_in.character_name)
+            for member_in in clan_in.members
+        }
+
+    now = datetime.now(timezone.utc)
+    for clan_guid in old_by_guid.keys() | new_by_guid.keys():
+        old_members = old_by_guid.get(clan_guid, {})
+        new_members = new_by_guid.get(clan_guid, {})
+        for steam_id in new_members.keys() - old_members.keys():
+            clan_name, character_name = new_members[steam_id]
+            db.add(ClanMembershipEvent(
+                server_num=server_num, clan_guid=clan_guid, clan_name=clan_name,
+                steam_id=steam_id, character_name=character_name,
+                event_type="joined", recorded_at=now,
+            ))
+        for steam_id in old_members.keys() - new_members.keys():
+            clan_name, character_name = old_members[steam_id]
+            db.add(ClanMembershipEvent(
+                server_num=server_num, clan_guid=clan_guid, clan_name=clan_name,
+                steam_id=steam_id, character_name=character_name,
+                event_type="left", recorded_at=now,
+            ))
+
+
 @router.post("/api/plugin/clans/sync")
 @limiter.limit("30/minute")
 async def plugin_clans_sync(
@@ -332,7 +383,19 @@ async def plugin_clans_sync(
     the next insert can get the SAME id, causing every previous cycle's "orphaned" rows to
     silently reattach and pile up. So we must delete members/bases explicitly, scoped by
     clan id, before deleting the clans themselves. See models.py for the same note near
-    the FK columns."""
+    the FK columns.
+
+    Also stages ClanMembershipEvent join/leave rows (see _record_clan_membership_events)
+    by diffing the about-to-be-wiped OLD roster against this payload's NEW one — purely
+    additive history alongside the delete-and-reinsert below, never allowed to affect it:
+    wrapped in its own try/except that only logs a warning on failure, same "never break
+    the caller" posture send_push() documents in helpers.py, since a bug in the diff
+    logic is not a reason to fail an otherwise-healthy roster sync."""
+    try:
+        await _record_clan_membership_events(db, body.server_num, body.clans)
+    except Exception:
+        logger.warning("Failed to record clan membership history for server_num=%s", body.server_num, exc_info=True)
+
     clan_ids_result = await db.execute(
         select(GameClan.id).where(GameClan.server_num == body.server_num)
     )

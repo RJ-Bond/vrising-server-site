@@ -465,6 +465,86 @@ async def test_admin_grant_requires_admin_role(client, db_session):
     assert r.status_code == 403
 
 
+# ─── Admin bulk points grant ─────────────────────────────────────────────────
+
+async def test_admin_grant_bulk_all_valid_identifiers_succeed(client, db_session):
+    admin = await _make_user(db_session, "AdminBulkGranter", role="admin")
+    u1 = await _make_user(db_session, "BulkTarget1", steam_id="76500000000000201", points_balance=0)
+    u2 = await _make_user(db_session, "BulkTarget2", points_balance=10)
+
+    r = await client.post(
+        "/api/admin/points/grant-bulk",
+        json={"identifiers": ["BulkTarget1", u2.username], "delta": 100, "reason": "donation", "note": "batch"},
+        headers=_bearer(admin),
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["succeeded"] == 2
+    assert body["failed"] == 0
+    results_by_identifier = {row["identifier"]: row for row in body["results"]}
+    assert results_by_identifier["BulkTarget1"]["success"] is True
+    assert results_by_identifier["BulkTarget1"]["balance_after"] == 100
+    assert results_by_identifier[u2.username]["success"] is True
+    assert results_by_identifier[u2.username]["balance_after"] == 110
+
+    await db_session.refresh(u1)
+    await db_session.refresh(u2)
+    assert u1.points_balance == 100
+    assert u2.points_balance == 110
+
+
+async def test_admin_grant_bulk_by_steam_id(client, db_session):
+    admin = await _make_user(db_session, "AdminBulkGranterSteam", role="admin")
+    user = await _make_user(db_session, "SteamBulkTarget", steam_id="76500000000000202", points_balance=0)
+
+    r = await client.post(
+        "/api/admin/points/grant-bulk",
+        json={"identifiers": [user.steam_id], "delta": 50},
+        headers=_bearer(admin),
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["succeeded"] == 1
+    assert body["results"][0]["username"] == "SteamBulkTarget"
+
+    await db_session.refresh(user)
+    assert user.points_balance == 50
+
+
+async def test_admin_grant_bulk_mixed_valid_invalid_reports_per_entry(client, db_session):
+    admin = await _make_user(db_session, "AdminBulkMixed", role="admin")
+    valid_user = await _make_user(db_session, "ValidBulkTarget", points_balance=0)
+
+    r = await client.post(
+        "/api/admin/points/grant-bulk",
+        json={"identifiers": ["ValidBulkTarget", "NoSuchUserAtAll"], "delta": 25},
+        headers=_bearer(admin),
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["succeeded"] == 1
+    assert body["failed"] == 1
+    results_by_identifier = {row["identifier"]: row for row in body["results"]}
+    assert results_by_identifier["ValidBulkTarget"]["success"] is True
+    assert results_by_identifier["NoSuchUserAtAll"]["success"] is False
+    assert results_by_identifier["NoSuchUserAtAll"]["error"]
+
+    # The valid grant must still have gone through despite the other entry failing.
+    await db_session.refresh(valid_user)
+    assert valid_user.points_balance == 25
+
+
+async def test_admin_grant_bulk_requires_admin_role(client, db_session):
+    user = await _make_user(db_session, "NotAdminBulkGranter", role="user")
+    target = await _make_user(db_session, "BulkForbiddenTarget", points_balance=0)
+    r = await client.post(
+        "/api/admin/points/grant-bulk",
+        json={"identifiers": [target.username], "delta": 10},
+        headers=_bearer(user),
+    )
+    assert r.status_code == 403
+
+
 # ─── Admin shop catalog CRUD ─────────────────────────────────────────────────
 
 async def test_admin_create_update_delete_shop_item(client, db_session):

@@ -775,6 +775,20 @@ class GameClanDetailOut(GameClanOut):
     members: list[GameClanMemberOut] = []
 
 
+class ClanMembershipEventOut(BaseModel):
+    """One row of GET /api/clans/{clan_id}/history — see models.py's
+    ClanMembershipEvent for why clan_name/character_name are point-in-time snapshots
+    rather than live-joined values."""
+    id: int
+    clan_name: str
+    steam_id: str
+    character_name: str
+    event_type: str  # "joined" | "left"
+    recorded_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class GameClanLeaderboardOut(BaseModel):
     """One row of GET /api/clans/leaderboard — ranked by total combat power summed
     across the clan's FULL roster (unlike GameClanOut.member_preview, which is capped
@@ -1048,6 +1062,57 @@ class PointsGrantIn(BaseModel):
     @classmethod
     def note_len(cls, v: Optional[str]) -> Optional[str]:
         return v[:256] if v else v
+
+
+class PointsGrantBulkIn(BaseModel):
+    """Body for POST /api/admin/points/grant-bulk — same delta/reason/note as
+    PointsGrantIn but applied to many users at once. Each entry in `identifiers` is
+    resolved against EITHER User.username OR User.steam_id (whichever matches) rather
+    than requiring the numeric user_id PointsGrantIn needs, since an admin pasting a
+    list from in-game chat/Discord typically has usernames or SteamIDs on hand, not
+    internal ids. See the endpoint for why this is a per-entry success/failure result
+    rather than an all-or-nothing transaction."""
+    identifiers: list[str]
+    delta: int
+    reason: str = "donation"
+    note: Optional[str] = None
+
+    @field_validator("delta")
+    @classmethod
+    def delta_not_zero(cls, v: int) -> int:
+        if v == 0:
+            raise ValueError("delta cannot be 0")
+        return v
+
+    @field_validator("note")
+    @classmethod
+    def note_len(cls, v: Optional[str]) -> Optional[str]:
+        return v[:256] if v else v
+
+    @field_validator("identifiers")
+    @classmethod
+    def identifiers_bounds(cls, v: list[str]) -> list[str]:
+        cleaned = [s.strip() for s in v if s and s.strip()]
+        if not cleaned:
+            raise ValueError("identifiers must not be empty")
+        if len(cleaned) > 200:
+            raise ValueError("too many identifiers (max 200)")
+        return cleaned
+
+
+class PointsGrantBulkEntryResult(BaseModel):
+    identifier: str
+    success: bool
+    user_id: Optional[int] = None
+    username: Optional[str] = None
+    balance_after: Optional[int] = None
+    error: Optional[str] = None
+
+
+class PointsGrantBulkOut(BaseModel):
+    results: list[PointsGrantBulkEntryResult]
+    succeeded: int
+    failed: int
 
 
 class PointsTransactionOut(BaseModel):

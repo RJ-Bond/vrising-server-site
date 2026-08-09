@@ -2666,6 +2666,59 @@
         </div>
       </div>
 
+      <!-- Bulk grant — own full-width row (a lone 3rd card in the 2-col grid above would
+           leave an awkward empty gap next to it), same "grid-template-columns:1fr" override
+           the nickname-change row below already uses for exactly this reason. -->
+      <div class="s-row" style="grid-template-columns:1fr;">
+        <div class="s-card">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(150,0,28,.18);border:1px solid rgba(180,0,40,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e05575" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+            </div>
+            <div>
+              <h2>Массовое начисление</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Список игроков (имя пользователя или SteamID), через запятую или с новой строки</p>
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1.25rem;">
+            <div class="s-field" style="grid-column:1 / -1;">
+              <label>Игроки</label>
+              <div class="s-field-row">
+                <textarea id="grant-bulk-identifiers" class="dark-input" rows="4" style="resize:vertical;font-family:inherit;width:100%;" placeholder="Player1, Player2&#10;76561198000000001"></textarea>
+              </div>
+            </div>
+            <div class="s-field">
+              <label>Кол-во очков (может быть отрицательным)</label>
+              <div class="s-field-row">
+                <input id="grant-bulk-delta" type="number" class="dark-input" placeholder="500">
+              </div>
+            </div>
+            <div class="s-field">
+              <label>Причина</label>
+              <div class="s-field-row">
+                <select id="grant-bulk-reason" class="dark-input">
+                  <option value="donation">Донат</option>
+                  <option value="admin_adjust">Коррекция</option>
+                </select>
+              </div>
+            </div>
+            <div class="s-field" style="grid-column:1 / -1;">
+              <label>Заметка (необязательно)</label>
+              <div class="s-field-row">
+                <input id="grant-bulk-note" class="dark-input" maxlength="256" placeholder="Комментарий">
+              </div>
+            </div>
+            <div class="s-field" style="grid-column:1 / -1;">
+              <div class="s-field-row">
+                <button class="s-save-btn" onclick="grantPointsBulk()">Начислить всем</button>
+                <span id="grant-bulk-msg" style="font-size:.78rem;display:none;align-self:center;"></span>
+              </div>
+            </div>
+          </div>
+          <div id="grant-bulk-results" style="display:none;margin-top:.5rem;max-height:180px;overflow-y:auto;font-size:.72rem;"></div>
+        </div>
+      </div>
+
       <!-- Nickname-change config (spend side — the plugin's .nick chat command) -->
       <div class="s-row" style="grid-template-columns:1fr;">
         <div class="s-card">
@@ -6729,6 +6782,38 @@ async function grantPoints() {
     document.getElementById('grant-username').value = '';
     document.getElementById('grant-delta').value = '';
     document.getElementById('grant-note').value = '';
+  } catch { show('Ошибка соединения', false); }
+}
+
+async function grantPointsBulk() {
+  const msg = document.getElementById('grant-bulk-msg');
+  const resultsBox = document.getElementById('grant-bulk-results');
+  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = 'inline'; };
+  const raw = document.getElementById('grant-bulk-identifiers').value;
+  const identifiers = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+  const delta = parseInt(document.getElementById('grant-bulk-delta').value);
+  resultsBox.style.display = 'none';
+  resultsBox.innerHTML = '';
+  if (!identifiers.length) return show('Укажите хотя бы одного игрока', false);
+  if (!delta) return show('Укажите ненулевое количество очков', false);
+  const body = {
+    identifiers, delta,
+    reason: document.getElementById('grant-bulk-reason').value,
+    note: document.getElementById('grant-bulk-note').value.trim() || null,
+  };
+  try {
+    const r = await fetch(`${API}/admin/points/grant-bulk`, {method:'POST', credentials:'include', headers:authH(), body:JSON.stringify(body)});
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) return show(d.detail || 'Ошибка', false);
+    show(`Успешно: ${d.succeeded}, ошибок: ${d.failed}`, d.failed === 0);
+    resultsBox.style.display = 'block';
+    resultsBox.innerHTML = (d.results || []).map(res => `
+      <div style="display:flex;justify-content:space-between;gap:.5rem;padding:.2rem 0;border-bottom:1px solid rgba(255,255,255,.05);">
+        <span style="color:${res.success ? '#4ade80' : '#f87171'};">${res.success ? '✓' : '✗'} ${esc(res.identifier)}</span>
+        <span style="color:var(--muted);">${res.success ? `баланс ${res.balance_after}` : esc(res.error || 'ошибка')}</span>
+      </div>
+    `).join('');
+    if (d.failed === 0) document.getElementById('grant-bulk-identifiers').value = '';
   } catch { show('Ошибка соединения', false); }
 }
 

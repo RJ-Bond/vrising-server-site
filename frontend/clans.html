@@ -973,6 +973,7 @@ async function openClanDetail(clanId) {
       .map(r => roleCountLabel(r, roleCounts[r]))
       .join(' · ');
     const updated = timeAgoShort(clan.updated_at);
+    const historyHtml = await loadClanHistoryHtml(clanId);
     body.innerHTML = `
       <h2 class="gothic" style="font-size:.95rem;font-weight:700;letter-spacing:.06em;color:var(--text);margin-bottom:.2rem;padding-right:1.5rem;">${esc(clan.name)}</h2>
       <div style="font-size:.68rem;color:var(--gold);margin-bottom:.5rem;">${esc(clan.server_name || '')}</div>
@@ -983,10 +984,42 @@ async function openClanDetail(clanId) {
       <div style="margin-bottom:.4rem;"></div>
       <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem;">Участники (${members.length})</div>
       <div>${members.length ? members.map(memberRowHtml).join('') : '<p style="font-size:.78rem;color:var(--muted);">Нет участников</p>'}</div>
+      ${historyHtml}
     `;
   } catch (err) {
     body.innerHTML = `<p style="font-size:.82rem;color:#f87171;">Не удалось загрузить данные клана</p>`;
   }
+}
+
+/* ── Recent join/leave activity (ClanMembershipEvent, GET /api/clans/{id}/history) ──
+   Best-effort and fetched separately from the main clan detail: a failure here (or an
+   empty history — e.g. no plugin sync has happened since this feature shipped) must
+   never break the rest of the modal, so it degrades to an empty string rather than
+   throwing into openClanDetail()'s own try/catch. ── */
+async function loadClanHistoryHtml(clanId) {
+  try {
+    const r = await fetch(`${API}/clans/${clanId}/history`);
+    if (!r.ok) return '';
+    const events = await r.json();
+    if (!Array.isArray(events) || !events.length) return '';
+    return `
+      <div style="margin-top:.8rem;padding-top:.6rem;border-top:1px solid rgba(255,255,255,.06);">
+        <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.4rem;">Последние изменения состава</div>
+        <div>${events.map(historyRowHtml).join('')}</div>
+      </div>
+    `;
+  } catch { return ''; }
+}
+function historyRowHtml(e) {
+  const isJoin = e.event_type === 'joined';
+  const color = isJoin ? '#4ade80' : '#f87171';
+  const verb = isJoin ? 'вступил(а) в клан' : 'покинул(а) клан';
+  return `
+    <div style="display:flex;justify-content:space-between;gap:.5rem;font-size:.72rem;padding:.25rem 0;color:var(--muted);">
+      <span><span style="color:${color};">${isJoin ? '→' : '←'}</span> ${esc(e.character_name)} ${verb}</span>
+      <span style="opacity:.7;white-space:nowrap;">${esc(timeAgoShort(e.recorded_at))}</span>
+    </div>
+  `;
 }
 function closeClanDetail() {
   document.getElementById('clan-detail-modal').classList.remove('open');

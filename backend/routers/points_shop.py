@@ -20,6 +20,9 @@ from ..schemas import (
     ShopRedemptionResolveIn,
     ShopRedemptionOut,
     PointsGrantIn,
+    PointsGrantBulkIn,
+    PointsGrantBulkEntryResult,
+    PointsGrantBulkOut,
     PointsTransactionOut,
 )
 
@@ -246,6 +249,58 @@ async def grant_points(
     out = PointsTransactionOut.model_validate(tx)
     out.username = user.username
     return out
+
+
+@router.post("/api/admin/points/grant-bulk", response_model=PointsGrantBulkOut)
+async def grant_points_bulk(
+    body: PointsGrantBulkIn,
+    current_user: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bulk variant of POST /api/admin/points/grant — one shared delta/reason/note
+    applied to every identifier in body.identifiers, each resolved against EITHER
+    User.username OR User.steam_id (see PointsGrantBulkIn's docstring for why). Reuses
+    the exact same _award_points ledger helper the single-grant endpoint uses — no
+    duplicated balance/transaction logic. Deliberately per-entry success/failure rather
+    than one all-or-nothing transaction: an admin pasting a list of 50 names shouldn't
+    lose the other 49 valid grants because of one typo'd username, same reasoning as
+    POST /api/admin/users/bulk's per-row filtering in routers/users.py."""
+    reason = (body.reason or "").strip()[:32] or "admin_adjust"
+    results: list[PointsGrantBulkEntryResult] = []
+    for identifier in body.identifiers:
+        user_res = await db.execute(
+            select(User).where(or_(User.username == identifier, User.steam_id == identifier))
+        )
+        user = user_res.scalars().first()
+        if user is None:
+            results.append(PointsGrantBulkEntryResult(
+                identifier=identifier, success=False, error="Пользователь не найден",
+            ))
+            continue
+        await _award_points(db, user, body.delta, reason, body.note)
+        await _audit(
+            db, current_user.id, "points.grant", target_type="user", target_id=user.id,
+            detail=f"bulk {body.delta:+d} ({reason}): {body.note or ''}",
+        )
+        db.add(Notification(
+            user_id=user.id, type="points_grant",
+            data=json.dumps({"delta": body.delta, "reason": reason, "note": body.note or ""}, ensure_ascii=False),
+        ))
+        results.append(PointsGrantBulkEntryResult(
+            identifier=identifier, success=True, user_id=user.id, username=user.username,
+            balance_after=user.points_balance,
+        ))
+    await db.commit()
+    for r in results:
+        if r.success:
+            asyncio.create_task(send_push(
+                r.user_id,
+                "Начислены очки",
+                f"{body.delta:+d} очков" + (f": {body.note}" if body.note else ""),
+                "/profile.html",
+            ))
+    succeeded = sum(1 for r in results if r.success)
+    return PointsGrantBulkOut(results=results, succeeded=succeeded, failed=len(results) - succeeded)
 
 
 @router.get("/api/admin/points/transactions")
