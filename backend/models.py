@@ -195,7 +195,22 @@ class PlayerRecord(Base):
     session_count = Column(Integer, nullable=False, default=0)
     steam_id = Column(String(32), nullable=True, index=True)  # set once the plugin reports a session for this row; NULL for A2S-only rows never claimed by a real session report
 
-    __table_args__ = (UniqueConstraint("server_num", "player_name", name="uq_player_server"),)
+    __table_args__ = (
+        UniqueConstraint("server_num", "player_name", name="uq_player_server"),
+        # GET /api/leaderboard (backend/routers/leaderboard.py) is this app's single
+        # hottest read path — every page load runs `WHERE server_num = ? ORDER BY
+        # total_seconds DESC LIMIT ... OFFSET ...` for the default period="all" view.
+        # The uq_player_server unique index above is keyed (server_num, player_name),
+        # so it can't serve the total_seconds ordering — without this, every leaderboard
+        # page is a full-table scan-and-sort of player_records once that table has more
+        # than a handful of rows.
+        Index("ix_player_records_server_seconds", "server_num", "total_seconds"),
+        # Same endpoint's period="day"/"week"/"month" filters run
+        # `WHERE server_num = ? AND last_seen >= cutoff`, still ordered by total_seconds
+        # in Python-visible SQL but filtered on last_seen first — this index lets that
+        # filter use an index seek instead of a table scan.
+        Index("ix_player_records_server_lastseen", "server_num", "last_seen"),
+    )
 
 
 class PlayerRankSnapshot(Base):
@@ -236,7 +251,18 @@ class Comment(Base):
     news = relationship("News", back_populates="comments")
     replies = relationship("Comment", foreign_keys="[Comment.parent_id]", lazy="noload")
 
-    __table_args__ = (Index("ix_comments_news_id", "news_id"),)
+    # GET /api/news/{slug}/comments (backend/routers/news.py) runs
+    # `WHERE news_id = ? ORDER BY created_at ASC` on every article page load, fetching
+    # the whole thread (it builds the reply tree in Python, so it can't offset/limit in
+    # SQL). ix_comments_news_id below covers the filter but still forces a separate sort
+    # step once one article's thread grows past a handful of comments — the composite
+    # index lets SQLite return rows already in created_at order instead. Added alongside
+    # rather than replacing ix_comments_news_id (kept additive/low-risk — see the
+    # create_all()-on-an-existing-DB caveat on the other new indexes in this file).
+    __table_args__ = (
+        Index("ix_comments_news_id", "news_id"),
+        Index("ix_comments_news_id_created", "news_id", "created_at"),
+    )
 
 
 class Setting(Base):
@@ -297,7 +323,15 @@ class Notification(Base):
     data = Column(Text, nullable=False, default="{}")  # JSON: {comment_id, news_slug, news_title, from_username, preview}
     read = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
-    __table_args__ = (Index("ix_notifications_user", "user_id", "read"),)
+    __table_args__ = (
+        Index("ix_notifications_user", "user_id", "read"),
+        # ix_notifications_user above (user_id, read) serves POST /api/notifications/
+        # read-all's `WHERE user_id = ? AND read = false` UPDATE. GET /api/notifications
+        # (backend/routers/notifications.py) is a different access pattern on the same
+        # table — `WHERE user_id = ? ORDER BY created_at DESC LIMIT 50` with no read
+        # filter — which (user_id, read) doesn't help order; this composite does.
+        Index("ix_notifications_user_created", "user_id", "created_at"),
+    )
 
 
 class PushSubscription(Base):

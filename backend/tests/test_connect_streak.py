@@ -37,6 +37,22 @@ async def test_requires_plugin_key(client, db_session):
     assert r.status_code == 401
 
 
+async def test_wrong_plugin_key_is_rejected(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.post(
+        "/api/plugin/connect-streak",
+        json={"steam_id": "111", "server_num": 1},
+        headers=_hdr("not-the-real-key"),
+    )
+    assert r.status_code == 401
+
+
+async def test_missing_steam_id_returns_422(client, db_session):
+    await _set_plugin_key(db_session)
+    r = await client.post("/api/plugin/connect-streak", json={"server_num": 1}, headers=_hdr())
+    assert r.status_code == 422
+
+
 async def test_first_ever_connect_returns_streak_of_one(client, db_session):
     await _set_plugin_key(db_session)
     r = await client.post(

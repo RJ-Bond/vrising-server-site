@@ -39,6 +39,18 @@ async def test_session_report_with_wrong_plugin_key_is_rejected(client, db_sessi
     assert r.status_code == 401
 
 
+async def test_session_report_missing_required_field_returns_422(client, db_session):
+    await _set_plugin_key(db_session)
+    # session_seconds has no default in PluginSessionReport (backend/schemas.py) — a
+    # payload missing it must fail validation before ever touching the DB.
+    r = await client.post(
+        "/api/plugin/sessions",
+        json={"server_num": 1, "steam_id": "76500000000000099", "character_name": "Malformed"},
+        headers=_hdr(),
+    )
+    assert r.status_code == 422
+
+
 async def test_first_session_creates_new_record(client, db_session):
     await _set_plugin_key(db_session)
     r = await client.post(
