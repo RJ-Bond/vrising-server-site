@@ -1,7 +1,7 @@
 """add auto_flag_rules table
 
 Revision ID: a546dcd125f8
-Revises: e68569e42d32
+Revises: e44508fdf945
 Create Date: 2026-08-09 08:05:07.861701
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'a546dcd125f8'
-down_revision: Union[str, None] = 'e68569e42d32'
+down_revision: Union[str, None] = 'e44508fdf945'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

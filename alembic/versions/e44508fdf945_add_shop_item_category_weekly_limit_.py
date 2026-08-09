@@ -1,7 +1,7 @@
 """add shop item category, weekly limit, wishlist
 
 Revision ID: e44508fdf945
-Revises: e68569e42d32
+Revises: 134db5e62c28
 Create Date: 2026-08-09 08:01:24.248080
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'e44508fdf945'
-down_revision: Union[str, None] = 'e68569e42d32'
+down_revision: Union[str, None] = '134db5e62c28'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
