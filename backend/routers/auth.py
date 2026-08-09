@@ -33,6 +33,8 @@ from ..helpers import (
     _totp_attempts_exceeded,
     _record_failed_totp,
     _reset_failed_totp,
+    _issue_recovery_codes,
+    _consume_recovery_code,
 )
 from ..schemas import (
     UserRegister,
@@ -96,10 +98,25 @@ async def login(request: Request, body: UserLogin, response: Response, db: Async
         if _totp_attempts_exceeded(user.id):
             logger.warning("Failed login for username=%r from ip=%s (TOTP attempts exceeded)", body.username, client_ip)
             raise HTTPException(status_code=401, detail="Слишком много неверных попыток 2FA, попробуйте позже")
-        if not body.totp_code or not pyotp.TOTP(user.totp_secret).verify(body.totp_code, valid_window=1):
+        # Accept either a live TOTP code or a single-use recovery code in the same
+        # `totp_code` field (see frontend/login.html's "use a recovery code instead"
+        # toggle) — this is the account's escape hatch for a lost authenticator
+        # device, so it must count against and reset the same brute-force limiter as
+        # a regular TOTP attempt (same account, same risk).
+        used_recovery = False
+        totp_ok = bool(body.totp_code) and pyotp.TOTP(user.totp_secret).verify(body.totp_code, valid_window=1)
+        if not totp_ok and body.totp_code:
+            used_recovery = await _consume_recovery_code(db, user.id, body.totp_code)
+            totp_ok = used_recovery
+        if not totp_ok:
             _record_failed_totp(user.id)
             logger.warning("Failed login for username=%r from ip=%s (invalid TOTP code)", body.username, client_ip)
             raise HTTPException(status_code=401, detail="Требуется код 2FA")
+        if used_recovery:
+            # Persist the used_at stamp from _consume_recovery_code() so the same
+            # code can never be replayed.
+            await db.commit()
+            logger.info("Login for username=%r used a 2FA recovery code (ip=%s)", body.username, client_ip)
         _reset_failed_totp(user.id)
     token = create_access_token({"sub": str(user.id)})
     _set_auth_cookie(response, token)
@@ -249,9 +266,14 @@ async def totp_enable(
     user = result.scalar_one()
     user.totp_secret = secret
     user.totp_enabled = True
+    # Issue the recovery-code batch in the same request that turns 2FA on — a user
+    # locked out later with no codes saved would otherwise have no way back in
+    # short of an admin editing the DB by hand. Plaintext codes are returned here
+    # ONCE; only their bcrypt hashes are kept (see TotpRecoveryCode in models.py).
+    recovery_codes = await _issue_recovery_codes(db, current_user.id)
     await db.commit()
     _totp_pending.pop(current_user.id, None)
-    return {"ok": True}
+    return {"ok": True, "recovery_codes": recovery_codes}
 
 
 @router.post("/api/auth/2fa/disable")
@@ -273,6 +295,30 @@ async def totp_disable(
     user.totp_secret = None
     await db.commit()
     return {"ok": True}
+
+
+@router.post("/api/auth/2fa/recovery-codes/regenerate")
+@limiter.limit("5/minute")
+async def totp_recovery_codes_regenerate(
+    request: Request,
+    body: TotpCodeBody,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Invalidates every unused recovery code and issues a fresh batch — for a user
+    who still has their authenticator (e.g. they suspect an old code leaked, or just
+    burned through several) and wants a clean set. Gated behind a live TOTP code,
+    same friction level as /2fa/disable, since this is a security-sensitive action
+    on an already-enabled account (not the "I lost my authenticator" case — that's
+    what the recovery codes themselves are for)."""
+    import pyotp
+    if not current_user.totp_enabled:
+        raise HTTPException(400, "2FA не включена")
+    if not pyotp.TOTP(current_user.totp_secret).verify(body.code, valid_window=1):
+        raise HTTPException(400, "Неверный код")
+    recovery_codes = await _issue_recovery_codes(db, current_user.id)
+    await db.commit()
+    return {"ok": True, "recovery_codes": recovery_codes}
 
 
 @router.post("/api/auth/forgot-password")
