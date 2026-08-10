@@ -11,7 +11,7 @@
 set -u
 page="${1:?usage: preview-mock.sh <page.html> [mobile|desktop] [width] [height]}"
 mode="${2:-desktop}"; width="${3:-}"; height="${4:-4000}"
-port=8977
+port=${PREVIEW_PORT:-8977}
 root="$(cd "$(dirname "$0")/.." && pwd)"
 winroot="$(cygpath -m "$root" 2>/dev/null || printf '%s' "$root" | sed -E 's#^/([a-zA-Z])/#\1:/#')"
 CHROME="/c/Program Files/Google/Chrome/Application/chrome.exe"

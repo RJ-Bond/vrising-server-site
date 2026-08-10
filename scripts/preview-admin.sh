@@ -12,7 +12,7 @@
 # inside a 390px iframe; headless Chrome ignores <meta viewport> otherwise).
 set -u
 mode="${1:-mobile}"; width="${2:-}"; height="${3:-4000}"; role="${4:-admin}"
-port=8977
+port=${PREVIEW_PORT:-8977}
 root="$(cd "$(dirname "$0")/.." && pwd)"
 winroot="$(cygpath -m "$root" 2>/dev/null || printf '%s' "$root" | sed -E 's#^/([a-zA-Z])/#\1:/#')"
 CHROME="/c/Program Files/Google/Chrome/Application/chrome.exe"

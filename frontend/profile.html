@@ -230,6 +230,10 @@
   #nav-mob-btn { display:flex; }
   #nav-logout-btn { display:none !important; }
   #notif-bell-wrap { display:none !important; }
+  /* Same destination is already in #mob-menu ("🏠 Главная") — without this the
+     bare ghost link had no mobile hiding rule (unlike every other secondary nav
+     item on this page), so it wrapped the nav onto two lines below ~420px. */
+  #nav-home-link { display:none !important; }
   #profile-main { padding:0 .5rem !important; }
   #profile-main .g-card { margin-bottom:.75rem !important; }
 }
@@ -250,7 +254,7 @@
   <div style="max-width:680px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);"></a>
     <div style="display:flex;align-items:center;gap:.6rem;">
-      <a href="/" class="btn btn-ghost" style="font-size:.72rem;" data-i18n-ru="← Главная" data-i18n-en="← Home">← Главная</a>
+      <a href="/" id="nav-home-link" class="btn btn-ghost" style="font-size:.72rem;" data-i18n-ru="← Главная" data-i18n-en="← Home">← Главная</a>
       <div id="notif-bell-wrap" style="position:relative;display:none;">
         <button id="notif-bell-btn" onclick="toggleNotifPanel()"
           style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#9488a8;transition:all .2s;position:relative;"
