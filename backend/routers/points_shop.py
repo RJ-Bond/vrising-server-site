@@ -8,9 +8,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, update, delete
 
 from ..database import get_db
-from ..models import User, PointsTransaction, ShopItem, ShopRedemption, ShopWishlistItem, Notification
+from ..models import User, PointsTransaction, ShopItem, ShopRedemption, ShopWishlistItem, Notification, PlayerRecord
 from ..auth import get_admin_user, get_current_user
-from ..helpers import _audit, _award_points, _fmt_dt, activity_broadcast, send_push
+from ..helpers import _audit, _award_points, _fmt_dt, _get_points_config, activity_broadcast, send_push
 from ..rate_limit import limiter
 from ..schemas import (
     ShopItemCreate,
@@ -337,6 +337,77 @@ async def list_points_transactions_admin(
         out.username = username
         items.append(out)
     return {"total": total, "page": page, "per_page": per_page, "items": items}
+
+
+@router.get("/api/admin/points/diagnostics")
+async def points_diagnostics(
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    """Answers "is automatic point-earning actually working?" without needing direct DB
+    access — built after a support question where playtime/streak points appeared to
+    have stopped and the two most likely causes (unlinked accounts, and the earning
+    hooks not firing at all) weren't visible anywhere in the admin panel. Both
+    automatic earn paths (POST /api/plugin/sessions "playtime", POST
+    /api/plugin/connect-streak "streak" — see plugin_integration.py) silently no-op
+    when PlayerRecord.steam_id doesn't match any User.steam_id, which looks identical
+    to "the mechanism is broken" from the admin's side unless linked-vs-unlinked is
+    surfaced explicitly."""
+    cutoff = datetime.utcnow() - timedelta(days=14)
+    week_cutoff = datetime.utcnow() - timedelta(days=7)
+
+    active_total = (await db.execute(
+        select(func.count(func.distinct(PlayerRecord.steam_id)))
+        .where(PlayerRecord.steam_id.isnot(None), PlayerRecord.last_seen >= cutoff)
+    )).scalar_one()
+    active_linked = (await db.execute(
+        select(func.count(func.distinct(PlayerRecord.steam_id)))
+        .select_from(PlayerRecord)
+        .join(User, User.steam_id == PlayerRecord.steam_id)
+        .where(PlayerRecord.steam_id.isnot(None), PlayerRecord.last_seen >= cutoff)
+    )).scalar_one()
+
+    def _reason_stats(reason: str):
+        return (
+            select(func.count(PointsTransaction.id), func.max(PointsTransaction.created_at))
+            .where(PointsTransaction.reason == reason)
+        )
+
+    playtime_count, playtime_last = (await db.execute(_reason_stats("playtime"))).one()
+    streak_count, streak_last = (await db.execute(_reason_stats("streak"))).one()
+    playtime_recent = (await db.execute(
+        select(func.count(PointsTransaction.id))
+        .where(PointsTransaction.reason == "playtime", PointsTransaction.created_at >= week_cutoff)
+    )).scalar_one()
+    streak_recent = (await db.execute(
+        select(func.count(PointsTransaction.id))
+        .where(PointsTransaction.reason == "streak", PointsTransaction.created_at >= week_cutoff)
+    )).scalar_one()
+
+    points_cfg = await _get_points_config(db)
+
+    return {
+        # Players seen in-game in the last 14 days (distinct PlayerRecord.steam_id) vs.
+        # how many of those steam_ids match a registered User — the gap is exactly the
+        # set of active players earning zero points regardless of settings, because
+        # both award hooks require a linked account to have anyone to credit.
+        "active_players_14d": active_total,
+        "active_players_linked_14d": active_linked,
+        "active_players_unlinked_14d": active_total - active_linked,
+        # Ever, and in the last 7 days — a zero "recent" count with a non-zero "ever"
+        # count points at the mechanism having stopped recently (config/plugin issue);
+        # zero for both, despite active+linked players, points at something else
+        # entirely (e.g. the two Settings rows below saved as 0).
+        "playtime_awards_total": playtime_count,
+        "playtime_awards_last_7d": playtime_recent,
+        "playtime_awards_last_at": _fmt_dt(playtime_last) if playtime_last else None,
+        "streak_awards_total": streak_count,
+        "streak_awards_last_7d": streak_recent,
+        "streak_awards_last_at": _fmt_dt(streak_last) if streak_last else None,
+        "points_per_minute_playtime": points_cfg["per_minute"],
+        "points_streak_bonus": points_cfg["streak_bonus"],
+        "points_streak_min_days": points_cfg["streak_min_days"],
+    }
 
 
 # ─── Points economy — shop (player-facing) ─────────────────────────────────────

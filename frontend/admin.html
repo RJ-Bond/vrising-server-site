@@ -2721,6 +2721,30 @@
         </div>
       </div>
 
+      <!-- Points-award diagnostics — own full-width row, same reasoning as the bulk-grant
+           row below (a lone 3rd card in the 2-col grid above would leave an awkward gap).
+           Built after a support question where playtime/streak points appeared to have
+           stopped: both automatic earn paths (POST /api/plugin/sessions "playtime", POST
+           /api/plugin/connect-streak "streak") silently no-op for a PlayerRecord.steam_id
+           that doesn't match any User.steam_id — from the admin's side that's
+           indistinguishable from "the mechanism is broken" unless linked-vs-unlinked and
+           recent-award activity are surfaced explicitly. See GET /api/admin/points/diagnostics. -->
+      <div class="s-row" style="grid-template-columns:1fr;">
+        <div class="s-card">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(150,0,28,.18);border:1px solid rgba(180,0,40,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e05575" stroke-width="1.8"><path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+            </div>
+            <div>
+              <h2>Диагностика начисления</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Реально ли сейчас начисляются очки за игру/стрик</p>
+            </div>
+            <button onclick="loadPointsDiagnostics()" class="btn-ghost" style="font-size:.72rem;margin-left:auto;">↻ Обновить</button>
+          </div>
+          <div id="points-diag-body" style="font-size:.82rem;color:var(--muted);">Загрузка…</div>
+        </div>
+      </div>
+
       <!-- Bulk grant — own full-width row (a lone 3rd card in the 2-col grid above would
            leave an awkward empty gap next to it), same "grid-template-columns:1fr" override
            the nickname-change row below already uses for exactly this reason. -->
@@ -6903,6 +6927,46 @@ async function loadShopCatalog() {
 
   loadEconomyConfig();
   loadGrantUserList();
+  loadPointsDiagnostics();
+}
+
+// "Is automatic point-earning actually working?" — see GET /api/admin/points/diagnostics'
+// own docstring for the full reasoning. Renders a plain vertical fact list rather than
+// another table/grid; this is a handful of numbers read once when something looks wrong,
+// not data anyone scans routinely.
+async function loadPointsDiagnostics() {
+  const body = document.getElementById('points-diag-body');
+  if (!body) return;
+  body.textContent = 'Загрузка…';
+  try {
+    const d = await fetch(`${API}/admin/points/diagnostics`, {credentials:'include', headers:authH()}).then(r => { if (!r.ok) { handleAuth(r); throw new Error(); } return r.json(); });
+    const unlinkedPct = d.active_players_14d > 0 ? Math.round(d.active_players_unlinked_14d / d.active_players_14d * 100) : 0;
+    // Amber warning line only when there's something to actually investigate — either a
+    // meaningful chunk of active players unlinked, or the mechanism looks stalled (has
+    // fired before, ever, but not in the last 7 days despite active+linked players now).
+    const warnings = [];
+    if (d.active_players_14d > 0 && unlinkedPct >= 20) {
+      warnings.push(`⚠ ${d.active_players_unlinked_14d} из ${d.active_players_14d} активных игроков (${unlinkedPct}%) не привязали аккаунт — им очки не начисляются в принципе.`);
+    }
+    if (d.active_players_linked_14d > 0 && d.playtime_awards_total > 0 && d.playtime_awards_last_7d === 0) {
+      warnings.push('⚠ Начисления за игру раньше происходили, но ни одного за последние 7 дней — похоже, механизм остановился (проверьте Plugin.EnableStreakMessage и статус подключения плагина).');
+    }
+    const row = (label, value) => `<div style="display:flex;justify-content:space-between;gap:1rem;padding:.3rem 0;"><span>${esc(label)}</span><span style="color:var(--text);font-weight:600;">${value}</span></div>`;
+    body.innerHTML = (warnings.length
+        ? `<div style="background:rgba(180,140,0,.12);border:1px solid rgba(201,169,74,.35);border-radius:.5rem;padding:.6rem .8rem;margin-bottom:.75rem;color:#e8c97a;font-size:.78rem;line-height:1.5;">${warnings.map(esc).join('<br>')}</div>`
+        : '')
+      + row('Активных игроков (14 дней)', d.active_players_14d)
+      + row('— из них с привязанным аккаунтом', d.active_players_linked_14d)
+      + row('— не привязано', d.active_players_unlinked_14d)
+      + `<div style="height:1px;background:rgba(150,0,28,.15);margin:.5rem 0;"></div>`
+      + row('Начислений за игру (всего)', d.playtime_awards_total)
+      + row('— за последние 7 дней', d.playtime_awards_last_7d)
+      + row('— последнее', d.playtime_awards_last_at ? fmtDateTime(d.playtime_awards_last_at) : '—')
+      + `<div style="height:1px;background:rgba(150,0,28,.15);margin:.5rem 0;"></div>`
+      + row('Начислений за стрик (всего)', d.streak_awards_total)
+      + row('— за последние 7 дней', d.streak_awards_last_7d)
+      + row('— последнее', d.streak_awards_last_at ? fmtDateTime(d.streak_awards_last_at) : '—');
+  } catch { body.textContent = 'Ошибка загрузки'; }
 }
 
 async function loadEconomyConfig() {
