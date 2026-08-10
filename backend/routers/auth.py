@@ -14,7 +14,7 @@ from ..models import User, PasswordReset
 from ..auth import (
     verify_password,
     get_password_hash,
-    create_access_token,
+    create_access_token_for_user,
     get_current_user,
     get_admin_user,
     revoke_token,
@@ -72,8 +72,8 @@ async def register(request: Request, body: UserRegister, response: Response, db:
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    token = create_access_token({"sub": str(user.id)})
-    _set_auth_cookie(response, token)
+    token = create_access_token_for_user(user)
+    _set_auth_cookie(response, token, user.role)
     return TokenOut(access_token=token, user=UserOut.model_validate(user))
 
 
@@ -118,8 +118,8 @@ async def login(request: Request, body: UserLogin, response: Response, db: Async
             await db.commit()
             logger.info("Login for username=%r used a 2FA recovery code (ip=%s)", body.username, client_ip)
         _reset_failed_totp(user.id)
-    token = create_access_token({"sub": str(user.id)})
-    _set_auth_cookie(response, token)
+    token = create_access_token_for_user(user)
+    _set_auth_cookie(response, token, user.role)
     return TokenOut(access_token=token, user=UserOut.model_validate(user))
 
 
@@ -202,8 +202,8 @@ async def change_password(
     now_utc = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
     await db.execute(text("UPDATE users SET revoke_before = :ts WHERE id = :uid"), {"ts": now_utc, "uid": current_user.id})
     await db.commit()
-    token = create_access_token({"sub": str(current_user.id)})
-    _set_auth_cookie(response, token)
+    token = create_access_token_for_user(user)
+    _set_auth_cookie(response, token, user.role)
     return {"ok": True, "access_token": token}
 
 
@@ -240,8 +240,8 @@ async def logout_everywhere(
     now_utc = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
     await db.execute(text("UPDATE users SET revoke_before = :ts WHERE id = :uid"), {"ts": now_utc, "uid": current_user.id})
     await db.commit()
-    token = create_access_token({"sub": str(current_user.id)})
-    _set_auth_cookie(response, token)
+    token = create_access_token_for_user(current_user)
+    _set_auth_cookie(response, token, current_user.role)
     return {"ok": True, "access_token": token}
 
 

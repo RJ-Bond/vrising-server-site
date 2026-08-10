@@ -73,7 +73,7 @@ from .helpers import (
 )
 from .auth import (
     get_password_hash,
-    create_access_token,
+    create_access_token_for_user,
     get_admin_user,
     get_optional_user,
     ROLE_LEVELS,
@@ -772,8 +772,8 @@ async def setup_complete(body: SetupComplete, response: Response, db: AsyncSessi
     db.add(welcome)
     await db.commit()
     await db.refresh(admin)
-    token = create_access_token({"sub": str(admin.id)})
-    _set_auth_cookie(response, token)
+    token = create_access_token_for_user(admin)
+    _set_auth_cookie(response, token, admin.role)
     return TokenOut(access_token=token, user=UserOut.model_validate(admin))
 
 
