@@ -3041,29 +3041,35 @@ const MILESTONES = [100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000
 const MILESTONE_BAND = 20;
 
 function applyMilestoneBanner(totalUsers) {
-  const banner = document.getElementById('milestone-banner');
-  const textEl = document.getElementById('milestone-banner-text');
-  if (!banner || !textEl) return;
+  const notice = document.getElementById('site-notice');
+  const iconEl = document.getElementById('site-notice-icon');
+  const textEl = document.getElementById('site-notice-text');
+  if (!notice || !textEl) return;
   const hit = MILESTONES.find(m => totalUsers >= m && totalUsers <= m + MILESTONE_BAND);
-  if (!hit) { banner.style.display = 'none'; return; }
-  // "Приветствуем N-го игрока" read fine as a one-time celebration but this banner
+  if (!hit) {
+    if (notice.dataset.kind === 'milestone') notice.style.display = 'none';
+    return;
+  }
+  if (localStorage.getItem('_milestoneBannerDismissed') === String(hit)) {
+    if (notice.dataset.kind === 'milestone') notice.style.display = 'none';
+    return;
+  }
+  // Restart notice takes priority over milestone — it's actionable/time-sensitive
+  // (a server is about to bounce), milestone is just celebratory. Two stacked
+  // notices reads as a wall of promo before any real content, so they share one
+  // slot and at most one shows. Race-safety: never overwrite an already-visible
+  // restart notice, regardless of which of the two independent fetches resolves
+  // first (loadRestartBanner() below does the mirror check the other direction).
+  if (notice.dataset.kind === 'restart' && notice.style.display !== 'none') return;
+  // "Приветствуем N-го игрока" read fine as a one-time celebration but this notice
   // actually stays up for every visitor for as long as total_users sits in the band
   // (see MILESTONE_BAND above) — could be days. Reworded to not imply a single
   // just-happened event on a repeat visit.
   textEl.textContent = `Сообщество уже больше ${hit.toLocaleString('ru-RU')} игроков!`;
-  // Restart banner takes priority — it's actionable/time-sensitive (a server is
-  // about to bounce), the milestone banner is just celebratory. Two stacked banners
-  // reads as a wall of promo before any real content; at most one shows at a time.
-  // Race-safety: loadRestartBanner() does the mirror check (hides this one if IT
-  // decides to show, in case that resolves after this function already showed it) —
-  // between the two of them, whichever renders second wins the "only one visible"
-  // rule regardless of which of the two independent fetches resolves first.
-  const restartBanner = document.getElementById('restart-banner');
-  if (restartBanner && restartBanner.style.display !== 'none') {
-    banner.style.display = 'none';
-    return;
-  }
-  banner.style.display = '';
+  if (iconEl) iconEl.textContent = '🎉';
+  notice.dataset.kind = 'milestone';
+  notice.dataset.milestoneHit = String(hit);
+  notice.style.display = '';
 }
 
 // ── Community progress bar ──────────────────────────────────────────────────
@@ -3351,7 +3357,7 @@ async function loadTopNow() {
       fetch(`${API}/clans/leaderboard?limit=5`).then(r => r.ok ? r.json() : []),
     ]);
     let shown = false;
-    const bar = document.getElementById('home-topnow-bar');
+    const row = document.getElementById('home-topnow-row');
 
     if (Array.isArray(players) && players.length) {
       // Already sorted by total_seconds desc (GET /api/leaderboard's default order).
@@ -3391,7 +3397,15 @@ async function loadTopNow() {
       }
     }
 
-    if (shown && bar) bar.style.display = '';
+    if (shown) {
+      if (row) row.style.display = '';
+      // Nested inside the shared trust-stats panel now — reveal the OUTER panel
+      // too, independently of whether loadHomepageStats() already found something
+      // of its own to show (mirrors that function's own "reveal if I have content"
+      // rule; the panel only stays hidden if BOTH functions found nothing).
+      const outer = document.getElementById('home-stats-bar');
+      if (outer) outer.style.display = '';
+    }
   } catch {}
 }
 
@@ -3408,9 +3422,10 @@ async function loadRestartBanner() {
     const results = await Promise.all([1, 2].map(n =>
       fetch(`${API}/servers/${n}/restart-status`).then(r => r.ok ? r.json() : null).catch(() => null)
     ));
-    const banner = document.getElementById('restart-banner');
-    const textEl = document.getElementById('restart-banner-text');
-    if (!banner || !textEl) return;
+    const notice = document.getElementById('site-notice');
+    const iconEl = document.getElementById('site-notice-icon');
+    const textEl = document.getElementById('site-notice-text');
+    if (!notice || !textEl) return;
 
     const now = Date.now();
     let soonest = null;
@@ -3424,9 +3439,14 @@ async function loadRestartBanner() {
       }
     });
 
-    if (!soonest) { banner.style.display = 'none'; return; }
+    if (!soonest) {
+      // Only clear the shared slot if WE put a restart notice there — a milestone
+      // notice currently showing (see applyMilestoneBanner) must survive this.
+      if (notice.dataset.kind === 'restart') notice.style.display = 'none';
+      return;
+    }
     if (localStorage.getItem('_restartBannerDismissed') === String(soonest.at)) {
-      banner.style.display = 'none';
+      if (notice.dataset.kind === 'restart') notice.style.display = 'none';
       return;
     }
 
@@ -3435,22 +3455,27 @@ async function loadRestartBanner() {
     const m = Math.floor((diff % 3600000) / 60000);
     const srvName = (soonest.server === 2 ? window._srvName2 : window._srvName) || `Сервер ${soonest.server}`;
     const timeStr = h > 0 ? `${h}ч ${m}м` : `${m}м`;
+    // Restart always takes priority over the milestone notice (see
+    // applyMilestoneBanner's matching check) — unconditionally claims the shared
+    // slot here in case the milestone notice's own independent fetch resolved
+    // first and already showed itself before this one decided to show.
+    if (iconEl) iconEl.textContent = '🔄';
     textEl.textContent = `Плановый рестарт «${srvName}» через ${timeStr}`;
-    banner.dataset.restartAt = String(soonest.at);
-    banner.style.display = '';
-    // Restart takes priority over the milestone banner (see applyMilestoneBanner's
-    // matching check) — mirrored here in case the milestone banner's own independent
-    // fetch resolved first and already showed itself before this one decided to show.
-    const milestoneBanner = document.getElementById('milestone-banner');
-    if (milestoneBanner) milestoneBanner.style.display = 'none';
+    notice.dataset.kind = 'restart';
+    notice.dataset.restartAt = String(soonest.at);
+    notice.style.display = '';
   } catch {}
 }
 
-function dismissRestartBanner() {
-  const banner = document.getElementById('restart-banner');
-  if (!banner) return;
-  if (banner.dataset.restartAt) localStorage.setItem('_restartBannerDismissed', banner.dataset.restartAt);
-  banner.style.display = 'none';
+function dismissSiteNotice() {
+  const notice = document.getElementById('site-notice');
+  if (!notice) return;
+  if (notice.dataset.kind === 'restart' && notice.dataset.restartAt) {
+    localStorage.setItem('_restartBannerDismissed', notice.dataset.restartAt);
+  } else if (notice.dataset.kind === 'milestone' && notice.dataset.milestoneHit) {
+    localStorage.setItem('_milestoneBannerDismissed', notice.dataset.milestoneHit);
+  }
+  notice.style.display = 'none';
 }
 
 // ── Visitor-type classification ───────────────────────────────────────────────
