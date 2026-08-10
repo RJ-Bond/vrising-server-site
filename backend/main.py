@@ -520,6 +520,13 @@ async def sitemap(request: Request, db: AsyncSession = Depends(get_db)):
         f"  <url><loc>{base}/events.html</loc><changefreq>daily</changefreq><priority>0.6</priority></url>",
         f"  <url><loc>{base}/status.html</loc><changefreq>hourly</changefreq><priority>0.4</priority></url>",
         f"  <url><loc>{base}/changelog.html</loc><changefreq>weekly</changefreq><priority>0.3</priority></url>",
+        # shop.html/user.html are real indexable content pages (proper title/canonical/
+        # og:* — see their <head>, no noindex) that were simply missing here; like
+        # clans.html/map.html above, only the base URL is listed — user.html's real
+        # traffic is the dynamic ?u=<name> profiles, but there's no bounded/natural way
+        # to enumerate "every player" the way news/events get individual entries below.
+        f"  <url><loc>{base}/shop.html</loc><changefreq>weekly</changefreq><priority>0.4</priority></url>",
+        f"  <url><loc>{base}/user.html</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>",
     ]
     for slug, updated_at in slugs:
         lastmod = updated_at.strftime("%Y-%m-%d") if updated_at else ""
