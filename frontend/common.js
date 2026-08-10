@@ -527,8 +527,33 @@ function _statusInfo(iso) {
   });
 })();
 
-/* Toast notification — self-contained, works on any page */
+/* Toast notification — self-contained, works on any page.
+   Queued: at most one toast is ever visible at a time. A call made while one is
+   still showing doesn't render immediately (that used to just pile multiple toasts
+   into #toast-wrap at once, all visible together — fine for 2 rare calls seconds
+   apart, but a burst of calls in quick succession — e.g. several failed form
+   validations firing back-to-back — dumped them all on screen simultaneously
+   instead of reading as a sequence). Every existing call site keeps using the same
+   showToast(msg, type, duration) signature; the queue is an internal-only detail. */
+let _toastQueue = [];
+let _toastActive = false;
+
 function showToast(msg, type = 'info', duration = 4500) {
+  _toastQueue.push({ msg, type, duration });
+  _drainToastQueue();
+}
+
+function _drainToastQueue() {
+  if (_toastActive || _toastQueue.length === 0) return;
+  _toastActive = true;
+  const { msg, type, duration } = _toastQueue.shift();
+  _renderToast(msg, type, duration, () => {
+    _toastActive = false;
+    _drainToastQueue();
+  });
+}
+
+function _renderToast(msg, type, duration, onDismissed) {
   let wrap = document.getElementById('toast-wrap') || document.getElementById('toast-container');
   if (!wrap) {
     wrap = document.createElement('div');
@@ -559,7 +584,7 @@ function showToast(msg, type = 'info', duration = 4500) {
     el.style.transition = 'opacity .25s, transform .25s';
     el.style.opacity = '0';
     el.style.transform = 'translateX(12px)';
-    setTimeout(() => el.remove(), 280);
+    setTimeout(() => { el.remove(); onDismissed(); }, 280);
   }, duration);
 }
 

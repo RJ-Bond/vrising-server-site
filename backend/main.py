@@ -516,6 +516,7 @@ async def sitemap(request: Request, db: AsyncSession = Depends(get_db)):
         f"  <url><loc>{base}/bans.html</loc><changefreq>weekly</changefreq><priority>0.4</priority></url>",
         f"  <url><loc>{base}/events.html</loc><changefreq>daily</changefreq><priority>0.6</priority></url>",
         f"  <url><loc>{base}/status.html</loc><changefreq>hourly</changefreq><priority>0.4</priority></url>",
+        f"  <url><loc>{base}/changelog.html</loc><changefreq>weekly</changefreq><priority>0.3</priority></url>",
     ]
     for slug, updated_at in slugs:
         lastmod = updated_at.strftime("%Y-%m-%d") if updated_at else ""

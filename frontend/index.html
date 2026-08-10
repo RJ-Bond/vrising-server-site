@@ -84,6 +84,7 @@
           <a href="/faq.html" class="nav-dropdown-item">❓ FAQ</a>
           <a href="/events.html" class="nav-dropdown-item">📅 События</a>
           <a href="/status.html" class="nav-dropdown-item" data-i18n-ru="📶 Статус" data-i18n-en="📶 Status">📶 Статус</a>
+          <a href="/changelog.html" class="nav-dropdown-item" data-i18n-ru="📜 Изменения" data-i18n-en="📜 Changelog">📜 Изменения</a>
         </div>
       </div>
       <button type="button" class="nav-icon-btn" onclick="openGlobalSearch()" aria-label="Поиск по сайту" data-tip="Поиск (Ctrl+K)">
@@ -598,6 +599,10 @@
         <a href="/status.html" class="nav-link-item" data-tip="Статус">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
           <span>Статус</span>
+        </a>
+        <a href="/changelog.html" class="nav-link-item" data-tip="Изменения">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M9 3v4h6V3"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+          <span>Изменения</span>
         </a>
       </div>
 
@@ -1176,6 +1181,10 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         <span data-i18n-ru="Статус серверов" data-i18n-en="Server status">Статус серверов</span>
       </a>
+      <a href="/changelog.html" class="footer-link" title="История обновлений сайта">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M9 3v4h6V3"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg>
+        <span data-i18n-ru="Изменения" data-i18n-en="Changelog">Изменения</span>
+      </a>
       <!-- Manual install entry point for a visitor who dismissed/missed the automatic
            #pwa-install-banner but wants to install later on purpose. Hidden by default;
            index.js only reveals it once beforeinstallprompt has actually fired (same
@@ -1201,7 +1210,7 @@
 <script src="/charts.js?v=2"></script>
 <script src="/anime.min.js"></script>
 <script src="/anim.js?v=1"></script>
-<script src="/common.js?v=15"></script>
+<script src="/common.js?v=16"></script>
 <script src="/index.js?v=25"></script>
 <div id="ow-hover-card"></div>
 
