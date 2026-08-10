@@ -462,6 +462,37 @@ function shopItemCardHtml(it) {
   </div>`;
 }
 
+/* ── Shop item structured data (schema.org) — mirrors setEventsJsonLd() in
+   events.html / setNewsListJsonLd() in index.js. Each item becomes a Product;
+   `cost` is spent in in-game points, not real money, so priceCurrency deliberately
+   is NOT a real ISO 4217 code like USD/EUR (that would misrepresent a virtual
+   currency as a real-money price) — "VRP" (V Rising Points) is a made-up,
+   non-standard code used only to keep the Offer shape complete. Set once per fresh
+   /api/shop/items load (not on every filter-pill re-render) so it always describes
+   the full catalog, matching events.html's setEventsJsonLd(_allEvents) call site. ── */
+function setShopItemsJsonLd(items) {
+  const id = 'shop-items-jsonld';
+  document.getElementById(id)?.remove();
+  if (!items || !items.length) return;
+  const el = document.createElement('script');
+  el.type = 'application/ld+json';
+  el.id = id;
+  el.textContent = JSON.stringify(items.map(it => ({
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: it.name,
+    description: it.description || it.name,
+    image: it.image_url || undefined,
+    offers: {
+      '@type': 'Offer',
+      price: it.cost,
+      priceCurrency: 'VRP',
+      availability: it.stock === 0 ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+    },
+  })));
+  document.head.appendChild(el);
+}
+
 function renderShopFilterPills() {
   const pillsEl = document.getElementById('shop-filter-pills');
   if (!pillsEl) return;
@@ -517,6 +548,7 @@ async function loadShopItems() {
     _shopItemsCache = items;
     renderShopFilterPills();
     renderShopItemsGrid();
+    setShopItemsJsonLd(_shopItemsCache);
   } catch {
     grid.innerHTML = '';
     error.style.display = 'block';

@@ -55,7 +55,7 @@ from sqlalchemy import select, delete, update, func, text
 from sqlalchemy.orm import selectinload
 
 from .database import engine, get_db
-from .models import User, News, Setting, PlayerRecord, ServerSnapshot, PageView, ErrorLog, RevokedToken, Event, PlayerRankSnapshot, PluginHeartbeat, Announcement, GameClan, GameClanMember, PushSubscription
+from .models import User, News, Setting, PlayerRecord, ServerSnapshot, PageView, ErrorLog, RevokedToken, Event, EventParticipant, PlayerRankSnapshot, PluginHeartbeat, Announcement, GameClan, GameClanMember, PushSubscription
 from .rate_limit import limiter
 from .helpers import (
     BACKUP_DIR,
@@ -76,6 +76,7 @@ from .auth import (
     create_access_token,
     get_admin_user,
     get_optional_user,
+    ROLE_LEVELS,
 )
 from .schemas import (
     UserOut,
@@ -311,6 +312,7 @@ async def lifespan(app: FastAPI):
     task_scheduler = asyncio.create_task(_scheduler_task())
     task_ranksnap = asyncio.create_task(_leaderboard_snapshot_task())
     task_newsletter = asyncio.create_task(_newsletter_digest_task())
+    task_event_reminder = asyncio.create_task(_event_reminder_task())
     yield
     task_publish.cancel()
     task_backup.cancel()
@@ -319,6 +321,7 @@ async def lifespan(app: FastAPI):
     task_scheduler.cancel()
     task_ranksnap.cancel()
     task_newsletter.cancel()
+    task_event_reminder.cancel()
 
 
 app = FastAPI(title="V Rising Server Site", version="1.0.0", lifespan=lifespan)
@@ -1154,6 +1157,23 @@ STATUS_CACHE_TTL = 28  # seconds
 # so the first poll after a process restart never fires a false transition.
 _prev_server_online: dict[int, Optional[bool]] = {}
 
+# Sustained-downtime admin alert (independent of the player-facing "back online"
+# push above). _offline_since records the wall-clock time.time() a server_num was
+# first observed offline in the current outage episode; _admin_alerted_offline marks
+# which server_nums already got the "still down" push for that same episode, so it
+# fires exactly once per outage rather than every poll while the server stays down.
+# Both reset (pop/discard) the moment the server is seen online again, re-arming the
+# alert for the next outage. In-memory only, same "a missed alert after a restart is
+# a minor inconvenience, not a correctness issue" tradeoff as _prev_server_online.
+_offline_since: dict[int, float] = {}
+_admin_alerted_offline: set[int] = set()
+ADMIN_DOWNTIME_ALERT_THRESHOLD = 900  # seconds (15 min) of continuous offline before alerting admins
+
+# Staff roles (admin tier or above) eligible for the sustained-downtime alert —
+# derived from ROLE_LEVELS rather than a literal "admin" string comparison, per
+# CLAUDE.md's admin-role guidance (a superadmin must never be silently excluded).
+_ADMIN_TIER_ROLES = [r for r, lvl in ROLE_LEVELS.items() if lvl >= ROLE_LEVELS["admin"]]
+
 
 def _broadcast_status(data: dict) -> None:
     """Put server status update into all active SSE client queues."""
@@ -1681,6 +1701,25 @@ async def _monitor_poll_cycle():
             asyncio.create_task(_notify_server_back_online(display_name))
         _prev_server_online[server_num] = now_online
 
+        # Admin-facing inverse: alert staff once a server has been continuously
+        # offline for longer than ADMIN_DOWNTIME_ALERT_THRESHOLD. _offline_since
+        # anchors the episode's start time on the *first* poll that observes it
+        # offline (setdefault — never overwritten while still down), so the
+        # threshold check is wall-clock based rather than "N poll cycles", and
+        # _admin_alerted_offline ensures only one push per episode. Both are
+        # cleared as soon as the server is seen online again, re-arming the
+        # alert for a future outage.
+        if now_online:
+            _offline_since.pop(server_num, None)
+            _admin_alerted_offline.discard(server_num)
+        else:
+            first_offline_at = _offline_since.setdefault(server_num, time.time())
+            downtime = time.time() - first_offline_at
+            if downtime >= ADMIN_DOWNTIME_ALERT_THRESHOLD and server_num not in _admin_alerted_offline:
+                _admin_alerted_offline.add(server_num)
+                display_name = admin_name or data.get("name") or f"Server {server_num}"
+                asyncio.create_task(_notify_admins_server_down(display_name, downtime))
+
 
 async def _notify_server_back_online(server_name: str) -> None:
     """Fan out a push notification to every user with at least one PushSubscription
@@ -1702,6 +1741,35 @@ async def _notify_server_back_online(server_name: str) -> None:
         ))
 
 
+async def _notify_admins_server_down(server_name: str, downtime_seconds: float) -> None:
+    """Fan out a push notification to every admin-tier-or-above user (role_level >=
+    ROLE_LEVELS["admin"], i.e. admin or superadmin — see _ADMIN_TIER_ROLES) with at
+    least one PushSubscription row, once a monitored game server has been
+    continuously offline for longer than ADMIN_DOWNTIME_ALERT_THRESHOLD. This is an
+    operational alert for staff, not player-facing news, so it's scoped narrower than
+    _notify_server_back_online()'s "everyone subscribed" fan-out. The caller
+    (_monitor_poll_cycle) is responsible for only invoking this once per outage
+    episode. Fire-and-forget: scheduled via asyncio.create_task, same pattern as
+    every other send_push() call site, so a slow/unreachable push service never
+    blocks the monitor poll loop."""
+    async with AsyncSession(engine, expire_on_commit=False) as db:
+        res = await db.execute(
+            select(PushSubscription.user_id)
+            .join(User, User.id == PushSubscription.user_id)
+            .where(User.role.in_(_ADMIN_TIER_ROLES))
+            .distinct()
+        )
+        user_ids = [row[0] for row in res.all()]
+    minutes = max(1, int(downtime_seconds // 60))
+    for user_id in user_ids:
+        asyncio.create_task(send_push(
+            user_id,
+            "Сервер недоступен",
+            f"{server_name} не отвечает уже {minutes} мин",
+            "/admin.html",
+        ))
+
+
 async def _monitor_poll_task():
     """Poll game servers every 5 min so snapshots stay current even with no browsers open.
 
@@ -1720,5 +1788,74 @@ async def _monitor_poll_task():
         except Exception as e:
             logger.error("_monitor_poll_task error: %s", e)
         await asyncio.sleep(SNAPSHOT_INTERVAL)
+
+
+# ─── Event reminder push ("starting in ~1 hour") ─────────────────────────────
+# _reminded_event_ids tracks which events already got the reminder so a narrow
+# eligibility window (below) still fires effectively once per event rather than on
+# every poll while an event sits inside it. In-memory only — a missed reminder
+# after a process restart is a minor inconvenience, not a correctness issue, same
+# tradeoff as _prev_server_online.
+_reminded_event_ids: set[int] = set()
+EVENT_REMINDER_POLL_INTERVAL = 300  # 5 minutes — no need for second-level precision
+# Window is deliberately narrow (10 minutes wide) relative to the poll interval so an
+# event's start_date crosses it on close to exactly one poll: at 5-minute polling, a
+# start_date drifts from "70 min away" to "55 min away" in 3 polls, and the window
+# below (]55, 65]) only overlaps one of them in the common case.
+EVENT_REMINDER_WINDOW_MIN_MINUTES = 55  # don't remind if further out than this
+EVENT_REMINDER_WINDOW_MAX_MINUTES = 65  # don't remind if closer than this (or already started)
+
+
+async def _event_reminder_cycle() -> None:
+    # SQLite datetimes come back naive (see CLAUDE.md) — Event.start_date is stored
+    # as naive UTC, so the comparison bounds must be naive UTC too, not tz-aware.
+    now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
+    window_start = now_naive + timedelta(minutes=EVENT_REMINDER_WINDOW_MIN_MINUTES)
+    window_end = now_naive + timedelta(minutes=EVENT_REMINDER_WINDOW_MAX_MINUTES)
+    async with AsyncSession(engine, expire_on_commit=False) as db:
+        res = await db.execute(
+            select(Event)
+            .where(Event.status.in_(["upcoming", "active"]))
+            .where(Event.start_date >= window_start)
+            .where(Event.start_date <= window_end)
+        )
+        due_events = [ev for ev in res.scalars().all() if ev.id not in _reminded_event_ids]
+        if not due_events:
+            return
+
+        part_res = await db.execute(
+            select(EventParticipant.event_id, EventParticipant.user_id)
+            .where(EventParticipant.event_id.in_([ev.id for ev in due_events]))
+        )
+        participants_by_event: dict[int, list[int]] = {}
+        for event_id, user_id in part_res.all():
+            participants_by_event.setdefault(event_id, []).append(user_id)
+
+    for ev in due_events:
+        _reminded_event_ids.add(ev.id)
+        for user_id in participants_by_event.get(ev.id, []):
+            asyncio.create_task(send_push(
+                user_id,
+                "Событие скоро начнётся",
+                f"Событие «{ev.title}» начинается через час",
+                "/events.html",
+            ))
+
+
+async def _event_reminder_task():
+    """Every few minutes, push a 1-hour-out reminder to every participant of each
+    upcoming/active event whose start_date has just entered the reminder window (see
+    _event_reminder_cycle). Mirrors the "sleep, loop, catch CancelledError, catch+log
+    Exception" shape of the other periodic tasks in this module (e.g.
+    _monitor_poll_task, _newsletter_digest_task)."""
+    await asyncio.sleep(30)  # let startup finish
+    while True:
+        try:
+            await _event_reminder_cycle()
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error("_event_reminder_task error: %s", e)
+        await asyncio.sleep(EVENT_REMINDER_POLL_INTERVAL)
 
 

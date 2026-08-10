@@ -1071,6 +1071,33 @@ function closeClanCompareModal() {
   document.removeEventListener('keydown', _clanCompareModalEscHandler);
 }
 
+/* ── Clan structured data (schema.org) — mirrors setEventsJsonLd() in events.html /
+   setNewsListJsonLd() in index.js. schema.org has no dedicated "game clan" type, so
+   this reuses Organization (name/description) — member_count is reported via
+   numberOfEmployees's QuantitativeValue shape, the closest existing schema.org
+   property for "size of an organization's membership", rather than inventing a
+   non-standard field. Set once per fresh /api/clans load (not on every filter/sort
+   re-render) so it always describes the full roster, matching events.html's
+   setEventsJsonLd(_allEvents) call site. ── */
+function setClansJsonLd(clans) {
+  const id = 'clans-jsonld';
+  document.getElementById(id)?.remove();
+  if (!clans || !clans.length) return;
+  const el = document.createElement('script');
+  el.type = 'application/ld+json';
+  el.id = id;
+  el.textContent = JSON.stringify(clans.map(c => ({
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: c.name,
+    description: (c.motto || '').trim() || `Клан ${c.name} на сервере ${c.server_name || 'V Rising'}`,
+    url: `${location.origin}/clans.html?clan=${c.id}`,
+    numberOfEmployees: { '@type': 'QuantitativeValue', value: c.member_count || 0 },
+    memberOf: { '@type': 'Organization', name: 'Just-Skill.Ru', url: 'https://v.just-skill.ru' },
+  })));
+  document.head.appendChild(el);
+}
+
 /* ── Render grid ── */
 function renderGrid(clans) {
   const grid = document.getElementById('clans-grid');
@@ -1182,6 +1209,7 @@ async function init() {
     renderPodium(_allClans.slice(0, 3));
     loadClanPowerLeaderboard(_serverFilter);
     renderGrid(_allClans);
+    setClansJsonLd(_allClans);
 
     // Deep link — e.g. clans.html?clan=42 opens that clan's detail modal directly,
     // for sharing a link straight to one clan instead of "go find it in the list".
