@@ -11,7 +11,7 @@ from sqlalchemy import select, func, or_, case
 
 from ..database import get_db
 from ..models import User, News, Comment, Setting, AuditLog, PageView, ErrorLog, PointsTransaction, ShopRedemption
-from ..auth import get_admin_user, get_moderator_user
+from ..auth import get_admin_user, get_moderator_user, is_at_least
 from ..helpers import UPLOAD_DIR, send_newsletter_digest, _audit
 from ..schemas import CommentBulkDeleteIn, CommentBulkResult, CommentBulkDeleteOut
 
@@ -197,6 +197,32 @@ async def admin_bulk_delete_comments(
 
 # ─── Audit log ───────────────────────────────────────────────────────────────
 
+# Action names written only by endpoints gated at get_superadmin_user (role changes,
+# backup handling, RCON, and — after clear_moderation_log — the moderation-log purge).
+# Kept as an explicit allowlist (not e.g. "any action containing 'backup'") so a future
+# admin-tier action can never accidentally leak into the superadmin-only filtered view
+# just by sharing a substring. Cross-checked against `grep get_superadmin_user
+# backend/routers/*.py` — every superadmin-gated endpoint that actually calls
+# _audit()/log_audit() today is listed here.
+#
+# NOTE — known gap, not fixed in this pass: /api/admin/ssl/install (SSL install),
+# /api/admin/update (git-pull site update) and /api/admin/update/check are also
+# get_superadmin_user-gated but don't call _audit()/log_audit() at all yet, so those
+# actions never show up here or in the unfiltered log either. Backup download/create/
+# delete and RCON below were judged worth wiring up now (single mutating/sensitive
+# action each); the two deploy endpoints stream progress over SSE and would need more
+# surgery to log without double-writing on retries — left for a follow-up.
+SUPERADMIN_AUDIT_ACTIONS = {
+    "user.role",
+    "bulk_role_change",
+    "rcon_command",
+    "clear_moderation_log",
+    "backup.download",
+    "backup.create",
+    "backup.delete",
+}
+
+
 @router.get("/api/admin/audit-log/actions")
 async def get_audit_log_actions(
     _: User = Depends(get_admin_user),
@@ -212,15 +238,25 @@ async def get_audit_log(
     per_page: int = Query(50, ge=1, le=200),
     q: str = Query(""),
     action: str = Query(""),
-    _: User = Depends(get_admin_user),
+    tier: str = Query(""),
+    current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """tier="superadmin" narrows the feed to SUPERADMIN_AUDIT_ACTIONS — a moderator/admin
+    can call this endpoint at all (get_admin_user, unchanged), but only a superadmin may
+    actually request that filter; anyone else asking for it gets a 403 rather than a
+    silently-empty/ignored param, so the frontend's superadmin-only filter toggle (see
+    admin.html) can't be worked around by hand-editing the query string."""
+    if tier.strip() == "superadmin" and not is_at_least(current_user, "superadmin"):
+        raise HTTPException(status_code=403, detail="Requires superadmin access")
     filters = []
     if q.strip():
         like = f"%{q.strip()}%"
         filters.append(or_(AuditLog.admin_username.ilike(like), AuditLog.detail.ilike(like)))
     if action.strip():
         filters.append(AuditLog.action == action.strip())
+    if tier.strip() == "superadmin":
+        filters.append(AuditLog.action.in_(SUPERADMIN_AUDIT_ACTIONS))
     total = (await db.execute(select(func.count(AuditLog.id)).where(*filters))).scalar_one()
     rows = (await db.execute(
         select(AuditLog).where(*filters).order_by(AuditLog.created_at.desc())

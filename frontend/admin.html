@@ -2531,7 +2531,15 @@
     <div id="section-auditlog" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
         <h2 class="section-title">Журнал действий</h2>
-        <div style="display:flex;gap:.5rem;align-items:center;">
+        <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+          <!-- Superadmin-tier-only filter toggle: hidden for moderator/admin viewers (see
+               applyRoleVisibility()'s .auditlog-superadmin-only handling below) since the
+               backend itself 403s a non-superadmin tier=superadmin request too — this just
+               keeps the control from ever being clickable by someone it would reject anyway. -->
+          <label class="auditlog-superadmin-only" style="display:none;font-size:.78rem;color:var(--muted);cursor:pointer;white-space:nowrap;" title="Показывать только действия уровня супер-админа: смена ролей, бэкапы, RCON, очистка журнала модерации">
+            <input type="checkbox" id="auditlog-superadmin-filter" onchange="loadAuditLogSection(1)">
+            Только супер-админ
+          </label>
           <button onclick="loadAuditLogSection(1)" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
           <a href="/api/admin/export/audit-log" class="btn-ghost" style="font-size:.75rem;" download>⬇ CSV</a>
         </div>
@@ -2619,10 +2627,10 @@
         <div style="overflow-x:auto;">
           <table>
             <thead><tr>
-              <th>Название</th><th>Категория</th><th>Стоимость</th><th>Остаток</th><th>Лимит/нед</th><th>Активен</th><th>Действия</th>
+              <th style="width:1.8rem;"></th><th>Название</th><th>Категория</th><th>Стоимость</th><th>Остаток</th><th>Лимит/нед</th><th>Активен</th><th>Действия</th>
             </tr></thead>
             <tbody id="shop-items-tbody">
-              <tr><td colspan="7" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
+              <tr><td colspan="8" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
             </tbody>
           </table>
         </div>
@@ -3131,6 +3139,9 @@ function applyRoleVisibility() {
     el.style.display = meetsRole('superadmin') ? '' : 'none';
   });
   document.querySelectorAll('.modlog-superadmin-only').forEach(el => {
+    el.style.display = meetsRole('superadmin') ? '' : 'none';
+  });
+  document.querySelectorAll('.auditlog-superadmin-only').forEach(el => {
     el.style.display = meetsRole('superadmin') ? '' : 'none';
   });
   const pill = document.getElementById('nav-role-pill');
@@ -6411,8 +6422,13 @@ async function loadAuditLogSection(page) {
   const tbody = document.getElementById('auditlog-body');
   if (!tbody) return;
   tableShowSkeleton('auditlog-body', 5);
+  // tier=superadmin only sent when the toggle is both present and checked — the toggle
+  // itself is hidden for moderator/admin viewers (applyRoleVisibility), and the backend
+  // independently 403s a non-superadmin caller passing it anyway (see get_audit_log).
+  const superadminOnly = meetsRole('superadmin') && !!document.getElementById('auditlog-superadmin-filter')?.checked;
+  const tier = superadminOnly ? '&tier=superadmin' : '';
   try {
-    const d = await fetch(`${API}/admin/audit-log?page=${_auditSectionPage}&per_page=50`, { credentials: 'include', headers: authH() }).then(r => r.json());
+    const d = await fetch(`${API}/admin/audit-log?page=${_auditSectionPage}&per_page=50${tier}`, { credentials: 'include', headers: authH() }).then(r => r.json());
     const items = d.items || [];
     if (!items.length) {
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Нет записей</td></tr>';
@@ -6796,15 +6812,21 @@ async function deleteEvent(id) {
 // the earning-rate config cards and the grant-form user datalist, since all three live
 // on the same "Магазин" tab (see showSection's shop-catalog dispatch).
 let _editingShopItemId = null;
+// Drag-and-drop reordering state — mirrors the rules-editor pattern (_ruleDragStart/
+// _ruleDragOver/_ruleDrop/_ruleDragEnd above) but persists the new order to the backend
+// instead of just re-rendering a client-only list, since sort_order lives in ShopItem
+// (models.py) and drives both the admin table order and GET /api/shop/items's public
+// ordering. _shopItems holds the last-loaded catalog (server order) so drop handlers
+// can reorder it in place before re-rendering + saving.
+let _shopItems = [];
+let _shopDragIdx = null;
 
-async function loadShopCatalog() {
+function _renderShopItemsTable() {
   const tbody = document.getElementById('shop-items-tbody');
   if (!tbody) return;
-  tableShowSkeleton('shop-items-tbody', 5);
-  try {
-    const items = await fetch(`${API}/admin/shop/items`, {credentials:'include', headers:authH()}).then(r => { if (!r.ok) { handleAuth(r); throw new Error(); } return r.json(); });
-    if (!items.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);">Товаров нет</td></tr>'; return; }
-    tbody.innerHTML = items.map(it => `<tr>
+  if (!_shopItems.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Товаров нет</td></tr>'; return; }
+  tbody.innerHTML = _shopItems.map((it, i) => `<tr draggable="true" ondragstart="_shopDragStart(event,${i})" ondragover="_shopDragOver(event)" ondrop="_shopDrop(event,${i})" ondragend="_shopDragEnd(event)">
+      <td style="cursor:grab;color:var(--muted);font-size:.95rem;user-select:none;line-height:1;text-align:center;" title="Перетащите, чтобы изменить порядок">⠿</td>
       <td><span style="font-weight:600;">${esc(it.name)}</span></td>
       <td style="font-size:.78rem;color:var(--muted);">${it.category ? esc(it.category) : '—'}</td>
       <td style="font-size:.78rem;color:var(--gold);">${it.cost}</td>
@@ -6818,7 +6840,66 @@ async function loadShopCatalog() {
         </div>
       </td>
     </tr>`).join('');
-  } catch { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+}
+
+function _shopDragStart(e, i) {
+  _shopDragIdx = i;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.style.opacity = '.4';
+}
+function _shopDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+function _shopDrop(e, i) {
+  e.preventDefault();
+  if (_shopDragIdx === null || _shopDragIdx === i) return;
+  const [moved] = _shopItems.splice(_shopDragIdx, 1);
+  _shopItems.splice(i, 0, moved);
+  _shopDragIdx = null;
+  _renderShopItemsTable();
+  _persistShopOrder();
+}
+function _shopDragEnd(e) {
+  e.currentTarget.style.opacity = '';
+  _shopDragIdx = null;
+}
+
+async function _persistShopOrder() {
+  // Simplest-correct approach per the catalog's small size: renumber the WHOLE list
+  // sequentially by its new visual position and PATCH every item whose sort_order
+  // actually changed, rather than juggling fractional sort_order values around the
+  // drop point. PUT already accepts a partial body (see update_shop_item's
+  // exclude_unset), so this only ever sends {sort_order} per item.
+  const updates = _shopItems
+    .map((it, i) => ({ it, i }))
+    .filter(({ it, i }) => it.sort_order !== i);
+  if (!updates.length) return;
+  try {
+    await Promise.all(updates.map(({ it, i }) =>
+      fetch(`${API}/admin/shop/items/${it.id}`, {
+        method: 'PUT', credentials: 'include',
+        headers: { 'Content-Type': 'application/json', ...authH() },
+        body: JSON.stringify({ sort_order: i }),
+      })
+    ));
+    updates.forEach(({ it, i }) => { it.sort_order = i; });
+    showToast('Порядок сохранён', 'success');
+  } catch {
+    showToast('Ошибка сохранения порядка', 'error');
+    loadShopCatalog();
+  }
+}
+
+async function loadShopCatalog() {
+  const tbody = document.getElementById('shop-items-tbody');
+  if (!tbody) return;
+  tableShowSkeleton('shop-items-tbody', 8);
+  try {
+    const items = await fetch(`${API}/admin/shop/items`, {credentials:'include', headers:authH()}).then(r => { if (!r.ok) { handleAuth(r); throw new Error(); } return r.json(); });
+    _shopItems = items;
+    _renderShopItemsTable();
+  } catch { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
 
   loadEconomyConfig();
   loadGrantUserList();

@@ -1,11 +1,13 @@
+import html
+import re
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, case
 
 from ..database import get_db
-from ..models import User, GameClan, GameClanMember, GameClanBase, ClanMembershipEvent
+from ..models import User, GameClan, GameClanMember, GameClanBase, ClanMembershipEvent, Setting
 from ..auth import get_current_user
 from ..helpers import _get_server_names
 from ..schemas import GameClanOut, GameClanDetailOut, GameClanLeaderboardOut, ClanMembershipEventOut
@@ -24,6 +26,11 @@ _LEADERBOARD_MAX_LIMIT = 50
 # paginated audit log.
 _HISTORY_DEFAULT_LIMIT = 30
 _HISTORY_MAX_LIMIT = 100
+# Repo mount path for frontend/clans.html inside the production container — mirrors
+# events.py's _EVENTS_HTML_PATH (used by /api/events-embed) and main.py's
+# _INDEX_HTML_PATH (used by /api/news-embed). Kept local to this router for the same
+# reason events.py keeps its own copy rather than importing main.py's.
+_CLANS_HTML_PATH = "/opt/vrising-site/frontend/clans.html"
 
 router = APIRouter()
 
@@ -301,3 +308,81 @@ async def get_clan_history(clan_id: int, limit: Optional[int] = None, db: AsyncS
         .limit(limit)
     )).scalars().all()
     return [ClanMembershipEventOut.model_validate(r) for r in rows]
+
+
+# ─── Link-unfurl embed ───────────────────────────────────────────────────────
+# Mirrors GET /api/events-embed in backend/routers/events.py (see that function's own
+# comment for the fuller rationale): link-unfurlers (Discord/Telegram/VK/Twitter, most
+# search bots) don't run JS, so they never see clans.html's client-side
+# openClanDetail()'s meta swap, and a shared clans.html?clan=<id> link would otherwise
+# always show the generic clans-list title/description/image no matter which clan it
+# was. Re-uses frontend/clans.html itself (read from the repo mount) so layout/styling
+# never drifts out of sync — only the meta tag values are swapped before serving.
+# Wiring nginx's crawler-UA routing (see events_embed's comment on the same gap) is the
+# same out-of-scope follow-up here too — this endpoint is functional and tested
+# standalone in the meantime.
+_CLANS_EMBED_META_PATTERNS = [
+    (re.compile(r'(<title id="page-title">).*?(</title>)'), "title"),
+    (re.compile(r'(<meta id="meta-description"[^>]*content=")[^"]*(")'), "desc"),
+    (re.compile(r'(<link rel="canonical" href=")[^"]*(")'), "url"),
+    (re.compile(r'(<meta property="og:url" content=")[^"]*(")'), "url"),
+    (re.compile(r'(<meta id="meta-og-title"[^>]*content=")[^"]*(")'), "title"),
+    (re.compile(r'(<meta id="meta-og-description"[^>]*content=")[^"]*(")'), "desc"),
+    (re.compile(r'(<meta property="og:image" content=")[^"]*(")'), "image"),
+]
+
+
+@router.get("/api/clans-embed")
+async def clans_embed(id: int, db: AsyncSession = Depends(get_db)):
+    """Server-rendered <head> meta for one clan, for crawlers that don't run JS. Falls
+    back to the page's default meta for an unknown/missing clan id, same as
+    events_embed. Uses only fields GET /api/clans/{clan_id} already exposes (name,
+    server, member count) plus a total-power figure computed the same way
+    GET /api/clans/leaderboard already does — no new clan fields added for this."""
+    try:
+        with open(_CLANS_HTML_PATH, "r", encoding="utf-8") as f:
+            page = f.read()
+    except OSError as e:
+        raise HTTPException(status_code=404, detail="clans.html not found") from e
+
+    clan = (await db.execute(select(GameClan).where(GameClan.id == id))).scalar_one_or_none()
+    if clan is None:
+        return Response(content=page, media_type="text/html; charset=utf-8")
+
+    base_url = "https://v.just-skill.ru"
+    try:
+        su_res = await db.execute(select(Setting).where(Setting.key == "https_domain"))
+        su = su_res.scalar_one_or_none()
+        if su and su.value.strip():
+            base_url = f"https://{su.value.strip()}"
+    except Exception:
+        pass
+
+    server_names = await _get_server_names(db)
+    server_name = server_names.get(clan.server_num) or f"Сервер {clan.server_num}"
+    agg = (await db.execute(
+        select(
+            func.count(GameClanMember.id),
+            func.sum(func.coalesce(GameClanMember.physical_power, 0.0) + func.coalesce(GameClanMember.spell_power, 0.0)),
+        ).where(GameClanMember.clan_id == clan.id)
+    )).first()
+    member_count = (agg[0] if agg else 0) or 0
+    total_power = float((agg[1] if agg else 0.0) or 0.0)
+
+    image = f"{base_url}/uploads/og-default.png"
+    link = f"{base_url}/clans.html?clan={clan.id}"
+    desc_bits = [server_name, f"участников: {member_count}"]
+    if total_power > 0:
+        desc_bits.append(f"мощь: {int(total_power)}")
+    plain_desc = ", ".join(desc_bits)
+
+    values = {
+        "title": html.escape(f"{clan.name} — V Rising"),
+        "desc": html.escape(plain_desc),
+        "url": html.escape(link),
+        "image": html.escape(image),
+    }
+    for pattern, key in _CLANS_EMBED_META_PATTERNS:
+        page = pattern.sub(lambda m, v=values[key]: m.group(1) + v + m.group(2), page, count=1)
+
+    return Response(content=page, media_type="text/html; charset=utf-8")

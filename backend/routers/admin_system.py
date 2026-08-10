@@ -523,9 +523,11 @@ async def delete_media(filename: str, _: User = Depends(get_admin_user)):
 # ─── DB Backup ───────────────────────────────────────────────────────────────
 
 @router.get("/api/admin/backup")
-async def download_backup(current_user: User = Depends(get_superadmin_user)):
+async def download_backup(current_user: User = Depends(get_superadmin_user), db: AsyncSession = Depends(get_db)):
     for candidate in [Path("backend/vrising.db"), Path("vrising.db"), Path("/app/backend/vrising.db")]:
         if candidate.exists():
+            await log_audit(db, current_user, "backup.download", candidate.name)
+            await db.commit()
             return FileResponse(
                 path=str(candidate),
                 media_type="application/octet-stream",
@@ -608,17 +610,19 @@ async def list_backups(_: User = Depends(get_superadmin_user)):
 
 
 @router.get("/api/admin/backups/{filename}")
-async def download_named_backup(filename: str, _: User = Depends(get_superadmin_user)):
+async def download_named_backup(filename: str, current_user: User = Depends(get_superadmin_user), db: AsyncSession = Depends(get_db)):
     if ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(400, "Invalid filename")
     path = BACKUP_DIR / filename
     if not path.exists():
         raise HTTPException(404, "Backup not found")
+    await log_audit(db, current_user, "backup.download", filename)
+    await db.commit()
     return FileResponse(path=str(path), media_type="application/octet-stream", filename=filename)
 
 
 @router.post("/api/admin/backups/create", status_code=201)
-async def create_backup_now(current_user: User = Depends(get_superadmin_user)):
+async def create_backup_now(current_user: User = Depends(get_superadmin_user), db: AsyncSession = Depends(get_db)):
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
     db_candidates = [Path("backend/vrising.db"), Path("vrising.db"), Path("/app/backend/vrising.db"), Path("/data/vrising.db")]
     src = next((p for p in db_candidates if p.exists()), None)
@@ -628,11 +632,13 @@ async def create_backup_now(current_user: User = Depends(get_superadmin_user)):
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     dst = BACKUP_DIR / f"vrising_{ts}.db"
     shutil.copy2(str(src), str(dst))
+    await log_audit(db, current_user, "backup.create", dst.name)
+    await db.commit()
     return {"filename": dst.name, "size": dst.stat().st_size}
 
 
 @router.delete("/api/admin/backups/{filename}", status_code=204)
-async def delete_backup(filename: str, current_user: User = Depends(get_superadmin_user)):
+async def delete_backup(filename: str, current_user: User = Depends(get_superadmin_user), db: AsyncSession = Depends(get_db)):
     if ".." in filename or "/" in filename or "\\" in filename:
         raise HTTPException(400, "Invalid filename")
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
@@ -646,4 +652,6 @@ async def delete_backup(filename: str, current_user: User = Depends(get_superadm
     if not path.is_file():
         raise HTTPException(404, "Backup not found")
     path.unlink()
+    await log_audit(db, current_user, "backup.delete", filename)
+    await db.commit()
     return None
