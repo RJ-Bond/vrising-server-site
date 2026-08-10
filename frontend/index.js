@@ -2944,7 +2944,6 @@ _applyNewsUrlParams();
 loadNews(1);
 loadTags();
 loadWipeHistory();
-let _teamLoaded = false;
 loadTeam();
 setInterval(loadTeam, 10000);
 loadActivityFeed();
@@ -3110,15 +3109,16 @@ function applyCommunityProgress(totalHours) {
 }
 
 // ── Team ────────────────────────────────────────────────────────────────────
+// Renders into the on-demand #team-modal-list (see openTeamModal() below) rather
+// than an inline sidebar section — reveals #team-link (in "Полезные ссылки") so
+// there's something to click only once there's actually a team to show.
 async function loadTeam() {
   try {
     const data = await fetch('/api/team').then(r => r.json());
     if (!Array.isArray(data) || data.length === 0) return;
-    const wrap = document.getElementById('team-section');
-    const list = document.getElementById('team-list');
-    if (!wrap || !list) return;
-    const firstLoad = !_teamLoaded;
-    _teamLoaded = true;
+    const link = document.getElementById('team-link');
+    const list = document.getElementById('team-modal-list');
+    if (!link || !list) return;
     list.innerHTML = data.map((u, i) => {
       const av = u.avatar_url
         ? `<img src="${esc(u.avatar_url)}" loading="lazy" alt="" style="width:52px;height:52px;border-radius:50%;object-fit:cover;display:block;">`
@@ -3169,10 +3169,33 @@ async function loadTeam() {
       </div>`;
     }).join('');
     list.style.cssText = `display:grid;grid-template-columns:repeat(${data.length === 1 ? '1' : '2'},1fr);gap:.55rem;`;
-    wrap.style.display = '';
-    _showRightPanelJumplink('jumplink-team');
-    if (firstLoad && window.animateEntrance) animateEntrance('#team-list .team-card', { distance: 12, stagger: 80 });
+    link.style.display = 'flex';
   } catch {}
+}
+
+/// Opens the team roster modal — content is already rendered by loadTeam() (runs
+/// once at page load, well before any admin is likely to click #team-link), so this
+/// is just the show/hide toggle, same shape as openDmCompose()/closeDmCompose().
+/// The entrance animation runs here (on first open) rather than in loadTeam() itself
+/// — animating cards while the modal is still display:none would have no visible
+/// effect.
+let _teamModalAnimated = false;
+function openTeamModal() {
+  const bg = document.getElementById('team-modal-bg');
+  const box = document.getElementById('team-modal-box');
+  if (!bg || !box) return;
+  bg.style.display = 'block';
+  box.style.display = 'flex';
+  if (!_teamModalAnimated && window.animateEntrance) {
+    _teamModalAnimated = true;
+    animateEntrance('#team-modal-list .team-card', { distance: 12, stagger: 80 });
+  }
+}
+function closeTeamModal() {
+  const bg = document.getElementById('team-modal-bg');
+  const box = document.getElementById('team-modal-box');
+  if (bg) bg.style.display = 'none';
+  if (box) box.style.display = 'none';
 }
 
 // ── Activity feed ────────────────────────────────────────────────────────────
@@ -3311,6 +3334,11 @@ async function loadTopClans() {
       </a>`;
     }).join('');
     wrap.style.display = '';
+    // Nested inside the shared clans+new-players wrapper now — reveal that too,
+    // independently of whether loadNewPlayers() already found something of its own
+    // to show (mirrors that function's own reveal rule below).
+    const outer = document.getElementById('clans-newplayers-section');
+    if (outer) outer.style.display = '';
     _showRightPanelJumplink('jumplink-clans');
   } catch {}
 }
@@ -3340,6 +3368,11 @@ async function loadNewPlayers() {
         onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.transform='scale(1)'">${av}</a>`;
     }).join('');
     wrap.style.display = '';
+    // Nested inside the shared clans+new-players wrapper now — reveal that too,
+    // independently of whether loadTopClans() already found something of its own to
+    // show (mirrors that function's own reveal rule above).
+    const outer = document.getElementById('clans-newplayers-section');
+    if (outer) outer.style.display = '';
     _showRightPanelJumplink('jumplink-newplayers');
   } catch {}
 }
