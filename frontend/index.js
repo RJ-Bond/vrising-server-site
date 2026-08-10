@@ -675,7 +675,7 @@ function _owShowCard(e, data) {
     if (!c) return;
     const roleLabel = data.role === 'superadmin' ? '👑 Суперадмин' : data.role === 'admin' ? '👑 Администратор' : data.role === 'moderator' ? '🛡 Модератор' : '⚔ Игрок';
     const av = data.avatar_url
-      ? `<img src="${esc(data.avatar_url)}" alt="" style="width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover;flex-shrink:0;">`
+      ? `<img src="${esc(data.avatar_url)}" alt="" loading="lazy" decoding="async" style="width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover;flex-shrink:0;">`
       : `<span style="width:2.2rem;height:2.2rem;border-radius:50%;background:rgba(60,30,90,.8);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;flex-shrink:0;">${(data.username[0]||'?').toUpperCase()}</span>`;
     c.innerHTML = `
       <div style="display:flex;gap:.55rem;align-items:center;margin-bottom:.35rem;">${av}
@@ -1282,7 +1282,7 @@ async function loadFeatured() {
     const authorName = esc(n.author.username);
     const adminBadge = _renderAdminBadge(n.author);
     const avatarEl = n.author.avatar_url
-      ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.35);flex-shrink:0;">`
+      ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" loading="lazy" decoding="async" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:1px solid rgba(190,0,40,0.35);flex-shrink:0;">`
       : `<span style="width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(80,0,150,0.6),rgba(120,0,20,0.4));border:1px solid rgba(190,0,40,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:.8rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
     const bgStyle = n.thumbnail_url
       ? `background-image:url('${esc(n.thumbnail_url)}')`
@@ -1665,7 +1665,7 @@ async function openNews(slug, highlightCommentId) {
     if (n.thumbnail_url) {
       heroEl.innerHTML = `
         <div style="position:relative;height:300px;overflow:hidden;">
-          <img src="${esc(n.thumbnail_url)}" alt="" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;">
+          <img src="${esc(n.thumbnail_url)}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;">
           <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,0,14,0.25) 0%,rgba(6,0,14,0.6) 50%,rgba(6,0,14,0.97) 100%);"></div>
           <div style="position:absolute;bottom:0;left:0;right:0;padding:1.6rem 1.75rem 1.3rem;">
             ${tagHtml ? `<div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:.65rem;">${tagHtml}</div>` : ''}
@@ -1685,7 +1685,7 @@ async function openNews(slug, highlightCommentId) {
     // ── Author meta row ───────────────────────────────────────────────────────
     const authorHref = `/user.html?u=${encodeURIComponent(n.author.username)}`;
     const avatarEl = n.author.avatar_url
-      ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(181,0,42,0.35);flex-shrink:0;box-shadow:0 0 12px rgba(181,0,42,0.2);">`
+      ? `<img src="${esc(n.author.avatar_url)}" alt="${authorName}" loading="lazy" decoding="async" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(181,0,42,0.35);flex-shrink:0;box-shadow:0 0 12px rgba(181,0,42,0.2);">`
       : `<span style="width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 38% 32%,rgba(80,0,150,0.7),rgba(120,0,20,0.5));border:2px solid rgba(181,0,42,0.3);display:inline-flex;align-items:center;justify-content:center;font-size:.9rem;font-family:'Cinzel',serif;color:#d4c4e0;flex-shrink:0;">${authorName.charAt(0).toUpperCase()}</span>`;
     document.getElementById('modal-author').innerHTML = `
       <a href="${authorHref}" style="text-decoration:none;flex-shrink:0;">${avatarEl}</a>
@@ -1790,7 +1790,7 @@ function navigateModal(dir) {
 }
 
 function _navPreviewHtml(n) {
-  return `${n.thumbnail_url ? `<img src="${esc(n.thumbnail_url)}" alt="">` : ''}<div class="mnp-title">${esc(n.title)}</div>`;
+  return `${n.thumbnail_url ? `<img src="${esc(n.thumbnail_url)}" alt="" loading="lazy" decoding="async">` : ''}<div class="mnp-title">${esc(n.title)}</div>`;
 }
 
 function _updateModalNav() {
@@ -3327,7 +3327,7 @@ async function loadNewPlayers() {
       // above — this one used to use double quotes and broke exactly that way).
       const ph = `<span style='width:2.2rem;height:2.2rem;border-radius:50%;background:rgba(60,30,90,.8);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:var(--text);'>${esc((u.username[0] || '?').toUpperCase())}</span>`;
       const av = u.avatar_url
-        ? `<img src="${esc(u.avatar_url)}" alt="" style="width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover;" onerror="this.outerHTML='${ph.replace(/'/g, "\\'")}'">` : ph;
+        ? `<img src="${esc(u.avatar_url)}" alt="" loading="lazy" decoding="async" style="width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover;" onerror="this.outerHTML='${ph.replace(/'/g, "\\'")}'">` : ph;
       return `<a href="/user.html?u=${encodeURIComponent(u.username)}" title="${esc(u.username)}" data-tip="${esc(u.username)}"
         style="display:block;border-radius:50%;border:2px solid rgba(150,0,28,0.3);transition:border-color .15s,transform .15s;"
         onmouseover="this.style.borderColor='rgba(200,0,40,0.6)';this.style.transform='scale(1.08)'"
@@ -3749,7 +3749,7 @@ async function _refreshDmChat(initial = false) {
     const p = data.partner;
     const avEl = document.getElementById('dm-modal-avatar');
     if (avEl) avEl.innerHTML = p.avatar_url
-      ? `<img src="${esc(p.avatar_url)}" alt="" style="width:100%;height:100%;object-fit:cover;">`
+      ? `<img src="${esc(p.avatar_url)}" alt="" loading="lazy" decoding="async" style="width:100%;height:100%;object-fit:cover;">`
       : esc(p.username[0].toUpperCase());
 
     const container = document.getElementById('dm-messages');
