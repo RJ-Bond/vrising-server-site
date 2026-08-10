@@ -67,6 +67,36 @@
   border-radius: 2px;
 }
 
+/* ── Skip-to-content link ────────────────────────────────────────────────
+   First focusable element in <body> on every page (right after the opening
+   <body> tag, before nav/mobile-drawer markup) — lets keyboard and
+   screen-reader users jump straight past the nav to the primary content.
+   Off-screen by default; :focus (not :focus-visible — a screen reader's
+   virtual-cursor/programmatic focus should reveal it too, not just visible
+   keyboard nav) brings it on-screen at the top-left. Target is each page's
+   <main id="main-content"> (index.html points at its existing #news-section
+   instead). Pages that don't load theme.css (admin.html, maintenance.html,
+   offline.html, reset.html, setup.html) carry their own copy of this rule —
+   see the comment next to .site-checkbox:focus-visible in admin.html for
+   why standalone pages duplicate shared rules instead of loading this file. */
+.skip-link {
+  position: absolute;
+  left: .5rem;
+  top: -3rem;
+  z-index: 1000;
+  background: var(--crimson);
+  color: #fff;
+  padding: .65rem 1.1rem;
+  font-size: .8rem;
+  font-weight: 700;
+  text-decoration: none;
+  border-radius: .4rem;
+  transition: top .15s ease;
+}
+.skip-link:focus {
+  top: .5rem;
+}
+
 /* Custom site background photo (bg_image_url, set via each page's
    applySiteBackground()/loadSiteSettings()). A real position:fixed element,
    NOT `background-attachment:fixed` on body — that CSS property is unreliable

@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
-  <link rel="stylesheet" href="/theme.css?v=4" />
+  <link rel="stylesheet" href="/theme.css?v=5" />
   <link rel="stylesheet" href="/components.css?v=4" />
   <style>
     /* Design tokens in /theme.css — this page uses them unchanged. */
@@ -182,6 +182,8 @@
 </head>
 <body x-data="{ mobNavOpen: false }" x-init="$watch('mobNavOpen', v => document.body.style.overflow = v ? 'hidden' : '')">
 
+<a href="#main-content" class="skip-link" data-i18n-ru="Пропустить к содержимому" data-i18n-en="Skip to content">Пропустить к содержимому</a>
+
 <!-- NAV -->
 <div class="mobile-overlay" :class="{ open: mobNavOpen }" @click="mobNavOpen = false"></div>
 <div class="mobile-drawer" :class="{ open: mobNavOpen }">
@@ -238,7 +240,7 @@
 </nav>
 
 <!-- MAIN -->
-<div style="max-width:1000px;margin:2.5rem auto;padding:0 1rem;position:relative;z-index:1;">
+<main id="main-content" style="max-width:1000px;margin:2.5rem auto;padding:0 1rem;position:relative;z-index:1;">
 
   <!-- Page header — centered gothic title with gold flourish lines, matching the
        leaderboard.html/servers.html/faq.html convention (this page previously used a
@@ -397,7 +399,7 @@
     </div>
   </div>
 
-</div>
+</main>
 
 <script src="/alpine.min.js"></script>
 <script src="/common.js?v=15"></script>

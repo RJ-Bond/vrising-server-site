@@ -158,6 +158,15 @@
     /* admin.html doesn't load theme.css's global :focus-visible rule (separate
        standalone page) — needs its own, same as every other custom control here. */
     .site-checkbox:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    /* Skip-to-content link — admin.html doesn't load theme.css, so it carries its
+       own copy of the shared .skip-link rule (see theme.css for the full comment). */
+    .skip-link {
+      position: absolute; left: .5rem; top: -3rem; z-index: 1000;
+      background: var(--accent); color: #fff; padding: .65rem 1.1rem;
+      font-size: .8rem; font-weight: 700; text-decoration: none; border-radius: .4rem;
+      transition: top .15s ease;
+    }
+    .skip-link:focus { top: .5rem; }
     label { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .3rem; }
     .section-title { font-family: 'Cinzel', serif; font-size: 1.15rem; font-weight: 700; color: var(--gold); letter-spacing: .08em; display:flex; align-items:center; gap:.6rem; }
     .section-title::before { content:''; display:inline-block; width:3px; height:1.1em; background:linear-gradient(180deg,var(--accent),rgba(181,0,42,.3)); border-radius:2px; flex-shrink:0; }
@@ -567,6 +576,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
+<a href="#main-content" class="skip-link">Пропустить к содержимому</a>
 <div class="fog"></div>
 
 <!-- Mobile sidebar drawer overlay — click to close, same pattern as the public
@@ -681,7 +691,7 @@
   </aside>
 
   <!-- CONTENT -->
-  <main style="flex:1;min-width:0;">
+  <main id="main-content" style="flex:1;min-width:0;">
 
     <!-- DASHBOARD -->
     <div id="section-dashboard">

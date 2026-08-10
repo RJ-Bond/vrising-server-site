@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
-  <link rel="stylesheet" href="/theme.css?v=4" />
+  <link rel="stylesheet" href="/theme.css?v=5" />
   <style>
     /* Design tokens in /theme.css — this page uses them unchanged. */
     *{box-sizing:border-box;margin:0;padding:0;}
@@ -128,6 +128,8 @@
 </head>
 <body>
 
+<a href="#main-content" class="skip-link" data-i18n-ru="Пропустить к содержимому" data-i18n-en="Skip to content">Пропустить к содержимому</a>
+
 <nav class="glass-nav">
   <div style="max-width:680px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
     <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);"></a>
@@ -152,7 +154,7 @@
   </div>
 </nav>
 
-<div style="max-width:680px;margin:2rem auto 3rem;padding:0 1rem;">
+<main id="main-content" style="max-width:680px;margin:2rem auto 3rem;padding:0 1rem;">
 
   <!-- Breadcrumb — this page is always reached by a direct link (leaderboard row,
        clan member, ban history, a shared URL) rather than site navigation, so a
@@ -273,7 +275,7 @@
     </div>
   </div>
 
-</div>
+</main>
 
 <script src="/chart.min.js"></script>
 <script src="/charts.js?v=2"></script>

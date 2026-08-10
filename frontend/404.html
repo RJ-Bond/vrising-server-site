@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/theme.css?v=4" />
+  <link rel="stylesheet" href="/theme.css?v=5" />
   <style>
     /* Design tokens in /theme.css — this page uses them unchanged. */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -295,6 +295,8 @@
 </head>
 <body>
 
+<a href="#main-content" class="skip-link" data-i18n-ru="Пропустить к содержимому" data-i18n-en="Skip to content">Пропустить к содержимому</a>
+
 <div id="bg-layer"></div>
 <div class="fog"></div>
 <canvas id="stars-canvas"></canvas>
@@ -303,7 +305,7 @@
   <a href="/" class="nav-logo" id="nav-logo"></a>
 </nav>
 
-<div class="page-center">
+<main id="main-content" class="page-center">
   <div class="error-card">
     <span class="corner corner-tl">✦</span>
     <span class="corner corner-tr">✦</span>
@@ -336,7 +338,7 @@
       <a href="/faq.html">FAQ</a>
     </div>
   </div>
-</div>
+</main>
 
 <script>
 // ── Stars ─────────────────────────────────────────────────────────────────

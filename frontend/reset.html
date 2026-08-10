@@ -21,6 +21,16 @@
     :root { --bg:#06000f; --card:rgba(14,5,22,0.92); --border:rgba(110,0,150,0.22); --text:#e2d8f0; --muted:#9488a8; --gold:#c9a94a; --crimson:#c8002a; }
     * { box-sizing:border-box; margin:0; padding:0; }
     body { background:var(--bg); font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; }
+    /* Skip-to-content link — this page doesn't load theme.css (standalone auth
+       page), so it carries its own copy of the shared .skip-link rule (see
+       theme.css for the full comment explaining the pattern). */
+    .skip-link {
+      position: absolute; left: .5rem; top: -3rem; z-index: 1000;
+      background: var(--crimson); color: #fff; padding: .65rem 1.1rem;
+      font-size: .8rem; font-weight: 700; text-decoration: none; border-radius: .4rem;
+      transition: top .15s ease;
+    }
+    .skip-link:focus { top: .5rem; }
     canvas { position:fixed; inset:0; pointer-events:none; z-index:0; }
     .wrap { position:relative; z-index:1; width:100%; max-width:400px; padding:1.5rem 1rem; }
     .card {
@@ -82,8 +92,9 @@
   </style>
 </head>
 <body>
+<a href="#main-content" class="skip-link">Пропустить к содержимому</a>
 <canvas id="stars-canvas"></canvas>
-<div class="wrap">
+<main id="main-content" class="wrap">
   <div class="card">
     <div class="logo" id="site-logo">V RISING</div>
     <h2>— Сброс пароля —</h2>
@@ -140,7 +151,7 @@
     <span id="footnote-site"></span>
     <a id="footnote-discord" href="#" target="_blank" rel="noopener noreferrer" class="footnote-discord" style="display:none;">· Discord</a>
   </div>
-</div>
+</main>
 
 <script>
 const API = '/api';
