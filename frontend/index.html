@@ -1105,11 +1105,11 @@
 
     <!-- Hidden legacy anchors (kept for backward compat in error handler) -->
     <h3 id="modal-title" style="display:none;"></h3>
-    <div id="modal-thumb" style="display:none;"><img id="modal-thumb-img" src="" alt=""></div>
+    <div id="modal-thumb" style="display:none;"><img id="modal-thumb-img" src="" alt="" loading="lazy"></div>
 
     <!-- Image lightbox -->
     <div id="img-lightbox" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(2,0,6,0.94);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:2rem;cursor:zoom-out;">
-      <img id="img-lightbox-img" src="" alt="" style="max-width:92vw;max-height:92vh;border-radius:.5rem;box-shadow:0 20px 80px rgba(0,0,0,0.85);object-fit:contain;">
+      <img id="img-lightbox-img" src="" alt="" loading="lazy" style="max-width:92vw;max-height:92vh;border-radius:.5rem;box-shadow:0 20px 80px rgba(0,0,0,0.85);object-fit:contain;">
     </div>
 
     <!-- Article body -->
@@ -1203,7 +1203,7 @@
   <!-- Selected-image preview, shown between choosing a file (handleDmAttachSelect())
        and actually sending — mirrors the reply bar's dismissible-strip pattern. -->
   <div id="dm-attach-preview" style="display:none;align-items:center;gap:.5rem;padding:.4rem .75rem;border-top:1px solid rgba(150,0,28,0.15);flex-shrink:0;">
-    <img alt="" style="width:40px;height:40px;object-fit:cover;border-radius:.35rem;border:1px solid rgba(150,0,28,0.3);flex-shrink:0;">
+    <img alt="" loading="lazy" style="width:40px;height:40px;object-fit:cover;border-radius:.35rem;border:1px solid rgba(150,0,28,0.3);flex-shrink:0;">
     <span style="font-size:.7rem;color:var(--muted);flex:1;min-width:0;">Изображение будет отправлено</span>
     <button type="button" onclick="clearDmAttachment()" title="Убрать" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;line-height:1;padding:.2rem .3rem;flex-shrink:0;">✕</button>
   </div>

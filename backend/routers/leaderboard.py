@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from typing import Optional
@@ -58,6 +58,7 @@ def _current_streak(activity_dates: set[str], today: date) -> int:
 
 @router.get("/api/leaderboard", response_model=list[PlayerRecordOut])
 async def get_leaderboard(
+    response: Response,
     server: int = Query(1),
     period: str = Query("all"),
     q: str = Query(""),
@@ -77,6 +78,13 @@ async def get_leaderboard(
     ),
     db: AsyncSession = Depends(get_db),
 ):
+    # Already paginated (page/per_page above); this is the second half of "stays fast as
+    # the player count grows" — a short shared cache so a burst of visitors loading the
+    # same page hits the DB once instead of once each. Short enough that online-status/
+    # rank-delta/streak fields (each with their own real-time-ish freshness expectations
+    # elsewhere on the site) don't go noticeably stale — same TTL ballpark as
+    # STATUS_CACHE_TTL in main.py, which caches similarly "live-ish" server-status data.
+    response.headers["Cache-Control"] = "public, max-age=30"
     if as_of is not None:
         # ── Historical reconstruction from PlayerRankSnapshot ──────────────────────
         cutoff = datetime(as_of.year, as_of.month, as_of.day, 23, 59, 59, tzinfo=timezone.utc)
@@ -266,6 +274,7 @@ async def get_leaderboard_trend(
 
 @router.get("/api/leaderboard/points", response_model=list[PointsLeaderboardEntryOut])
 async def get_points_leaderboard(
+    response: Response,
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -277,6 +286,7 @@ async def get_points_leaderboard(
     time-bucketed stat). Zero/negative balances and deactivated accounts are excluded,
     same spirit as the playtime leaderboard only ever having rows for players who've
     actually accrued something."""
+    response.headers["Cache-Control"] = "public, max-age=30"  # same short shared cache as GET /api/leaderboard above
     query = (
         select(User)
         .where(User.is_active == True, User.points_balance > 0)

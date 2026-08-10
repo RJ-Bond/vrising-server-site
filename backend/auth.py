@@ -19,6 +19,17 @@ _DEFAULT_KEY = "changeme_generate_random_32chars"
 SECRET_KEY = os.getenv("SECRET_KEY", _DEFAULT_KEY)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7
+# admin/superadmin sessions carry far more blast radius per token than a normal
+# user's (role management, backups, deploy/SSL, RCON — see the ROLE_LEVELS comment
+# below), so they get a much shorter-lived token: a forgotten-open or leaked admin
+# session self-expires within a work day instead of lingering for a full week like a
+# normal user's. Deliberately NOT applied to "moderator" — that tier is scoped to
+# content/user moderation (comments, reports, ban toggle), a blast radius much closer
+# to a normal user's than to admin/superadmin's infra access (see CLAUDE.md's admin
+# role section). Applied via access_token_expire_minutes_for_role()/
+# create_access_token_for_user() below, not by editing ACCESS_TOKEN_EXPIRE_MINUTES
+# itself, so normal-user sessions are completely unaffected.
+ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 12
 COOKIE_NAME = "vrising_token"
 
 if SECRET_KEY == _DEFAULT_KEY:
@@ -174,6 +185,28 @@ def role_level(role: str) -> int:
 
 def is_at_least(user: User, min_role: str) -> bool:
     return role_level(user.role) >= ROLE_LEVELS[min_role]
+
+
+def access_token_expire_minutes_for_role(role: str) -> int:
+    """admin/superadmin get ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES (12h); everyone else
+    (including moderator) gets the normal-user ACCESS_TOKEN_EXPIRE_MINUTES (7d) — see
+    the comment on ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES above for why the cutoff sits at
+    the admin tier rather than moderator."""
+    if role_level(role) >= ROLE_LEVELS["admin"]:
+        return ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES
+    return ACCESS_TOKEN_EXPIRE_MINUTES
+
+
+def create_access_token_for_user(user: User) -> str:
+    """Preferred over calling create_access_token({"sub": ...}) directly at a token-
+    issuing call site (login, initial setup, change-password/logout-everywhere
+    reissue) — bakes in the role-aware expiry above so every call site automatically
+    gets the tightened admin/superadmin lifetime without having to remember to compute
+    it itself."""
+    return create_access_token(
+        {"sub": str(user.id)},
+        expires_delta=timedelta(minutes=access_token_expire_minutes_for_role(user.role)),
+    )
 
 
 def require_role(min_role: str):

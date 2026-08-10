@@ -883,7 +883,7 @@
                     V Rising News
                   </div>
                 </div>
-                <img id="dp-thumb" src="" alt="" style="display:none;width:60px;height:60px;border-radius:.25rem;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'" onload="this.style.display=''">
+                <img id="dp-thumb" src="" alt="" loading="lazy" style="display:none;width:60px;height:60px;border-radius:.25rem;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'" onload="this.style.display=''">
               </div>
             </div>
           </div>
@@ -1146,7 +1146,7 @@
               <span id="logo-upload-status" style="font-size:.76rem;color:var(--muted);"></span>
             </div>
             <div id="logo-preview" style="margin-top:.6rem;display:none;">
-              <img id="logo-preview-img" src="" alt="Logo" style="max-height:2.5rem;max-width:12rem;object-fit:contain;border-radius:.4rem;border:1px solid rgba(150,0,28,.3);padding:.3rem .6rem;background:rgba(8,0,16,.6);">
+              <img id="logo-preview-img" src="" alt="Logo" loading="lazy" style="max-height:2.5rem;max-width:12rem;object-fit:contain;border-radius:.4rem;border:1px solid rgba(150,0,28,.3);padding:.3rem .6rem;background:rgba(8,0,16,.6);">
             </div>
             <p class="s-desc">Показывается в шапке (навигации) вместо текста «⚔ Название». Загружается сразу. Оставьте пустым — будет текст.</p>
           </div>
@@ -1164,7 +1164,7 @@
               <span id="favicon-upload-status" style="font-size:.76rem;color:var(--muted);"></span>
             </div>
             <div id="favicon-preview" style="margin-top:.6rem;display:none;">
-              <img id="favicon-preview-img" src="" alt="Favicon" style="width:2rem;height:2rem;object-fit:contain;border-radius:.3rem;border:1px solid rgba(150,0,28,.3);padding:.2rem;background:rgba(8,0,16,.6);">
+              <img id="favicon-preview-img" src="" alt="Favicon" loading="lazy" style="width:2rem;height:2rem;object-fit:contain;border-radius:.3rem;border:1px solid rgba(150,0,28,.3);padding:.2rem;background:rgba(8,0,16,.6);">
             </div>
             <p class="s-desc">Иконка во вкладке браузера. PNG/ICO, квадратная (например 64×64). Применяется на всех страницах.</p>
           </div>
@@ -1182,7 +1182,7 @@
               <span id="hero-logo-upload-status" style="font-size:.76rem;color:var(--muted);"></span>
             </div>
             <div id="hero-logo-preview" style="margin-top:.6rem;display:none;background:rgba(8,0,16,.6);border:1px solid rgba(150,0,28,.3);border-radius:.4rem;padding:.6rem;text-align:center;">
-              <img id="hero-logo-preview-img" src="" alt="Hero logo" style="max-height:5rem;max-width:100%;object-fit:contain;">
+              <img id="hero-logo-preview-img" src="" alt="Hero logo" loading="lazy" style="max-height:5rem;max-width:100%;object-fit:contain;">
             </div>
             <p class="s-desc">Крупный логотип на главной вместо текста «Название — Игровое сообщество». Загружается сразу. Оставьте пустым — будет текст.</p>
           </div>
@@ -7416,7 +7416,7 @@ async function loadErrors(page = 1) {
       <button onclick="closePreview()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;padding:.2rem;">✕</button>
     </div>
     <div style="padding:2rem;">
-      <img id="preview-thumb" src="" alt="" style="width:100%;max-height:260px;object-fit:cover;border-radius:.65rem;margin-bottom:1.25rem;">
+      <img id="preview-thumb" src="" alt="" loading="lazy" style="width:100%;max-height:260px;object-fit:cover;border-radius:.65rem;margin-bottom:1.25rem;">
       <h1 id="preview-title" style="font-family:'Cinzel',serif;font-size:1.5rem;color:#e0c8d8;margin-bottom:.6rem;line-height:1.3;"></h1>
       <p id="preview-summary" style="color:var(--muted);font-size:.9rem;margin-bottom:1.5rem;line-height:1.6;border-left:2px solid rgba(181,0,42,.5);padding-left:.85rem;"></p>
       <div id="preview-content" class="ql-editor" style="padding:0;min-height:0;pointer-events:none;"></div>
