@@ -24,13 +24,18 @@ jobs:
       - name: pytest (backend/tests)
         run: bash scripts/test_backend.sh
       # Visibility only, not a gate: pip-audit queries the PyPI advisory DB for every
-      # pinned version in requirements.txt. continue-on-error so a pre-existing
-      # transitive advisory (which nobody's had a chance to triage yet) doesn't block
-      # unrelated PRs — see the "Dependabot" section in CLAUDE.md for the complementary
-      # weekly-PR mechanism that actually bumps versions.
+      # pinned version in requirements.txt/requirements-dev.txt. continue-on-error so a
+      # pre-existing transitive advisory (which nobody's had a chance to triage yet)
+      # doesn't block unrelated PRs — see the "Dependabot" section in CLAUDE.md for the
+      # complementary weekly-PR mechanism that actually bumps versions. pip-audit itself
+      # is version-pinned (unlike ruff/pytest above) specifically so a new pip-audit
+      # release can't itself introduce CI flakiness (new check categories, output-format
+      # changes) on an unrelated push — bump this pin deliberately, not implicitly.
       - name: Dependency vulnerability scan (pip-audit)
         continue-on-error: true
-        run: uv run --python 3.12 --with pip-audit pip-audit -r requirements.txt
+        run: |
+          uv run --python 3.12 --with pip-audit==2.10.0 pip-audit -r requirements.txt
+          uv run --python 3.12 --with pip-audit==2.10.0 pip-audit -r requirements-dev.txt
 
   frontend:
     name: Frontend (HTML/CSS validation)
