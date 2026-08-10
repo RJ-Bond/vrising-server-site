@@ -90,10 +90,49 @@ from .schemas import (
 )
 from .monitor import get_server_status, get_history
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
+# ─── Logging setup ─────────────────────────────────────────────────────────
+# JSON by default so log lines are machine-parseable (log shippers / grep+jq on the
+# server) — every call site across backend/ already just does logger.info/.error with
+# %s-style args and occasionally extra={...}; this only changes how a record is
+# rendered to stdout, not what gets logged where. Reuses the same ENVIRONMENT var the
+# Sentry block below reads (.env.example default: "production"), so there's exactly one
+# dev/prod switch, not two. Set ENVIRONMENT=development locally to get the old
+# human-readable single-line format back for a live `uvicorn --reload` console.
+_LOG_RESERVED_KEYS = frozenset(logging.LogRecord(
+    "", 0, "", 0, "", (), None,
+).__dict__.keys()) | {"message", "asctime"}
+
+
+class _JsonLogFormatter(logging.Formatter):
+    """Structured JSON formatter — timestamp/level/logger/message always present, plus
+    whatever this app already passes via logging's `extra={...}` (e.g. request-context
+    fields) merged in as top-level keys. Doesn't invent new "extra" plumbing anywhere
+    else: any logger.info("...", extra={...}) call site just starts showing up as
+    structured fields instead of being silently dropped by the old plain formatter."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "timestamp": self.formatTime(record, "%Y-%m-%dT%H:%M:%S%z"),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+        }
+        for key, value in record.__dict__.items():
+            if key not in _LOG_RESERVED_KEYS and key not in payload:
+                payload[key] = value
+        if record.exc_info:
+            payload["exc_info"] = self.formatException(record.exc_info)
+        if record.stack_info:
+            payload["stack_info"] = self.formatStack(record.stack_info)
+        return json.dumps(payload, ensure_ascii=False, default=str)
+
+
+_log_handler = logging.StreamHandler()
+if os.getenv("ENVIRONMENT", "production") == "development":
+    _log_handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+else:
+    _log_handler.setFormatter(_JsonLogFormatter())
+logging.basicConfig(level=logging.INFO, handlers=[_log_handler])
 logger = logging.getLogger(__name__)
 
 # ─── Optional Sentry error monitoring ──────────────────────────────────────
