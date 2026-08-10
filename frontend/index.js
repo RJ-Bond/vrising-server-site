@@ -3319,7 +3319,13 @@ async function loadNewPlayers() {
     const strip = document.getElementById('new-players-strip');
     if (!wrap || !strip || !Array.isArray(rows) || !rows.length) return;
     strip.innerHTML = rows.map(u => {
-      const ph = `<span style="width:2.2rem;height:2.2rem;border-radius:50%;background:rgba(60,30,90,.8);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:var(--text);">${esc((u.username[0] || '?').toUpperCase())}</span>`;
+      // Single-quoted style attribute (not double-quoted) — this whole span gets
+      // embedded as a hand-escaped string inside the onerror="..." HTML attribute
+      // below, which is itself double-quoted; an unescaped " anywhere in ph would
+      // prematurely close that outer attribute and leak the rest as garbled visible
+      // text (same safe pattern already used by the online-widget avatar fallback
+      // above — this one used to use double quotes and broke exactly that way).
+      const ph = `<span style='width:2.2rem;height:2.2rem;border-radius:50%;background:rgba(60,30,90,.8);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:var(--text);'>${esc((u.username[0] || '?').toUpperCase())}</span>`;
       const av = u.avatar_url
         ? `<img src="${esc(u.avatar_url)}" alt="" style="width:2.2rem;height:2.2rem;border-radius:50%;object-fit:cover;" onerror="this.outerHTML='${ph.replace(/'/g, "\\'")}'">` : ph;
       return `<a href="/user.html?u=${encodeURIComponent(u.username)}" title="${esc(u.username)}" data-tip="${esc(u.username)}"
