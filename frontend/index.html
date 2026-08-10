@@ -51,7 +51,18 @@
   <meta id="meta-tw-description" name="twitter:description" content="Русскоязычное сообщество серверов V Rising — новости, статус серверов, лидерборд, кланы." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,300;1,400&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <!-- Trimmed to exactly the weights this page actually uses (audited against every
+       font-family/font-weight pair in index.html/index.css/index.js, including
+       weights inherited via a CSS class like .gothic rather than set inline) —
+       was requesting Cormorant Garamond's full italic+regular range (6 variants)
+       for a single non-italic 700 use (.hero-title), while separately MISSING
+       Oswald 700 (server-monitor player-count/latency numbers, index.js) and
+       Philosopher 600 (.comment-author) — both were rendering as the browser's
+       synthesized/"fake" bold instead of the real font file. Cinzel and Inter were
+       already exactly right; left unchanged. Bump this list's weights again if a
+       future edit introduces a new one — nothing rejects an unlisted weight, it
+       just silently falls back to fake-bold like Oswald/Philosopher were doing. -->
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:wght@700&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600;700&family=Philosopher:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
   <link rel="stylesheet" href="/theme.css?v=5" />
   <link rel="stylesheet" href="/index.css?v=22" />
