@@ -75,7 +75,7 @@ jobs:
         run: node scripts/visual-regression.mjs
       - name: Upload visual-regression diff artifacts
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: visual-regression-diffs
           path: .visual-regression-out/
@@ -104,7 +104,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: node scripts/visual-regression.mjs --update
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: visual-baselines
           path: .github/visual-baselines/*.png
