@@ -44,6 +44,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Validate frontend/*.html + CSS
         run: bash scripts/check.sh
+      - name: Check for broken internal links
+        run: bash scripts/check_links.sh
       - uses: actions/setup-node@v4
         with:
           node-version: 22
