@@ -1184,7 +1184,7 @@ function renderPodium(top3) {
     const name = u.player_name || 'Аноним';
     const grad = (typeof nameGradient === 'function') ? nameGradient(name) : '#3a0060';
     const avatarHtml = u.avatar_url
-      ? `<img class="podium-avatar" src="${esc(u.avatar_url)}" alt="${esc(name)}" style="border:2px solid ${borders[i]};">`
+      ? `<img class="podium-avatar" src="${esc(u.avatar_url)}" alt="${esc(name)}" loading="lazy" style="border:2px solid ${borders[i]};">`
       : `<span class="podium-avatar" style="background:${grad};border:2px solid ${borders[i]};">${esc(name.charAt(0).toUpperCase())}</span>`;
     const valueText = fmtMetric(u.metricValue);
     const verifiedHtml = u.verified ? `<span class="lb-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>` : '';
@@ -1360,6 +1360,35 @@ async function loadTrendChart(playerName) {
   }
 }
 
+/* ── Leaderboard structured data (schema.org) — mirrors setEventsJsonLd() in
+   events.html / setShopItemsJsonLd() in shop.html. ItemList is schema.org's type
+   for a ranked list (https://schema.org/ItemList); each row becomes a ListItem
+   pointing at that player's profile page, position taken from the row's actual
+   rank (_rank, offset-adjusted for the current page — see loadLeaderboard()) so
+   it matches what's really on screen instead of always claiming positions 1..N. ── */
+function setLeaderboardJsonLd(players) {
+  const id = 'leaderboard-jsonld';
+  document.getElementById(id)?.remove();
+  if (!players || !players.length) return;
+  const el = document.createElement('script');
+  el.type = 'application/ld+json';
+  el.id = id;
+  el.textContent = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'V Rising — рейтинг игроков',
+    itemListOrder: 'https://schema.org/ItemListOrderDescending',
+    numberOfItems: players.length,
+    itemListElement: players.map(p => ({
+      '@type': 'ListItem',
+      position: p._rank,
+      url: `${location.origin}/user.html?u=${encodeURIComponent(p.player_name)}`,
+      name: p.player_name,
+    })),
+  });
+  document.head.appendChild(el);
+}
+
 async function loadLeaderboard() {
   const list = document.getElementById('lb-list');
   const pag  = document.getElementById('lb-pagination');
@@ -1410,6 +1439,7 @@ async function loadLeaderboard() {
         list.innerHTML = emptyState('🏹', _t('Таблица пуста', 'Table is empty'), _t('На этом сервере статистика ещё не накоплена', 'Stats for this server haven’t accumulated yet'));
       }
       renderPodium([]);
+      setLeaderboardJsonLd([]);
     } else {
       const offset = (_page - 1) * PER_PAGE;
       _allPlayers = items.map((p, i) => ({...p, _rank: offset + i + 1}));
@@ -1418,6 +1448,7 @@ async function loadLeaderboard() {
       // Render podium for top 3 (only on page 1)
       if (_page === 1) renderPodium(_allPlayers.slice(0, 3));
       else { const s = document.getElementById('lb-podium'); if (s) s.style.display = 'none'; }
+      setLeaderboardJsonLd(_allPlayers);
     }
     // update stats tiles
     const onlineEl = document.getElementById('lb-stat-online-val');

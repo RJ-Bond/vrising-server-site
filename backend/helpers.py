@@ -25,7 +25,7 @@ from sqlalchemy import select, delete, update
 
 from .database import get_db
 from .models import User, AuditLog, ServerApiKey, Setting, PointsTransaction, Ban, PluginHeartbeat, ScheduledRestart, PushSubscription, News, TotpRecoveryCode
-from .auth import COOKIE_NAME, get_password_hash, verify_password
+from .auth import COOKIE_NAME, get_password_hash, verify_password, access_token_expire_minutes_for_role
 
 logger = logging.getLogger(__name__)
 
@@ -268,8 +268,6 @@ def _utc_ts(dt: datetime) -> float:
 
 # ─── Cookie helpers ──────────────────────────────────────────────────────────
 
-_COOKIE_MAX_AGE = 60 * 60 * 24 * 7  # 7 days
-
 # Off by default so plain-HTTP setups (local dev, staging's nginx.staging.conf, which
 # is deliberately plain HTTP — see docker-compose.staging.yml's header comment) still
 # get a cookie back at all: a browser silently drops a `Secure` cookie set over a
@@ -280,11 +278,19 @@ _COOKIE_MAX_AGE = 60 * 60 * 24 * 7  # 7 days
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").strip().lower() in ("1", "true", "yes", "on")
 
 
-def _set_auth_cookie(response: Response, token: str) -> None:
+def _set_auth_cookie(response: Response, token: str, role: str = "user") -> None:
+    """`role` sizes the cookie's own max_age to match the JWT's own expiry for that
+    role (see auth.access_token_expire_minutes_for_role) — an admin/superadmin cookie
+    that outlived its token would just sit in the browser sending an always-401
+    cookie until the normal 7-day ceiling; matching it keeps the browser's own
+    cookie-expiry bookkeeping honest about when the session really ends. Defaults to
+    the normal-user duration so call sites that don't know the role yet (there
+    currently are none, but this keeps the signature backward-compatible) still get a
+    sane cookie."""
     response.set_cookie(
         key=COOKIE_NAME,
         value=token,
-        max_age=_COOKIE_MAX_AGE,
+        max_age=access_token_expire_minutes_for_role(role) * 60,
         httponly=True,
         samesite="lax",
         secure=COOKIE_SECURE,
