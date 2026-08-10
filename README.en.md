@@ -42,10 +42,14 @@ A website for **V Rising** game servers: real-time server monitoring, a news fee
 - Hourly activity heatmap, tied to the selected period
 - Wipe history and statistics
 
+### Server status (`status.html`)
+- A simplified public status board: online/offline for each server and uptime over the last 7 and 30 days, no login required — a quick answer to "is the server up right now?" without `servers.html`'s level of detail
+
 ### Players (`leaderboard.html`)
 - Two leaderboard modes: total playtime and points balance (a "⏱ Time / 💎 Points" toggle)
 - Per-server; period switcher: all-time / month / week (playtime mode)
 - Rank-change indicator (▲/▼) versus yesterday, based on nightly rank snapshots
+- View the leaderboard as of a past date (`?as_of=YYYY-MM-DD`) — a historical snapshot instead of the live standings, with the rank-change indicator skipped (it's meaningless in this mode)
 - Player search by name (debounced)
 - Highlight + "📍 Find me" button — jumps to your own row in the ranking
 - "Online now" indicator for currently connected players, last-session duration
@@ -55,6 +59,7 @@ A website for **V Rising** game servers: real-time server monitoring, a news fee
 - Clan rosters are synced directly from the game by the plugin (`POST /api/plugin/clans/sync`) — this section is entirely read-only on the website; there is no manual clan creation/editing through the web UI
 - Clan cards with member count, motto, and search by name
 - A detail modal with the full roster: member roles (leader/officer/member), avatars, links to linked players' profiles
+- Clan comparison: pick up to 2 clans via checkboxes, then a side-by-side modal (total/average power, member count, online now)
 - Summary stats: number of clans, total member count
 
 ### Map (`map.html`)
@@ -77,6 +82,9 @@ A website for **V Rising** game servers: real-time server monitoring, a news fee
 
 ### Shop (`shop.html`)
 - Redeem points (earned from playtime and from a daily-connect streak) for items from a catalog
+- Item categories with a catalog filter
+- A wishlist — save an item you like without redeeming it right away; a separate "My wishlist" feed
+- Individual items can carry a weekly per-player purchase limit (`weekly_limit_per_user`) — the remaining quota is shown right on the item card
 - Available to logged-in users only — the balance is tied to the site account
 - A redemption request deducts points immediately; item delivery is manual, handled in-game by staff (`status`: pending/fulfilled/cancelled)
 - A feed of the player's own redemption requests and their statuses
@@ -87,7 +95,9 @@ A website for **V Rising** game servers: real-time server monitoring, a news fee
 ### Auth & profile
 - Registration and login by username/password, JWT tokens (in an httpOnly cookie), passwords hashed with bcrypt
 - "Remember me", email-based password recovery (forgot/reset password, emails sent via SMTP)
-- Two-factor authentication (2FA/TOTP) — enable/disable from the profile page
+- Two-factor authentication (2FA/TOTP) — enable/disable from the profile page, single-use recovery codes for when the 2FA device is lost (regenerating a batch invalidates the previous one entirely, including codes that were never actually used)
+- One-click logout from every other device from the profile page (`POST /api/auth/logout-everywhere`) — the session that clicked the button stays signed in
+- Self-service, irreversible account deletion from the profile page, confirmed with the account password
 - Change email and password
 - Personal profile (`profile.html`): bio, cover image and avatar, linking an in-game nickname, points history and shop-request history, notification feed, private messages, and — for staff — customizable admin title and badge
 - Public player profiles (`user.html`) — stats, clan, activity, avatar

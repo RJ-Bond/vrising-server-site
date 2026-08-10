@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Изменения — Just-Skill.Ru</title>
+  <link rel="canonical" href="https://v.just-skill.ru/changelog.html" />
+  <meta property="og:url" content="https://v.just-skill.ru/changelog.html" />
+  <meta name="description" content="История обновлений сайта V Rising на Just-Skill.Ru: новые страницы, функции магазина, кланов, рейтинга и аккаунта в хронологическом порядке." />
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Just-Skill.Ru" />
+  <meta property="og:title" content="V Rising — Изменения сайта" />
+  <meta property="og:description" content="История обновлений сайта V Rising на Just-Skill.Ru: новые страницы, функции магазина, кланов, рейтинга и аккаунта в хронологическом порядке." />
+  <meta property="og:image" content="https://v.just-skill.ru/uploads/og-default.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/tailwind.min.css" />
+  <link rel="stylesheet" href="/theme.css?v=4" />
+  <link rel="stylesheet" href="/components.css?v=4" />
+  <style>
+    /* Base tokens in /theme.css; this page overrides its lighter surfaces/text (same
+       lighter-content-page convention as faq.html/status.html/servers.html). */
+    :root {
+      --card:    rgba(16,7,23,0.92);
+      --panel:   rgba(255,255,255,0.035);
+      --text:    #f5f0fb;
+      --muted:   #b6a8d2;
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; }
+    body {
+      background:var(--bg);
+      background-image:
+        radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.12) 0%, transparent 55%),
+        radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.08) 0%, transparent 50%);
+      background-attachment:fixed;
+      font-family:'Inter',system-ui,sans-serif; color:var(--text); min-height:100vh;
+    }
+    /* nav + tooltips + base: /components.css */
+
+    .cl-page-wrap { max-width:720px; margin:2.5rem auto 3.5rem; padding:0 1rem; }
+    .cl-head { text-align:center; margin-bottom:2rem; }
+    .cl-head-rule { display:flex; align-items:center; justify-content:center; gap:.7rem; margin-bottom:.5rem; }
+    .cl-head-rule span { height:1px; width:36px; background:linear-gradient(90deg,transparent,var(--gold)); }
+    .cl-head-rule span:last-child { background:linear-gradient(90deg,var(--gold),transparent); }
+
+    /* Vertical timeline rail: a single line down the left of the dated entries, with
+       each entry's date knob sitting on it — conveys "chronological log" at a glance
+       without needing a heavier component (accordion/table) a short hand-authored
+       list doesn't need. */
+    .cl-timeline { position:relative; padding-left:1.6rem; }
+    .cl-timeline::before {
+      content:''; position:absolute; left:.28rem; top:.4rem; bottom:.4rem; width:1px;
+      background:linear-gradient(180deg, rgba(200,0,42,0.4), rgba(150,0,28,0.08));
+    }
+    .cl-entry { position:relative; margin-bottom:1.35rem; animation:cl-in .3s ease both; }
+    .cl-entry::before {
+      content:''; position:absolute; left:-1.6rem; top:.35rem; width:.55rem; height:.55rem;
+      border-radius:50%; background:var(--crimson); box-shadow:0 0 8px rgba(200,0,42,0.6);
+    }
+    @keyframes cl-in { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:translateX(0)} }
+
+    .cl-date {
+      font-family:'Cinzel',serif; font-size:.68rem; letter-spacing:.1em; color:var(--gold);
+      text-transform:uppercase; margin-bottom:.4rem; display:flex; align-items:center; gap:.55rem;
+    }
+    .cl-tag {
+      font-size:.62rem; font-weight:700; letter-spacing:.03em; padding:.15rem .5rem; border-radius:9999px;
+      background:rgba(110,0,150,0.14); border:1px solid rgba(110,0,150,0.28); color:#d4c4e0;
+      text-transform:none; font-family:'Inter',sans-serif;
+    }
+    .cl-card {
+      background:var(--card); border:1px solid var(--border); border-radius:.75rem;
+      padding:1rem 1.2rem;
+    }
+    .cl-title { font-size:.92rem; font-weight:700; color:#ece3f7; margin-bottom:.4rem; }
+    .cl-desc { font-size:.82rem; color:var(--muted); line-height:1.65; }
+
+    .cl-note { font-size:.76rem; color:var(--muted); text-align:center; margin-top:2rem; line-height:1.6; }
+
+    @media (max-width:480px) {
+      .cl-card { padding:.85rem 1rem; }
+      .cl-timeline { padding-left:1.35rem; }
+      .cl-entry::before { left:-1.35rem; }
+      .glass-nav > div { padding:.6rem 1rem !important; }
+    }
+  </style>
+</head>
+<body x-data="{ mobNavOpen: false }" x-init="$watch('mobNavOpen', v => document.body.style.overflow = v ? 'hidden' : '')">
+
+<!-- NAV -->
+<div class="mobile-overlay" :class="{ open: mobNavOpen }" @click="mobNavOpen = false"></div>
+<div class="mobile-drawer" :class="{ open: mobNavOpen }">
+  <a href="/" data-i18n-ru="🏠 Главная" data-i18n-en="🏠 Home">🏠 Главная</a>
+  <a href="/servers.html" data-i18n-ru="🖥️ Сервера" data-i18n-en="🖥️ Servers">🖥️ Сервера</a>
+  <a href="/leaderboard.html" data-i18n-ru="🏆 Игроки" data-i18n-en="🏆 Players">🏆 Игроки</a>
+  <a href="/clans.html" data-i18n-ru="🛡️ Кланы" data-i18n-en="🛡️ Clans">🛡️ Кланы</a>
+  <a href="/bans.html" data-i18n-ru="🚫 Баны" data-i18n-en="🚫 Bans">🚫 Баны</a>
+  <a href="/shop.html" data-i18n-ru="🛒 Магазин" data-i18n-en="🛒 Shop">🛒 Магазин</a>
+  <a href="/map.html" data-i18n-ru="🗺️ Карта" data-i18n-en="🗺️ Map">🗺️ Карта</a>
+  <a href="/faq.html">❓ FAQ</a>
+  <a href="/events.html" data-i18n-ru="📅 События" data-i18n-en="📅 Events">📅 События</a>
+  <a href="/status.html" data-i18n-ru="📶 Статус" data-i18n-en="📶 Status">📶 Статус</a>
+  <a href="/changelog.html" data-i18n-ru="📜 Изменения" data-i18n-en="📜 Changelog">📜 Изменения</a>
+  <a href="/profile.html" data-i18n-ru="👤 Профиль" data-i18n-en="👤 Profile">👤 Профиль</a>
+  <a href="#" onclick="openGlobalSearch();return false;" data-i18n-ru="🔍 Поиск" data-i18n-en="🔍 Search">🔍 Поиск</a>
+</div>
+<nav class="glass-nav">
+  <div style="max-width:1000px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.6rem;">
+    <a href="/" id="nav-logo" class="gothic" style="font-size:1.1rem;font-weight:900;letter-spacing:.15em;color:#d4c4e0;text-decoration:none;text-shadow:0 0 20px rgba(204,0,40,0.6);"></a>
+    <div class="nav-links">
+      <a href="/" class="topnav-link" data-i18n-ru="🏠 Главная" data-i18n-en="🏠 Home">🏠 Главная</a>
+      <a href="/servers.html" class="topnav-link" data-i18n-ru="🖥️ Сервера" data-i18n-en="🖥️ Servers">🖥️ Сервера</a>
+      <a href="/leaderboard.html" class="topnav-link" data-i18n-ru="🏆 Игроки" data-i18n-en="🏆 Players">🏆 Игроки</a>
+      <a href="/clans.html" class="topnav-link" data-i18n-ru="🛡️ Кланы" data-i18n-en="🛡️ Clans">🛡️ Кланы</a>
+      <a href="/bans.html" class="topnav-link" data-i18n-ru="🚫 Баны" data-i18n-en="🚫 Bans">🚫 Баны</a>
+      <a href="/shop.html" class="topnav-link" data-i18n-ru="🛒 Магазин" data-i18n-en="🛒 Shop">🛒 Магазин</a>
+      <div class="nav-dropdown">
+        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)" data-i18n-ru="Ещё ▾" data-i18n-en="More ▾">Ещё ▾</button>
+        <div class="nav-dropdown-menu">
+          <a href="/map.html" class="nav-dropdown-item" data-i18n-ru="🗺️ Карта" data-i18n-en="🗺️ Map">🗺️ Карта</a>
+          <a href="/faq.html" class="nav-dropdown-item">❓ FAQ</a>
+          <a href="/events.html" class="nav-dropdown-item" data-i18n-ru="📅 События" data-i18n-en="📅 Events">📅 События</a>
+          <a href="/status.html" class="nav-dropdown-item" data-i18n-ru="📶 Статус" data-i18n-en="📶 Status">📶 Статус</a>
+          <a href="/changelog.html" class="nav-dropdown-item" data-i18n-ru="📜 Изменения" data-i18n-en="📜 Changelog">📜 Изменения</a>
+        </div>
+      </div>
+      <button type="button" class="nav-icon-btn" onclick="openGlobalSearch()" aria-label="Поиск по сайту" data-tip="Поиск (Ctrl+K)" data-i18n-aria-ru="Поиск по сайту" data-i18n-aria-en="Site search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-search"></use></svg>
+      </button>
+      <div id="nav-profile-link" class="nav-dropdown" style="display:none;">
+        <button type="button" class="topnav-link nav-dropdown-toggle" onclick="toggleNavDropdown(this)" data-i18n-ru="👤 Профиль ▾" data-i18n-en="👤 Profile ▾">👤 Профиль ▾</button>
+        <div class="nav-dropdown-menu">
+          <a href="/profile.html" class="nav-dropdown-item" data-i18n-ru="Мой профиль" data-i18n-en="My profile">Мой профиль</a>
+          <a href="#" class="nav-dropdown-item" onclick="logout();return false;" data-i18n-ru="Выйти" data-i18n-en="Log out">Выйти</a>
+        </div>
+      </div>
+      <a id="nav-login-link" href="/login.html" class="topnav-link" data-i18n-ru="Войти" data-i18n-en="Log in">Войти</a>
+    </div>
+    <button id="lang-toggle-btn" onclick="toggleLanguage();renderChangelog();" title="English UI (site content stays Russian)"
+      style="background:none;border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;padding:0 .5rem;height:2rem;font-size:.7rem;font-weight:700;letter-spacing:.05em;cursor:pointer;color:#9488a8;transition:all .2s;"
+      onmouseover="this.style.borderColor='rgba(200,0,40,0.5)';this.style.color='#e2d8f0'"
+      onmouseout="this.style.borderColor='rgba(150,0,28,0.3)';this.style.color='#9488a8'">EN</button>
+    <button class="nav-burger" @click="mobNavOpen = !mobNavOpen" aria-label="Меню" data-i18n-aria-ru="Меню" data-i18n-aria-en="Menu">☰</button>
+  </div>
+</nav>
+
+<div class="cl-page-wrap">
+  <div class="cl-head">
+    <div class="cl-head-rule">
+      <span></span>
+      <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;" data-i18n-ru="Изменения" data-i18n-en="Changelog">Изменения</h1>
+      <span></span>
+    </div>
+    <p style="font-size:.8rem;color:var(--muted);" data-i18n-ru="Заметные обновления сайта в хронологическом порядке" data-i18n-en="Notable site updates, in chronological order">Заметные обновления сайта в хронологическом порядке</p>
+  </div>
+
+  <div id="cl-list" class="cl-timeline"></div>
+
+  <p class="cl-note" data-i18n-ru="Полный список изменений и историю коммитов можно посмотреть в репозитории проекта на GitHub." data-i18n-en="The full history of changes and commits is available in the project's GitHub repository.">
+    Полный список изменений и историю коммитов можно посмотреть в
+    <a href="https://github.com/RJ-Bond/vrising-server-site" target="_blank" rel="noopener noreferrer" style="color:var(--gold);" data-i18n-ru="репозитории проекта на GitHub." data-i18n-en="project's GitHub repository.">репозитории проекта на GitHub.</a>
+  </p>
+</div>
+
+<script>
+const API = '/api';
+function _t(ru, en) { return localStorage.getItem('_lang') === 'en' ? en : ru; }
+
+function applySiteBackground(bg) {
+  bg = (bg || '').trim();
+  if (!bg) return;
+  let layer = document.getElementById('site-bg-photo');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.id = 'site-bg-photo';
+    layer.className = 'site-bg-photo';
+    document.body.prepend(layer);
+  }
+  layer.style.backgroundImage = [
+    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
+    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
+    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
+    `url('${bg}')`,
+  ].join(',');
+  layer.style.backgroundSize = 'auto,auto,auto,cover';
+  layer.style.backgroundPosition = 'center,center,center,center';
+}
+
+(function() {
+  const cached = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
+  if (cached) {
+    document.getElementById('nav-profile-link') && (document.getElementById('nav-profile-link').style.display = '');
+    document.getElementById('nav-login-link') && (document.getElementById('nav-login-link').style.display = 'none');
+  }
+  fetch('/api/auth/me', { credentials: 'include' }).then(r => {
+    const profileLink = document.getElementById('nav-profile-link');
+    const loginLink = document.getElementById('nav-login-link');
+    if (r.ok) {
+      if (profileLink) profileLink.style.display = '';
+      if (loginLink) loginLink.style.display = 'none';
+    } else {
+      localStorage.removeItem('user'); sessionStorage.removeItem('user');
+      localStorage.removeItem('token'); sessionStorage.removeItem('token');
+      if (profileLink) profileLink.style.display = 'none';
+      if (loginLink) loginLink.style.display = '';
+    }
+  }).catch(() => {});
+})();
+
+(async function() {
+  try {
+    const d = await (window.getSettings?.() ?? fetch(`${API}/settings/public`).then(r => r.json()));
+    const title = (d.site_title || 'V Rising').trim();
+    document.title = `${_t('Изменения', 'Changelog')} — ${title}`;
+    applySiteBackground(d.bg_image_url);
+  } catch {}
+})();
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+
+// Hand-maintained, like faq.html's FAQ array — there's no "changelog entry" concept
+// in the backend (no admin UI, no DB table) to source this from, so real entries are
+// added here directly by whoever ships a notable feature. Newest first. Dates match
+// this project's actual commit history, not placeholders.
+const CHANGELOG = [
+  {
+    date: '2026-08-09', tag_ru: 'Безопасность', tag_en: 'Security',
+    title_ru: 'Резервные коды для 2FA', title_en: '2FA recovery codes',
+    desc_ru: 'Добавлен запасной вход для игроков с включённой двухфакторной аутентификацией, которые потеряли доступ к приложению-аутентификатору: 10 одноразовых резервных кодов выдаются при включении 2FA и могут быть перевыпущены из профиля в любой момент. Перевыпуск сразу аннулирует всю предыдущую партию кодов — включая ещё не использованные.',
+    desc_en: "A backup way in for players with 2FA enabled who lose access to their authenticator app: 10 single-use recovery codes are issued when 2FA is enabled and can be regenerated from the profile at any time. Regenerating immediately invalidates the entire previous batch — including codes that were never used.",
+  },
+  {
+    date: '2026-08-09', tag_ru: 'Аккаунт', tag_en: 'Account',
+    title_ru: 'Выход со всех устройств и удаление аккаунта', title_en: 'Logout everywhere & account deletion',
+    desc_ru: 'В профиле появилась кнопка «Выйти на всех устройствах» — мгновенно отзывает все остальные сеансы, кроме текущего, — и раздел «Опасная зона» для самостоятельного безвозвратного удаления аккаунта с подтверждением паролем. Раньше оба действия требовали обращения к администрации.',
+    desc_en: 'The profile page gained a "Log out everywhere" button — instantly revokes every other session except the current one — and a "Danger zone" for self-service, irreversible account deletion confirmed with your password. Both used to require contacting an administrator.',
+  },
+  {
+    date: '2026-08-09', tag_ru: 'Кланы и рейтинг', tag_en: 'Clans & leaderboard',
+    title_ru: 'Сравнение кланов и рейтинг на прошлую дату', title_en: 'Clan comparison & historical leaderboard',
+    desc_ru: 'На странице кланов теперь можно выбрать до двух кланов и сравнить их показатели (общая и средняя мощь, число участников, онлайн сейчас) в модальном окне бок о бок. Лидерборд научился показывать рейтинг по состоянию на любую дату в прошлом (параметр ?as_of=), а не только текущий срез.',
+    desc_en: "The clans page can now compare up to two clans side by side (total/average power, member count, online now) in a modal. The leaderboard can also show the standings as of any past date (the ?as_of= parameter), not just the live ranking.",
+  },
+  {
+    date: '2026-08-09', tag_ru: 'Магазин', tag_en: 'Shop',
+    title_ru: 'Категории, вишлист и недельные лимиты в магазине', title_en: 'Shop categories, wishlist & weekly limits',
+    desc_ru: 'Каталог магазина очков получил категории с фильтром и вишлист — можно сохранить понравившийся товар, не покупая его сразу. Отдельным товарам теперь можно задать недельный лимит покупок на игрока, с остатком лимита прямо на карточке товара.',
+    desc_en: "The points shop catalog gained filterable categories and a wishlist — save an item you like without redeeming it right away. Individual items can now carry a weekly per-player purchase limit, with the remaining quota shown right on the item card.",
+  },
+  {
+    date: '2026-08-09', tag_ru: 'Мониторинг', tag_en: 'Monitoring',
+    title_ru: 'Публичная страница статуса серверов', title_en: 'Public server status page',
+    desc_ru: 'Новая страница «Статус» — упрощённая витрина «онлайн/офлайн» и аптайма за 7 и 30 дней по каждому серверу, доступная без входа на сайт и без деталей полного дашборда мониторинга.',
+    desc_en: 'A new "Status" page — a simplified online/offline board with 7- and 30-day uptime for each server, available without logging in and without the full monitoring dashboard\'s level of detail.',
+  },
+  {
+    date: '2026-08-08', tag_ru: 'Безопасность', tag_en: 'Security',
+    title_ru: 'Защита от перебора 2FA-кодов и журнал неудачных входов', title_en: 'TOTP brute-force guard & failed-login logging',
+    desc_ru: 'Введено отдельное ограничение числа попыток ввода кода 2FA на аккаунт (сверх общего лимита запросов на вход), логирование неудачных попыток входа и служебный эндпоинт /healthz для проверки живости сервиса.',
+    desc_en: 'A per-account limit on 2FA code attempts was added (on top of the general login rate limit), along with failed-login logging and a /healthz endpoint for liveness checks.',
+  },
+  {
+    date: '2026-08-07', tag_ru: 'Главная', tag_en: 'Home',
+    title_ru: 'Живая лента активности и сравнение игроков', title_en: 'Live activity feed & player comparison',
+    desc_ru: 'На главной странице появилась лента реальных событий сайта (новости, события, вехи), а на странице рейтинга — сравнение двух игроков бок о бок и клавиатурная доступность строк таблицы.',
+    desc_en: 'The homepage gained a feed of real site events (news, events, milestones), and the leaderboard page gained side-by-side player comparison and keyboard-accessible rows.',
+  },
+  {
+    date: '2026-08-05', tag_ru: 'Уведомления', tag_en: 'Notifications',
+    title_ru: 'Push-уведомления в браузере', title_en: 'Browser push notifications',
+    desc_ru: 'Добавлены веб-push уведомления (VAPID) с подпиской через service worker — сайт может уведомить о важном событии, даже когда вкладка браузера закрыта.',
+    desc_en: 'Added Web Push notifications (VAPID) with subscription handled via the service worker — the site can notify about important events even when the browser tab is closed.',
+  },
+  {
+    date: '2026-08-05', tag_ru: 'Локализация', tag_en: 'Localization',
+    title_ru: 'Переключатель RU/EN интерфейса', title_en: 'Site-wide RU/EN interface toggle',
+    desc_ru: 'Интерфейс (не пользовательский контент — новости, комментарии и т.п. остаются на русском) большинства страниц сайта теперь можно переключить на английский; выбор языка сохраняется между страницами.',
+    desc_en: "The interface chrome (not user-generated content — news, comments, etc. stay in Russian) of most pages can now be switched to English; the language choice persists across pages.",
+  },
+  {
+    date: '2026-07-19', tag_ru: 'Магазин', tag_en: 'Shop',
+    title_ru: 'Экономика очков и магазин', title_en: 'Points economy & shop',
+    desc_ru: 'Первая версия системы игровых очков: начисление за время в игре и за стрик ежедневных заходов, обмен очков на предметы из каталога и инструменты администрирования магазина.',
+    desc_en: 'The first version of the points economy: points earned from playtime and a daily-connect streak, redeemable for catalog items, plus shop administration tools.',
+  },
+  {
+    date: '2026-07-05', tag_ru: 'Профиль', tag_en: 'Profile',
+    title_ru: '2FA, обложка профиля и лента активности', title_en: '2FA, profile cover & activity feed',
+    desc_ru: 'Профиль получил загрузку обложки, ленту личной активности, форму смены email и первую версию двухфакторной аутентификации (2FA/TOTP).',
+    desc_en: 'The profile page gained a cover image upload, a personal activity feed, an email-change form, and the first version of two-factor authentication (2FA/TOTP).',
+  },
+];
+
+function renderChangelog() {
+  const list = document.getElementById('cl-list');
+  list.innerHTML = CHANGELOG.map((e, i) => `
+    <div class="cl-entry" style="animation-delay:${i * 40}ms;">
+      <div class="cl-date"><span>${e.date}</span><span class="cl-tag">${esc(_t(e.tag_ru, e.tag_en))}</span></div>
+      <div class="cl-card">
+        <div class="cl-title">${esc(_t(e.title_ru, e.title_en))}</div>
+        <div class="cl-desc">${esc(_t(e.desc_ru, e.desc_en))}</div>
+      </div>
+    </div>`).join('');
+}
+
+renderChangelog();
+// Re-rendered on language toggle by the lang-toggle-btn's onclick above (calls
+// renderChangelog() right after toggleLanguage()) — toggleLanguage() (common.js)
+// only re-applies static data-i18n-ru/-en markup and doesn't dispatch any event,
+// so this page's entry text (built from the CHANGELOG array, not static markup)
+// needs that explicit second call, same reasoning as faq.html's own _t()-driven
+// strings needing a manual redraw.
+</script>
+<script src="/alpine.min.js"></script>
+<script src="/common.js?v=16"></script>
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
