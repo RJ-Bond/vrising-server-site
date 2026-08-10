@@ -17,7 +17,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
-  <link rel="stylesheet" href="/theme.css?v=4" />
+  <link rel="stylesheet" href="/theme.css?v=5" />
   <link rel="stylesheet" href="/components.css?v=4" />
   <style>
     /* Base tokens in /theme.css; this page overrides only its panel tint. */
@@ -333,6 +333,8 @@
 </head>
 <body x-data="{ mobNavOpen: false }" x-init="$watch('mobNavOpen', v => document.body.style.overflow = v ? 'hidden' : '')">
 
+<a href="#main-content" class="skip-link" data-i18n-ru="Пропустить к содержимому" data-i18n-en="Skip to content">Пропустить к содержимому</a>
+
 <!-- NAV -->
 <div class="mobile-overlay" :class="{ open: mobNavOpen }" @click="mobNavOpen = false"></div>
 <div class="mobile-drawer" :class="{ open: mobNavOpen }">
@@ -389,7 +391,7 @@
 </nav>
 
 <!-- MAIN -->
-<div style="max-width:1080px;margin:0 auto;padding:2rem 1rem 4rem;position:relative;z-index:1;">
+<main id="main-content" style="max-width:1080px;margin:0 auto;padding:2rem 1rem 4rem;position:relative;z-index:1;">
 
   <!-- Page header -->
   <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap;">
@@ -460,14 +462,14 @@
   <div id="clans-grid" style="display:none;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1rem;"></div>
 
   <!-- Empty state -->
-  <div id="clans-empty" class="clans-empty" style="display:none;">
+  <div id="clans-empty" class="clans-empty" style="display:none;" aria-live="polite">
     <div style="font-size:3.5rem;margin-bottom:1rem;filter:drop-shadow(0 0 18px rgba(180,0,30,0.5));">⚔</div>
     <p class="gothic" style="font-size:1rem;font-weight:700;color:var(--text);letter-spacing:.06em;margin-bottom:.5rem;" data-i18n-ru="Кланов пока нет" data-i18n-en="No clans yet">Кланов пока нет</p>
     <p style="font-size:.82rem;color:var(--muted);margin-bottom:1.5rem;" data-i18n-ru="Кланы появятся здесь после первой синхронизации с игровым сервером" data-i18n-en="Clans will appear here after the first sync with the game server">Кланы появятся здесь после первой синхронизации с игровым сервером</p>
   </div>
 
   <!-- Search-empty state -->
-  <div id="clans-noresult" style="display:none;text-align:center;padding:3rem 1rem;">
+  <div id="clans-noresult" style="display:none;text-align:center;padding:3rem 1rem;" aria-live="polite">
     <div style="font-size:2.5rem;margin-bottom:.75rem;opacity:.55;filter:drop-shadow(0 0 12px rgba(180,0,30,0.4));">🔍</div>
     <p class="gothic" style="font-size:.9rem;font-weight:600;color:var(--text);margin-bottom:.4rem;" data-i18n-ru="Ничего не найдено" data-i18n-en="Nothing found">Ничего не найдено</p>
     <p style="font-size:.78rem;color:var(--muted);" data-i18n-ru="Попробуйте другой запрос" data-i18n-en="Try a different search">Попробуйте другой запрос</p>
@@ -488,7 +490,7 @@
     <button onclick="closeClanDetail()" style="position:absolute;top:.9rem;right:.9rem;background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;line-height:1;" title="Закрыть" data-i18n-title-ru="Закрыть" data-i18n-title-en="Close">✕</button>
     <div id="clan-detail-body"><div class="skel" style="height:1rem;width:60%;margin-bottom:1rem;"></div><div class="skel" style="height:.7rem;width:100%;"></div></div>
   </div>
-</div>
+</main>
 
 <script src="/alpine.min.js"></script>
 <script src="/anime.min.js"></script>

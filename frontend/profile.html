@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
-  <link rel="stylesheet" href="/theme.css?v=4" />
+  <link rel="stylesheet" href="/theme.css?v=5" />
   <style>
     /* Design tokens in /theme.css — this page uses them unchanged. */
     * { box-sizing:border-box; margin:0; padding:0; }
@@ -243,6 +243,8 @@
 </head>
 <body>
 
+<a href="#profile-main" class="skip-link" data-i18n-ru="Пропустить к содержимому" data-i18n-en="Skip to content">Пропустить к содержимому</a>
+
 <!-- NAV -->
 <nav class="glass-nav">
   <div style="max-width:680px;margin:auto;padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;">
@@ -288,7 +290,7 @@
   </div>
 </nav>
 
-<div id="profile-main" style="max-width:680px;margin:2rem auto 3rem;padding:0 1rem;display:none;">
+<main id="profile-main" style="max-width:680px;margin:2rem auto 3rem;padding:0 1rem;display:none;">
 
   <!-- Profile cover + avatar header -->
   <div class="g-card" style="overflow:hidden;padding:0;margin-bottom:1.1rem;">
@@ -738,7 +740,7 @@
       📜 Зарегистрироваться
     </a>
   </div>
-</div>
+</main>
 
 <!-- Themed confirm modal (replaces the plain browser confirm() previously used by
      logoutEverywhere()/deleteMyAccount() below — see showProfileConfirm()/

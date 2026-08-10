@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
-  <link rel="stylesheet" href="/theme.css?v=4" />
+  <link rel="stylesheet" href="/theme.css?v=5" />
   <link rel="stylesheet" href="/components.css?v=4" />
   <style>
     /* Base tokens in /theme.css; overrides below for this page's lighter surfaces/text. */
@@ -426,6 +426,8 @@
 </head>
 <body x-data="{ mobNavOpen: false }" x-init="$watch('mobNavOpen', v => document.body.style.overflow = v ? 'hidden' : '')">
 
+<a href="#main-content" class="skip-link" data-i18n-ru="Пропустить к содержимому" data-i18n-en="Skip to content">Пропустить к содержимому</a>
+
 <!-- ③ Fetch bar -->
 <div id="fetch-bar"></div>
 
@@ -504,7 +506,7 @@
   </div>
 </nav>
 
-<div style="max-width:780px;margin:2.5rem auto 3.5rem;padding:0 1rem;position:relative;z-index:1;">
+<main id="main-content" style="max-width:780px;margin:2.5rem auto 3.5rem;padding:0 1rem;position:relative;z-index:1;">
   <div style="text-align:center;margin-bottom:1.75rem;">
     <div style="display:flex;align-items:center;justify-content:center;gap:.7rem;margin-bottom:.5rem;">
       <span style="height:1px;width:36px;background:linear-gradient(90deg,transparent,var(--gold));"></span>
@@ -591,14 +593,14 @@
       <span style="flex-shrink:0;" id="lb-col-value" data-i18n-ru="Время" data-i18n-en="Time">Время</span>
       <span class="lb-col-seen" style="min-width:5.5rem;text-align:right;flex-shrink:0;" data-i18n-ru="Последний вход" data-i18n-en="Last seen">Последний вход</span>
     </div>
-    <div id="lb-list"></div>
+    <div id="lb-list" aria-live="polite"></div>
     <div class="lb-pagination" id="lb-pagination" style="display:none;">
       <button class="lb-page-btn" id="lb-prev" onclick="changePage(-1)" data-i18n-ru="← Назад" data-i18n-en="← Back">← Назад</button>
       <span class="lb-page-label" id="lb-page-label">Стр. 1</span>
       <button class="lb-page-btn" id="lb-next" onclick="changePage(1)" data-i18n-ru="Вперёд →" data-i18n-en="Next →">Вперёд →</button>
     </div>
   </div>
-</div>
+</main>
 
 <script src="/chart.min.js"></script>
 <script src="/charts.js?v=2"></script>

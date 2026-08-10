@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
-  <link rel="stylesheet" href="/theme.css?v=4" />
+  <link rel="stylesheet" href="/theme.css?v=5" />
   <link rel="stylesheet" href="/components.css?v=4" />
   <style>
     /* Design tokens in /theme.css — this page uses them unchanged. */
@@ -135,6 +135,8 @@
 </head>
 <body x-data="{ mobNavOpen: false }" x-init="$watch('mobNavOpen', v => document.body.style.overflow = v ? 'hidden' : '')">
 
+<a href="#main-content" class="skip-link" data-i18n-ru="Пропустить к содержимому" data-i18n-en="Skip to content">Пропустить к содержимому</a>
+
 <!-- NAV -->
 <div class="mobile-overlay" :class="{ open: mobNavOpen }" @click="mobNavOpen = false"></div>
 <div class="mobile-drawer" :class="{ open: mobNavOpen }">
@@ -191,7 +193,7 @@
 </nav>
 
 <!-- MAIN -->
-<div style="max-width:1000px;margin:2.5rem auto;padding:0 1rem;position:relative;z-index:1;">
+<main id="main-content" style="max-width:1000px;margin:2.5rem auto;padding:0 1rem;position:relative;z-index:1;">
 
   <!-- Page header -->
   <div style="text-align:center;margin-bottom:1.75rem;animation:fade-up .38s ease both;">
@@ -281,7 +283,7 @@
          fixed i18n'd set like events.html's, so labels aren't translated — same
          policy as item names/descriptions on this page). -->
     <div id="shop-filter-pills" style="display:flex;gap:.4rem;margin-bottom:1rem;flex-wrap:wrap;"></div>
-    <div id="shop-items-grid" class="shop-grid" style="margin:1rem 0 2rem;">
+    <div id="shop-items-grid" class="shop-grid" style="margin:1rem 0 2rem;" aria-live="polite">
       <div class="skel-card"></div><div class="skel-card"></div><div class="skel-card"></div>
     </div>
     <div id="shop-items-empty" class="shop-empty" style="display:none;">
@@ -328,7 +330,7 @@
       <button onclick="closeShopConfirm(true)" style="background:linear-gradient(135deg,#7a0015,#b8001e);border:none;border-radius:.55rem;padding:.5rem 1.4rem;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;box-shadow:0 0 16px rgba(180,0,30,0.45);transition:all .2s;font-family:'Inter',sans-serif;" onmouseover="this.style.boxShadow='0 0 28px rgba(210,0,40,0.7)'" onmouseout="this.style.boxShadow='0 0 16px rgba(180,0,30,0.45)'" data-i18n-ru="Обменять" data-i18n-en="Redeem">Обменять</button>
     </div>
   </div>
-</div>
+</main>
 
 <script src="/alpine.min.js"></script>
 <script src="/common.js?v=15"></script>

@@ -22,7 +22,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700&family=Oswald:wght@400;500;600&family=Philosopher:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/tailwind.min.css" />
-  <link rel="stylesheet" href="/theme.css?v=4" />
+  <link rel="stylesheet" href="/theme.css?v=5" />
   <link rel="stylesheet" href="/components.css?v=4" />
   <style>
     /* Base tokens in /theme.css; overrides below for this page. */
@@ -75,6 +75,8 @@
   </style>
 </head>
 <body x-data="{ mobNavOpen: false }" x-init="$watch('mobNavOpen', v => document.body.style.overflow = v ? 'hidden' : '')">
+
+<a href="#main-content" class="skip-link" data-i18n-ru="Пропустить к содержимому" data-i18n-en="Skip to content">Пропустить к содержимому</a>
 
 <!-- NAV -->
 <div class="mobile-overlay" :class="{ open: mobNavOpen }" @click="mobNavOpen = false"></div>
@@ -131,7 +133,7 @@
   </div>
 </nav>
 
-<div style="max-width:860px;margin:2.5rem auto 3.5rem;padding:0 1rem;position:relative;z-index:1;">
+<main id="main-content" style="max-width:860px;margin:2.5rem auto 3.5rem;padding:0 1rem;position:relative;z-index:1;">
   <div style="text-align:center;margin-bottom:2rem;">
     <h1 class="gothic" style="font-size:1.3rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;" data-i18n-ru="События и турниры" data-i18n-en="Events &amp; tournaments">События и турниры</h1>
     <p style="font-size:.8rem;color:var(--muted);margin-top:.4rem;" data-i18n-ru="Участвуйте в событиях сервера" data-i18n-en="Take part in server events">Участвуйте в событиях сервера</p>
@@ -158,7 +160,7 @@
   <div id="events-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1.25rem;">
     <p style="color:var(--muted);text-align:center;grid-column:1/-1;" data-i18n-ru="Загрузка…" data-i18n-en="Loading…">Загрузка…</p>
   </div>
-</div>
+</main>
 
 <script src="/alpine.min.js"></script>
 <script src="/common.js?v=15"></script>

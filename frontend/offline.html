@@ -11,6 +11,17 @@
   <style>
     * { box-sizing:border-box; margin:0; padding:0; }
     body { background:#06000f; color:#e2d8f0; font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; min-height:100vh; display:flex; align-items:center; justify-content:center; text-align:center; padding:2rem; }
+    /* Skip-to-content link — this page doesn't load theme.css (standalone PWA
+       offline fallback, no design-token :root here at all), so it uses a plain
+       literal color matching theme.css's --crimson instead of a var(). See
+       theme.css for the full comment explaining the shared .skip-link pattern. */
+    .skip-link {
+      position: absolute; left: .5rem; top: -3rem; z-index: 1000;
+      background: #c8002a; color: #fff; padding: .65rem 1.1rem;
+      font-size: .8rem; font-weight: 700; text-decoration: none; border-radius: .4rem;
+      transition: top .15s ease;
+    }
+    .skip-link:focus { top: .5rem; }
     h1 { font-family:Georgia,'Times New Roman',serif; font-size:1.5rem; color:#c9a94a; margin-bottom:.75rem; }
     p { color:#9488a8; font-size:.9rem; max-width:320px; margin:0 auto 1.5rem; line-height:1.6; }
     a { display:inline-block; padding:.6rem 1.5rem; background:linear-gradient(135deg,#6a001a,#a00022); color:#fff; border-radius:.5rem; text-decoration:none; font-size:.85rem; font-weight:700; }
@@ -23,13 +34,14 @@
   </style>
 </head>
 <body>
-  <div>
+  <a href="#main-content" class="skip-link">Пропустить к содержимому</a>
+  <main id="main-content">
     <div style="font-size:3rem;margin-bottom:1rem;filter:drop-shadow(0 0 20px rgba(200,0,42,.4));">⚔️</div>
     <h1>Нет соединения</h1>
     <p id="offline-msg">Проверьте подключение к интернету и попробуйте снова.</p>
     <div id="cached-news-wrap"></div>
     <a href="/" onclick="location.reload()">Обновить страницу</a>
-  </div>
+  </main>
   <script>
     // If sw.js already cached a GET /api/news response (network-first, cache fallback —
     // see the CACHE_NAME comment in sw.js), show a short "shown from cache" list of the
