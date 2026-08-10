@@ -1184,7 +1184,7 @@ function renderPodium(top3) {
     const name = u.player_name || 'Аноним';
     const grad = (typeof nameGradient === 'function') ? nameGradient(name) : '#3a0060';
     const avatarHtml = u.avatar_url
-      ? `<img class="podium-avatar" src="${esc(u.avatar_url)}" alt="${esc(name)}" style="border:2px solid ${borders[i]};">`
+      ? `<img class="podium-avatar" src="${esc(u.avatar_url)}" alt="${esc(name)}" loading="lazy" style="border:2px solid ${borders[i]};">`
       : `<span class="podium-avatar" style="background:${grad};border:2px solid ${borders[i]};">${esc(name.charAt(0).toUpperCase())}</span>`;
     const valueText = fmtMetric(u.metricValue);
     const verifiedHtml = u.verified ? `<span class="lb-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>` : '';
