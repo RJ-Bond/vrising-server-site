@@ -405,11 +405,52 @@ class Message(Base):
     id = Column(Integer, primary_key=True, index=True)
     sender_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     recipient_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    content = Column(Text, nullable=False)
+    # nullable since an attachment-only message (see attachment_url below) has no text —
+    # POST /api/messages (backend/routers/messages.py) still requires at least one of
+    # content/attachment_url to be present, this column just stopped being the only way
+    # to say something.
+    content = Column(Text, nullable=True)
     read = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    # Single optional image attachment per message, uploaded separately via
+    # POST /api/messages/attachment (returns this URL) before the normal JSON send —
+    # keeps POST /api/messages a plain JSON endpoint instead of switching it to
+    # multipart. Points under UPLOAD_DIR/dm/, served by GET /api/uploads/dm/{filename}
+    # (backend/routers/admin_system.py), same "uuid filename, no per-request auth
+    # check" convention as covers/badges/avatars.
+    attachment_url = Column(String(512), nullable=True)
+    # Single-level "replying to X" reference (quoted preview above the reply), NOT
+    # nested threading — mirrors Comment.parent_id's self-FK pattern below, but SET
+    # NULL (not Comment's CASCADE): unlike a comment thread, deleting the original DM
+    # should not take the reply down with it — the reply is still a message the two
+    # users sent/received, it should just lose the back-reference and render without
+    # a quoted preview (see reply_to_id handling in GET /api/messages/with/{username}).
+    # Like every other ondelete= in this file, "SET NULL" is DDL documentation only —
+    # this app's SQLite connection never runs `PRAGMA foreign_keys = ON` (see the note
+    # on GameClanMember.clan_id above), so deleting the original row does NOT actually
+    # null this column out. That's harmless here specifically because reply_to_id is
+    # only ever consumed through the reply_to relationship below, never read as a raw
+    # id elsewhere: once the target row is gone, the SELECT the relationship issues
+    # simply finds nothing and reply_to resolves to None regardless of whether the
+    # column itself got nulled — the desired "reply survives, preview disappears"
+    # behavior falls out of that lookup either way.
+    reply_to_id = Column(Integer, ForeignKey("messages.id", ondelete="SET NULL"), nullable=True)
     sender = relationship("User", foreign_keys=[sender_id], lazy="selectin")
     recipient = relationship("User", foreign_keys=[recipient_id], lazy="selectin")
+    # lazy="raise" — this relationship is self-referential (Message -> Message), and
+    # letting it eager-load (selectin/joined both tried) triggers a real
+    # sqlalchemy.exc.MissingGreenlet crash in async SQLAlchemy's loader when resolved
+    # for a batch of rows: each loaded reply-to Message would ALSO try to eager-load
+    # ITS OWN sender/recipient/reply_to, and that recursive cascade breaks the
+    # await-context tracking. backend/routers/messages.py's GET /api/messages/with/
+    # {username} and POST /api/messages build the reply-to quoted-preview payload via
+    # an explicit bulk SELECT instead (see _reply_preview()'s docstring there) — this
+    # relationship is kept on the model as documentation of the FK/ondelete shape only.
+    # "raise" makes any future `m.reply_to` access fail immediately and loudly with a
+    # clear SQLAlchemy error at the access site, instead of the confusing MissingGreenlet
+    # surfacing somewhere deep in async internals — don't change this back to selectin/
+    # joined without re-testing test_messages.py's reply-to test suite first.
+    reply_to = relationship("Message", remote_side=[id], foreign_keys=[reply_to_id], lazy="raise")
 
 
 class AutoFlagRule(Base):

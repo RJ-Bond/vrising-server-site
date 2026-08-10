@@ -1,10 +1,15 @@
 """Regression tests for backend/routers/messages.py: 1:1 direct messages (send/inbox/
-conversation/delete), the admin broadcast fan-out, and the unread-count badge. See the
-Message model in models.py. The core permission boundary this router relies on is
-implicit query scoping (every read/write query filters by current_user.id as sender or
-recipient) rather than an explicit ownership check — these tests confirm that scoping
-actually holds, not just that the happy path works."""
+conversation/delete), the admin broadcast fan-out, the unread-count badge, and (added
+alongside the DM attachment + reply-to feature) the attachment upload endpoint and the
+attachment_url/reply_to_id extensions to POST /api/messages. See the Message model in
+models.py. The core permission boundary this router relies on is implicit query scoping
+(every read/write query filters by current_user.id as sender or recipient) rather than
+an explicit ownership check — these tests confirm that scoping actually holds, not just
+that the happy path works."""
+from io import BytesIO
+
 import pytest
+from PIL import Image
 from sqlalchemy import select
 
 from backend.auth import create_access_token, get_password_hash
@@ -37,6 +42,12 @@ async def _make_message(db_session, sender, recipient, content="hi", read=False)
     await db_session.commit()
     await db_session.refresh(msg)
     return msg
+
+
+def _tiny_png_bytes():
+    buf = BytesIO()
+    Image.new("RGB", (2, 2), color=(255, 0, 0)).save(buf, format="PNG")
+    return buf.getvalue()
 
 
 # ─── POST /api/messages ───────────────────────────────────────────────────────
@@ -281,3 +292,185 @@ async def test_broadcast_filters_by_role(client, db_session):
 
     plain_inbox = (await db_session.execute(select(Message).where(Message.recipient_id == plain.id))).scalars().all()
     assert plain_inbox == []
+
+
+# ─── POST /api/messages/attachment ────────────────────────────────────────────
+
+async def test_upload_attachment_requires_auth(client, db_session):
+    r = await client.post("/api/messages/attachment", files={"file": ("pic.png", _tiny_png_bytes(), "image/png")})
+    assert r.status_code == 401
+
+
+async def test_upload_attachment_happy_path_and_retrievable(client, db_session):
+    user = await _make_user(db_session, "AttachUser1")
+    r = await client.post(
+        "/api/messages/attachment",
+        files={"file": ("pic.png", _tiny_png_bytes(), "image/png")},
+        headers=_bearer(user),
+    )
+    assert r.status_code == 200
+    url = r.json()["attachment_url"]
+    assert url.startswith("/api/uploads/dm/")
+
+    # GET /api/uploads/dm/{filename} is gated behind plain login (not open like the
+    # public covers/badges/avatars uploads) — confirm it's actually retrievable by an
+    # authenticated request, not just that the upload call itself succeeded.
+    get_r = await client.get(url, headers=_bearer(user))
+    assert get_r.status_code == 200
+    assert get_r.headers["content-type"].startswith("image/")
+
+
+async def test_upload_attachment_rejects_non_image(client, db_session):
+    user = await _make_user(db_session, "AttachUser2")
+    r = await client.post(
+        "/api/messages/attachment",
+        files={"file": ("evil.txt", b"not an image", "text/plain")},
+        headers=_bearer(user),
+    )
+    assert r.status_code == 400
+
+
+async def test_upload_attachment_rejects_oversized(client, db_session):
+    user = await _make_user(db_session, "AttachUser3")
+    big = b"\x00" * (5 * 1024 * 1024 + 1)  # over the 5 MB DM-attachment cap
+    r = await client.post(
+        "/api/messages/attachment",
+        files={"file": ("big.png", big, "image/png")},
+        headers=_bearer(user),
+    )
+    assert r.status_code == 400
+
+
+# ─── POST /api/messages — attachment_url ──────────────────────────────────────
+
+async def test_send_message_with_attachment_succeeds(client, db_session):
+    sender = await _make_user(db_session, "AttachSendA")
+    recipient = await _make_user(db_session, "AttachSendB")
+    up = await client.post(
+        "/api/messages/attachment",
+        files={"file": ("pic.png", _tiny_png_bytes(), "image/png")},
+        headers=_bearer(sender),
+    )
+    assert up.status_code == 200
+    attachment_url = up.json()["attachment_url"]
+
+    r = await client.post(
+        "/api/messages",
+        json={"recipient_username": recipient.username, "attachment_url": attachment_url},
+        headers=_bearer(sender),
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert body["content"] is None
+    assert body["attachment_url"] == attachment_url
+
+    conv = await client.get(f"/api/messages/with/{sender.username}", headers=_bearer(recipient))
+    assert conv.status_code == 200
+    msgs = conv.json()["messages"]
+    assert len(msgs) == 1
+    assert msgs[0]["attachment_url"] == attachment_url
+    assert msgs[0]["content"] is None
+
+
+async def test_send_message_requires_content_or_attachment(client, db_session):
+    sender = await _make_user(db_session, "EmptyBothA")
+    recipient = await _make_user(db_session, "EmptyBothB")
+    r = await client.post(
+        "/api/messages",
+        json={"recipient_username": recipient.username},
+        headers=_bearer(sender),
+    )
+    assert r.status_code == 422
+
+
+async def test_send_message_rejects_foreign_attachment_url(client, db_session):
+    """attachment_url must be something POST /api/messages/attachment itself just
+    handed back, not an arbitrary URL passed straight through by the client."""
+    sender = await _make_user(db_session, "AttachForeignA")
+    recipient = await _make_user(db_session, "AttachForeignB")
+    r = await client.post(
+        "/api/messages",
+        json={"recipient_username": recipient.username, "attachment_url": "https://evil.example/x.png"},
+        headers=_bearer(sender),
+    )
+    assert r.status_code == 400
+
+
+# ─── POST /api/messages — reply_to_id ─────────────────────────────────────────
+
+async def test_send_message_with_valid_reply_to_succeeds(client, db_session):
+    a = await _make_user(db_session, "ReplyA")
+    b = await _make_user(db_session, "ReplyB")
+    original = await _make_message(db_session, a, b, content="original message")
+
+    r = await client.post(
+        "/api/messages",
+        json={"recipient_username": b.username, "content": "replying", "reply_to_id": original.id},
+        headers=_bearer(a),
+    )
+    assert r.status_code == 201
+    body = r.json()
+    assert body["reply_to"] is not None
+    assert body["reply_to"]["id"] == original.id
+    assert body["reply_to"]["content"] == "original message"
+    assert body["reply_to"]["sender"] == a.username
+
+    # Also present when the recipient re-fetches the conversation, so the frontend can
+    # render the quoted preview from either side.
+    conv = await client.get(f"/api/messages/with/{a.username}", headers=_bearer(b))
+    msgs = conv.json()["messages"]
+    reply_msg = next(m for m in msgs if m["content"] == "replying")
+    assert reply_msg["reply_to"]["id"] == original.id
+    assert reply_msg["reply_to"]["content"] == "original message"
+
+
+async def test_send_message_rejects_reply_to_missing_message(client, db_session):
+    a = await _make_user(db_session, "ReplyMissingA")
+    b = await _make_user(db_session, "ReplyMissingB")
+    r = await client.post(
+        "/api/messages",
+        json={"recipient_username": b.username, "content": "replying to nothing", "reply_to_id": 999999},
+        headers=_bearer(a),
+    )
+    assert r.status_code == 404
+
+
+async def test_send_message_rejects_reply_to_unrelated_conversation(client, db_session):
+    """reply_to_id must belong to the conversation between sender and recipient — a
+    message id from an unrelated conversation is rejected outright (404), not silently
+    degraded to a plain message, since a client-supplied id pointing anywhere else
+    would otherwise let one user's reply UI leak a preview of someone else's DM."""
+    a = await _make_user(db_session, "ReplyUnrelA")
+    b = await _make_user(db_session, "ReplyUnrelB")
+    c = await _make_user(db_session, "ReplyUnrelC")
+    unrelated = await _make_message(db_session, b, c, content="not part of a/b conversation")
+
+    r = await client.post(
+        "/api/messages",
+        json={"recipient_username": b.username, "content": "sneaky reply", "reply_to_id": unrelated.id},
+        headers=_bearer(a),
+    )
+    assert r.status_code == 404
+
+
+async def test_reply_to_survives_deletion_of_original_as_null(client, db_session):
+    """Message.reply_to_id is declared ondelete=SET NULL: deleting the original message
+    must not take the reply down with it — only the quoted-preview back-reference
+    disappears (see the long comment on reply_to_id in models.py for why this holds
+    even though this app's sqlite connection never runs PRAGMA foreign_keys=ON)."""
+    a = await _make_user(db_session, "ReplyDelA")
+    b = await _make_user(db_session, "ReplyDelB")
+    original = await _make_message(db_session, a, b, content="will be deleted")
+    reply = await _make_message(db_session, b, a, content="reply to it")
+    reply.reply_to_id = original.id
+    db_session.add(reply)
+    await db_session.commit()
+
+    del_r = await client.delete(f"/api/messages/{original.id}", headers=_bearer(a))
+    assert del_r.status_code == 204
+
+    conv = await client.get(f"/api/messages/with/{b.username}", headers=_bearer(a))
+    assert conv.status_code == 200
+    msgs = conv.json()["messages"]
+    reply_body = next(m for m in msgs if m["content"] == "reply to it")
+    assert reply_body["reply_to"] is None
