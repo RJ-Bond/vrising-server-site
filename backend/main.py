@@ -1421,6 +1421,60 @@ async def get_monitor_stats(server: int = Query(1), db: AsyncSession = Depends(g
     }
 
 
+@app.get("/api/monitor/incidents")
+async def get_monitor_incidents(server: int = Query(1), days: int = Query(default=30, ge=1, le=90), db: AsyncSession = Depends(get_db)):
+    """Public incident timeline — WHEN and for how long the server was actually down,
+    not just the aggregate uptime_7d/uptime_30d percentages GET /api/monitor/stats
+    already returns. frontend/status.html showed those percentages plus a coarse
+    "Без сбоев"/"Незначительные сбои"/"Перебои в работе" label derived from a threshold
+    band, but had no concept of individual incidents a visitor could actually read
+    ("down from 14:22 to 14:35" vs. just "95% uptime this week") — this fills that gap.
+
+    Derived entirely from ServerSnapshot polling history (same source GET
+    /api/monitor/snapshots already reads from) — no new table or migration:
+    walks the ordered snapshots for `server` over the trailing `days` and collapses
+    consecutive online=False runs into single incidents. A run still open at the most
+    recent snapshot is reported with ended_at=null / ongoing=true rather than dropped,
+    so a visitor mid-outage sees it listed instead of it silently waiting for the
+    server to recover first. Most recent incident first, capped at 20 — this is a
+    status page, not a full audit log (GET /api/monitor/snapshots already exists for
+    anyone who wants the raw polling data)."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+    result = await db.execute(
+        select(ServerSnapshot)
+        .where(ServerSnapshot.server_num == server, ServerSnapshot.recorded_at >= cutoff)
+        .order_by(ServerSnapshot.recorded_at.asc())
+    )
+    snaps = result.scalars().all()
+
+    windows: list[tuple[datetime, datetime]] = []
+    run_start: Optional[datetime] = None
+    run_end: Optional[datetime] = None
+    for s in snaps:
+        if not s.online:
+            if run_start is None:
+                run_start = s.recorded_at
+            run_end = s.recorded_at
+        elif run_start is not None:
+            windows.append((run_start, run_end))
+            run_start = None
+    ongoing = run_start is not None
+    if ongoing:
+        windows.append((run_start, run_end))
+
+    incidents = []
+    for idx, (start, end) in enumerate(windows):
+        is_ongoing = ongoing and idx == len(windows) - 1
+        incidents.append({
+            "started_at": _fmt_dt(start),
+            "ended_at": None if is_ongoing else _fmt_dt(end),
+            "duration_minutes": max(1, round((end - start).total_seconds() / 60)),
+            "ongoing": is_ongoing,
+        })
+    incidents.reverse()
+    return incidents[:20]
+
+
 @app.get("/api/monitor/status/stream")
 async def monitor_status_stream():
     """SSE endpoint — pushes server status updates to connected clients."""
