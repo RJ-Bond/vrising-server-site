@@ -273,6 +273,19 @@
           <span style="width:1.5rem;height:1.5rem;border-radius:50%;background:rgba(201,169,74,0.18);border:1px solid rgba(201,169,74,0.4);display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:var(--gold);flex-shrink:0;">3</span>
           Подключиться
         </div>
+        <span style="color:var(--muted);">→</span>
+        <!-- Step 4: the actual account-linking step (User.steam_id in backend/models.py
+             — set only by this in-game command, never by web registration alone). Without
+             this, a visitor could finish steps 1-3, join the server, and never learn their
+             site account and in-game character were still two unconnected things — the
+             website side of this flow has no way to prompt for a command typed in-game,
+             so it has to be spelled out here up front instead. Green ties it visually to
+             the ✔ "подтверждено игровым плагином" marker this same command unlocks
+             elsewhere (leaderboard/profile). -->
+        <div style="display:flex;align-items:center;gap:.5rem;font-size:.8rem;color:var(--text);">
+          <span style="width:1.5rem;height:1.5rem;border-radius:50%;background:rgba(46,230,155,0.18);border:1px solid rgba(46,230,155,0.4);display:flex;align-items:center;justify-content:center;font-size:.68rem;font-weight:700;color:#2ee69b;flex-shrink:0;">4</span>
+          Ввести <code style="background:rgba(46,230,155,0.12);padding:.05rem .3rem;border-radius:.25rem;font-size:.75rem;">.register</code> в чат
+        </div>
       </div>
       <!-- Just "Регистрация" here, not also a Steam link — the hero section directly
            above already has its own "Купить: V Rising" Steam button, so repeating it

@@ -379,6 +379,14 @@ class UserOut(BaseModel):
     bio: Optional[str] = None
     points_balance: int = 0
     newsletter_opt_in: bool = False
+    # Whether this account has been linked to a game character via the BepInEx
+    # plugin's .register/.login in-game commands (see User.steam_id's own comment
+    # in models.py). Exposed as-is (not just a bool) so the frontend can reuse it
+    # for the same "unlinked" check other pages already do off game_nickname vs.
+    # verified stats — added so the homepage onboarding card can tell a
+    # newly-registered user, who has never linked, apart from one who already has,
+    # instead of showing the same generic "check out the shop" text to both.
+    steam_id: Optional[str] = None
 
     model_config = {"from_attributes": True}
 

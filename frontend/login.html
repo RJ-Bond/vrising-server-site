@@ -486,7 +486,7 @@
           <input id="reg-game-nick" name="game_nickname" type="text" maxlength="64" autocomplete="off"
             placeholder="Ваш ник в V Rising" class="dark-input" />
         </div>
-        <div style="font-size:.62rem;color:var(--muted);margin-top:.3rem;">Для привязки статистики с игрового сервера</div>
+        <div style="font-size:.62rem;color:var(--muted);margin-top:.3rem;">Необязательно и само по себе не привязывает персонажа — после подключения к серверу впишите .register (или .login, если персонаж уже есть) в игровой чат, это и есть привязка</div>
       </div>
       <div id="register-error" class="alert alert-error" role="alert" aria-live="polite">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><use href="/icons.svg#icon-alert-circle"></use></svg>
@@ -846,8 +846,13 @@ async function submitRegister(e) {
     if (!res.ok) { showAlert('register-error', extractError(data, 'Ошибка регистрации')); return; }
     // Token is set via httpOnly cookie by the server; save user info for UI
     localStorage.setItem('user', JSON.stringify(data.user));
-    showAlert('register-success', 'Аккаунт создан! Перенаправление…');
-    setTimeout(() => { window.location.href = '/'; }, 1200);
+    // Account creation alone doesn't link a game character (see the game-nickname
+    // field's own hint above) — this is the one moment guaranteed to reach every new
+    // registrant, so it's also where the in-game .register/.login step has to be
+    // spelled out, not left to the FAQ. Redirect delay bumped from 1.2s so there's
+    // actually time to read two sentences before the page navigates away.
+    showAlert('register-success', 'Аккаунт создан! Подключитесь к серверу и впишите .register (или .login, если персонаж уже есть) в игровой чат — это привяжет статистику. Перенаправление…');
+    setTimeout(() => { window.location.href = '/'; }, 3200);
   } catch (err) { showAlert('register-error', 'Нет связи с сервером: ' + err.message); }
   finally { btn.disabled = false; btn.textContent = 'Зарегистрироваться'; }
 }

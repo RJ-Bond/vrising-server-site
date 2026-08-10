@@ -3544,8 +3544,21 @@ function initQuickstartCard() {
       const user = getUser();
       const textEl = document.getElementById('quickstart-authed-text');
       if (textEl && user) {
-        const balance = Number(user.points_balance || 0).toLocaleString('ru-RU');
-        textEl.textContent = `${user.username}, на вашем счету ${balance} ${_plural_ru_home(balance, 'очко', 'очка', 'очков')}. Загляните в магазин наград.`;
+        // steam_id is only set once this account has run .register/.login in the
+        // in-game chat (see backend/models.py's own comment on User.steam_id) — the
+        // authoritative link, distinct from the free-text game_nickname collected at
+        // signup. A site account can sit in this half-linked state indefinitely (the
+        // person registered on the website but never typed the command in-game), and
+        // until now this card gave zero indication either way — same "check out the
+        // shop" text regardless. Surface it here instead of only in the FAQ, since
+        // this card is what a returning-but-unlinked visitor actually sees on every
+        // homepage load.
+        if (!user.steam_id) {
+          textEl.innerHTML = `${esc(user.username)}, аккаунт создан, но ещё не привязан к игровому персонажу — статистика и очки за игру не начисляются. Подключитесь к серверу и впишите <code>.register</code> или, если персонаж уже есть, <code>.login</code> в игровой чат.`;
+        } else {
+          const balance = Number(user.points_balance || 0).toLocaleString('ru-RU');
+          textEl.textContent = `${user.username}, на вашем счету ${balance} ${_plural_ru_home(balance, 'очко', 'очка', 'очков')}. Загляните в магазин наград.`;
+        }
       }
     }
     card.style.display = '';
