@@ -3716,6 +3716,72 @@ async function openDmChat(username) {
 }
 
 // ── Render messages ──
+// ── Attachment + reply-to composer state ──
+// _dmSelectedAttachment: the File object picked via #dm-attach-input, held client-side
+// until send (uploaded via POST /api/messages/attachment right before the actual
+// POST /api/messages call — see sendDm() below). _dmReplyTo: {id, sender, content,
+// attachment_url} snapshotted from the message the "↩" hover-action was clicked on,
+// cleared after sending or via cancelDmReply().
+let _dmSelectedAttachment = null;
+let _dmReplyTo = null;
+
+function handleDmAttachSelect(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  const allowed = ['image/png','image/jpeg','image/gif','image/webp'];
+  if (!allowed.includes(file.type)) {
+    showToast('Допустимые форматы: PNG, JPG, GIF, WebP', 'error');
+    event.target.value = '';
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('Файл слишком большой (максимум 5 МБ)', 'error');
+    event.target.value = '';
+    return;
+  }
+  _dmSelectedAttachment = file;
+  const preview = document.getElementById('dm-attach-preview');
+  const img = preview?.querySelector('img');
+  if (img) img.src = URL.createObjectURL(file);
+  if (preview) preview.style.display = 'flex';
+}
+
+function clearDmAttachment() {
+  _dmSelectedAttachment = null;
+  const input = document.getElementById('dm-attach-input');
+  if (input) input.value = '';
+  const preview = document.getElementById('dm-attach-preview');
+  if (preview) preview.style.display = 'none';
+}
+
+// Called from _renderMsg()'s hover "↩" action below with the exact snapshot the
+// composer needs — not re-derived from the DOM, so the quoted preview stays correct
+// even if the original message scrolls out of the loaded page.
+function startDmReply(id, sender, content, attachmentUrl) {
+  _dmReplyTo = { id, sender, content, attachment_url: attachmentUrl || null };
+  const bar = document.getElementById('dm-reply-bar');
+  if (!bar) return;
+  const previewText = content ? esc(content).slice(0, 80) : '📷 Изображение';
+  bar.innerHTML = `
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+    <span style="font-size:.72rem;color:var(--muted);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><strong style="color:var(--text);">${esc(sender)}</strong>: ${previewText}</span>
+    <button type="button" onclick="cancelDmReply()" title="Отменить ответ" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;line-height:1;padding:.2rem .3rem;flex-shrink:0;">✕</button>`;
+  bar.style.display = 'flex';
+  document.getElementById('dm-input')?.focus();
+}
+
+function cancelDmReply() {
+  _dmReplyTo = null;
+  const bar = document.getElementById('dm-reply-bar');
+  if (bar) { bar.style.display = 'none'; bar.innerHTML = ''; }
+}
+
+function _dmReplyPreviewHtml(reply) {
+  if (!reply) return '';
+  const text = reply.content ? esc(reply.content).slice(0, 60) : '📷 Изображение';
+  return `<div style="font-size:.68rem;color:rgba(210,200,225,0.65);border-left:2px solid rgba(180,0,35,0.5);padding:.15rem .5rem;margin-bottom:.3rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><strong>${esc(reply.sender)}</strong>: ${text}</div>`;
+}
+
 function _renderMsg(m) {
   const side = m.is_mine ? 'flex-end' : 'flex-start';
   const bg   = m.is_mine ? 'rgba(150,0,28,0.38)' : 'rgba(80,0,120,0.28)';
@@ -3723,10 +3789,22 @@ function _renderMsg(m) {
   const time = new Date(m.created_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit',timeZone:window.__TZ||'Europe/Moscow'});
   const del  = m.is_mine ? `<button onclick="(function(e){e.stopPropagation();deleteDmMsg(${m.id});})(event)" title="Удалить" style="opacity:0;position:absolute;top:-.35rem;left:-.35rem;background:rgba(20,0,30,0.9);border:1px solid rgba(180,0,30,0.5);color:#f87171;border-radius:50%;width:18px;height:18px;font-size:.6rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity .15s;line-height:1;padding:0;" class="dm-del-btn">✕</button>` : '';
   const tick = m.is_mine ? `<span style="font-size:.6rem;color:${m.read?'#60a5fa':'rgba(148,136,168,0.5)'};" title="${m.read?'Прочитано':'Доставлено'}">${m.read?'✓✓':'✓'}</span>` : '';
-  return `<div data-msg-id="${m.id}" style="display:flex;justify-content:${side};margin:1px 0;" onmouseenter="const b=this.querySelector('.dm-del-btn');if(b)b.style.opacity='1'" onmouseleave="const b=this.querySelector('.dm-del-btn');if(b)b.style.opacity='0'">
+  // Own messages already have the delete button at top-left, so the reply button
+  // goes top-right on those; other-side messages have no delete button, so reply
+  // takes the top-left slot instead.
+  const replyBtnPos = m.is_mine ? 'top:-.35rem;right:-.35rem;' : 'top:-.35rem;left:-.35rem;';
+  const replyBtn = `<button onclick="(function(e){e.stopPropagation();startDmReply(${m.id},'${esc(m.sender).replace(/'/g,"\\'")}',${m.content ? `'${esc(m.content).replace(/'/g,"\\'")}'` : 'null'},${m.attachment_url ? `'${esc(m.attachment_url)}'` : 'null'});})(event)" title="Ответить" style="opacity:0;position:absolute;${replyBtnPos}background:rgba(20,0,30,0.9);border:1px solid rgba(110,0,150,0.5);color:#c8b8e0;border-radius:50%;width:18px;height:18px;font-size:.62rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:opacity .15s;line-height:1;padding:0;" class="dm-reply-btn">↩</button>`;
+  const replyPreview = _dmReplyPreviewHtml(m.reply_to);
+  const attachmentHtml = m.attachment_url
+    ? `<a href="${esc(m.attachment_url)}" target="_blank" rel="noopener noreferrer" style="display:block;margin:${m.content ? '.3rem 0 0' : '0'};"><img src="${esc(m.attachment_url)}" alt="" loading="lazy" style="max-width:100%;max-height:180px;border-radius:.4rem;display:block;"></a>`
+    : '';
+  return `<div data-msg-id="${m.id}" style="display:flex;justify-content:${side};margin:1px 0;" onmouseenter="const b=this.querySelector('.dm-del-btn');if(b)b.style.opacity='1';const r=this.querySelector('.dm-reply-btn');if(r)r.style.opacity='1'" onmouseleave="const b=this.querySelector('.dm-del-btn');if(b)b.style.opacity='0';const r=this.querySelector('.dm-reply-btn');if(r)r.style.opacity='0'">
     <div style="position:relative;max-width:80%;background:${bg};border-radius:${br};padding:.45rem .7rem .35rem;font-size:.82rem;color:var(--text);line-height:1.45;word-break:break-word;">
       ${del}
-      ${DOMPurify.sanitize(m.content).replace(/\n/g,'<br>')}
+      ${replyBtn}
+      ${replyPreview}
+      ${m.content ? DOMPurify.sanitize(m.content).replace(/\n/g,'<br>') : ''}
+      ${attachmentHtml}
       <div style="display:flex;align-items:center;justify-content:flex-end;gap:.25rem;margin-top:.2rem;">
         <span style="font-size:.58rem;color:rgba(148,136,168,0.6);">${time}</span>${tick}
       </div>
@@ -3848,15 +3926,31 @@ async function sendDm() {
   if (!_dmPartner) return;
   const input = document.getElementById('dm-input');
   const content = (input?.value||'').trim();
-  if (!content) return;
+  if (!content && !_dmSelectedAttachment) return;
+  const errEl = document.getElementById('dm-send-error');
   try {
-    const r = await fetch('/api/messages',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({recipient_username:_dmPartner,content})});
+    let attachment_url = null;
+    if (_dmSelectedAttachment) {
+      const form = new FormData();
+      form.append('file', _dmSelectedAttachment);
+      const upRes = await fetch('/api/messages/attachment', {method:'POST', credentials:'include', body: form});
+      if (!upRes.ok) {
+        const d = await upRes.json().catch(() => ({}));
+        if (errEl) { errEl.textContent = d.detail || 'Не удалось загрузить изображение'; errEl.style.display = 'block'; setTimeout(() => { errEl.style.display = 'none'; }, 3500); }
+        return;
+      }
+      attachment_url = (await upRes.json()).attachment_url;
+    }
+    const body = { recipient_username: _dmPartner, content: content || null, attachment_url };
+    if (_dmReplyTo) body.reply_to_id = _dmReplyTo.id;
+    const r = await fetch('/api/messages',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if (r.ok) {
       input.value=''; input.style.height='auto';
+      clearDmAttachment();
+      cancelDmReply();
       await _refreshDmChat();
     } else {
       const d=await r.json().catch(()=>({}));
-      const errEl=document.getElementById('dm-send-error');
       if(errEl){errEl.textContent=d.detail||'Ошибка отправки';errEl.style.display='block';setTimeout(()=>{errEl.style.display='none';},3500);}
     }
   } catch {}

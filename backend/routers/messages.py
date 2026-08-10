@@ -1,17 +1,19 @@
 import asyncio
 import json
+import uuid
+from pathlib import Path
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from pydantic import BaseModel, field_validator, model_validator
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 
 from ..database import get_db
 from ..models import User, Message, Notification
 from ..auth import get_current_user, get_admin_user
-from ..helpers import _audit, _dm_sse_clients, dm_broadcast, send_push
+from ..helpers import _audit, _dm_sse_clients, dm_broadcast, send_push, UPLOAD_DIR, optimize_image_bytes
 from ..rate_limit import limiter
 from ..schemas import strip_html_tags
 
@@ -20,19 +22,93 @@ router = APIRouter()
 
 # ─── Direct Messages ─────────────────────────────────────────────────────────
 
+# DM image attachment upload — a separate multipart step the frontend calls first
+# (see POST /api/messages/attachment below) rather than folding into POST /api/messages
+# itself, so that endpoint can stay a plain JSON body instead of switching to
+# multipart just to support the rare message that has one. 5 MB (not the 10 MB
+# _MAX_UPLOAD_BYTES ceiling admin_system.py's generic /api/admin/upload uses) — this
+# is a self-service upload any logged-in user can hit at up to 20/minute, not an
+# admin-curated asset, so a smaller cap keeps disk usage and per-request latency in
+# check. Extension/MIME allowlist mirrors admin_system.py's _ALLOWED_UPLOAD_EXT minus
+# .ico (makes no sense as a chat attachment) and with SVG excluded for the same
+# script-injection reason documented there.
+_DM_ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024  # 5 MB
+_DM_ATTACHMENT_ALLOWED_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
+_DM_ATTACHMENT_ALLOWED_MIME = {"image/png", "image/jpeg", "image/gif", "image/webp"}
+
+
+@router.post("/api/messages/attachment")
+@limiter.limit("20/minute")
+async def upload_message_attachment(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+):
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix not in _DM_ATTACHMENT_ALLOWED_EXT:
+        raise HTTPException(400, detail="Допустимые форматы: PNG, JPG, GIF, WebP")
+    if file.content_type and file.content_type.split(";")[0].strip() not in _DM_ATTACHMENT_ALLOWED_MIME:
+        raise HTTPException(400, detail="Недопустимый MIME-тип файла")
+    content = await file.read()
+    if len(content) > _DM_ATTACHMENT_MAX_BYTES:
+        raise HTTPException(400, detail="Файл слишком большой (максимум 5 МБ)")
+    content = optimize_image_bytes(content, suffix)
+    dm_dir = UPLOAD_DIR / "dm"
+    dm_dir.mkdir(parents=True, exist_ok=True)
+    fname = f"dm_{current_user.id}_{uuid.uuid4().hex[:10]}{suffix}"
+    (dm_dir / fname).write_bytes(content)
+    return {"attachment_url": f"/api/uploads/dm/{fname}"}
+
+
 class MessageSendBody(BaseModel):
     recipient_username: str
-    content: str
+    content: Optional[str] = None
+    attachment_url: Optional[str] = None
+    reply_to_id: Optional[int] = None
 
     @field_validator("content")
     @classmethod
-    def content_not_empty(cls, v: str) -> str:
+    def content_len(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
         v = strip_html_tags(v).strip()
-        if not v:
-            raise ValueError("Сообщение не может быть пустым")
         if len(v) > 2000:
             raise ValueError("Максимум 2000 символов")
-        return v
+        return v or None
+
+    @model_validator(mode="after")
+    def content_or_attachment(self):
+        # An attachment-only message is valid (see Message.content's nullable=True) —
+        # the empty-message rejection just needs to account for that second way of
+        # saying something.
+        if not self.content and not self.attachment_url:
+            raise ValueError("Сообщение не может быть пустым")
+        return self
+
+
+def _reply_preview(reply_id: Optional[int], sender_username: Optional[str], content: Optional[str], attachment_url: Optional[str]) -> Optional[dict]:
+    """Small quoted-preview payload for a message's reply_to. Takes plain already-resolved
+    fields rather than a Message object/relationship on purpose: Message.reply_to is a
+    self-referential lazy="selectin" relationship, and eager-loading it for a batch of
+    rows (each of which would then also try to eager-load ITS OWN sender/recipient/
+    reply_to) hit a real MissingGreenlet crash in SQLAlchemy's async loader, caught by
+    this router's own test suite. messages_conversation() below bulk-fetches reply
+    targets via an explicit SELECT instead of the relationship — sidesteps the
+    recursive-eager-load path entirely and matches this codebase's established
+    "batch-fetch related rows, don't rely on per-row relationship traversal" convention
+    used elsewhere (e.g. GET /api/leaderboard's avatar_map). None both when the message
+    isn't a reply and when the original was since deleted — Message.reply_to_id is
+    ondelete="SET NULL" (though see that column's own docstring on why SQLite doesn't
+    actually enforce it), so a deleted original just makes this None rather than a
+    broken/dangling reference, since the bulk query below simply won't find that id."""
+    if reply_id is None:
+        return None
+    return {
+        "id": reply_id,
+        "sender": sender_username,
+        "content": content,
+        "attachment_url": attachment_url,
+    }
 
 
 @router.post("/api/messages", status_code=201)
@@ -49,10 +125,46 @@ async def send_message(
     recipient = res.scalar_one_or_none()
     if recipient is None:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
-    msg = Message(sender_id=current_user.id, recipient_id=recipient.id, content=body.content.strip())
+
+    attachment_url = body.attachment_url
+    if attachment_url is not None:
+        # Only ever accept a URL this same upload endpoint (POST /api/messages/attachment
+        # above) just handed back — guards against a client passing an arbitrary URL
+        # through as a "message attachment".
+        prefix = "/api/uploads/dm/"
+        if not attachment_url.startswith(prefix) or "/" in attachment_url[len(prefix):]:
+            raise HTTPException(status_code=400, detail="Недопустимая ссылка на вложение")
+
+    reply_msg = None
+    if body.reply_to_id is not None:
+        # A reply must point at a message that's actually part of this conversation
+        # (either direction) — rejected outright (not degraded to a plain message)
+        # since a client-supplied id pointing anywhere else would otherwise let one
+        # user's reply UI leak a preview of someone else's unrelated DM.
+        reply_res = await db.execute(
+            select(Message).where(
+                Message.id == body.reply_to_id,
+                or_(
+                    (Message.sender_id == current_user.id) & (Message.recipient_id == recipient.id),
+                    (Message.sender_id == recipient.id) & (Message.recipient_id == current_user.id),
+                ),
+            )
+        )
+        reply_msg = reply_res.scalar_one_or_none()
+        if reply_msg is None:
+            raise HTTPException(status_code=404, detail="Сообщение для ответа не найдено")
+
+    msg = Message(
+        sender_id=current_user.id,
+        recipient_id=recipient.id,
+        content=body.content,
+        attachment_url=attachment_url,
+        reply_to_id=reply_msg.id if reply_msg else None,
+    )
     db.add(msg)
     await db.commit()
     await db.refresh(msg)
+    preview_text = msg.content[:100] if msg.content else "📷 Изображение"
     # DMs previously had no notification at all — the recipient only found out by
     # opening the inbox themselves. Same Notification mechanism as comment replies/
     # mentions, "message" type (see the notif-bell rendering in index.js/common.js).
@@ -61,7 +173,7 @@ async def send_message(
         type="message",
         data=json.dumps({
             "from_username": current_user.username,
-            "preview": msg.content[:100],
+            "preview": preview_text,
         }, ensure_ascii=False),
     ))
     await db.commit()
@@ -71,12 +183,12 @@ async def send_message(
     # trusting this raw payload as the source of truth (see dm_broadcast()'s docstring).
     dm_broadcast(recipient.id, {
         "from_username": current_user.username,
-        "preview": msg.content[:100],
+        "preview": preview_text,
     })
     asyncio.create_task(send_push(
         recipient.id,
         "Новое сообщение",
-        f"{current_user.username}: {msg.content[:100]}",
+        f"{current_user.username}: {preview_text}",
         f"/?dm={current_user.username}",
     ))
     return {
@@ -84,6 +196,12 @@ async def send_message(
         "sender": current_user.username,
         "recipient": recipient.username,
         "content": msg.content,
+        "attachment_url": msg.attachment_url,
+        # reply_msg (if present) was loaded a few lines up via a plain select(Message)
+        # query, never through the reply_to relationship — safe to access .sender.username
+        # directly here, unlike messages_conversation() below (see _reply_preview()'s
+        # docstring for why that one can't do the same for a batch of rows).
+        "reply_to": _reply_preview(reply_msg.id, reply_msg.sender.username, reply_msg.content, reply_msg.attachment_url) if reply_msg else None,
         "created_at": msg.created_at.isoformat(),
     }
 
@@ -208,6 +326,7 @@ async def messages_inbox(current_user: User = Depends(get_current_user), db: Asy
             "last_message": {
                 "id": last_msg.id,
                 "content": last_msg.content,
+                "attachment_url": last_msg.attachment_url,
                 "sender_id": last_msg.sender_id,
                 "created_at": last_msg.created_at.isoformat(),
             } if last_msg else None,
@@ -247,6 +366,20 @@ async def messages_conversation(
             m.read = True
     await db.commit()
 
+    # Bulk-fetch reply_to targets in one query (id/sender-username/content/attachment_url
+    # only, joined to User for the username) instead of the reply_to relationship — see
+    # _reply_preview()'s docstring for why that relationship can't be eager-loaded for a
+    # batch of rows without hitting a real async-loader crash.
+    reply_ids = {m.reply_to_id for m in messages if m.reply_to_id is not None}
+    reply_map: dict[int, tuple] = {}
+    if reply_ids:
+        reply_rows = (await db.execute(
+            select(Message.id, User.username, Message.content, Message.attachment_url)
+            .join(User, User.id == Message.sender_id)
+            .where(Message.id.in_(reply_ids))
+        )).all()
+        reply_map = {row[0]: row for row in reply_rows}
+
     return {
         "partner": {"id": partner.id, "username": partner.username, "avatar_url": partner.avatar_url},
         "has_more": has_more,
@@ -255,6 +388,8 @@ async def messages_conversation(
                 "id": m.id,
                 "sender": m.sender.username,
                 "content": m.content,
+                "attachment_url": m.attachment_url,
+                "reply_to": _reply_preview(*reply_map[m.reply_to_id]) if m.reply_to_id in reply_map else None,
                 "read": m.read,
                 "created_at": m.created_at.isoformat(),
                 "is_mine": m.sender_id == current_user.id,

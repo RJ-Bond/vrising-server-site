@@ -14,7 +14,7 @@ from sqlalchemy import select
 
 from ..database import get_db
 from ..models import User, Setting, News
-from ..auth import get_admin_user, get_superadmin_user
+from ..auth import get_admin_user, get_superadmin_user, get_current_user
 from ..helpers import UPLOAD_DIR, BACKUP_DIR, log_audit, optimize_image_bytes
 
 router = APIRouter()
@@ -61,6 +61,22 @@ async def serve_cover_upload(filename: str):
     if not path.exists() or not path.is_file():
         raise HTTPException(404)
     return FileResponse(str(path), headers={"Cache-Control": "public, max-age=31536000, immutable"})
+
+
+@router.get("/api/uploads/dm/{filename}")
+async def serve_dm_attachment_upload(filename: str, _: User = Depends(get_current_user)):
+    # Unlike covers/badges/avatars (public profile assets, no auth check below), a DM
+    # attachment is between two specific people — gated behind plain login so a random
+    # unauthenticated crawler can't pull them even if a uuid filename leaked, while
+    # still not paying the cost of a per-request "is this actually one of the two
+    # conversation participants" DB lookup that the rest of this file's upload-serving
+    # routes don't do either.
+    if ".." in filename or "/" in filename:
+        raise HTTPException(404)
+    path = UPLOAD_DIR / "dm" / filename
+    if not path.exists() or not path.is_file():
+        raise HTTPException(404)
+    return FileResponse(str(path), headers={"Cache-Control": "private, max-age=31536000, immutable"})
 
 
 @router.get("/api/uploads/{filename}")
