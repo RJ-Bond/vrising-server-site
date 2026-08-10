@@ -2449,7 +2449,7 @@ async function acceptRules() {
     btn.classList.remove('ready');
     btn.classList.add('accepted');
   } catch {
-    alert('Не удалось сохранить принятие правил. Попробуйте ещё раз.');
+    showToast?.('Не удалось сохранить принятие правил. Попробуйте ещё раз.', 'error');
   }
 }
 

@@ -1069,12 +1069,12 @@ async function uploadAvatar(input) {
     const res = await fetch(`${API}/auth/avatar`, {
       method:'POST', credentials:'include', body:form,
     });
-    if (!res.ok) { const e = await res.json().catch(()=>({})); alert(e.detail||'Ошибка загрузки'); return; }
+    if (!res.ok) { const e = await res.json().catch(()=>({})); showToast?.(e?.detail||'Ошибка загрузки', 'error'); return; }
     const { avatar_url } = await res.json();
     const u = getUser();
     if (u) { u.avatar_url = avatar_url; (localStorage.getItem('user') ? localStorage : sessionStorage).setItem('user', JSON.stringify(u)); }
     setAvatarEl(avatar_url, (getUser()?.username||'?').charAt(0).toUpperCase());
-  } catch { alert('Ошибка загрузки аватара'); }
+  } catch { showToast?.('Ошибка загрузки аватара', 'error'); }
   finally { spinner.style.display = 'none'; input.value = ''; }
 }
 
