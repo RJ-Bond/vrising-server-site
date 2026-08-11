@@ -75,6 +75,25 @@
 
     .status-note { font-size:.76rem; color:var(--muted); text-align:center; margin-top:1.5rem; line-height:1.6; }
 
+    .status-incidents-section { margin-top:1.75rem; }
+    .status-incident-row {
+      display:flex; align-items:center; justify-content:space-between; gap:.75rem;
+      padding:.7rem .9rem; border-radius:.6rem; background:var(--panel); border:1px solid var(--border);
+      margin-bottom:.55rem; font-size:.78rem;
+    }
+    .status-incident-row-main { display:flex; flex-direction:column; gap:.15rem; }
+    .status-incident-server { font-weight:700; color:#ece3f7; }
+    .status-incident-range { color:var(--muted); font-size:.74rem; }
+    .status-incident-duration {
+      flex-shrink:0; font-weight:700; font-size:.72rem; padding:.28rem .6rem; border-radius:9999px;
+      background:rgba(248,113,113,0.12); border:1px solid rgba(248,113,113,0.35); color:#f87171;
+    }
+    .status-incident-duration.ongoing { background:rgba(234,179,8,0.14); border-color:rgba(234,179,8,0.4); color:#eab308; }
+    .status-incidents-empty {
+      text-align:center; font-size:.8rem; color:#4ade80; padding:.9rem;
+      background:var(--panel); border:1px solid var(--border); border-radius:.6rem;
+    }
+
     @media (max-width:480px) {
       .status-metrics { grid-template-columns:1fr 1fr; }
       .status-card { padding:1.1rem 1.1rem; }
@@ -162,6 +181,13 @@
     <div class="status-card">
       <div class="skel" style="width:40%;height:1.1rem;margin-bottom:1rem;"></div>
       <div class="skel" style="width:100%;height:3rem;"></div>
+    </div>
+  </div>
+
+  <div class="status-incidents-section">
+    <h2 class="gothic" style="font-size:.95rem;letter-spacing:.08em;color:var(--gold);text-transform:uppercase;margin-bottom:.85rem;text-align:center;" data-i18n-ru="Недавние инциденты" data-i18n-en="Recent incidents">Недавние инциденты</h2>
+    <div id="status-incidents-list">
+      <div class="status-card"><div class="skel" style="width:55%;height:1rem;"></div></div>
     </div>
   </div>
 
@@ -277,6 +303,9 @@ function esc(s) {
 async function loadStatusCards() {
   const wrap = document.getElementById('status-cards');
   const cards = [];
+  // Fed to loadIncidentsList() below once known, so the incident list can label each
+  // row with the same server name shown on its status card instead of a bare "Server 1".
+  const serverNames = {};
 
   // Server 1 is always configured (site's primary server); Server 2 is optional —
   // GET /api/monitor/status2 reports {enabled:false} when server2_ip isn't set,
@@ -286,7 +315,8 @@ async function loadStatusCards() {
       fetch(`${API}/monitor/status`).then(r => r.json()),
       fetch(`${API}/monitor/stats?server=1`).then(r => r.json()),
     ]);
-    cards.push(serverCardHtml(1, status1.name || 'V Rising Server', !!status1.online, stats1.uptime_7d, stats1.uptime_30d));
+    serverNames[1] = status1.name || 'V Rising Server';
+    cards.push(serverCardHtml(1, serverNames[1], !!status1.online, stats1.uptime_7d, stats1.uptime_30d));
   } catch {
     cards.push(`<div class="status-card"><p style="color:#f87171;font-size:.82rem;text-align:center;">${_t('Не удалось загрузить статус сервера 1', 'Failed to load Server 1 status')}</p></div>`);
   }
@@ -295,11 +325,62 @@ async function loadStatusCards() {
     const status2 = await fetch(`${API}/monitor/status2`).then(r => r.json());
     if (status2.enabled !== false) {
       const stats2 = await fetch(`${API}/monitor/stats?server=2`).then(r => r.json());
-      cards.push(serverCardHtml(2, status2.name || 'Server 2', !!status2.online, stats2.uptime_7d, stats2.uptime_30d));
+      serverNames[2] = status2.name || 'Server 2';
+      cards.push(serverCardHtml(2, serverNames[2], !!status2.online, stats2.uptime_7d, stats2.uptime_30d));
     }
   } catch {}
 
   wrap.innerHTML = cards.join('');
+  loadIncidentsList(serverNames);
+}
+
+// ─── Incident history (GET /api/monitor/incidents) — the actual timeline of downtime
+// windows behind the uptime_7d/uptime_30d percentages already shown above: "down from
+// 14:22 to 14:35" rather than just "95% this week". Fetched per configured server
+// (mirrors loadStatusCards' server-1-always/server-2-optional shape) and merged into
+// one reverse-chronological list, capped at 10 rows for the page (the endpoint itself
+// already caps at 20 per server). ───
+function fmtIncidentRange(startedAt, endedAt) {
+  const fmt = (iso) => new Date(iso).toLocaleString(localStorage.getItem('_lang') === 'en' ? 'en-GB' : 'ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return endedAt ? `${fmt(startedAt)} — ${fmt(endedAt)}` : `${fmt(startedAt)} — ${_t('сейчас', 'now')}`;
+}
+
+function fmtDurationMinutes(mins) {
+  if (mins < 60) return _t(`${mins} мин`, `${mins}m`);
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return _t(`${h} ч ${m} мин`, `${h}h ${m}m`);
+}
+
+async function loadIncidentsList(serverNames) {
+  const wrap = document.getElementById('status-incidents-list');
+  if (!wrap) return;
+  try {
+    const servers = Object.keys(serverNames).map(Number);
+    const results = await Promise.all(
+      servers.map(num => fetch(`${API}/monitor/incidents?server=${num}&days=30`).then(r => r.ok ? r.json() : []).catch(() => []))
+    );
+    let incidents = [];
+    servers.forEach((num, i) => {
+      (results[i] || []).forEach(inc => incidents.push({ ...inc, server: serverNames[num] }));
+    });
+    incidents.sort((a, b) => new Date(b.started_at) - new Date(a.started_at));
+    incidents = incidents.slice(0, 10);
+
+    if (!incidents.length) {
+      wrap.innerHTML = `<div class="status-incidents-empty">✓ ${_t('Сбоев за последние 30 дней не зафиксировано', 'No incidents recorded in the last 30 days')}</div>`;
+      return;
+    }
+    wrap.innerHTML = incidents.map(inc => `
+      <div class="status-incident-row">
+        <div class="status-incident-row-main">
+          <span class="status-incident-server">${esc(inc.server)}</span>
+          <span class="status-incident-range">${fmtIncidentRange(inc.started_at, inc.ended_at)}</span>
+        </div>
+        <span class="status-incident-duration${inc.ongoing ? ' ongoing' : ''}">${inc.ongoing ? _t('Продолжается', 'Ongoing') : fmtDurationMinutes(inc.duration_minutes)}</span>
+      </div>`).join('');
+  } catch {
+    wrap.innerHTML = `<p style="color:#f87171;font-size:.8rem;text-align:center;">${_t('Не удалось загрузить историю инцидентов', 'Failed to load incident history')}</p>`;
+  }
 }
 
 loadStatusCards();

@@ -339,6 +339,128 @@ async def list_points_transactions_admin(
     return {"total": total, "page": page, "per_page": per_page, "items": items}
 
 
+# ─── Points economy — anomaly detection (admin) ────────────────────────────────
+# Individual playtime award implying more than this many real minutes in one session
+# (12h) — a single POST /api/plugin/sessions report this large is either a plugin/clock
+# bug or a forged request against a leaked X-Plugin-Key, not a real play session.
+_ANOMALY_LARGE_SESSION_MINUTES = 720
+# Same signal aggregated per user per calendar day (24h) — catches the same abuse
+# spread across several smaller session reports instead of one big one.
+_ANOMALY_IMPOSSIBLE_DAILY_MINUTES = 1440
+# Playtime-award transactions for one user within a single clock-hour bucket. Each
+# award fires once per disconnect (see plugin_integration.py's POST
+# /api/plugin/sessions) — normal play produces at most a handful of reconnects per
+# hour, so a sustained burst above this points at automated reconnect-spam farming
+# rather than a person actually playing.
+_ANOMALY_BURST_TX_PER_HOUR = 8
+
+
+@router.get("/api/admin/points/anomalies")
+async def points_anomalies(
+    days: int = Query(default=7, ge=1, le=30),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    """Extension of GET /api/admin/points/diagnostics below, kept as its own endpoint
+    (separate admin-panel card) rather than merged into that response — diagnostics
+    answers "is earning working at all", this answers "does anything about HOW it's
+    earning look like abuse", a different question with a different audience/urgency.
+
+    Three SQL-aggregate checks over PointsTransaction (reason="playtime"), all scoped
+    to the trailing `days` days:
+      1. large_single_sessions — one award implying a single session longer than
+         _ANOMALY_LARGE_SESSION_MINUTES.
+      2. impossible_daily_rate — one user's playtime awards on one calendar day
+         implying more real playtime than the day has hours for.
+      3. burst_activity — one user racking up an unusually high count of separate
+         playtime-award transactions within a single hour.
+
+    Deliberately does NOT attempt "same Steam ID or IP linked to many accounts":
+    User.steam_id is DB-unique (models.py — one site account per SteamID, so that
+    vector is structurally impossible under the current schema) and no IP address is
+    persisted against a User anywhere (registration/login never store one) — surfacing
+    that would need a real schema change + migration, out of scope here."""
+    points_cfg = await _get_points_config(db)
+    per_minute = points_cfg["per_minute"]
+    cutoff = datetime.utcnow() - timedelta(days=days)
+
+    large_sessions: list[dict] = []
+    impossible_daily_rate: list[dict] = []
+    if per_minute > 0:
+        # 1. Individual outlier awards.
+        outlier_rows = (await db.execute(
+            select(PointsTransaction, User.username)
+            .join(User, User.id == PointsTransaction.user_id)
+            .where(
+                PointsTransaction.reason == "playtime",
+                PointsTransaction.created_at >= cutoff,
+                PointsTransaction.delta >= _ANOMALY_LARGE_SESSION_MINUTES * per_minute,
+            )
+            .order_by(PointsTransaction.delta.desc())
+            .limit(50)
+        )).all()
+        large_sessions = [
+            {
+                "user_id": tx.user_id, "username": username,
+                "created_at": _fmt_dt(tx.created_at),
+                "implied_minutes": tx.delta // per_minute,
+                "awarded_points": tx.delta,
+                "detail": tx.detail,
+            }
+            for tx, username in outlier_rows
+        ]
+
+        # 2. Same signal, aggregated per user per calendar day (catches session-splitting).
+        day_rows = (await db.execute(
+            select(
+                PointsTransaction.user_id, User.username,
+                func.date(PointsTransaction.created_at).label("day"),
+                func.sum(PointsTransaction.delta).label("total"),
+            )
+            .join(User, User.id == PointsTransaction.user_id)
+            .where(PointsTransaction.reason == "playtime", PointsTransaction.created_at >= cutoff)
+            .group_by(PointsTransaction.user_id, User.username, func.date(PointsTransaction.created_at))
+            .having(func.sum(PointsTransaction.delta) >= _ANOMALY_IMPOSSIBLE_DAILY_MINUTES * per_minute)
+            .order_by(func.sum(PointsTransaction.delta).desc())
+            .limit(50)
+        )).all()
+        impossible_daily_rate = [
+            {
+                "user_id": user_id, "username": username, "date": day,
+                "implied_minutes": total // per_minute, "awarded_points": total,
+            }
+            for user_id, username, day, total in day_rows
+        ]
+
+    # 3. Burst frequency — a pure transaction-count signal, independent of per_minute
+    # (still meaningful even if the earning rate has since been set to 0).
+    burst_rows = (await db.execute(
+        select(
+            PointsTransaction.user_id, User.username,
+            func.strftime("%Y-%m-%d %H", PointsTransaction.created_at).label("hour"),
+            func.count(PointsTransaction.id).label("cnt"),
+        )
+        .join(User, User.id == PointsTransaction.user_id)
+        .where(PointsTransaction.reason == "playtime", PointsTransaction.created_at >= cutoff)
+        .group_by(PointsTransaction.user_id, User.username, func.strftime("%Y-%m-%d %H", PointsTransaction.created_at))
+        .having(func.count(PointsTransaction.id) >= _ANOMALY_BURST_TX_PER_HOUR)
+        .order_by(func.count(PointsTransaction.id).desc())
+        .limit(50)
+    )).all()
+    burst_activity = [
+        {"user_id": user_id, "username": username, "hour": hour, "tx_count": cnt}
+        for user_id, username, hour, cnt in burst_rows
+    ]
+
+    return {
+        "window_days": days,
+        "large_single_sessions": large_sessions,
+        "impossible_daily_rate": impossible_daily_rate,
+        "burst_activity": burst_activity,
+        "anomaly_count": len(large_sessions) + len(impossible_daily_rate) + len(burst_activity),
+    }
+
+
 @router.get("/api/admin/points/diagnostics")
 async def points_diagnostics(
     db: AsyncSession = Depends(get_db),

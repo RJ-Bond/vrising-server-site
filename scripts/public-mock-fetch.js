@@ -161,6 +161,16 @@
     heatmap: Array.from({ length: 24 }, (_, h) => Math.round(5 + 10 * Math.sin((h - 6) / 24 * Math.PI * 2) + 10)),
   });
 
+  // GET /api/monitor/incidents (backend/main.py) — status.html's incident timeline,
+  // derived server-side from ServerSnapshot history. Two closed incidents plus one
+  // still-ongoing (ended_at:null) so the mock exercises both status-incident-duration
+  // render paths (closed "Xh Ym" pill vs. the amber "Ongoing" pill).
+  const monitorIncidents = () => ([
+    { started_at: iso(30 * 60 * 1000), ended_at: null, duration_minutes: 30, ongoing: true },
+    { started_at: iso(2 * 24 * 3600 * 1000), ended_at: iso(2 * 24 * 3600 * 1000 - 13 * 60 * 1000), duration_minutes: 13, ongoing: false },
+    { started_at: iso(9 * 24 * 3600 * 1000), ended_at: iso(9 * 24 * 3600 * 1000 - 95 * 60 * 1000), duration_minutes: 95, ongoing: false },
+  ]);
+
   // 7 days × every 30min = 336 points — spans a full week (not just the last 24h)
   // so the servers.html day×hour heatmap actually has more than one row of data to
   // render, and the 3d/7d period toggle has something to visibly differ on.
@@ -364,6 +374,7 @@
     [/\/api\/monitor\/status2/, () => ({ enabled: true, ...monitorStatus('[RU] Just-Skill.Ru | Brutal PvE', 6, '127.0.0.1', 27017) })],
     [/\/api\/monitor\/status$/, () => monitorStatus('[RU] Just-Skill.Ru | Standart PvE', 14, '127.0.0.1', 27016)],
     [/\/api\/monitor\/stats/, () => monitorStats()],
+    [/\/api\/monitor\/incidents/, () => monitorIncidents()],
     [/\/api\/monitor\/snapshots/, (url) => snapshots(url.includes('server=2') ? 5 : 12)],
     [/\/api\/wipes$/, () => wipes],
     [/\/api\/bans/, () => bans],
