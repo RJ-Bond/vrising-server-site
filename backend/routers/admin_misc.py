@@ -12,7 +12,7 @@ from sqlalchemy import select, func, or_, case
 from ..database import get_db
 from ..models import User, News, Comment, Setting, AuditLog, PageView, ErrorLog, PointsTransaction, ShopRedemption
 from ..auth import get_admin_user, get_moderator_user, is_at_least
-from ..helpers import UPLOAD_DIR, send_newsletter_digest, _audit
+from ..helpers import UPLOAD_DIR, send_newsletter_digest, _audit, _parse_date_range
 from ..schemas import CommentBulkDeleteIn, CommentBulkResult, CommentBulkDeleteOut
 
 router = APIRouter()
@@ -239,6 +239,8 @@ async def get_audit_log(
     q: str = Query(""),
     action: str = Query(""),
     tier: str = Query(""),
+    date_from: Optional[str] = Query(default=None, description="Inclusive, YYYY-MM-DD"),
+    date_to: Optional[str] = Query(default=None, description="Inclusive, YYYY-MM-DD"),
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -257,6 +259,11 @@ async def get_audit_log(
         filters.append(AuditLog.action == action.strip())
     if tier.strip() == "superadmin":
         filters.append(AuditLog.action.in_(SUPERADMIN_AUDIT_ACTIONS))
+    range_start, range_end = _parse_date_range(date_from, date_to)
+    if range_start is not None:
+        filters.append(AuditLog.created_at >= range_start)
+    if range_end is not None:
+        filters.append(AuditLog.created_at < range_end)
     total = (await db.execute(select(func.count(AuditLog.id)).where(*filters))).scalar_one()
     rows = (await db.execute(
         select(AuditLog).where(*filters).order_by(AuditLog.created_at.desc())
@@ -448,11 +455,35 @@ async def export_users(
 
 @router.get("/api/admin/export/audit-log")
 async def export_audit_log(
+    q: str = Query(""),
+    action: str = Query(""),
+    tier: str = Query(""),
+    date_from: Optional[str] = Query(default=None, description="Inclusive, YYYY-MM-DD"),
+    date_to: Optional[str] = Query(default=None, description="Inclusive, YYYY-MM-DD"),
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_admin_user),
+    current_user: User = Depends(get_admin_user),
 ):
+    """Same filter params as GET /api/admin/audit-log above (q/action/tier/date range) so
+    the "Скачать CSV" link in admin.html can export exactly what's currently on screen
+    rather than always dumping the entire table — plain <a download> link, so params
+    come from the query string the frontend builds, not a request body."""
+    if tier.strip() == "superadmin" and not is_at_least(current_user, "superadmin"):
+        raise HTTPException(status_code=403, detail="Requires superadmin access")
+    filters = []
+    if q.strip():
+        like = f"%{q.strip()}%"
+        filters.append(or_(AuditLog.admin_username.ilike(like), AuditLog.detail.ilike(like)))
+    if action.strip():
+        filters.append(AuditLog.action == action.strip())
+    if tier.strip() == "superadmin":
+        filters.append(AuditLog.action.in_(SUPERADMIN_AUDIT_ACTIONS))
+    range_start, range_end = _parse_date_range(date_from, date_to)
+    if range_start is not None:
+        filters.append(AuditLog.created_at >= range_start)
+    if range_end is not None:
+        filters.append(AuditLog.created_at < range_end)
     rows = (await db.execute(
-        select(AuditLog).order_by(AuditLog.created_at.desc())
+        select(AuditLog).where(*filters).order_by(AuditLog.created_at.desc())
     )).scalars().all()
     buf = io.StringIO()
     w = csv.writer(buf)
