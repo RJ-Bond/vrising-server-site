@@ -650,15 +650,27 @@ async def redeem_shop_item(
     between two concurrent requests for the same user. A single conditional UPDATE is used
     instead — the WHERE clause re-checks the balance as one indivisible SQL statement, so
     at most one of two concurrent double-redeem attempts can ever succeed. Same pattern for
-    stock. See backend/tests/test_points_shop.py's asyncio.gather concurrency test."""
+    stock. See backend/tests/test_points_shop.py's asyncio.gather concurrency test.
+
+    weekly_limit_per_user has no UPDATE to piggyback the same trick on (it's a COUNT over
+    ShopRedemption, not a single row), so it's checked twice: once here, up front, as a
+    cheap best-effort rejection that avoids doing the balance/stock work at all in the
+    common (not racing) already-over-limit case, and again below, authoritatively, right
+    after the balance UPDATE. That UPDATE is this transaction's first write, so on SQLite
+    it's also the point this connection acquires the single writer lock the engine's whole
+    concurrency model serializes on (see database.py's WAL comment) — a concurrent
+    request's redemption that already committed is guaranteed visible to the recount below
+    once this transaction holds that lock, closing the window this first, merely-optimistic
+    check can't (see test_concurrent_double_redeem_respects_weekly_limit, which fails
+    against this first check alone)."""
     item_res = await db.execute(select(ShopItem).where(ShopItem.id == body.shop_item_id))
     item = item_res.scalar_one_or_none()
     if item is None or not item.is_active:
         raise HTTPException(404, "Item not found")
 
-    if item.weekly_limit_per_user is not None:
+    async def _recent_redemption_count() -> int:
         cutoff = datetime.utcnow() - timedelta(days=7)
-        recent_count = (await db.execute(
+        return (await db.execute(
             select(func.count(ShopRedemption.id)).where(
                 ShopRedemption.user_id == current_user.id,
                 ShopRedemption.shop_item_id == item.id,
@@ -666,7 +678,9 @@ async def redeem_shop_item(
                 ShopRedemption.created_at >= cutoff,
             )
         )).scalar_one()
-        if recent_count >= item.weekly_limit_per_user:
+
+    if item.weekly_limit_per_user is not None:
+        if (await _recent_redemption_count()) >= item.weekly_limit_per_user:
             raise HTTPException(409, "Weekly limit for this item reached — try again later")
 
     result = await db.execute(
@@ -685,6 +699,13 @@ async def redeem_shop_item(
         if stock_result.rowcount == 0:
             await db.rollback()
             raise HTTPException(409, "Item out of stock")
+
+    # Authoritative re-check — see docstring above for why this, unlike the identical
+    # check up front, actually closes the race.
+    if item.weekly_limit_per_user is not None:
+        if (await _recent_redemption_count()) >= item.weekly_limit_per_user:
+            await db.rollback()
+            raise HTTPException(409, "Weekly limit for this item reached — try again later")
 
     # Re-fetch the fresh balance for the ledger snapshot — current_user.points_balance in
     # memory reflects the pre-request state, not what the conditional UPDATE above (or any

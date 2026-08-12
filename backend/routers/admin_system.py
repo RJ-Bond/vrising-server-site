@@ -475,7 +475,7 @@ async def list_uploads(_: User = Depends(get_admin_user), db: AsyncSession = Dep
             "filename": f.name,
             "url": f"/api/uploads/{f.name}",
             "size": st.st_size,
-            "created_at": datetime.fromtimestamp(st.st_mtime).isoformat(),
+            "created_at": datetime.utcfromtimestamp(st.st_mtime).isoformat(),
             "used_by": used_by,
         })
     return files

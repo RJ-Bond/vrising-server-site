@@ -331,6 +331,37 @@ async def test_concurrent_double_redeem_respects_limited_stock(client, db_sessio
     assert item.stock == 0
 
 
+async def test_concurrent_double_redeem_respects_weekly_limit(client, db_session):
+    """Same race, for weekly_limit_per_user instead of balance/stock: the pre-check
+    (read recent_count, then decide) that guards the weekly limit is a plain read-then-act
+    with no atomic UPDATE backing it, unlike balance/stock immediately below it in
+    POST /api/shop/redeem — so two concurrent requests, both seeing the same
+    not-yet-at-limit recent_count, could otherwise both be admitted and push the user
+    over weekly_limit_per_user. Give the user plenty of balance/stock (so those checks
+    can't be what blocks the second request) and a weekly_limit_per_user=1 item with zero
+    prior redemptions — only one of two concurrent requests may succeed."""
+    user = await _make_user(db_session, "WeeklyLimitRaceUser", points_balance=1000)
+    item = await _make_item(db_session, name="Weekly Race Item", cost=10, weekly_limit_per_user=1)
+    headers = _bearer(user)
+
+    async def _attempt():
+        return await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=headers)
+
+    r1, r2 = await asyncio.gather(_attempt(), _attempt())
+    statuses = sorted([r1.status_code, r2.status_code])
+    assert statuses == [201, 409]
+
+    redemptions = (await db_session.execute(
+        select(ShopRedemption).where(ShopRedemption.user_id == user.id, ShopRedemption.status != "cancelled")
+    )).scalars().all()
+    assert len(redemptions) == 1
+
+    # The rejected attempt's balance UPDATE must have been rolled back along with it —
+    # only the one successful redemption's cost should be deducted.
+    await db_session.refresh(user)
+    assert user.points_balance == 990
+
+
 # ─── Admin redemption queue: fulfill / cancel-refund ────────────────────────
 
 async def test_fulfill_redemption_marks_resolved(client, db_session):
