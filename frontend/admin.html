@@ -934,6 +934,9 @@
         <div style="display:flex;align-items:center;gap:.6rem;">
           <input id="settings-search" type="text" placeholder="Поиск по настройкам…" class="dark-input" style="width:auto;font-size:.78rem;padding:.45rem .8rem;" oninput="filterSettings()">
           <button id="save-all-btn" onclick="saveAllSettings()" class="btn-primary" style="font-size:.75rem;padding:.5rem 1rem;">💾 Сохранить все изменения</button>
+          <button onclick="openSettingsHistory()" class="btn-ghost" style="font-size:.75rem;display:inline-flex;align-items:center;gap:.35rem;" title="Кто и когда менял значения настроек">
+            🕐 История изменений
+          </button>
           <button onclick="exportSettings()" class="btn-ghost" style="font-size:.75rem;display:inline-flex;align-items:center;gap:.35rem;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="/icons.svg#icon-download"></use></svg>
             Экспорт
@@ -1007,7 +1010,7 @@
           <div class="s-field">
             <label style="display:flex;align-items:center;gap:.4rem;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-              Следующий вайп
+              Следующий вайп <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span>
             </label>
             <div class="s-field-row" style="gap:.5rem;">
               <select id="setting-wipe_type" class="dark-input" style="flex:0 0 auto;width:auto;">
@@ -1018,7 +1021,7 @@
               <input id="setting-wipe_date" type="datetime-local" class="dark-input">
               <button class="s-save-btn" onclick="saveSetting('wipe_type');saveSetting('wipe_date')">Сохранить</button>
             </div>
-            <p class="s-desc">Тип + дата вайпа. Показывает таймер на главной. Оставьте дату пустой — таймер скрыт</p>
+            <p class="s-desc">Тип + дата вайпа. Показывает таймер на главной. Оставьте дату пустой — таймер скрыт. Дата/время — по часовому поясу сайта, не браузера.</p>
           </div>
         </div>
 
@@ -1075,7 +1078,7 @@
           <div class="s-field">
             <label style="display:flex;align-items:center;gap:.4rem;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-              Следующий вайп
+              Следующий вайп <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span>
             </label>
             <div class="s-field-row" style="gap:.5rem;">
               <select id="setting-wipe_type2" class="dark-input" style="flex:0 0 auto;width:auto;">
@@ -1086,7 +1089,7 @@
               <input id="setting-wipe_date2" type="datetime-local" class="dark-input">
               <button class="s-save-btn" onclick="saveSetting('wipe_type2');saveSetting('wipe_date2')">Сохранить</button>
             </div>
-            <p class="s-desc">Тип + дата вайпа для второго сервера</p>
+            <p class="s-desc">Тип + дата вайпа для второго сервера. Дата/время — по часовому поясу сайта, не браузера.</p>
           </div>
         </div>
 
@@ -1668,7 +1671,7 @@
           <div class="s-field">
             <label>RCON Порт (Сервер 1)</label>
             <div class="s-field-row">
-              <input id="setting-rcon_port" type="number" class="dark-input" placeholder="25575">
+              <input id="setting-rcon_port" type="number" min="1" max="65535" class="dark-input" placeholder="25575">
               <button class="s-save-btn" onclick="saveSetting('rcon_port')">Сохранить</button>
             </div>
             <p class="s-desc">По умолчанию 25575. В V Rising включается в ServerHostSettings.json</p>
@@ -1683,7 +1686,7 @@
           <div class="s-field">
             <label>RCON Порт (Сервер 2)</label>
             <div class="s-field-row">
-              <input id="setting-rcon2_port" type="number" class="dark-input" placeholder="25575">
+              <input id="setting-rcon2_port" type="number" min="1" max="65535" class="dark-input" placeholder="25575">
               <button class="s-save-btn" onclick="saveSetting('rcon2_port')">Сохранить</button>
             </div>
             <p class="s-desc">По умолчанию 25575. В V Rising включается в ServerHostSettings.json</p>
@@ -1776,7 +1779,7 @@
               </select>
             </div>
             <div style="display:flex;flex-direction:column;gap:.3rem;flex:1;min-width:180px;">
-              <label style="font-size:.68rem;color:var(--muted);">Дата и время</label>
+              <label style="font-size:.68rem;color:var(--muted);">Дата и время <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;">(время сайта)</span></label>
               <input id="wf-date" type="datetime-local" class="dark-input">
             </div>
             <div style="display:flex;flex-direction:column;gap:.3rem;flex:2;min-width:200px;">
@@ -1789,6 +1792,27 @@
 
         <div id="wipe-history-admin" style="display:flex;flex-direction:column;gap:.4rem;">
           <p style="color:var(--muted);font-size:.8rem;">Загрузка…</p>
+        </div>
+      </div>
+
+      <!-- Settings change-history modal — filters the generic audit log (already written
+           on every PUT /api/admin/settings/{key} as a "settings.update" entry, detail
+           "key=value", see backend/routers/admin_settings.py) down to just one setting key
+           at a time, since the full "Журнал действий" (section-auditlog) has no per-key
+           filter of its own and mixes every other admin action in with it. -->
+      <div id="settings-history-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
+        <div style="max-width:680px;margin:3rem auto;background:var(--card);border:1px solid var(--border);border-radius:1rem;padding:2rem;box-shadow:0 16px 64px rgba(0,0,0,0.7);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+            <h3 class="section-title">История изменений настроек</h3>
+            <button onclick="closeSettingsHistory()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">✕</button>
+          </div>
+          <div style="display:flex;gap:.5rem;margin-bottom:1rem;">
+            <select id="settings-history-key" class="dark-input" style="width:auto;flex:1;" onchange="loadSettingsHistory()"></select>
+            <button onclick="loadSettingsHistory()" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
+          </div>
+          <div id="settings-history-body" style="display:flex;flex-direction:column;gap:.4rem;max-height:55vh;overflow-y:auto;">
+            <p style="color:var(--muted);font-size:.8rem;">Выберите настройку…</p>
+          </div>
         </div>
       </div>
 
@@ -1847,15 +1871,46 @@
             <div class="s-icon" style="background:rgba(0,60,140,.18);border:1px solid rgba(0,120,220,.3);">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.8"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
             </div>
-            <div>
+            <div style="flex:1;">
               <h2>Статус подключения</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Последний heartbeat от плагина на этом сервере</p>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Последний heartbeat от плагина на этом сервере — плагин отправляет его раз в минуту</p>
             </div>
+            <!-- Manual re-poll — re-fetches GET /api/admin/plugin-status (the same endpoint the
+                 pill above already renders) instead of waiting for the admin to switch tabs away
+                 and back, since nothing here auto-refreshes on a timer. -->
+            <button type="button" id="plugin-status-refresh-btn" class="btn-ghost" style="font-size:.7rem;padding:.3rem .65rem;flex-shrink:0;white-space:nowrap;" onclick="manualRefreshPluginStatus()" title="Опросить статус плагина сейчас, не дожидаясь следующего автоматического обновления">↻ Обновить</button>
           </div>
           <div class="s-field" style="margin-bottom:0;">
             <div id="plugin-status-container" style="display:flex;flex-direction:column;gap:.4rem;">
               <div style="font-size:.72rem;color:var(--muted);">Загрузка…</div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent plugin-reported activity (kick/mute/restart) for the selected server —
+           reuses the SAME data POST /api/plugin/log-action already writes and GET
+           /api/admin/moderation-log already serves for "Журнал модерации" (section-modlog),
+           just narrowed to this server + the actions the plugin itself reports (as opposed to
+           ban/warn, which originate from the admin panel/website, not the plugin). This is
+           NOT the plugin's own in-memory .pluginlog warning/error ring buffer — nothing
+           site-side ships that data yet (would need a change in the separate js-plugin C#
+           repo to start reporting it here) — it's the closest already-existing plugin-sourced
+           feed, so it's what's surfaced here instead of inventing a new log-shipping path. -->
+      <div class="s-row" style="margin-top:1.25rem;">
+        <div class="s-card s-card-blue">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(0,60,140,.18);border:1px solid rgba(0,120,220,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+            </div>
+            <div style="flex:1;">
+              <h2>Недавние события плагина</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Кик/мут/рестарт, о которых плагин сообщил сам — полный журнал со всеми действиями см. в «Журнал модерации»</p>
+            </div>
+            <button type="button" class="btn-ghost" style="font-size:.7rem;padding:.3rem .65rem;flex-shrink:0;white-space:nowrap;" onclick="loadPluginRecentLog()" title="Обновить список">↻</button>
+          </div>
+          <div id="plugin-recent-log" style="display:flex;flex-direction:column;gap:.4rem;">
+            <div style="font-size:.72rem;color:var(--muted);">Загрузка…</div>
           </div>
         </div>
       </div>
@@ -1940,7 +1995,7 @@
 
           <div style="display:grid;grid-template-columns:1fr auto;gap:.75rem;align-items:end;">
             <div class="s-field" style="margin-bottom:0;">
-              <label>Истекает (необязательно)</label>
+              <label>Истекает (необязательно) <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span></label>
               <input id="ann-expires" type="datetime-local" class="dark-input" style="color-scheme:dark;">
             </div>
             <div class="s-field" style="margin-bottom:0;">
@@ -2512,8 +2567,8 @@
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
-              <div><label>Начало</label><input id="ev-start" class="dark-input" type="datetime-local" style="color-scheme:dark;"></div>
-              <div><label>Конец (необязательно)</label><input id="ev-end" class="dark-input" type="datetime-local" style="color-scheme:dark;"></div>
+              <div><label>Начало <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span></label><input id="ev-start" class="dark-input" type="datetime-local" style="color-scheme:dark;"></div>
+              <div><label>Конец (необязательно) <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span></label><input id="ev-end" class="dark-input" type="datetime-local" style="color-scheme:dark;"></div>
             </div>
             <div><label>Макс. участников (необязательно)</label><input id="ev-max" class="dark-input" type="number" min="1" placeholder="Без ограничений"></div>
             <div><label>URL обложки (необязательно)</label><input id="ev-cover" class="dark-input" type="url" placeholder="https://..."></div>
@@ -3075,7 +3130,73 @@ fetch(`${API}/settings/public`).then(r => r.json()).then(d => {
   window.__TZ = d.timezone || 'Europe/Moscow';
   window.__H12 = (d.time_format || '24h') === '12h';
   window.__DATEFMT = d.date_format || 'dd.mm.yyyy';
+  _refreshSiteTzLabels();
 }).catch(() => {});
+
+// ─── Site-timezone <-> <input type="datetime-local"> conversion ────────────
+// Used by the Events editor (ev-start/ev-end) and the Settings wipe-date fields
+// (setting-wipe_date/setting-wipe_date2, wf-date) — every one of those stores/expects a
+// real UTC instant server-side (Event.start_date/end_date and Wipe.wipe_date are plain
+// DateTime columns with this codebase's usual "naive value means UTC" convention — see
+// CLAUDE.md's SQLite-naive-datetime gotcha and _fmt_dt() in backend/helpers.py), but a
+// bare <input type="datetime-local"> has no timezone concept of its own — a value typed
+// into it is just a wall-clock string with no offset. Before this helper, the raw
+// datetime-local value was sent straight to the backend and parsed as if it *were*
+// already UTC, and read back the same naive way — correct only when the admin's browser
+// happens to be set to the site's configured zone (window.__TZ, default Europe/Moscow).
+// This instead always interprets/renders the wall-clock value against window.__TZ
+// specifically, independent of the browser's own zone — the same site-timezone-not-
+// browser-timezone intent as the backend's _site_timezone() helper (used for
+// wipe_date/daily-restart-time wall-clock Settings), just applied client-side since
+// these particular fields are true UTC DateTime columns rather than Settings strings.
+// Uses a round-trip through Intl.DateTimeFormat (format a UTC guess in the target zone,
+// measure the drift, correct) rather than a fixed offset table, so it stays correct
+// across any DST transition for whatever IANA zone the site is configured with.
+function _siteTzToUtcIso(localValue) {
+  const m = (localValue || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const [, y, mo, d, h, mi] = m.slice(1).map(Number);
+  const tz = window.__TZ || 'Europe/Moscow';
+  let guess = Date.UTC(y, mo - 1, d, h, mi);
+  for (let i = 0; i < 2; i++) {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).formatToParts(new Date(guess));
+    const map = {};
+    parts.forEach(p => { if (p.type !== 'literal') map[p.type] = parseInt(p.value, 10); });
+    const renderedAsUtc = Date.UTC(map.year, map.month - 1, map.day, map.hour, map.minute, map.second || 0);
+    guess -= (renderedAsUtc - guess);
+  }
+  return new Date(guess).toISOString();
+}
+
+function _utcToSiteTzInput(isoValue) {
+  if (!isoValue) return '';
+  const d = new Date(isoValue);
+  if (isNaN(d.getTime())) return '';
+  const tz = window.__TZ || 'Europe/Moscow';
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+  }).formatToParts(d);
+  const map = {};
+  parts.forEach(p => { if (p.type !== 'literal') map[p.type] = p.value; });
+  return `${map.year}-${map.month}-${map.day}T${map.hour}:${map.minute}`;
+}
+
+// Refreshes every "(время сайта, <zone>)" hint placed next to a date/time field whose
+// value is interpreted in the site's configured timezone rather than the browser's own
+// (events start/end, the announcement expiry field, the historical wipe-date form) — so
+// an admin doesn't have to remember/guess window.__TZ. Called once window.__TZ resolves
+// from GET /api/settings/public and again each time one of those forms is (re)opened,
+// since the fetch above may not have resolved yet on a very first paint.
+function _refreshSiteTzLabels() {
+  const tz = window.__TZ || 'Europe/Moscow';
+  document.querySelectorAll('.site-tz-label').forEach(el => { el.textContent = `(время сайта, ${tz})`; });
+}
 
 // ─── Sidebar badges ─────────────────────────────────────────────────────────
 async function loadSidebarBadges() {
@@ -3646,6 +3767,7 @@ function filterSettings() {
 }
 
 async function loadSettings() {
+  _refreshSiteTzLabels();
   const res = await fetch(`${API}/admin/settings`, { credentials: 'include', headers: authH() });
   if (!res.ok) { handleAuth(res); return; }
   const settings = await res.json();
@@ -3704,12 +3826,14 @@ let _pluginServers = [];      // [{server_num, server_name}] derived from _plugi
 let _pluginActiveServer = null;
 
 async function loadPluginSection() {
+  _refreshSiteTzLabels();
   await loadPluginStatus();   // populates _pluginServers + _pluginActiveServer, renders tabs
   loadAnnouncements();
   loadMessageTemplates();
   loadServerApiKey();
   loadRestartStatus();
   loadDailyRestart();
+  loadPluginRecentLog();
 }
 
 async function loadPluginStatus() {
@@ -3759,6 +3883,7 @@ function selectPluginServer(serverNum) {
   loadServerApiKey();
   loadRestartStatus();
   loadDailyRestart();
+  loadPluginRecentLog();
 }
 
 function renderPluginStatusPill() {
@@ -3781,6 +3906,64 @@ function renderPluginStatusPill() {
   const name = hb.server_name ? esc(hb.server_name) : `Сервер ${hb.server_num}`;
   const ver = hb.plugin_version ? `версия ${esc(hb.plugin_version)}, ` : '';
   container.innerHTML = `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(0,150,50,.15);color:#86efac;border:1px solid rgba(0,180,60,.3);width:fit-content;">🟢 Подключён — ${name}, ${ver}${hb.player_count} игроков онлайн, обновлено ${rel} назад</span>`;
+}
+
+// Manual re-poll button next to the status pill above — loadPluginStatus() is otherwise
+// only called on initial section load / server-tab switch (nothing here auto-refreshes on
+// a timer), so an admin watching a plugin come back up had no way to check sooner than a
+// full tab switch. Re-hits the exact same GET /api/admin/plugin-status the pill already
+// renders from, just on demand.
+async function manualRefreshPluginStatus() {
+  const btn = document.getElementById('plugin-status-refresh-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '↻ Обновление…'; }
+  try {
+    await loadPluginStatus();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Обновить'; }
+  }
+}
+
+// ─── Recent plugin-reported activity (see the "Недавние события плагина" card) ─────
+// Reuses GET /api/admin/moderation-log (already backing section-modlog's full feed)
+// rather than a new endpoint — narrowed here to this server plus only the action types
+// the plugin itself reports via POST /api/plugin/log-action (kick/mute/unmute/
+// restart_scheduled/restart_executed), excluding ban/warn/unban which originate from the
+// admin panel or website rather than the plugin. Reuses MODLOG_ACTION_LABELS/
+// MODLOG_ACTION_COLORS (top-level consts declared with the moderation-log section further
+// down) instead of a second copy of the same label text.
+const _PLUGIN_LOG_ACTIONS = new Set(['kick', 'mute', 'unmute', 'restart_scheduled', 'restart_executed']);
+
+async function loadPluginRecentLog() {
+  const el = document.getElementById('plugin-recent-log');
+  if (!el) return;
+  if (_pluginActiveServer == null) {
+    el.innerHTML = '<div style="font-size:.72rem;color:var(--muted);">Нет данных</div>';
+    return;
+  }
+  el.innerHTML = '<div style="font-size:.72rem;color:var(--muted);">Загрузка…</div>';
+  try {
+    const res = await fetch(`${API}/admin/moderation-log?server_num=${_pluginActiveServer}&limit=100`, { credentials: 'include', headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const d = await res.json();
+    const items = (d.log || []).filter(e => _PLUGIN_LOG_ACTIONS.has(e.action)).slice(0, 8);
+    if (!items.length) {
+      el.innerHTML = '<div style="font-size:.72rem;color:var(--muted);">Событий пока нет</div>';
+      return;
+    }
+    el.innerHTML = items.map(e => {
+      const label = (typeof MODLOG_ACTION_LABELS !== 'undefined' && MODLOG_ACTION_LABELS[e.action]) || e.action;
+      const bg = (typeof MODLOG_ACTION_COLORS !== 'undefined' && MODLOG_ACTION_COLORS[e.action]) || 'rgba(100,100,100,.18)';
+      const when = fmtDateTime(e.created_at);
+      const who = e.target_name ? esc(e.target_name) : (e.target_steam_id ? esc(e.target_steam_id) : '—');
+      const detail = e.details ? ` — ${esc(e.details)}` : '';
+      return `<div style="display:flex;align-items:center;gap:.5rem;font-size:.74rem;padding:.35rem .1rem;border-bottom:1px solid rgba(255,255,255,.05);">
+        <span style="background:${bg};color:var(--text);font-size:.65rem;font-weight:600;padding:.1rem .5rem;border-radius:9999px;white-space:nowrap;">${esc(label)}</span>
+        <span style="color:var(--text);white-space:nowrap;">${who}</span>
+        <span style="color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${detail}</span>
+        <span style="color:var(--muted);font-size:.68rem;white-space:nowrap;">${when}</span>
+      </div>`;
+    }).join('');
+  } catch { el.innerHTML = '<div style="font-size:.72rem;color:#f87171;">Ошибка загрузки</div>'; }
 }
 
 // ─── Scheduled announcements ───────────────────────────────────────────────
@@ -3818,13 +4001,24 @@ function annChatPrefix() {
 // Generic live chat-preview renderer shared by #ann-text and the #tmpl-connect/
 // #tmpl-disconnect message template fields — takes the textarea/preview/char-counter
 // element ids so the same logic isn't triplicated across three near-identical fields.
-function updateChatPreview(taId, previewId, counterId) {
+// `placeholders`, when given (the connect/disconnect templates only — announcements have
+// no placeholders), substitutes each {key} with an example value BEFORE the color-tag/
+// escaping pass below, so the preview shows what will actually appear in-game instead of
+// the literal "{name}" token — previously the preview only proved the color tags/text
+// worked, not what a real connect/disconnect message would look like.
+function updateChatPreview(taId, previewId, counterId, placeholders) {
   const ta = document.getElementById(taId);
   const box = document.getElementById(previewId);
   if (!ta || !box) return;
   const raw = ta.value;
+  let previewRaw = raw;
+  if (placeholders) {
+    for (const [key, val] of Object.entries(placeholders)) {
+      previewRaw = previewRaw.split(`{${key}}`).join(val);
+    }
+  }
   box.innerHTML = raw.trim()
-    ? `<span style="color:#d4d4d8;">${esc(annChatPrefix())}</span>${renderColorTagPreview(raw)}`
+    ? `<span style="color:#d4d4d8;">${esc(annChatPrefix())}</span>${renderColorTagPreview(previewRaw)}`
     : '<span style="color:var(--muted);">Предпросмотр появится здесь…</span>';
   if (counterId) {
     const counter = document.getElementById(counterId);
@@ -3976,7 +4170,7 @@ function editAnnouncement(id) {
       document.getElementById('ann-interval-unit').value = 'minutes';
     }
   }
-  document.getElementById('ann-expires').value = a.expires_at ? a.expires_at.slice(0, 16) : '';
+  document.getElementById('ann-expires').value = a.expires_at ? _utcToSiteTzInput(a.expires_at) : '';
   document.getElementById('ann-enabled').checked = !!a.enabled;
   onAnnRepeatModeChange();
   updateAnnPreview();
@@ -4007,7 +4201,9 @@ async function saveAnnouncement() {
   const body = {
     text,
     interval_minutes,
-    expires_at: expiresRaw ? new Date(expiresRaw).toISOString() : null,
+    // Site-timezone conversion (not the browser's own zone) — see _siteTzToUtcIso's
+    // comment; same fix as the events start/end fields.
+    expires_at: expiresRaw ? _siteTzToUtcIso(expiresRaw) : null,
     enabled: document.getElementById('ann-enabled').checked,
     server_num: _pluginActiveServer,
   };
@@ -4100,7 +4296,7 @@ async function loadMessageTemplates() {
 }
 
 function updateTmplPreview(kind) {
-  updateChatPreview(`tmpl-${kind}`, `tmpl-${kind}-preview`, `tmpl-${kind}-char-count`);
+  updateChatPreview(`tmpl-${kind}`, `tmpl-${kind}-preview`, `tmpl-${kind}-char-count`, { name: 'Astartes' });
 }
 
 function wrapTmplSelectionWithColor(kind, hex) {
@@ -4582,7 +4778,22 @@ function copyApiKey(btn) {
 }
 
 async function saveSetting(key) {
-  const value = document.getElementById(`setting-${key}`)?.value ?? '';
+  const el = document.getElementById(`setting-${key}`);
+  const value = el?.value ?? '';
+  // Client-side validation against whatever type/min/max/pattern the field's <input>
+  // already declares (port fields are type="number" min="1" max="65535", URL fields are
+  // type="url", https_email is type="email", etc.) — those attributes were already
+  // present for native browser hinting, but nothing here ever actually checked them
+  // before this PUT went out, so a bad value only surfaced later as a broken RCON
+  // connection / server-status widget / <img src> rather than at save time. The backend
+  // itself (PUT /api/admin/settings/{key}, see admin_settings.py) stores any string with
+  // no format validation of its own, so this only catches values that would already break
+  // a downstream consumer, not a new invented constraint.
+  if (el && typeof el.checkValidity === 'function' && !el.checkValidity()) {
+    el.reportValidity();
+    showToast('Проверьте значение поля', 'error');
+    return;
+  }
   if ((key === 'wipe_date' || key === 'wipe_date2') && value && new Date(value) < new Date()) {
     showConfirm({
       title: 'Дата вайпа в прошлом',
@@ -6015,6 +6226,59 @@ async function importSettings(input) {
   input.value = '';
 }
 
+// ─── Settings change history ────────────────────────────────────────────────
+// Every PUT /api/admin/settings/{key} already writes a "settings.update" AuditLog row
+// with detail "key=value" (see admin_settings.py's update_setting) — this just filters
+// GET /api/admin/audit-log down to one key via its existing q= substring search (which
+// matches against admin_username OR detail), rather than adding a new backend endpoint
+// or a second parallel logging path.
+function openSettingsHistory() {
+  const sel = document.getElementById('settings-history-key');
+  if (sel && !sel.options.length) {
+    sel.innerHTML = SETTINGS_FIELD_KEYS.slice().sort().map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join('');
+  }
+  document.getElementById('settings-history-modal').style.display = '';
+  loadSettingsHistory();
+}
+
+function closeSettingsHistory() {
+  document.getElementById('settings-history-modal').style.display = 'none';
+}
+
+async function loadSettingsHistory() {
+  const body = document.getElementById('settings-history-body');
+  const key = document.getElementById('settings-history-key')?.value;
+  if (!body || !key) return;
+  body.innerHTML = '<p style="color:var(--muted);font-size:.8rem;">Загрузка…</p>';
+  try {
+    // "key=" (with the trailing "=") keeps e.g. "wipe_date=" from also matching
+    // "wipe_date2=..." rows — detail is always formatted as "<key>=<value>".
+    const q = encodeURIComponent(`${key}=`);
+    const res = await fetch(`${API}/admin/audit-log?action=settings.update&q=${q}&per_page=30`, { credentials: 'include', headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const d = await res.json();
+    const items = d.items || [];
+    if (!items.length) {
+      body.innerHTML = '<p style="color:var(--muted);font-size:.8rem;">Изменений этой настройки пока не зафиксировано.</p>';
+      return;
+    }
+    body.innerHTML = items.map(item => {
+      // created_at from this endpoint is naive UTC with no offset (SQLite drops tzinfo,
+      // see CLAUDE.md) — append 'Z' before parsing, same workaround used elsewhere in
+      // this file (relativeTimeFromIso above) so it renders in the site timezone, not UTC.
+      const iso = item.created_at.endsWith('Z') ? item.created_at : item.created_at + 'Z';
+      const when = fmtDateTime(iso);
+      const eq = (item.detail || '').indexOf('=');
+      const val = eq >= 0 ? item.detail.slice(eq + 1) : (item.detail || '');
+      return `<div style="display:flex;gap:.6rem;align-items:flex-start;font-size:.78rem;padding:.4rem 0;border-bottom:1px solid rgba(255,255,255,.05);">
+        <span style="color:var(--muted);white-space:nowrap;min-width:110px;">${esc(when)}</span>
+        <span style="color:var(--gold);white-space:nowrap;">${esc(item.admin || item.admin_username || '?')}</span>
+        <span style="color:var(--text);word-break:break-word;flex:1;">${esc(val)}</span>
+      </div>`;
+    }).join('');
+  } catch { body.innerHTML = '<p style="color:#f87171;font-size:.8rem;">Ошибка загрузки.</p>'; }
+}
+
 // ─── Wipe history ─────────────────────────────────────────────────────────
 const WIPE_LABELS = { full: 'Полный', map: 'Карта', progress: 'Прогресс' };
 const WIPE_COLORS = { full: '#f87171', map: '#fbbf24', progress: '#34d399' };
@@ -6077,7 +6341,10 @@ async function _doAddWipe(server_num, wipe_type, dateVal, note) {
     const r = await fetch(`${API}/admin/wipes`, {
       method: 'POST',
       credentials: 'include', headers: authH(),
-      body: JSON.stringify({ server_num, wipe_type, wipe_date: new Date(dateVal).toISOString(), note }),
+      // Site-timezone conversion (window.__TZ), not the browser's own zone — see
+      // _siteTzToUtcIso's comment; Wipe.wipe_date is a real UTC DateTime column, same as
+      // Event.start_date/end_date, so this had the same off-by-browser-offset bug those did.
+      body: JSON.stringify({ server_num, wipe_type, wipe_date: _siteTzToUtcIso(dateVal), note }),
     });
     if (!r.ok) { const e = await r.json(); showToast(e.detail || 'Ошибка', 'error'); return; }
     document.getElementById('wipe-form').style.display = 'none';
@@ -6763,7 +7030,11 @@ async function loadEvents(page = 1) {
     renderPagination('events-pagination', page, Math.ceil((d.total||0) / 20), loadEvents);
     if (!items.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);">Нет событий</td></tr>'; return; }
     tbody.innerHTML = items.map(ev => {
-      const dt = ev.start_date ? new Date(ev.start_date).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+      // fmtDateTime (common.js) renders in the site's configured timezone (window.__TZ) —
+      // a plain `new Date(...).toLocaleString()` here would instead use the admin's own
+      // browser timezone, same class of bug as the ev-start/ev-end input conversion fixed
+      // above (see _siteTzToUtcIso's comment).
+      const dt = ev.start_date ? fmtDateTime(ev.start_date) : '—';
       const statusColor = EVENT_STATUS_COLORS[ev.status]||'var(--muted)';
       const pCount = ev.participant_count||0;
       const pMax = ev.max_participants ? `/${ev.max_participants}` : '';
@@ -6786,6 +7057,7 @@ async function loadEvents(page = 1) {
 
 async function openEventEditor(id) {
   _editingEventId = id;
+  _refreshSiteTzLabels();
   document.getElementById('event-editor-title').textContent = id ? 'Редактировать событие' : 'Новое событие';
   ['ev-title','ev-desc','ev-start','ev-end','ev-cover'].forEach(i => { const el=document.getElementById(i); if(el) el.value=''; });
   document.getElementById('ev-max').value = '';
@@ -6802,8 +7074,8 @@ async function openEventEditor(id) {
       document.getElementById('ev-status').value = ev.status||'upcoming';
       document.getElementById('ev-max').value = ev.max_participants||'';
       document.getElementById('ev-cover').value = ev.cover_url||'';
-      if (ev.start_date) document.getElementById('ev-start').value = ev.start_date.slice(0,16);
-      if (ev.end_date) document.getElementById('ev-end').value = ev.end_date.slice(0,16);
+      if (ev.start_date) document.getElementById('ev-start').value = _utcToSiteTzInput(ev.start_date);
+      if (ev.end_date) document.getElementById('ev-end').value = _utcToSiteTzInput(ev.end_date);
     } catch {}
   }
   document.getElementById('event-editor-modal').style.display = '';
@@ -6822,8 +7094,8 @@ async function saveEvent() {
     description: document.getElementById('ev-desc').value.trim()||null,
     event_type: document.getElementById('ev-type').value,
     status: document.getElementById('ev-status').value,
-    start_date: document.getElementById('ev-start').value||null,
-    end_date: document.getElementById('ev-end').value||null,
+    start_date: _siteTzToUtcIso(document.getElementById('ev-start').value)||null,
+    end_date: _siteTzToUtcIso(document.getElementById('ev-end').value)||null,
     max_participants: parseInt(document.getElementById('ev-max').value)||null,
     cover_url: document.getElementById('ev-cover').value.trim()||null,
   };
