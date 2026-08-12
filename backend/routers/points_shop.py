@@ -138,6 +138,35 @@ async def list_shop_redemptions_admin(
         out = ShopRedemptionOut.model_validate(r)
         out.username = username
         items.append(out)
+
+    # Weekly-limit context (see ShopRedemptionOut.weekly_limit_per_user's docstring) —
+    # one bulk lookup of the current per-item limits, then one bulk grouped count of
+    # this page's users' recent redemptions, instead of a per-row query. Only items
+    # actually referenced on this page are looked up, so the extra cost stays
+    # proportional to page size (<=200) regardless of total catalog/redemption size.
+    item_ids = {r.shop_item_id for r, _ in rows if r.shop_item_id is not None}
+    if item_ids:
+        limit_rows = (await db.execute(
+            select(ShopItem.id, ShopItem.weekly_limit_per_user).where(ShopItem.id.in_(item_ids))
+        )).all()
+        limits_by_item = {iid: lim for iid, lim in limit_rows if lim is not None}
+        if limits_by_item:
+            cutoff = datetime.utcnow() - timedelta(days=7)
+            count_rows = (await db.execute(
+                select(ShopRedemption.user_id, ShopRedemption.shop_item_id, func.count(ShopRedemption.id))
+                .where(
+                    ShopRedemption.shop_item_id.in_(limits_by_item.keys()),
+                    ShopRedemption.status != "cancelled",
+                    ShopRedemption.created_at >= cutoff,
+                )
+                .group_by(ShopRedemption.user_id, ShopRedemption.shop_item_id)
+            )).all()
+            used_by_pair = {(uid, iid): cnt for uid, iid, cnt in count_rows}
+            for (r, _), out in zip(rows, items, strict=True):
+                if r.shop_item_id in limits_by_item:
+                    out.weekly_limit_per_user = limits_by_item[r.shop_item_id]
+                    out.weekly_used = used_by_pair.get((r.user_id, r.shop_item_id), 0)
+
     return {"total": total, "page": page, "per_page": per_page, "items": items}
 
 

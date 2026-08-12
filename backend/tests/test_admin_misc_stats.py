@@ -166,6 +166,33 @@ async def test_audit_log_search_by_query(client, db_session):
     assert "Sneaky" in body["items"][0]["detail"]
 
 
+async def test_audit_log_date_range_filter(client, db_session):
+    admin = await _make_user(db_session, "AuditAdmin4", role="admin")
+    now = datetime.utcnow()
+    db_session.add(AuditLog(admin_username=admin.username, action="old.action", detail="old", created_at=now - timedelta(days=10)))
+    db_session.add(AuditLog(admin_username=admin.username, action="recent.action", detail="recent", created_at=now - timedelta(hours=1)))
+    await db_session.commit()
+
+    date_from = (now - timedelta(days=2)).strftime("%Y-%m-%d")
+    r = await client.get("/api/admin/audit-log", params={"date_from": date_from}, headers=_bearer(admin))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["total"] == 1
+    assert body["items"][0]["action"] == "recent.action"
+
+    # date_to is inclusive of the whole day — bound at "today" should still include an
+    # entry from an hour ago even though it's not exactly midnight.
+    date_to = now.strftime("%Y-%m-%d")
+    r2 = await client.get("/api/admin/audit-log", params={"date_to": date_to}, headers=_bearer(admin))
+    assert r2.json()["total"] == 2
+
+    date_to_old = (now - timedelta(days=5)).strftime("%Y-%m-%d")
+    r3 = await client.get("/api/admin/audit-log", params={"date_to": date_to_old}, headers=_bearer(admin))
+    body3 = r3.json()
+    assert body3["total"] == 1
+    assert body3["items"][0]["action"] == "old.action"
+
+
 async def test_audit_log_actions_returns_distinct_list(client, db_session):
     admin = await _make_user(db_session, "AuditAdmin3", role="admin")
     db_session.add(AuditLog(admin_username=admin.username, action="event.create", detail="a"))
@@ -288,6 +315,39 @@ async def test_export_users_returns_csv_with_header_and_rows(client, db_session)
     assert "ExportTarget1" in usernames
 
 
+async def test_export_points_transactions_requires_admin(client, db_session):
+    user = await _make_user(db_session, "PtExportUser1", role="user")
+    r = await client.get("/api/admin/export/points-transactions", params={"user_id": user.id}, headers=_bearer(user))
+    assert r.status_code == 403
+
+
+async def test_export_points_transactions_unknown_user_404s(client, db_session):
+    admin = await _make_user(db_session, "PtExportAdmin1", role="admin")
+    r = await client.get("/api/admin/export/points-transactions", params={"user_id": 999999}, headers=_bearer(admin))
+    assert r.status_code == 404
+
+
+async def test_export_points_transactions_returns_only_that_players_rows(client, db_session):
+    admin = await _make_user(db_session, "PtExportAdmin2", role="admin")
+    target = await _make_user(db_session, "PtExportTarget1", role="user")
+    other = await _make_user(db_session, "PtExportOther1", role="user")
+    db_session.add_all([
+        PointsTransaction(user_id=target.id, delta=100, balance_after=100, reason="playtime", detail="session"),
+        PointsTransaction(user_id=target.id, delta=-40, balance_after=60, reason="redeem", detail="Sword"),
+        PointsTransaction(user_id=other.id, delta=500, balance_after=500, reason="playtime", detail="session"),
+    ])
+    await db_session.commit()
+
+    r = await client.get("/api/admin/export/points-transactions", params={"user_id": target.id}, headers=_bearer(admin))
+    assert r.status_code == 200
+    assert "text/csv" in r.headers["content-type"]
+    rows = list(csv.reader(io.StringIO(r.text)))
+    assert rows[0] == ["date", "delta", "balance_after", "reason", "detail"]
+    deltas = [row[1] for row in rows[1:]]
+    assert sorted(deltas) == ["-40", "100"]
+    assert "500" not in deltas  # the other player's row must not leak in
+
+
 async def test_export_audit_log_returns_csv(client, db_session):
     admin = await _make_user(db_session, "ExportAdmin2", role="admin")
     db_session.add(AuditLog(admin_username=admin.username, action="event.create", detail="did a thing"))
@@ -298,6 +358,26 @@ async def test_export_audit_log_returns_csv(client, db_session):
     rows = list(csv.reader(io.StringIO(r.text)))
     assert rows[0] == ["id", "admin_username", "action", "target_type", "target_id", "detail", "created_at"]
     assert any(row[2] == "event.create" for row in rows[1:])
+
+
+async def test_export_audit_log_respects_action_and_date_filters(client, db_session):
+    admin = await _make_user(db_session, "ExportAdmin3", role="admin")
+    now = datetime.utcnow()
+    db_session.add(AuditLog(admin_username=admin.username, action="event.create", detail="in range", created_at=now - timedelta(hours=1)))
+    db_session.add(AuditLog(admin_username=admin.username, action="event.create", detail="too old", created_at=now - timedelta(days=30)))
+    db_session.add(AuditLog(admin_username=admin.username, action="wipe.create", detail="wrong action", created_at=now - timedelta(hours=1)))
+    await db_session.commit()
+
+    date_from = (now - timedelta(days=2)).strftime("%Y-%m-%d")
+    r = await client.get(
+        "/api/admin/export/audit-log",
+        params={"action": "event.create", "date_from": date_from},
+        headers=_bearer(admin),
+    )
+    assert r.status_code == 200
+    rows = list(csv.reader(io.StringIO(r.text)))
+    details = [row[5] for row in rows[1:]]
+    assert details == ["in range"]
 
 
 async def test_export_bans_allows_moderator_and_excludes_active_users(client, db_session):

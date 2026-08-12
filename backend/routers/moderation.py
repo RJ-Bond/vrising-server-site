@@ -14,7 +14,7 @@ from ..database import get_db
 from ..models import User, Ban, Warning, BanAppeal, ModerationLogEntry, WarnEscalationState, Notification
 from ..auth import get_admin_user, get_superadmin_user
 from ..rate_limit import limiter
-from ..helpers import _require_plugin_key, _fmt_dt_z, _force_unban, _audit, _get_server_names, _get_linked_usernames, send_push
+from ..helpers import _require_plugin_key, _fmt_dt_z, _force_unban, _audit, _get_server_names, _get_linked_usernames, send_push, _parse_date_range
 from ..schemas import (
     PluginWarnIn,
     PluginBanIn,
@@ -540,6 +540,9 @@ async def get_moderation_log(
     limit: int = Query(default=100, le=500),
     server_num: Optional[int] = Query(default=None),
     steam_id: Optional[str] = Query(default=None),
+    q: Optional[str] = Query(default=None, description="Substring match against player/admin/details"),
+    date_from: Optional[str] = Query(default=None, description="Inclusive, YYYY-MM-DD"),
+    date_to: Optional[str] = Query(default=None, description="Inclusive, YYYY-MM-DD"),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
@@ -554,7 +557,15 @@ async def get_moderation_log(
     POST /api/plugin/log-action) pass through as-is. steam_id, when given, narrows the feed
     to just that player (matched against each source's own steam-id column — target_steam_id
     in the merged output) — layered on top of the server_num filter, e.g. from bans.html's
-    "История" link into this page for one banned player."""
+    "История" link into this page for one banned player.
+
+    q and date_from/date_to are applied to the already-merged `entries` list (below,
+    right before the limit slice) rather than pushed down into the three subqueries above
+    — a ban's "unban" entry uses unbanned_at while the same Ban row's "ban" entry uses
+    banned_at, so filtering the Ban subquery itself by one timestamp column would wrongly
+    hide one of the two merged entries in edge cases; filtering the merged, per-entry
+    created_at is the only way both stay consistent. Same "small result sets" reasoning
+    as the docstring above already gives for doing the sort/limit in Python."""
     ban_q = select(Ban)
     warn_q = select(Warning)
     log_q = select(ModerationLogEntry)
@@ -613,6 +624,20 @@ async def get_moderation_log(
             "created_at": e.created_at,
         })
 
+    range_start, range_end = _parse_date_range(date_from, date_to)
+    if range_start is not None:
+        entries = [e for e in entries if e["created_at"] >= range_start]
+    if range_end is not None:
+        entries = [e for e in entries if e["created_at"] < range_end]
+    if q and q.strip():
+        needle = q.strip().lower()
+        entries = [
+            e for e in entries
+            if needle in (e["target_name"] or "").lower()
+            or needle in (e["admin_name"] or "").lower()
+            or needle in (e["details"] or "").lower()
+        ]
+
     entries.sort(key=lambda e: e["created_at"], reverse=True)
     entries = entries[:limit]
     return {
@@ -623,14 +648,23 @@ async def get_moderation_log(
 @router.get("/api/admin/export/moderation-log")
 async def export_moderation_log(
     server_num: Optional[int] = Query(default=None),
+    steam_id: Optional[str] = Query(default=None),
+    q: Optional[str] = Query(default=None),
+    date_from: Optional[str] = Query(default=None),
+    date_to: Optional[str] = Query(default=None),
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_admin_user),
 ):
     """CSV counterpart to GET /api/admin/moderation-log above — same merge of
     Ban/Warning/ModerationLogEntry (so warnings ARE covered here, just not as their own
     separate export), but unlimited rather than capped at `limit` since an export is
-    meant to be the complete record, not a page of it."""
-    entries = (await get_moderation_log(limit=1_000_000, server_num=server_num, db=db, _=None))["log"]
+    meant to be the complete record, not a page of it. Same server_num/steam_id/q/
+    date_from/date_to filters as the paginated endpoint, so the "Скачать CSV" button in
+    admin.html's Журнал модерации exports exactly what's currently filtered on screen."""
+    entries = (await get_moderation_log(
+        limit=1_000_000, server_num=server_num, steam_id=steam_id,
+        q=q, date_from=date_from, date_to=date_to, db=db, _=None,
+    ))["log"]
     buf = io.StringIO()
     w = csv.writer(buf)
     w.writerow(["action", "server_num", "admin_name", "target_name", "target_steam_id", "details", "created_at"])

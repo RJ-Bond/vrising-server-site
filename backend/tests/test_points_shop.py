@@ -438,6 +438,59 @@ async def test_shop_redemption_endpoints_require_admin(client, db_session):
     assert r.status_code == 403
 
 
+# ─── Admin queue: weekly-limit context (ShopRedemptionOut.weekly_limit_per_user/
+# weekly_used) ─────────────────────────────────────────────────────────────────
+# Lets an admin see "this player is at/near this item's weekly cap" directly in the
+# queue table, without waiting for the player's next attempt to 409 (see POST
+# /api/shop/redeem's docstring on the underlying check this mirrors).
+
+async def test_queue_surfaces_weekly_limit_and_usage(client, db_session):
+    admin = await _make_user(db_session, "AdminQueueLimit", role="admin")
+    user = await _make_user(db_session, "QueueLimitTarget", points_balance=1000)
+    item = await _make_item(db_session, name="Limited Item", cost=10, weekly_limit_per_user=3)
+    # Two redemptions this week — the second one leaves the row we'll inspect.
+    await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+    redeem_r = await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+    assert redeem_r.status_code == 201
+
+    r = await client.get("/api/admin/shop/redemptions", params={"status": ""}, headers=_bearer(admin))
+    assert r.status_code == 200
+    rows = r.json()["items"]
+    assert len(rows) == 2
+    for row in rows:
+        assert row["weekly_limit_per_user"] == 3
+        assert row["weekly_used"] == 2
+
+
+async def test_queue_cancelled_redemption_excluded_from_weekly_used(client, db_session):
+    admin = await _make_user(db_session, "AdminQueueLimit2", role="admin")
+    user = await _make_user(db_session, "QueueLimitTarget2", points_balance=1000)
+    item = await _make_item(db_session, name="Limited Item 2", cost=10, weekly_limit_per_user=5)
+    redeem_r = await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+    redemption_id = redeem_r.json()["id"]
+    cancel_r = await client.post(f"/api/admin/shop/redemptions/{redemption_id}/cancel", json={}, headers=_bearer(admin))
+    assert cancel_r.status_code == 200
+
+    r = await client.get("/api/admin/shop/redemptions", params={"status": "cancelled"}, headers=_bearer(admin))
+    assert r.status_code == 200
+    row = r.json()["items"][0]
+    assert row["weekly_limit_per_user"] == 5
+    assert row["weekly_used"] == 0  # the cancelled redemption itself doesn't count
+
+
+async def test_queue_omits_weekly_fields_when_item_has_no_limit(client, db_session):
+    admin = await _make_user(db_session, "AdminQueueLimit3", role="admin")
+    user = await _make_user(db_session, "QueueLimitTarget3", points_balance=1000)
+    item = await _make_item(db_session, name="Unlimited Item", cost=10, weekly_limit_per_user=None)
+    await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+
+    r = await client.get("/api/admin/shop/redemptions", params={"status": ""}, headers=_bearer(admin))
+    assert r.status_code == 200
+    row = r.json()["items"][0]
+    assert row["weekly_limit_per_user"] is None
+    assert row["weekly_used"] is None
+
+
 # ─── Admin manual points grant ──────────────────────────────────────────────
 
 async def test_admin_grant_points_adds_to_balance(client, db_session):

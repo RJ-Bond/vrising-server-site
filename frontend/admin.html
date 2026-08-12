@@ -410,6 +410,51 @@
     @media(max-width:900px) { #dash-stats-grid { grid-template-columns:repeat(3,1fr) !important; } }
     @media(max-width:560px) { #dash-stats-grid { grid-template-columns:repeat(2,1fr) !important; } }
 
+    /* ── Shared loading-skeleton shimmer — same class name/animation as
+       frontend/components.css's .skel (bans.html/clans.html/shop.html/…), copied in
+       locally rather than linked since admin.html doesn't load that stylesheet (see
+       the mobile-drawer comment below for the same reasoning). Use this for any *new*
+       admin.html loading state instead of inventing another one-off shimmer — the
+       existing .table-skel-row rules elsewhere in this file predate this and are left
+       alone (out of scope to retrofit here). ── */
+    @keyframes skel-shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
+    .skel {
+      border-radius:.45rem; height:.75rem;
+      background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.04) 75%);
+      background-size:200% 100%; animation:skel-shimmer 1.5s infinite;
+    }
+
+    /* ── Shared "nothing found" empty-state placeholder — see renderEmptyState() in
+       the script below. Introduced for section-dashboard; other sections currently
+       print an ad hoc <p>/nothing at all and could adopt this over time. ── */
+    .admin-empty-state {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:.4rem; padding:1.5rem .5rem; color:var(--muted); font-size:.8rem; text-align:center;
+    }
+    .admin-empty-state-icon { font-size:1.35rem; opacity:.6; line-height:1; }
+
+    /* ── Dashboard: week-over-week delta badge (▲/▼ vs the prior 7-day window) ── */
+    .dash-wow {
+      display:inline-flex; align-items:center; gap:.15rem; font-size:.62rem; font-weight:700;
+      margin-top:.25rem; letter-spacing:.01em;
+    }
+    .dash-wow.up   { color:#4ade80; }
+    .dash-wow.down { color:#f87171; }
+    .dash-wow.flat { color:var(--muted); }
+
+    /* ── Dashboard: system health widget (site API + game servers + plugin
+       heartbeats at a glance — see loadDashHealth() below) ── */
+    #dash-health-grid { display:flex; flex-wrap:wrap; gap:.55rem; }
+    .dash-health-pill {
+      display:inline-flex; align-items:center; gap:.4rem; font-size:.7rem; font-weight:600;
+      padding:.35rem .65rem; border-radius:.5rem; background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06); color:var(--text); white-space:nowrap;
+    }
+    .dash-health-dot { width:.5rem; height:.5rem; border-radius:50%; flex-shrink:0; }
+    .dash-health-dot.ok    { background:#4ade80; box-shadow:0 0 6px rgba(74,222,128,.7); }
+    .dash-health-dot.bad   { background:#f87171; box-shadow:0 0 6px rgba(248,113,113,.7); }
+    .dash-health-dot.warn  { background:#fcd34d; box-shadow:0 0 6px rgba(252,211,77,.7); }
+
     /* ── Mobile sidebar drawer ── mirrors the .mobile-drawer/.mobile-overlay/
        .nav-burger pattern already used on the public pages (servers.html,
        clans.html, …/frontend/components.css) — admin.html doesn't load that
@@ -606,9 +651,9 @@
 </nav>
 
 <!-- Quick nav (Ctrl+K) -->
-<div id="quicknav-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:flex-start;justify-content:center;padding-top:10vh;" onclick="if(event.target===this)closeQuickNav()">
+<div id="quicknav-overlay" role="dialog" aria-modal="true" aria-label="Быстрый переход по разделам" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:flex-start;justify-content:center;padding-top:10vh;" onclick="if(event.target===this)closeQuickNav()">
   <div style="background:rgba(14,3,24,.98);border:1px solid rgba(150,0,28,.4);border-radius:.75rem;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;">
-    <input id="quicknav-input" type="text" placeholder="Перейти в раздел…" oninput="_quickNavFilter()" onkeydown="_quickNavKeydown(event)" style="width:100%;box-sizing:border-box;background:none;border:none;border-bottom:1px solid rgba(150,0,28,.3);padding:.9rem 1.1rem;color:var(--text);font-size:.9rem;outline:none;">
+    <input id="quicknav-input" type="text" placeholder="Перейти в раздел…" aria-label="Поиск раздела" oninput="_quickNavFilter()" onkeydown="_quickNavKeydown(event)" style="width:100%;box-sizing:border-box;background:none;border:none;border-bottom:1px solid rgba(150,0,28,.3);padding:.9rem 1.1rem;color:var(--text);font-size:.9rem;outline:none;">
     <div id="quicknav-results" style="max-height:50vh;overflow-y:auto;"></div>
   </div>
 </div>
@@ -632,7 +677,7 @@
       <button id="btn-dashboard" onclick="showSection('dashboard')" class="sidebar-btn active"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span class="sidebar-btn-label">Дашборд</span></span></button>
 
       <div class="sidebar-group" data-group-id="content">
-      <div class="sidebar-group-label" onclick="toggleSidebarGroup('content')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('content');}"><span>Контент</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('content')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('content');}"><span>📰 Контент</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       <button id="btn-news"      onclick="showSection('news')"      class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10l4 4v10a2 2 0 01-2 2z"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="13" y2="16"/></svg> <span class="sidebar-btn-label">Новости</span></span></button>
       <button id="btn-comments"  onclick="showSection('comments')"  class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg> <span class="sidebar-btn-label">Комментарии</span></span><span id="badge-comments" class="sidebar-badge" style="display:none;"></span></button>
       <button id="btn-events"    onclick="showSection('events')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> <span class="sidebar-btn-label">События</span></span></button>
@@ -640,7 +685,7 @@
       </div>
 
       <div class="sidebar-group" data-group-id="site">
-      <div class="sidebar-group-label" onclick="toggleSidebarGroup('site')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('site');}"><span>Сайт</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('site')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('site');}"><span>🌐 Сайт</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       <button id="btn-settings"  onclick="showSection('settings')"  class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg> <span class="sidebar-btn-label">Настройки</span></span></button>
       <button id="btn-plugin"    onclick="showSection('plugin')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h.01M15 9h.01M9.5 15a3.5 3.5 0 0 0 5 0"/></svg> <span class="sidebar-btn-label">Плагины</span></span></button>
       <button id="btn-files"     onclick="showSection('files')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg> <span class="sidebar-btn-label">Файлы</span></span></button>
@@ -649,7 +694,7 @@
       </div>
 
       <div class="sidebar-group" data-group-id="people">
-      <div class="sidebar-group-label" onclick="toggleSidebarGroup('people')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('people');}"><span>Люди</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('people')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('people');}"><span>👥 Люди</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       <button id="btn-users"     onclick="showSection('users')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg> <span class="sidebar-btn-label">Пользователи</span></span><span id="badge-users" class="sidebar-badge" style="display:none;"></span></button>
       <button id="btn-clans"     onclick="showSection('clans')"     class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><use href="/icons.svg#icon-shield"></use></svg> <span class="sidebar-btn-label">Кланы</span></span></button>
       <button id="btn-players"   onclick="showSection('players')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> <span class="sidebar-btn-label">Игроки</span></span></button>
@@ -658,14 +703,14 @@
       </div>
 
       <div class="sidebar-group" data-group-id="economy">
-      <div class="sidebar-group-label" onclick="toggleSidebarGroup('economy')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('economy');}"><span>Экономика</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('economy')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('economy');}"><span>💰 Экономика</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       <button id="btn-shop-catalog" onclick="showSection('shop-catalog')" class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6"/></svg> <span class="sidebar-btn-label">Магазин</span></span></button>
       <button id="btn-shop-queue"   onclick="showSection('shop-queue')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg> <span class="sidebar-btn-label">Очередь наград</span></span><span id="badge-shop-queue" class="sidebar-badge" style="display:none;"></span></button>
 
       </div>
 
       <div class="sidebar-group" data-group-id="moderation">
-      <div class="sidebar-group-label" onclick="toggleSidebarGroup('moderation')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('moderation');}"><span>Модерация</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('moderation')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('moderation');}"><span>🛡️ Модерация</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       <button id="btn-reports"   onclick="showSection('reports')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> <span class="sidebar-btn-label">Жалобы</span></span><span id="badge-reports" class="sidebar-badge" style="display:none;"></span></button>
       <button id="btn-modlog"    onclick="showSection('modlog')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> <span class="sidebar-btn-label">Журнал модерации</span></span></button>
       <a href="/bans.html" class="sidebar-btn" style="text-decoration:none;display:flex;"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> <span class="sidebar-btn-label">Баны и апелляции</span></span><span id="badge-appeals" class="sidebar-badge" style="display:none;"></span></a>
@@ -673,7 +718,7 @@
       </div>
 
       <div class="sidebar-group" data-group-id="analytics">
-      <div class="sidebar-group-label" onclick="toggleSidebarGroup('analytics')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('analytics');}"><span>Аналитика</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('analytics')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('analytics');}"><span>📊 Аналитика</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       <button id="btn-analytics" onclick="showSection('analytics')" class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> <span class="sidebar-btn-label">Аналитика</span></span></button>
       <button id="btn-economy" onclick="showSection('economy')" class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10a2.5 2.5 0 0 1 2.5-2h.5a2 2 0 0 1 0 4h-1a2 2 0 0 0 0 4h.5a2.5 2.5 0 0 0 2.5-2"/></svg> <span class="sidebar-btn-label">Экономика</span></span></button>
       <button id="btn-backups"   onclick="showSection('backups')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg> <span class="sidebar-btn-label">Бэкапы</span></span></button>
@@ -681,7 +726,7 @@
       </div>
 
       <div class="sidebar-group" data-group-id="system">
-      <div class="sidebar-group-label" onclick="toggleSidebarGroup('system')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('system');}"><span>Система</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
+      <div class="sidebar-group-label" onclick="toggleSidebarGroup('system')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleSidebarGroup('system');}"><span>⚙️ Система</span><svg class="sidebar-group-caret" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></div>
       <button id="btn-log"       onclick="showSection('log')"       class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> <span class="sidebar-btn-label">Лог</span></span></button>
       <button id="btn-auditlog"  onclick="showSection('auditlog')"  class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> <span class="sidebar-btn-label">Журнал действий</span></span></button>
       <button id="btn-errors"    onclick="showSection('errors')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> <span class="sidebar-btn-label">Ошибки</span></span></button>
@@ -701,25 +746,43 @@
       </div>
 
       <!-- Server status -->
-      <div id="dash-server-status" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;"></div>
+      <div id="dash-server-status" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;"></div>
 
+      <!-- System health at a glance (site API + game servers + plugin heartbeats) —
+           combines section-plugin's connection pill and the server cards above into
+           one row so an admin doesn't have to visit Плагины separately just to check
+           whether everything is up. Read-only summary; loadDashHealth() below. -->
+      <div class="glass-card rounded-xl p-4" style="margin-bottom:1.5rem;">
+        <h2 class="gothic mb-3" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Состояние системы</h2>
+        <div id="dash-health-grid">
+          <span class="skel" style="width:7rem;height:1.6rem;display:inline-block;"></span>
+          <span class="skel" style="width:9rem;height:1.6rem;display:inline-block;"></span>
+          <span class="skel" style="width:8rem;height:1.6rem;display:inline-block;"></span>
+        </div>
+      </div>
+
+      <!-- dash-tile cards are div-as-button navigation shortcuts (onclick="showSection(...)")
+           — role="button" tabindex="0" + onkeydown (Enter/Space) added to all six below
+           so they're keyboard-reachable, matching the established pattern (see
+           map.html's region-cards, per CLAUDE.md); previously mouse/touch-only. -->
       <div id="dash-stats-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:1rem;margin-bottom:1.5rem;">
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('users')" title="Перейти к пользователям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('users')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('users');}" title="Перейти к пользователям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">👥</div>
           <div id="dash-users" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Пользователи</div>
+          <div id="dash-users-wow"></div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('news')" title="Перейти к новостям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('news')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('news');}" title="Перейти к новостям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">📰</div>
           <div id="dash-news" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Новости</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('comments')" title="Перейти к комментариям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('comments')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('comments');}" title="Перейти к комментариям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">💬</div>
           <div id="dash-comments" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Комментарии</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('files')" title="Перейти к файлам" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('files')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('files');}" title="Перейти к файлам" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">📁</div>
           <div id="dash-files" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Файлы</div>
@@ -728,12 +791,12 @@
              just counts, no good/bad state to signal, see theme.css's status-token
              comment), these two actually represent state: green = a healthy
              activity signal, yellow = a pending queue the admin may need to act on. -->
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('users')" title="Активные за 7 дней" style="border-top:2px solid rgba(34,197,94,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('users')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('users');}" title="Активные за 7 дней" style="border-top:2px solid rgba(34,197,94,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">⚡</div>
           <div id="dash-new7" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--green);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Активны 7 дней</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('resets')" title="Перейти к сбросу паролей" style="border-top:2px solid rgba(255,207,92,.35);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('resets')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('resets');}" title="Перейти к сбросу паролей" style="border-top:2px solid rgba(255,207,92,.35);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">🔑</div>
           <div id="dash-resets" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--yellow);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Сброс паролей</div>
@@ -772,11 +835,12 @@
         <div class="glass-card rounded-xl p-4">
           <div class="flex items-center justify-between mb-3">
             <h2 class="gothic" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;margin:0;">Онлайн за неделю</h2>
-            <select id="dash-graph-server" onchange="loadDashGraph()" class="dark-input" style="width:auto;padding:.25rem .55rem;font-size:.72rem;">
+            <select id="dash-graph-server" onchange="loadDashGraph()" class="dark-input" aria-label="Выбор сервера для графика онлайна" style="width:auto;padding:.25rem .55rem;font-size:.72rem;">
               <option value="1">Сервер 1</option>
               <option value="2">Сервер 2</option>
             </select>
           </div>
+          <div id="dash-traffic-summary" style="font-size:.65rem;color:var(--muted);margin-bottom:.4rem;"></div>
           <div id="dash-graph-wrap" style="position:relative;height:130px;">
             <canvas id="dash-graph-canvas" style="display:block;"></canvas>
           </div>
@@ -788,9 +852,19 @@
         </div>
       </div>
 
-      <div class="glass-card rounded-xl p-4">
-        <h2 class="gothic mb-4" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Последние комментарии</h2>
-        <div id="dash-recent-comments"></div>
+      <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:1rem;align-items:stretch;">
+        <div class="glass-card rounded-xl p-4">
+          <h2 class="gothic mb-4" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Последние комментарии</h2>
+          <div id="dash-recent-comments"></div>
+        </div>
+        <!-- Mini "you just did X" action log — session-local, client-side only (see
+             recordAdminAction() below). Only this section's own mutating action
+             (recent-comment delete) feeds it today; the mechanism is ready for other
+             sections to call once they adopt it too. -->
+        <div class="glass-card rounded-xl p-4">
+          <h2 class="gothic mb-3" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Ваши действия за сессию</h2>
+          <div id="dash-action-log"></div>
+        </div>
       </div>
     </div>
 
@@ -934,6 +1008,9 @@
         <div style="display:flex;align-items:center;gap:.6rem;">
           <input id="settings-search" type="text" placeholder="Поиск по настройкам…" class="dark-input" style="width:auto;font-size:.78rem;padding:.45rem .8rem;" oninput="filterSettings()">
           <button id="save-all-btn" onclick="saveAllSettings()" class="btn-primary" style="font-size:.75rem;padding:.5rem 1rem;">💾 Сохранить все изменения</button>
+          <button onclick="openSettingsHistory()" class="btn-ghost" style="font-size:.75rem;display:inline-flex;align-items:center;gap:.35rem;" title="Кто и когда менял значения настроек">
+            🕐 История изменений
+          </button>
           <button onclick="exportSettings()" class="btn-ghost" style="font-size:.75rem;display:inline-flex;align-items:center;gap:.35rem;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="/icons.svg#icon-download"></use></svg>
             Экспорт
@@ -1007,7 +1084,7 @@
           <div class="s-field">
             <label style="display:flex;align-items:center;gap:.4rem;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-              Следующий вайп
+              Следующий вайп <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span>
             </label>
             <div class="s-field-row" style="gap:.5rem;">
               <select id="setting-wipe_type" class="dark-input" style="flex:0 0 auto;width:auto;">
@@ -1018,7 +1095,7 @@
               <input id="setting-wipe_date" type="datetime-local" class="dark-input">
               <button class="s-save-btn" onclick="saveSetting('wipe_type');saveSetting('wipe_date')">Сохранить</button>
             </div>
-            <p class="s-desc">Тип + дата вайпа. Показывает таймер на главной. Оставьте дату пустой — таймер скрыт</p>
+            <p class="s-desc">Тип + дата вайпа. Показывает таймер на главной. Оставьте дату пустой — таймер скрыт. Дата/время — по часовому поясу сайта, не браузера.</p>
           </div>
         </div>
 
@@ -1075,7 +1152,7 @@
           <div class="s-field">
             <label style="display:flex;align-items:center;gap:.4rem;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-              Следующий вайп
+              Следующий вайп <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span>
             </label>
             <div class="s-field-row" style="gap:.5rem;">
               <select id="setting-wipe_type2" class="dark-input" style="flex:0 0 auto;width:auto;">
@@ -1086,7 +1163,7 @@
               <input id="setting-wipe_date2" type="datetime-local" class="dark-input">
               <button class="s-save-btn" onclick="saveSetting('wipe_type2');saveSetting('wipe_date2')">Сохранить</button>
             </div>
-            <p class="s-desc">Тип + дата вайпа для второго сервера</p>
+            <p class="s-desc">Тип + дата вайпа для второго сервера. Дата/время — по часовому поясу сайта, не браузера.</p>
           </div>
         </div>
 
@@ -1668,7 +1745,7 @@
           <div class="s-field">
             <label>RCON Порт (Сервер 1)</label>
             <div class="s-field-row">
-              <input id="setting-rcon_port" type="number" class="dark-input" placeholder="25575">
+              <input id="setting-rcon_port" type="number" min="1" max="65535" class="dark-input" placeholder="25575">
               <button class="s-save-btn" onclick="saveSetting('rcon_port')">Сохранить</button>
             </div>
             <p class="s-desc">По умолчанию 25575. В V Rising включается в ServerHostSettings.json</p>
@@ -1683,7 +1760,7 @@
           <div class="s-field">
             <label>RCON Порт (Сервер 2)</label>
             <div class="s-field-row">
-              <input id="setting-rcon2_port" type="number" class="dark-input" placeholder="25575">
+              <input id="setting-rcon2_port" type="number" min="1" max="65535" class="dark-input" placeholder="25575">
               <button class="s-save-btn" onclick="saveSetting('rcon2_port')">Сохранить</button>
             </div>
             <p class="s-desc">По умолчанию 25575. В V Rising включается в ServerHostSettings.json</p>
@@ -1776,7 +1853,7 @@
               </select>
             </div>
             <div style="display:flex;flex-direction:column;gap:.3rem;flex:1;min-width:180px;">
-              <label style="font-size:.68rem;color:var(--muted);">Дата и время</label>
+              <label style="font-size:.68rem;color:var(--muted);">Дата и время <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;">(время сайта)</span></label>
               <input id="wf-date" type="datetime-local" class="dark-input">
             </div>
             <div style="display:flex;flex-direction:column;gap:.3rem;flex:2;min-width:200px;">
@@ -1789,6 +1866,27 @@
 
         <div id="wipe-history-admin" style="display:flex;flex-direction:column;gap:.4rem;">
           <p style="color:var(--muted);font-size:.8rem;">Загрузка…</p>
+        </div>
+      </div>
+
+      <!-- Settings change-history modal — filters the generic audit log (already written
+           on every PUT /api/admin/settings/{key} as a "settings.update" entry, detail
+           "key=value", see backend/routers/admin_settings.py) down to just one setting key
+           at a time, since the full "Журнал действий" (section-auditlog) has no per-key
+           filter of its own and mixes every other admin action in with it. -->
+      <div id="settings-history-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
+        <div style="max-width:680px;margin:3rem auto;background:var(--card);border:1px solid var(--border);border-radius:1rem;padding:2rem;box-shadow:0 16px 64px rgba(0,0,0,0.7);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+            <h3 class="section-title">История изменений настроек</h3>
+            <button onclick="closeSettingsHistory()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">✕</button>
+          </div>
+          <div style="display:flex;gap:.5rem;margin-bottom:1rem;">
+            <select id="settings-history-key" class="dark-input" style="width:auto;flex:1;" onchange="loadSettingsHistory()"></select>
+            <button onclick="loadSettingsHistory()" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
+          </div>
+          <div id="settings-history-body" style="display:flex;flex-direction:column;gap:.4rem;max-height:55vh;overflow-y:auto;">
+            <p style="color:var(--muted);font-size:.8rem;">Выберите настройку…</p>
+          </div>
         </div>
       </div>
 
@@ -1847,15 +1945,46 @@
             <div class="s-icon" style="background:rgba(0,60,140,.18);border:1px solid rgba(0,120,220,.3);">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.8"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
             </div>
-            <div>
+            <div style="flex:1;">
               <h2>Статус подключения</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Последний heartbeat от плагина на этом сервере</p>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Последний heartbeat от плагина на этом сервере — плагин отправляет его раз в минуту</p>
             </div>
+            <!-- Manual re-poll — re-fetches GET /api/admin/plugin-status (the same endpoint the
+                 pill above already renders) instead of waiting for the admin to switch tabs away
+                 and back, since nothing here auto-refreshes on a timer. -->
+            <button type="button" id="plugin-status-refresh-btn" class="btn-ghost" style="font-size:.7rem;padding:.3rem .65rem;flex-shrink:0;white-space:nowrap;" onclick="manualRefreshPluginStatus()" title="Опросить статус плагина сейчас, не дожидаясь следующего автоматического обновления">↻ Обновить</button>
           </div>
           <div class="s-field" style="margin-bottom:0;">
             <div id="plugin-status-container" style="display:flex;flex-direction:column;gap:.4rem;">
               <div style="font-size:.72rem;color:var(--muted);">Загрузка…</div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent plugin-reported activity (kick/mute/restart) for the selected server —
+           reuses the SAME data POST /api/plugin/log-action already writes and GET
+           /api/admin/moderation-log already serves for "Журнал модерации" (section-modlog),
+           just narrowed to this server + the actions the plugin itself reports (as opposed to
+           ban/warn, which originate from the admin panel/website, not the plugin). This is
+           NOT the plugin's own in-memory .pluginlog warning/error ring buffer — nothing
+           site-side ships that data yet (would need a change in the separate js-plugin C#
+           repo to start reporting it here) — it's the closest already-existing plugin-sourced
+           feed, so it's what's surfaced here instead of inventing a new log-shipping path. -->
+      <div class="s-row" style="margin-top:1.25rem;">
+        <div class="s-card s-card-blue">
+          <div class="s-card-head">
+            <div class="s-icon" style="background:rgba(0,60,140,.18);border:1px solid rgba(0,120,220,.3);">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+            </div>
+            <div style="flex:1;">
+              <h2>Недавние события плагина</h2>
+              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Кик/мут/рестарт, о которых плагин сообщил сам — полный журнал со всеми действиями см. в «Журнал модерации»</p>
+            </div>
+            <button type="button" class="btn-ghost" style="font-size:.7rem;padding:.3rem .65rem;flex-shrink:0;white-space:nowrap;" onclick="loadPluginRecentLog()" title="Обновить список">↻</button>
+          </div>
+          <div id="plugin-recent-log" style="display:flex;flex-direction:column;gap:.4rem;">
+            <div style="font-size:.72rem;color:var(--muted);">Загрузка…</div>
           </div>
         </div>
       </div>
@@ -1940,7 +2069,7 @@
 
           <div style="display:grid;grid-template-columns:1fr auto;gap:.75rem;align-items:end;">
             <div class="s-field" style="margin-bottom:0;">
-              <label>Истекает (необязательно)</label>
+              <label>Истекает (необязательно) <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span></label>
               <input id="ann-expires" type="datetime-local" class="dark-input" style="color-scheme:dark;">
             </div>
             <div class="s-field" style="margin-bottom:0;">
@@ -2148,9 +2277,16 @@
 
     <!-- CLANS -->
     <div id="section-clans" class="hidden">
-      <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h1 class="section-title">Кланы</h1>
-        <span id="clans-total" style="font-size:.78rem;color:var(--muted);"></span>
+        <div style="display:flex;align-items:center;gap:.75rem;">
+          <select id="clans-sort" class="dark-input" style="width:auto;font-size:.8rem;padding:.4rem .7rem;" onchange="_renderClansTable()">
+            <option value="members">По количеству участников</option>
+            <option value="updated">По последней активности</option>
+            <option value="name">По названию</option>
+          </select>
+          <span id="clans-total" style="font-size:.78rem;color:var(--muted);"></span>
+        </div>
       </div>
       <div id="clans-table" class="glass-card rounded-xl overflow-hidden">
         <p class="p-6" style="color:var(--muted);font-size:.85rem;">Загрузка...</p>
@@ -2218,9 +2354,15 @@
 
     <!-- FILES -->
     <div id="section-files" class="hidden">
-      <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h1 class="section-title">Файлы</h1>
-        <span id="files-count" style="font-size:.78rem;color:var(--muted);"></span>
+        <div style="display:flex;align-items:center;gap:.75rem;">
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.78rem;color:var(--muted);cursor:pointer;">
+            <input id="files-filter-unused" type="checkbox" style="width:auto;" onchange="_renderFilesGrid()">
+            Только неиспользуемые
+          </label>
+          <span id="files-count" style="font-size:.78rem;color:var(--muted);"></span>
+        </div>
       </div>
       <div id="files-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1rem;"></div>
     </div>
@@ -2246,6 +2388,12 @@
           <select id="log-action-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="loadAuditLog(1)">
             <option value="">Все действия</option>
           </select>
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--muted);white-space:nowrap;">С
+            <input id="log-date-from" type="date" class="dark-input" style="width:auto;font-size:.78rem;padding:.35rem .5rem;" onchange="loadAuditLog(1)">
+          </label>
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--muted);white-space:nowrap;">По
+            <input id="log-date-to" type="date" class="dark-input" style="width:auto;font-size:.78rem;padding:.35rem .5rem;" onchange="loadAuditLog(1)">
+          </label>
           <button onclick="exportLogCsv()" class="btn-ghost" style="display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="/icons.svg#icon-download"></use></svg>
             Скачать CSV
@@ -2403,6 +2551,25 @@
           <tbody id="economy-top-items"></tbody>
         </table>
       </div>
+
+      <!-- Per-player transaction export — full ledger (earn/spend/grant/refund) for
+           one specific player, e.g. for a support dispute over their balance history.
+           Separate from the global "Очередь наград" CSV export above the queue table
+           (that one's redemptions-only, every player). Reuses the same grant-user-list
+           datalist as the manual-grant form on the Магазин tab (loadGrantUserList()
+           populates window.__ADMIN_USERS_BY_NAME, called again here in case Экономика
+           is opened first). -->
+      <div class="glass-card" style="border-radius:.75rem;padding:1.25rem;margin-top:1.25rem;">
+        <div style="font-size:.72rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.85rem;">Экспорт истории игрока</div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+          <input id="econ-export-username" class="dark-input" list="grant-user-list" placeholder="Имя пользователя" style="width:auto;max-width:220px;font-size:.82rem;">
+          <button onclick="exportPlayerPointsCsv()" class="btn-ghost" style="font-size:.78rem;display:inline-flex;align-items:center;gap:.35rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="/icons.svg#icon-download"></use></svg>
+            Скачать CSV
+          </button>
+        </div>
+        <p class="s-desc" style="margin-top:.5rem;">Полная история начислений и списаний очков одного игрока (начисления за игру, стрик, ручные корректировки, покупки, возвраты).</p>
+      </div>
     </div>
 
     <!-- BACKUPS -->
@@ -2411,6 +2578,7 @@
         <h1 class="section-title">Бэкапы</h1>
         <button onclick="createBackup()" class="btn-primary" style="font-size:.82rem;">💾 Создать бэкап</button>
       </div>
+      <div id="backups-disk-usage" class="glass-card" style="border-radius:.75rem;padding:.9rem 1.1rem;margin-bottom:1rem;display:none;"></div>
       <div id="backup-msg" style="margin-bottom:.75rem;font-size:.85rem;"></div>
       <div class="glass-card rounded-xl overflow-hidden">
         <table>
@@ -2442,8 +2610,12 @@
     <div id="section-media" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
         <h2 class="section-title">Медиатека</h2>
-        <div style="display:flex;gap:.5rem;align-items:center;">
+        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
           <input id="media-search" type="text" placeholder="Поиск по имени файла…" class="dark-input" style="width:auto;padding:.4rem .7rem;font-size:.8rem;" oninput="_mediaFilter()">
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.78rem;color:var(--muted);cursor:pointer;">
+            <input id="media-filter-unused" type="checkbox" style="width:auto;" onchange="_mediaFilter()">
+            Только неиспользуемые
+          </label>
           <button onclick="loadMedia()" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
         </div>
       </div>
@@ -2512,8 +2684,8 @@
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
-              <div><label>Начало</label><input id="ev-start" class="dark-input" type="datetime-local" style="color-scheme:dark;"></div>
-              <div><label>Конец (необязательно)</label><input id="ev-end" class="dark-input" type="datetime-local" style="color-scheme:dark;"></div>
+              <div><label>Начало <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span></label><input id="ev-start" class="dark-input" type="datetime-local" style="color-scheme:dark;"></div>
+              <div><label>Конец (необязательно) <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span></label><input id="ev-end" class="dark-input" type="datetime-local" style="color-scheme:dark;"></div>
             </div>
             <div><label>Макс. участников (необязательно)</label><input id="ev-max" class="dark-input" type="number" min="1" placeholder="Без ограничений"></div>
             <div><label>URL обложки (необязательно)</label><input id="ev-cover" class="dark-input" type="url" placeholder="https://..."></div>
@@ -2540,8 +2712,14 @@
             <input type="checkbox" id="auditlog-superadmin-filter" onchange="loadAuditLogSection(1)">
             Только супер-админ
           </label>
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--muted);white-space:nowrap;">С
+            <input id="auditlog-date-from" type="date" class="dark-input" style="width:auto;font-size:.78rem;padding:.35rem .5rem;" onchange="loadAuditLogSection(1)">
+          </label>
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--muted);white-space:nowrap;">По
+            <input id="auditlog-date-to" type="date" class="dark-input" style="width:auto;font-size:.78rem;padding:.35rem .5rem;" onchange="loadAuditLogSection(1)">
+          </label>
           <button onclick="loadAuditLogSection(1)" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
-          <a href="/api/admin/export/audit-log" class="btn-ghost" style="font-size:.75rem;" download>⬇ CSV</a>
+          <a id="auditlog-export-link" href="/api/admin/export/audit-log" class="btn-ghost" style="font-size:.75rem;" download>⬇ CSV</a>
         </div>
       </div>
       <div class="glass-card" style="border-radius:.75rem;overflow:hidden;">
@@ -2574,8 +2752,13 @@
           Фильтр по игроку: <span id="modlog-steamid-value" style="font-family:'Courier New',monospace;"></span>
           <button onclick="clearModLogSteamIdFilter()" title="Сбросить фильтр по игроку" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;line-height:1;padding:0;">×</button>
         </div>
+        <!-- "Needs attention" glance: bans issued in the last 24h among the currently
+             loaded page — a cheap client-side count over _modlogCache (item 4 of the
+             admin-b task list), not a separate aggregation endpoint. -->
+        <span id="modlog-recent-bans-badge" style="display:none;align-items:center;gap:.35rem;font-size:.72rem;color:#fca5a5;background:rgba(150,0,20,.12);border:1px solid rgba(220,40,60,.3);border-radius:.4rem;padding:.3rem .6rem;"></span>
       </div>
-      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
+        <input id="modlog-search" type="text" class="dark-input" placeholder="Поиск по игроку, админу, деталям…" style="width:auto;max-width:240px;font-size:.78rem;padding:.35rem .6rem;" oninput="_modlogSearchDebounced()">
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
           <select id="modlog-action-filter" class="dark-input" style="font-size:.78rem;padding:.35rem .6rem;width:auto;" onchange="renderModerationLog()">
             <option value="">Все действия</option>
@@ -2594,7 +2777,17 @@
             <option value="1">Сервер 1</option>
             <option value="2">Сервер 2</option>
           </select>
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--muted);white-space:nowrap;">С
+            <input id="modlog-date-from" type="date" class="dark-input" style="width:auto;font-size:.78rem;padding:.35rem .5rem;" onchange="loadModerationLog()">
+          </label>
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--muted);white-space:nowrap;">По
+            <input id="modlog-date-to" type="date" class="dark-input" style="width:auto;font-size:.78rem;padding:.35rem .5rem;" onchange="loadModerationLog()">
+          </label>
           <button onclick="loadModerationLog()" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
+          <a id="modlog-export-link" href="/api/admin/export/moderation-log" class="btn-ghost" style="display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;" download>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="/icons.svg#icon-download"></use></svg>
+            CSV
+          </a>
           <button onclick="clearModerationLog()" class="modlog-superadmin-only" style="display:none;font-size:.78rem;background:rgba(150,0,20,0.18);border:1px solid rgba(220,40,60,0.4);color:#fca5a5;border-radius:.4rem;padding:.35rem .7rem;cursor:pointer;font-family:'Inter',sans-serif;" title="Удаляет кик/мут/рестарт-записи и уже снятые баны — активные баны и предупреждения не трогает">🗑 Очистить журнал</button>
         </div>
       </div>
@@ -3021,6 +3214,11 @@ function applySiteBackground(bg) {
 // ── Role hierarchy (mirrors backend/auth.py's ROLE_LEVELS) ──────────────────
 const ROLE_LEVELS = { user: 0, moderator: 1, admin: 2, superadmin: 3 };
 const ROLE_LABELS = { user: 'Игрок', moderator: 'Модератор', admin: 'Админ', superadmin: 'Суперадмин' };
+// Starter list for the ban-reason preset dropdown (showBanModal) — picking one just
+// fills the free-text input below it, which stays fully editable either way. Not
+// backed by a settings key/DB table (no other admin-configurable dropdown in this file
+// works that way either); revisit only if an admin actually asks to customize the list.
+const BAN_REASON_PRESETS = ['Читы', 'Оскорбления', 'Гриферство', 'Реклама', 'Мультиаккаунт', 'Обход бана'];
 function roleLevel(role) { return ROLE_LEVELS[role] ?? 0; }
 function meetsRole(minRole) { return roleLevel(window.__MY_ROLE) >= ROLE_LEVELS[minRole]; }
 window.__MY_ROLE = 'user';
@@ -3061,6 +3259,35 @@ const SECTION_MIN_ROLE = {
   }).catch(() => {});
 })();
 
+// ─── Session-expiry warning ─────────────────────────────────────────────────
+// Admin/superadmin tokens were just tightened to a 12h lifetime (see
+// ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES in backend/auth.py) instead of the old flat
+// 7-day one, so a long work session (half-written news article, an open editor tab,
+// …) can now genuinely run into the session dying underneath it. The token itself is
+// an httpOnly cookie (see backend/helpers.py's _set_auth_cookie) — deliberately never
+// exposed to JS — so this can't just decode a locally-stored JWT; it asks the small
+// GET /api/auth/session-expiry companion endpoint (backend/routers/auth.py) for the
+// token's own `exp` claim instead. Not a token-refresh flow: just a heads-up toast in
+// the last SESSION_WARN_MINUTES so the admin can finish/save before being redirected
+// to /login.html on the next 401 (handleAuth already covers that part).
+const SESSION_WARN_MINUTES = 15;
+let _sessionExpiryWarned = false;
+async function _checkSessionExpiry() {
+  try {
+    const res = await fetch(`${API}/auth/session-expiry`, { credentials: 'include' });
+    if (!res.ok) return; // 401 here just means the session is already gone — handleAuth() on the next real request covers that
+    const { expires_at } = await res.json();
+    if (!expires_at) return;
+    const remainingMin = (new Date(expires_at).getTime() - Date.now()) / 60000;
+    if (remainingMin > 0 && remainingMin <= SESSION_WARN_MINUTES && !_sessionExpiryWarned) {
+      _sessionExpiryWarned = true;
+      showToast(`Сессия истекает через ${Math.max(1, Math.round(remainingMin))} мин. — сохраните изменения.`, 'warning', 9000);
+    }
+  } catch { /* offline blip — next periodic check retries */ }
+}
+_checkSessionExpiry();
+setInterval(_checkSessionExpiry, 5 * 60 * 1000);
+
 window.__TZ = 'Europe/Moscow';
 window.__H12 = false;
 window.__DATEFMT = 'dd.mm.yyyy';
@@ -3075,7 +3302,73 @@ fetch(`${API}/settings/public`).then(r => r.json()).then(d => {
   window.__TZ = d.timezone || 'Europe/Moscow';
   window.__H12 = (d.time_format || '24h') === '12h';
   window.__DATEFMT = d.date_format || 'dd.mm.yyyy';
+  _refreshSiteTzLabels();
 }).catch(() => {});
+
+// ─── Site-timezone <-> <input type="datetime-local"> conversion ────────────
+// Used by the Events editor (ev-start/ev-end) and the Settings wipe-date fields
+// (setting-wipe_date/setting-wipe_date2, wf-date) — every one of those stores/expects a
+// real UTC instant server-side (Event.start_date/end_date and Wipe.wipe_date are plain
+// DateTime columns with this codebase's usual "naive value means UTC" convention — see
+// CLAUDE.md's SQLite-naive-datetime gotcha and _fmt_dt() in backend/helpers.py), but a
+// bare <input type="datetime-local"> has no timezone concept of its own — a value typed
+// into it is just a wall-clock string with no offset. Before this helper, the raw
+// datetime-local value was sent straight to the backend and parsed as if it *were*
+// already UTC, and read back the same naive way — correct only when the admin's browser
+// happens to be set to the site's configured zone (window.__TZ, default Europe/Moscow).
+// This instead always interprets/renders the wall-clock value against window.__TZ
+// specifically, independent of the browser's own zone — the same site-timezone-not-
+// browser-timezone intent as the backend's _site_timezone() helper (used for
+// wipe_date/daily-restart-time wall-clock Settings), just applied client-side since
+// these particular fields are true UTC DateTime columns rather than Settings strings.
+// Uses a round-trip through Intl.DateTimeFormat (format a UTC guess in the target zone,
+// measure the drift, correct) rather than a fixed offset table, so it stays correct
+// across any DST transition for whatever IANA zone the site is configured with.
+function _siteTzToUtcIso(localValue) {
+  const m = (localValue || '').match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const [, y, mo, d, h, mi] = m.slice(1).map(Number);
+  const tz = window.__TZ || 'Europe/Moscow';
+  let guess = Date.UTC(y, mo - 1, d, h, mi);
+  for (let i = 0; i < 2; i++) {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz, hourCycle: 'h23',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+    }).formatToParts(new Date(guess));
+    const map = {};
+    parts.forEach(p => { if (p.type !== 'literal') map[p.type] = parseInt(p.value, 10); });
+    const renderedAsUtc = Date.UTC(map.year, map.month - 1, map.day, map.hour, map.minute, map.second || 0);
+    guess -= (renderedAsUtc - guess);
+  }
+  return new Date(guess).toISOString();
+}
+
+function _utcToSiteTzInput(isoValue) {
+  if (!isoValue) return '';
+  const d = new Date(isoValue);
+  if (isNaN(d.getTime())) return '';
+  const tz = window.__TZ || 'Europe/Moscow';
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, hourCycle: 'h23',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit',
+  }).formatToParts(d);
+  const map = {};
+  parts.forEach(p => { if (p.type !== 'literal') map[p.type] = p.value; });
+  return `${map.year}-${map.month}-${map.day}T${map.hour}:${map.minute}`;
+}
+
+// Refreshes every "(время сайта, <zone>)" hint placed next to a date/time field whose
+// value is interpreted in the site's configured timezone rather than the browser's own
+// (events start/end, the announcement expiry field, the historical wipe-date form) — so
+// an admin doesn't have to remember/guess window.__TZ. Called once window.__TZ resolves
+// from GET /api/settings/public and again each time one of those forms is (re)opened,
+// since the fetch above may not have resolved yet on a very first paint.
+function _refreshSiteTzLabels() {
+  const tz = window.__TZ || 'Europe/Moscow';
+  document.querySelectorAll('.site-tz-label').forEach(el => { el.textContent = `(время сайта, ${tz})`; });
+}
 
 // ─── Sidebar badges ─────────────────────────────────────────────────────────
 async function loadSidebarBadges() {
@@ -3117,6 +3410,14 @@ async function loadSidebarBadges() {
       const appeals = await fetch(`${API}/admin/appeals?status=pending`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : null);
       if (appeals) setBadge('badge-appeals', (appeals.appeals || []).length);
     }
+  } catch {}
+  try {
+    // "Needs attention" glance (item 4 of the admin-b task list): count of unresolved
+    // reports on the "Жалобы" sidebar entry — the badge element itself already existed
+    // (#badge-reports) but nothing was ever setting it. Moderator-tier endpoint, unlike
+    // the admin-only shop-queue/appeals badges above, so no meetsRole() gate needed.
+    const reports = await fetch(`${API}/admin/reports?status=pending&per_page=1`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : null);
+    if (reports) setBadge('badge-reports', reports.total || 0);
   } catch {}
 }
 loadSidebarBadges();
@@ -3197,6 +3498,11 @@ function showSection(name) {
     return;
   }
   closeSidebarDrawer(); // no-op on desktop; on mobile, picking a section closes the drawer
+  // Live server-status SSE (startDashStatusSSE) only makes sense while the dashboard
+  // is actually visible — close it on the way to any other section so it doesn't sit
+  // open as a leaked connection while the admin browses elsewhere; loadDashboard()
+  // below re-opens it whenever the dashboard is (re-)entered.
+  if (name !== 'dashboard') stopDashStatusSSE();
   ['dashboard','news','editor','settings','plugin','users','comments','players','files','log','resets','clans','reports','analytics','economy','backups','errors','media','auditlog','events','modlog','shop-catalog','shop-queue'].forEach(s => {
     const el = document.getElementById(`section-${s}`);
     if (el) {
@@ -3323,8 +3629,13 @@ function _renderQuickNavResults(items) {
   const el = document.getElementById('quicknav-results');
   if (!el) return;
   if (!items.length) { el.innerHTML = '<div style="padding:1rem 1.1rem;color:var(--muted);font-size:.82rem;">Ничего не найдено</div>'; return; }
+  // role="button" tabindex="0" + onkeydown (Enter/Space) — same div-as-button pattern
+  // as map.html's region-cards (see CLAUDE.md) — these were previously mouse/Enter-
+  // via-the-input only, with no way to reach an individual result by keyboard.
   el.innerHTML = items.map((it, i) => `
-    <div class="quicknav-item" data-section="${it.id}" onclick="showSection('${it.id}');closeQuickNav();"
+    <div class="quicknav-item" data-section="${it.id}" role="button" tabindex="0"
+      onclick="showSection('${it.id}');closeQuickNav();"
+      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('${it.id}');closeQuickNav();}"
       style="padding:.65rem 1.1rem;cursor:pointer;font-size:.85rem;color:${i===0?'var(--text)':'var(--muted)'};background:${i===0?'rgba(150,0,28,.15)':'none'};border-bottom:1px solid rgba(255,255,255,.04);"
       onmouseover="this.style.background='rgba(150,0,28,.15)'" onmouseout="this.style.background=[...document.querySelectorAll('.quicknav-item')].indexOf(this)===0?'rgba(150,0,28,.15)':'none'">${esc(it.label)}</div>
   `).join('');
@@ -3334,6 +3645,7 @@ function _quickNavFilter() {
   _renderQuickNavResults(q ? _quickNavItems.filter(it => it.label.toLowerCase().includes(q)) : _quickNavItems);
 }
 function _quickNavKeydown(e) {
+  if (e.key === 'Escape') { closeQuickNav(); return; }
   if (e.key !== 'Enter') return;
   const first = document.querySelector('.quicknav-item');
   if (first) { showSection(first.dataset.section); closeQuickNav(); }
@@ -3646,6 +3958,7 @@ function filterSettings() {
 }
 
 async function loadSettings() {
+  _refreshSiteTzLabels();
   const res = await fetch(`${API}/admin/settings`, { credentials: 'include', headers: authH() });
   if (!res.ok) { handleAuth(res); return; }
   const settings = await res.json();
@@ -3704,12 +4017,14 @@ let _pluginServers = [];      // [{server_num, server_name}] derived from _plugi
 let _pluginActiveServer = null;
 
 async function loadPluginSection() {
+  _refreshSiteTzLabels();
   await loadPluginStatus();   // populates _pluginServers + _pluginActiveServer, renders tabs
   loadAnnouncements();
   loadMessageTemplates();
   loadServerApiKey();
   loadRestartStatus();
   loadDailyRestart();
+  loadPluginRecentLog();
 }
 
 async function loadPluginStatus() {
@@ -3759,6 +4074,7 @@ function selectPluginServer(serverNum) {
   loadServerApiKey();
   loadRestartStatus();
   loadDailyRestart();
+  loadPluginRecentLog();
 }
 
 function renderPluginStatusPill() {
@@ -3781,6 +4097,64 @@ function renderPluginStatusPill() {
   const name = hb.server_name ? esc(hb.server_name) : `Сервер ${hb.server_num}`;
   const ver = hb.plugin_version ? `версия ${esc(hb.plugin_version)}, ` : '';
   container.innerHTML = `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(0,150,50,.15);color:#86efac;border:1px solid rgba(0,180,60,.3);width:fit-content;">🟢 Подключён — ${name}, ${ver}${hb.player_count} игроков онлайн, обновлено ${rel} назад</span>`;
+}
+
+// Manual re-poll button next to the status pill above — loadPluginStatus() is otherwise
+// only called on initial section load / server-tab switch (nothing here auto-refreshes on
+// a timer), so an admin watching a plugin come back up had no way to check sooner than a
+// full tab switch. Re-hits the exact same GET /api/admin/plugin-status the pill already
+// renders from, just on demand.
+async function manualRefreshPluginStatus() {
+  const btn = document.getElementById('plugin-status-refresh-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '↻ Обновление…'; }
+  try {
+    await loadPluginStatus();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '↻ Обновить'; }
+  }
+}
+
+// ─── Recent plugin-reported activity (see the "Недавние события плагина" card) ─────
+// Reuses GET /api/admin/moderation-log (already backing section-modlog's full feed)
+// rather than a new endpoint — narrowed here to this server plus only the action types
+// the plugin itself reports via POST /api/plugin/log-action (kick/mute/unmute/
+// restart_scheduled/restart_executed), excluding ban/warn/unban which originate from the
+// admin panel or website rather than the plugin. Reuses MODLOG_ACTION_LABELS/
+// MODLOG_ACTION_COLORS (top-level consts declared with the moderation-log section further
+// down) instead of a second copy of the same label text.
+const _PLUGIN_LOG_ACTIONS = new Set(['kick', 'mute', 'unmute', 'restart_scheduled', 'restart_executed']);
+
+async function loadPluginRecentLog() {
+  const el = document.getElementById('plugin-recent-log');
+  if (!el) return;
+  if (_pluginActiveServer == null) {
+    el.innerHTML = '<div style="font-size:.72rem;color:var(--muted);">Нет данных</div>';
+    return;
+  }
+  el.innerHTML = '<div style="font-size:.72rem;color:var(--muted);">Загрузка…</div>';
+  try {
+    const res = await fetch(`${API}/admin/moderation-log?server_num=${_pluginActiveServer}&limit=100`, { credentials: 'include', headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const d = await res.json();
+    const items = (d.log || []).filter(e => _PLUGIN_LOG_ACTIONS.has(e.action)).slice(0, 8);
+    if (!items.length) {
+      el.innerHTML = '<div style="font-size:.72rem;color:var(--muted);">Событий пока нет</div>';
+      return;
+    }
+    el.innerHTML = items.map(e => {
+      const label = (typeof MODLOG_ACTION_LABELS !== 'undefined' && MODLOG_ACTION_LABELS[e.action]) || e.action;
+      const bg = (typeof MODLOG_ACTION_COLORS !== 'undefined' && MODLOG_ACTION_COLORS[e.action]) || 'rgba(100,100,100,.18)';
+      const when = fmtDateTime(e.created_at);
+      const who = e.target_name ? esc(e.target_name) : (e.target_steam_id ? esc(e.target_steam_id) : '—');
+      const detail = e.details ? ` — ${esc(e.details)}` : '';
+      return `<div style="display:flex;align-items:center;gap:.5rem;font-size:.74rem;padding:.35rem .1rem;border-bottom:1px solid rgba(255,255,255,.05);">
+        <span style="background:${bg};color:var(--text);font-size:.65rem;font-weight:600;padding:.1rem .5rem;border-radius:9999px;white-space:nowrap;">${esc(label)}</span>
+        <span style="color:var(--text);white-space:nowrap;">${who}</span>
+        <span style="color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${detail}</span>
+        <span style="color:var(--muted);font-size:.68rem;white-space:nowrap;">${when}</span>
+      </div>`;
+    }).join('');
+  } catch { el.innerHTML = '<div style="font-size:.72rem;color:#f87171;">Ошибка загрузки</div>'; }
 }
 
 // ─── Scheduled announcements ───────────────────────────────────────────────
@@ -3818,13 +4192,24 @@ function annChatPrefix() {
 // Generic live chat-preview renderer shared by #ann-text and the #tmpl-connect/
 // #tmpl-disconnect message template fields — takes the textarea/preview/char-counter
 // element ids so the same logic isn't triplicated across three near-identical fields.
-function updateChatPreview(taId, previewId, counterId) {
+// `placeholders`, when given (the connect/disconnect templates only — announcements have
+// no placeholders), substitutes each {key} with an example value BEFORE the color-tag/
+// escaping pass below, so the preview shows what will actually appear in-game instead of
+// the literal "{name}" token — previously the preview only proved the color tags/text
+// worked, not what a real connect/disconnect message would look like.
+function updateChatPreview(taId, previewId, counterId, placeholders) {
   const ta = document.getElementById(taId);
   const box = document.getElementById(previewId);
   if (!ta || !box) return;
   const raw = ta.value;
+  let previewRaw = raw;
+  if (placeholders) {
+    for (const [key, val] of Object.entries(placeholders)) {
+      previewRaw = previewRaw.split(`{${key}}`).join(val);
+    }
+  }
   box.innerHTML = raw.trim()
-    ? `<span style="color:#d4d4d8;">${esc(annChatPrefix())}</span>${renderColorTagPreview(raw)}`
+    ? `<span style="color:#d4d4d8;">${esc(annChatPrefix())}</span>${renderColorTagPreview(previewRaw)}`
     : '<span style="color:var(--muted);">Предпросмотр появится здесь…</span>';
   if (counterId) {
     const counter = document.getElementById(counterId);
@@ -3976,7 +4361,7 @@ function editAnnouncement(id) {
       document.getElementById('ann-interval-unit').value = 'minutes';
     }
   }
-  document.getElementById('ann-expires').value = a.expires_at ? a.expires_at.slice(0, 16) : '';
+  document.getElementById('ann-expires').value = a.expires_at ? _utcToSiteTzInput(a.expires_at) : '';
   document.getElementById('ann-enabled').checked = !!a.enabled;
   onAnnRepeatModeChange();
   updateAnnPreview();
@@ -4007,7 +4392,9 @@ async function saveAnnouncement() {
   const body = {
     text,
     interval_minutes,
-    expires_at: expiresRaw ? new Date(expiresRaw).toISOString() : null,
+    // Site-timezone conversion (not the browser's own zone) — see _siteTzToUtcIso's
+    // comment; same fix as the events start/end fields.
+    expires_at: expiresRaw ? _siteTzToUtcIso(expiresRaw) : null,
     enabled: document.getElementById('ann-enabled').checked,
     server_num: _pluginActiveServer,
   };
@@ -4100,7 +4487,7 @@ async function loadMessageTemplates() {
 }
 
 function updateTmplPreview(kind) {
-  updateChatPreview(`tmpl-${kind}`, `tmpl-${kind}-preview`, `tmpl-${kind}-char-count`);
+  updateChatPreview(`tmpl-${kind}`, `tmpl-${kind}-preview`, `tmpl-${kind}-char-count`, { name: 'Astartes' });
 }
 
 function wrapTmplSelectionWithColor(kind, hex) {
@@ -4582,7 +4969,22 @@ function copyApiKey(btn) {
 }
 
 async function saveSetting(key) {
-  const value = document.getElementById(`setting-${key}`)?.value ?? '';
+  const el = document.getElementById(`setting-${key}`);
+  const value = el?.value ?? '';
+  // Client-side validation against whatever type/min/max/pattern the field's <input>
+  // already declares (port fields are type="number" min="1" max="65535", URL fields are
+  // type="url", https_email is type="email", etc.) — those attributes were already
+  // present for native browser hinting, but nothing here ever actually checked them
+  // before this PUT went out, so a bad value only surfaced later as a broken RCON
+  // connection / server-status widget / <img src> rather than at save time. The backend
+  // itself (PUT /api/admin/settings/{key}, see admin_settings.py) stores any string with
+  // no format validation of its own, so this only catches values that would already break
+  // a downstream consumer, not a new invented constraint.
+  if (el && typeof el.checkValidity === 'function' && !el.checkValidity()) {
+    el.reportValidity();
+    showToast('Проверьте значение поля', 'error');
+    return;
+  }
   if ((key === 'wipe_date' || key === 'wipe_date2') && value && new Date(value) < new Date()) {
     showConfirm({
       title: 'Дата вайпа в прошлом',
@@ -4641,7 +5043,11 @@ function showBanModal(username, onBan) {
         <div style="font-size:1.8rem;margin-bottom:.6rem;">⛔</div>
         <h3 style="font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;margin-bottom:.4rem;" id="ban-modal-title">Забанить игрока</h3>
         <p style="font-size:.8rem;color:#9488a8;margin-bottom:1rem;" id="ban-modal-sub"></p>
-        <input id="ban-reason-input" type="text" class="dark-input" placeholder="Причина бана…" style="margin-bottom:1rem;" maxlength="256">
+        <select id="ban-reason-preset" class="dark-input" style="margin-bottom:.6rem;" onchange="if(this.value)document.getElementById('ban-reason-input').value=this.value;">
+          <option value="">— Готовая причина —</option>
+          ${BAN_REASON_PRESETS.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('')}
+        </select>
+        <input id="ban-reason-input" type="text" class="dark-input" placeholder="Причина бана… (можно своя)" style="margin-bottom:1rem;" maxlength="256">
         <div style="display:flex;gap:.65rem;justify-content:center;">
           <button id="ban-cancel-btn" style="background:rgba(40,10,60,.6);border:1px solid rgba(110,0,150,.3);border-radius:.55rem;padding:.5rem 1.2rem;color:#9488a8;font-size:.8rem;cursor:pointer;transition:all .2s;" onmouseover="this.style.color='#e2d8f0'" onmouseout="this.style.color='#9488a8'">Отмена</button>
           <button id="ban-ok-btn" style="background:linear-gradient(135deg,#7a0015,#b8001e);border:none;border-radius:.55rem;padding:.5rem 1.4rem;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;box-shadow:0 0 16px rgba(180,0,30,.45);">Забанить</button>
@@ -4652,6 +5058,7 @@ function showBanModal(username, onBan) {
   modal.querySelector('#ban-modal-title').textContent = `Забанить: ${username}`;
   modal.querySelector('#ban-modal-sub').textContent = 'Введите причину бана. Игрок будет добавлен в список банов.';
   modal.querySelector('#ban-reason-input').value = '';
+  modal.querySelector('#ban-reason-preset').value = '';
   modal.classList.add('open');
   modal.style.display = 'flex';
   modal.style.position = 'fixed';
@@ -4676,35 +5083,64 @@ function showBanModal(username, onBan) {
 }
 
 // ─── Clans (read-only — synced from the game via the plugin) ────────────────
+let _allClans = [];
 async function loadAdminClans() {
   const el = document.getElementById('clans-table');
-  const totalEl = document.getElementById('clans-total');
   try {
-    const clans = await fetch(`${API}/clans`).then(r => r.json());
-    if (totalEl) totalEl.textContent = `Всего: ${clans.length}`;
-    if (!clans.length) {
-      el.innerHTML = '<p class="p-6" style="color:var(--muted);font-size:.85rem;">Кланов пока нет — появятся после первой синхронизации с игровым сервером.</p>';
-      return;
-    }
-    el.innerHTML = `
-      <table>
-        <thead><tr><th>Название</th><th>Девиз</th><th>Сервер</th><th>Участников</th><th>Обновлено</th></tr></thead>
-        <tbody>
-          ${clans.map(c => {
-            const updated = c.updated_at ? new Date(c.updated_at + (c.updated_at.endsWith('Z') ? '' : 'Z')).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' }) : '—';
-            return `<tr>
-            <td style="font-weight:600;">${esc(c.name)}</td>
-            <td style="color:var(--muted);">${esc(c.motto || '') || '—'}</td>
-            <td style="color:var(--muted);">${c.server_num}</td>
-            <td style="color:var(--muted);">${c.member_count}</td>
-            <td style="color:var(--muted);">${updated}</td>
-          </tr>`;
-          }).join('')}
-        </tbody>
-      </table>`;
+    _allClans = await fetch(`${API}/clans`).then(r => r.json());
+    _renderClansTable();
   } catch {
     el.innerHTML = '<p class="p-6" style="color:#fca5a5;font-size:.85rem;">Ошибка загрузки.</p>';
   }
+}
+
+// GET /api/clans already sorts by member_count desc server-side (see clans.py's own
+// "real communities first" comment), so the "members" option below just uses the
+// as-fetched order rather than re-sorting; "updated"/"name" re-sort client-side over
+// the same already-loaded list — no extra request, same pattern as _renderMediaGrid's
+// client-side search filter above.
+function _renderClansTable() {
+  const el = document.getElementById('clans-table');
+  const totalEl = document.getElementById('clans-total');
+  if (totalEl) totalEl.textContent = `Всего: ${_allClans.length}`;
+  if (!_allClans.length) {
+    el.innerHTML = '<p class="p-6" style="color:var(--muted);font-size:.85rem;">Кланов пока нет — появятся после первой синхронизации с игровым сервером.</p>';
+    return;
+  }
+  const sort = document.getElementById('clans-sort')?.value || 'members';
+  const clans = _allClans.slice();
+  if (sort === 'updated') clans.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+  else if (sort === 'name') clans.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  else clans.sort((a, b) => b.member_count - a.member_count);
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>Название</th><th>Девиз</th><th>Сервер</th><th>Участников</th><th>Обновлено</th></tr></thead>
+      <tbody>
+        ${clans.map(c => {
+          const updated = c.updated_at ? new Date(c.updated_at + (c.updated_at.endsWith('Z') ? '' : 'Z')).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' }) : '—';
+          // member_preview (up to 4, leaders/officers first) rides along on GET
+          // /api/clans already — no extra request needed to show who's in the clan.
+          // Only members with a linked site account (username set — see .register/
+          // .login in models.py's User.steam_id docstring) get a profile link;
+          // character_name alone isn't a clickable site identity.
+          const preview = (c.member_preview || []).map(m => m.username
+            ? `<a href="/user.html?u=${encodeURIComponent(m.username)}" target="_blank" style="color:var(--accent);text-decoration:none;">${esc(m.character_name)}</a>`
+            : `<span style="color:var(--muted);">${esc(m.character_name)}</span>`
+          ).join(', ');
+          const more = c.member_count > (c.member_preview || []).length ? ` +${c.member_count - c.member_preview.length}` : '';
+          return `<tr>
+          <td style="font-weight:600;">${esc(c.name)}</td>
+          <td style="color:var(--muted);">${esc(c.motto || '') || '—'}</td>
+          <td style="color:var(--muted);">${c.server_num}</td>
+          <td style="color:var(--muted);">
+            <div>${c.member_count}</div>
+            ${preview ? `<div style="font-size:.68rem;margin-top:.15rem;">${preview}${more}</div>` : ''}
+          </td>
+          <td style="color:var(--muted);">${updated}</td>
+        </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
 }
 
 // ─── Users ─────────────────────────────────────────────────────────────────
@@ -4808,9 +5244,79 @@ function openUserQuickView(id) {
   document.getElementById('userqv-lastactive').innerHTML = `<span style="color:${info.color};">${esc(info.label)}</span>`;
   document.getElementById('userqv-created').textContent = fmtDate(u.created_at);
   document.getElementById('userqv-actions').innerHTML = buildUserActionsHtml(u, currentUser);
+  loadUserQvModHistory(u);
+  loadUserQvNickHistory(u);
   const m = document.getElementById('userqv-modal');
   m.style.display = 'flex';
   requestAnimationFrame(() => { m.style.opacity = '1'; });
+}
+
+// ─── User quick-view: per-player moderation history (item 5) ───────────────
+// Reuses GET /api/admin/moderation-log (the same endpoint "Журнал модерации" itself
+// calls) filtered to this user's steam_id, rather than a separate history feed —
+// there's exactly one source of truth for moderation events.
+async function loadUserQvModHistory(u) {
+  const el = document.getElementById('userqv-modhistory');
+  if (!el) return;
+  if (!u.steam_id) {
+    el.innerHTML = `<p style="font-size:.75rem;color:var(--muted);">Аккаунт не привязан к игровому персонажу (.register/.login в игре) — историю модерации показать нельзя.</p>`;
+    return;
+  }
+  el.innerHTML = `<p style="font-size:.75rem;color:var(--muted);">Загрузка…</p>`;
+  try {
+    const d = await fetch(`${API}/admin/moderation-log?steam_id=${encodeURIComponent(u.steam_id)}&limit=15`, { credentials: 'include', headers: authH() }).then(r => r.json());
+    const items = d.log || [];
+    if (!items.length) {
+      el.innerHTML = `<p style="font-size:.75rem;color:var(--muted);">Записей модерации нет.</p>`;
+      return;
+    }
+    el.innerHTML = items.map(e => {
+      const label = MODLOG_ACTION_LABELS[e.action] || e.action;
+      const color = MODLOG_ACTION_COLORS[e.action] || 'rgba(150,150,150,.15)';
+      return `<div style="display:flex;align-items:center;gap:.5rem;font-size:.75rem;padding:.3rem .1rem;border-bottom:1px solid rgba(150,0,28,.1);">
+        <span style="padding:.1rem .4rem;border-radius:.3rem;background:${color};white-space:nowrap;">${esc(label)}</span>
+        <span style="color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(e.details || '')}">${esc(e.details || '—')}</span>
+        <span style="color:var(--muted);white-space:nowrap;">${fmtDate(e.created_at)}</span>
+      </div>`;
+    }).join('') + `<a href="/admin.html?tab=moderation-log&steam_id=${encodeURIComponent(u.steam_id)}" target="_blank" rel="noopener" style="display:block;margin-top:.5rem;font-size:.72rem;color:var(--gold);text-decoration:none;">Открыть полный журнал →</a>`;
+  } catch {
+    el.innerHTML = `<p style="font-size:.75rem;color:#fca5a5;">Ошибка загрузки.</p>`;
+  }
+}
+
+// ─── User quick-view: nickname change history (item 9) ─────────────────────
+// No dedicated nickname-history table — POST /api/plugin/nickname-change (the ".nick"
+// in-game command) already logs every change as a PointsTransaction row
+// (reason="nickname_change", detail="OldName -> NewName", see plugin_integration.py),
+// since it's the same points-ledger spend as any other shop cost. Reused as-is here via
+// the existing GET /api/admin/points/transactions?user_id=... admin ledger endpoint,
+// filtered to that one reason client-side rather than adding a reason= server param
+// used nowhere else.
+async function loadUserQvNickHistory(u) {
+  const el = document.getElementById('userqv-nickhistory');
+  if (!el) return;
+  el.innerHTML = `<p style="font-size:.75rem;color:var(--muted);">Загрузка…</p>`;
+  try {
+    const d = await fetch(`${API}/admin/points/transactions?user_id=${u.id}&per_page=200`, { credentials: 'include', headers: authH() }).then(r => r.json());
+    const items = (d.items || []).filter(tx => tx.reason === 'nickname_change');
+    if (!items.length) {
+      el.innerHTML = `<p style="font-size:.75rem;color:var(--muted);">Игрок ещё не менял никнейм через .nick.</p>`;
+      return;
+    }
+    el.innerHTML = items.map(tx => {
+      const parts = (tx.detail || '').split(' -> ');
+      const oldName = parts[0] || '?';
+      const newName = parts[1] || tx.detail || '?';
+      return `<div style="display:flex;align-items:center;gap:.4rem;font-size:.75rem;padding:.3rem .1rem;border-bottom:1px solid rgba(150,0,28,.1);flex-wrap:wrap;">
+        <span style="color:var(--muted);text-decoration:line-through;">${esc(oldName)}</span>
+        <span style="color:var(--muted);">→</span>
+        <span style="font-weight:600;">${esc(newName)}</span>
+        <span style="color:var(--muted);margin-left:auto;white-space:nowrap;">${fmtDate(tx.created_at)}</span>
+      </div>`;
+    }).join('');
+  } catch {
+    el.innerHTML = `<p style="font-size:.75rem;color:#fca5a5;">Ошибка загрузки.</p>`;
+  }
 }
 function closeUserQv() {
   const m = document.getElementById('userqv-modal');
@@ -5437,6 +5943,44 @@ async function saveRules() {
   } else { showToast('Ошибка сохранения', 'error'); }
 }
 
+// ─── Shared "nothing found" empty-state helper ─────────────────────────────
+// Consistent placeholder for any container, replacing the ad hoc <p>-with-inline-
+// style pattern the dashboard used to hand-roll per call site (see the .admin-empty-
+// state/.admin-empty-state-icon rules in this file's inline style block). Introduced here
+// as section-dashboard's own first real usage — other sections still print their own
+// one-off empty text (e.g. loadAdminNews's "Новостей нет.") and could adopt this over
+// time; that's out of scope for this pass since it'd mean touching sections other
+// agents own.
+function renderEmptyState(container, message, icon = '🗂') {
+  const el = typeof container === 'string' ? document.getElementById(container) : container;
+  if (!el) return;
+  el.innerHTML = `<div class="admin-empty-state"><span class="admin-empty-state-icon" aria-hidden="true">${icon}</span><span>${esc(message)}</span></div>`;
+}
+
+// ─── Mini admin action log ("you just did X") ──────────────────────────────
+// Session-local, in-memory only — no server-side tracking (see task description).
+// recordAdminAction(description) is the shared hook: any section could call it once
+// touched by a future pass, but today only this section's own mutating action
+// (dashDeleteRecentComment below) actually calls it — the mechanism is ready, the
+// wiring elsewhere isn't (out of this pass's file-editing boundary).
+const _ADMIN_ACTION_LOG_MAX = 8;
+let _adminActionLog = [];
+function recordAdminAction(description) {
+  _adminActionLog.unshift({ description, at: Date.now() });
+  if (_adminActionLog.length > _ADMIN_ACTION_LOG_MAX) _adminActionLog.length = _ADMIN_ACTION_LOG_MAX;
+  _renderAdminActionLog();
+}
+function _renderAdminActionLog() {
+  const el = document.getElementById('dash-action-log');
+  if (!el) return;
+  if (!_adminActionLog.length) { renderEmptyState(el, 'Действий в этой сессии пока нет.', '📝'); return; }
+  el.innerHTML = _adminActionLog.map(a => `
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:.6rem;padding:.32rem 0;border-bottom:1px solid rgba(150,0,28,.08);">
+      <span style="font-size:.76rem;color:var(--text);">${esc(a.description)}</span>
+      <span style="font-size:.62rem;color:var(--muted);white-space:nowrap;">${new Date(a.at).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'})}</span>
+    </div>`).join('');
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────
 async function loadDashboard() {
   try {
@@ -5449,14 +5993,14 @@ async function loadDashboard() {
     animateKpi(document.getElementById('dash-files'),    d.file_count);
     const rc = document.getElementById('dash-recent-comments');
     if (!d.recent_comments.length) {
-      rc.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Комментариев пока нет.</p>`;
+      renderEmptyState(rc, 'Комментариев пока нет.', '💬');
     } else {
       rc.innerHTML = d.recent_comments.map(c => `
         <div style="padding:.55rem 0;border-bottom:1px solid rgba(150,0,28,.1);display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap;">
           <span style="font-size:.7rem;font-weight:600;color:#c9a04a;white-space:nowrap;">${esc(c.author)}</span>
           <span style="font-size:.7rem;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.content)}</span>
           <a href="/?news=${esc(c.news_slug)}&comment=${c.id}" target="_blank" style="font-size:.65rem;color:var(--muted);white-space:nowrap;text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">${esc(c.news_title)}</a>
-          <button onclick="deleteAdminComment(${c.id})" style="background:none;border:none;color:rgba(200,0,30,.45);cursor:pointer;font-size:.8rem;padding:0 .2rem;flex-shrink:0;" onmouseover="this.style.color='rgba(240,0,40,.9)'" onmouseout="this.style.color='rgba(200,0,30,.45)'">✕</button>
+          <button onclick="dashDeleteRecentComment(${c.id}, '${esc(c.author).replace(/'/g, "\\'")}')" aria-label="Удалить комментарий от ${esc(c.author)}" style="background:none;border:none;color:rgba(200,0,30,.45);cursor:pointer;font-size:.8rem;padding:0 .2rem;flex-shrink:0;" onmouseover="this.style.color='rgba(240,0,40,.9)'" onmouseout="this.style.color='rgba(200,0,30,.45)'">✕</button>
         </div>`).join('');
     }
   } catch { }
@@ -5464,6 +6008,31 @@ async function loadDashboard() {
   loadDashRecentUsers();
   loadDashGraph();
   loadDashExtraStats();
+  loadDashWow();
+  loadDashHealth();
+  _renderAdminActionLog();
+}
+
+// Dashboard-owned variant of the shared deleteAdminComment() (used by
+// section-comments — out of this pass's edit boundary) so the recent-comments widget
+// can both (a) give real success/error feedback via showToast, which it previously
+// had none of at all, and (b) feed the action log above. Duplicates the small
+// delete+fallback request rather than reaching into the shared function, since that
+// function's onOk callback refreshes section-comments' own list/page state, not
+// this widget's.
+async function dashDeleteRecentComment(id, author) {
+  showConfirm({
+    title: 'Удалить комментарий?',
+    text: 'Комментарий будет удалён без возможности восстановления.',
+    onOk: async () => {
+      const r = await fetch(`${API}/admin/comments/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() });
+      if (!r.ok) { showToast('Ошибка удаления', 'error'); return; }
+      showToast('Комментарий удалён', 'success');
+      recordAdminAction(`Удалён комментарий (${author})`);
+      loadDashboard();
+      loadSidebarBadges();
+    },
+  });
 }
 
 async function loadDashExtraStats() {
@@ -5487,6 +6056,56 @@ async function loadDashExtraStats() {
 }
 
 // ─── Dashboard: server status cards ───────────────────────────────────────
+// Live-updated via SSE (startDashStatusSSE below) instead of only refreshing on page
+// load/manual re-entry: /api/monitor/status/stream is the same public push channel
+// servers.html's startSrvSSE() already subscribes to (main.py's _broadcast_status(),
+// fired every _monitor_poll_cycle()) — reusing it here needed no backend change.
+// _dashSrvData/_dashSrvMeta cache the latest known state per server_num so the SSE
+// handler can re-render just from memory without re-fetching on every push.
+let _dashSrvData = {};             // { [server_num]: statusPayload | null }
+let _dashSrvMeta = { hasServer2: false, srvName: 'Сервер 1', srvName2: 'Сервер 2' };
+let _dashStatusSSE = null;
+
+function _dashServerCard(data, name, accent) {
+  if (!data) return `<div class="glass-card rounded-xl p-4" style="color:var(--muted);font-size:.8rem;">Нет данных</div>`;
+  const dot = data.online ? '#4ade80' : '#f87171';
+  const label = data.online ? 'Онлайн' : 'Оффлайн';
+  return `<div class="glass-card rounded-xl p-4">
+    <div class="flex items-center justify-between mb-2">
+      <span style="font-size:.78rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name || data.name || 'Сервер')}</span>
+      <span style="display:flex;align-items:center;gap:.35rem;font-size:.68rem;font-weight:700;color:${dot};">
+        <span style="width:.45rem;height:.45rem;border-radius:50%;background:${dot};box-shadow:0 0 8px ${dot};flex-shrink:0;"></span>${label}
+      </span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:.4rem;">
+      <span style="font-size:1.6rem;font-family:'Cinzel',serif;color:${accent};">${data.players ?? 0}</span>
+      <span style="font-size:.78rem;color:var(--muted);">/ ${data.max_players ?? 0} игроков</span>
+    </div>
+    ${data.map && data.map !== 'N/A' ? `<div style="font-size:.68rem;color:var(--muted);margin-top:.3rem;">Карта: ${esc(data.map)}</div>` : ''}
+  </div>`;
+}
+
+function _renderDashServerStatus() {
+  const wrap = document.getElementById('dash-server-status');
+  if (!wrap) return;
+  const { hasServer2, srvName, srvName2 } = _dashSrvMeta;
+  wrap.innerHTML = _dashServerCard(_dashSrvData[1], srvName, '#e05575')
+    + (hasServer2 ? _dashServerCard(_dashSrvData[2], srvName2, '#9955ee') : '');
+  const totalOnline = Object.values(_dashSrvData).reduce((s, d) => s + (d?.online ? (d.players || 0) : 0), 0);
+  const anyOnline   = Object.values(_dashSrvData).some(d => d?.online);
+  const badge = document.getElementById('sb-online');
+  const badgeTxt = document.getElementById('sb-online-text');
+  if (badge && badgeTxt) {
+    badge.className = anyOnline ? '' : 'offline';
+    badgeTxt.textContent = anyOnline ? `${totalOnline} онлайн` : 'Серверы офлайн';
+  }
+  const lu = document.getElementById('dash-last-updated');
+  if (lu) lu.textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+  // Health widget's server dots reuse this same cache — keep them in sync on every
+  // render (initial fetch AND every SSE push) rather than only on dashboard load.
+  _renderDashHealthServers();
+}
+
 async function loadDashServerStatus() {
   const wrap = document.getElementById('dash-server-status');
   if (!wrap) return;
@@ -5499,49 +6118,54 @@ async function loadDashServerStatus() {
     if (hasServer2) reqs.push(fetch(`${API}/monitor/status2`).then(r => r.ok ? r.json() : null));
     const results = await Promise.all(reqs);
 
-    const card = (data, name, accent) => {
-      if (!data) return `<div class="glass-card rounded-xl p-4" style="color:var(--muted);font-size:.8rem;">Нет данных</div>`;
-      const dot = data.online ? '#4ade80' : '#f87171';
-      const label = data.online ? 'Онлайн' : 'Оффлайн';
-      return `<div class="glass-card rounded-xl p-4">
-        <div class="flex items-center justify-between mb-2">
-          <span style="font-size:.78rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name || data.name || 'Сервер')}</span>
-          <span style="display:flex;align-items:center;gap:.35rem;font-size:.68rem;font-weight:700;color:${dot};">
-            <span style="width:.45rem;height:.45rem;border-radius:50%;background:${dot};box-shadow:0 0 8px ${dot};flex-shrink:0;"></span>${label}
-          </span>
-        </div>
-        <div style="display:flex;align-items:baseline;gap:.4rem;">
-          <span style="font-size:1.6rem;font-family:'Cinzel',serif;color:${accent};">${data.players ?? 0}</span>
-          <span style="font-size:.78rem;color:var(--muted);">/ ${data.max_players ?? 0} игроков</span>
-        </div>
-        ${data.map && data.map !== 'N/A' ? `<div style="font-size:.68rem;color:var(--muted);margin-top:.3rem;">Карта: ${esc(data.map)}</div>` : ''}
-      </div>`;
-    };
-
     const srvName  = (smap.server_name  || '').trim() || 'Сервер 1';
     const srvName2 = (smap.server2_name || '').trim() || 'Сервер 2';
-    wrap.innerHTML = card(results[0], srvName, '#e05575') + (hasServer2 ? card(results[1], srvName2, '#9955ee') : '');
+    _dashSrvMeta = { hasServer2, srvName, srvName2 };
+    _dashSrvData = { 1: results[0], 2: hasServer2 ? results[1] : null };
+
     // Sync select names
     const sel = document.getElementById('dash-graph-server');
     if (sel) {
       if (sel.options[0]) sel.options[0].text = srvName;
       if (sel.options[1]) sel.options[1].text = srvName2;
     }
-    // Update sidebar online badge
-    const totalOnline = results.reduce((s, d) => s + (d?.online ? (d.players || 0) : 0), 0);
-    const anyOnline   = results.some(d => d?.online);
-    const badge = document.getElementById('sb-online');
-    const badgeTxt = document.getElementById('sb-online-text');
-    if (badge && badgeTxt) {
-      badge.className = anyOnline ? '' : 'offline';
-      badgeTxt.textContent = anyOnline ? `${totalOnline} онлайн` : 'Серверы офлайн';
-    }
-    // Update last-updated timestamp
-    const lu = document.getElementById('dash-last-updated');
-    if (lu) lu.textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+    _renderDashServerStatus();
+    startDashStatusSSE();
   } catch {
     wrap.innerHTML = `<div class="glass-card rounded-xl p-4" style="color:var(--muted);font-size:.8rem;">Ошибка загрузки статуса.</div>`;
   }
+}
+
+// Opens (once) the same public SSE stream servers.html's startSrvSSE() uses, so the
+// server-status cards + sidebar online badge update the moment a poll cycle sees a
+// change instead of waiting for the next manual dashboard visit. Closed again when
+// navigating away from the dashboard (see showSection below) — an admin panel is an
+// SPA with many other sections, unlike servers.html where the connection lives for
+// the whole page, so leaving it open indefinitely while browsing other sections would
+// just be a leaked connection.
+function startDashStatusSSE() {
+  if (_dashStatusSSE) return;
+  try {
+    _dashStatusSSE = new EventSource(`${API}/monitor/status/stream`);
+    _dashStatusSSE.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.ping || !data.server) return;
+        if (data.server === 2 && data.enabled === false) {
+          _dashSrvData[2] = null;
+          _renderDashServerStatus();
+          return;
+        }
+        if (data.server === 2) _dashSrvMeta.hasServer2 = true;
+        _dashSrvData[data.server] = data;
+        _renderDashServerStatus();
+      } catch { /* malformed push — ignore, next one will arrive within 25s */ }
+    };
+    _dashStatusSSE.onerror = () => { /* EventSource auto-reconnects; nothing to do */ };
+  } catch { /* EventSource unsupported/blocked — dashboard still has its one-shot fetch */ }
+}
+function stopDashStatusSSE() {
+  if (_dashStatusSSE) { _dashStatusSSE.close(); _dashStatusSSE = null; }
 }
 
 // ─── Dashboard: recent registrations ──────────────────────────────────────
@@ -5552,14 +6176,14 @@ async function loadDashRecentUsers() {
     const res = await fetch(`${API}/admin/users`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const users = await res.json();
-    if (!users.length) { el.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Пользователей пока нет.</p>`; return; }
+    if (!users.length) { renderEmptyState(el, 'Пользователей пока нет.', '👥'); return; }
     const recent = [...users].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
     el.innerHTML = recent.map(u => `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.3rem 0;">
         <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" style="font-size:.78rem;font-weight:600;color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'">${esc(u.username)}</a>
         <span style="font-size:.68rem;color:var(--muted);white-space:nowrap;">${new Date(u.created_at).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'2-digit',year:'2-digit'})}</span>
       </div>`).join('');
-  } catch { el.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Ошибка загрузки.</p>`; }
+  } catch { renderEmptyState(el, 'Ошибка загрузки.', '⚠'); }
 }
 
 // ─── Dashboard: weekly online graph ───────────────────────────────────────
@@ -5586,6 +6210,104 @@ async function loadDashGraph() {
   } catch {
     renderPlayerChart(canvas, [], {});
     if (empty) { empty.style.display = ''; empty.textContent = 'Ошибка загрузки графика.'; }
+  }
+}
+
+// ─── Dashboard: week-over-week deltas ──────────────────────────────────────
+// Reuses GET /api/admin/analytics (already backs section-analytics — see
+// admin_misc.py's get_analytics) with days=14 instead of its default 7, purely to
+// get two full 7-day windows back from a single call — no new backend endpoint or
+// time-series table needed, per the task's own instruction to check whether
+// day-level breakdown already exists before building one. users_by_day gives the
+// registrations split this compares; by_day (page views) gives the traffic split.
+function _wowDelta(curTotal, prevTotal) {
+  if (!prevTotal) return curTotal > 0 ? { dir: 'up', label: `новых: ${curTotal}` } : { dir: 'flat', label: 'без изменений' };
+  const pct = Math.round(((curTotal - prevTotal) / prevTotal) * 100);
+  if (pct === 0) return { dir: 'flat', label: '0% за неделю' };
+  return { dir: pct > 0 ? 'up' : 'down', label: `${pct > 0 ? '+' : ''}${pct}% за неделю` };
+}
+function _renderWowBadge(elId, curTotal, prevTotal) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const { dir, label } = _wowDelta(curTotal, prevTotal);
+  const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '●';
+  el.innerHTML = `<span class="dash-wow ${dir}">${arrow} ${esc(label)}</span>`;
+}
+async function loadDashWow() {
+  try {
+    const d = await fetch(`${API}/admin/analytics?days=14`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : null);
+    if (!d) return;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dayKey = (offset) => { const t = new Date(today); t.setDate(t.getDate() - offset); return t.toISOString().slice(0, 10); };
+    const last7Keys = new Set(Array.from({length: 7}, (_, i) => dayKey(i)));
+    const prev7Keys = new Set(Array.from({length: 7}, (_, i) => dayKey(i + 7)));
+
+    const usersThisWeek = (d.users_by_day || []).filter(r => last7Keys.has(r.date)).reduce((s, r) => s + r.count, 0);
+    const usersPrevWeek = (d.users_by_day || []).filter(r => prev7Keys.has(r.date)).reduce((s, r) => s + r.count, 0);
+    _renderWowBadge('dash-users-wow', usersThisWeek, usersPrevWeek);
+
+    const viewsThisWeek = (d.by_day || []).filter(r => last7Keys.has(r.day)).reduce((s, r) => s + r.views, 0);
+    const viewsPrevWeek = (d.by_day || []).filter(r => prev7Keys.has(r.day)).reduce((s, r) => s + r.views, 0);
+    const trafficEl = document.getElementById('dash-traffic-summary');
+    if (trafficEl) {
+      const { dir, label } = _wowDelta(viewsThisWeek, viewsPrevWeek);
+      const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '●';
+      trafficEl.innerHTML = `Просмотров сайта за 7 дней: <strong style="color:var(--text);">${viewsThisWeek}</strong> <span class="dash-wow ${dir}" style="margin-top:0;">${arrow} ${esc(label)}</span>`;
+    }
+  } catch { /* WoW badges are a nice-to-have overlay — leave the plain numbers if this fails */ }
+}
+
+// ─── Dashboard: system health widget ───────────────────────────────────────
+// One-glance combination of site API reachability + both game servers + plugin
+// heartbeats, so an admin doesn't need to visit section-plugin separately just to
+// check whether everything is up. Read-only summary — section-plugin's own
+// connection pill (renderPluginStatusPill) stays the authoritative, detailed view.
+let _dashHealthPlugins = [];
+function _healthPill(dotClass, label) {
+  return `<span class="dash-health-pill"><span class="dash-health-dot ${dotClass}" aria-hidden="true"></span>${esc(label)}</span>`;
+}
+function _renderDashHealthServers() {
+  // Called both after the initial fetch and after every SSE push (see
+  // _renderDashServerStatus above) so the widget's server dots never lag behind the
+  // cards above it.
+  const el = document.getElementById('dash-health-grid');
+  if (!el || el.dataset.apiPending === '1') return; // still waiting on the /healthz + plugin-status fetch below
+  const pills = [];
+  pills.push(el.dataset.apiOk === '1'
+    ? _healthPill('ok', 'Сайт: работает')
+    : _healthPill('bad', 'Сайт: недоступен'));
+  const names = { 1: _dashSrvMeta.srvName, 2: _dashSrvMeta.srvName2 };
+  [1, 2].forEach(n => {
+    if (n === 2 && !_dashSrvMeta.hasServer2) return;
+    const d = _dashSrvData[n];
+    pills.push(d?.online ? _healthPill('ok', `${names[n]}: онлайн`) : _healthPill('bad', `${names[n]}: офлайн`));
+  });
+  _dashHealthPlugins.forEach(hb => {
+    const secAgo = (Date.now() - new Date(hb.last_seen_at + (hb.last_seen_at.endsWith('Z') ? '' : 'Z')).getTime()) / 1000;
+    const stale = !isFinite(secAgo) || secAgo > 120;
+    const name = (hb.server_name || '').trim() || `Сервер ${hb.server_num}`;
+    pills.push(stale ? _healthPill('bad', `Плагин (${name}): нет связи`) : _healthPill('ok', `Плагин (${name}): подключён`));
+  });
+  if (!_dashHealthPlugins.length) pills.push(_healthPill('warn', 'Плагин: не подключался'));
+  el.innerHTML = pills.join('');
+}
+async function loadDashHealth() {
+  const el = document.getElementById('dash-health-grid');
+  if (!el) return;
+  el.dataset.apiPending = '1';
+  try {
+    const [healthRes, plugins] = await Promise.all([
+      fetch('/healthz').then(r => r.ok).catch(() => false),
+      fetch(`${API}/admin/plugin-status`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : []).catch(() => []),
+    ]);
+    el.dataset.apiOk = healthRes ? '1' : '0';
+    _dashHealthPlugins = plugins || [];
+  } catch {
+    el.dataset.apiOk = '0';
+    _dashHealthPlugins = [];
+  } finally {
+    el.dataset.apiPending = '0';
+    _renderDashHealthServers();
   }
 }
 
@@ -5760,21 +6482,41 @@ async function loadAdminFiles() {
   try {
     const res = await fetch(`${API}/admin/uploads`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); if (grid0) grid0.innerHTML = `<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки.</p>`; return; }
-    const files = await res.json();
-    _allFiles = files;
-    document.getElementById('files-count').textContent = `Файлов: ${files.length}`;
-    const grid = document.getElementById('files-grid');
-    if (!files.length) {
-      grid.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Загруженных файлов нет.</p>`;
-      return;
-    }
-    const fmtSize = b => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(1) + ' MB';
-    const isImg = n => /\.(jpe?g|png|gif|webp|svg|ico)$/i.test(n);
-    grid.innerHTML = files.map(f => {
-      const used = f.used_by && f.used_by.length;
-      return `
+    _allFiles = await res.json();
+    _renderFilesGrid();
+  } catch { if (grid0) grid0.innerHTML = `<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки.</p>`; }
+}
+
+// used_by comes from GET /api/admin/uploads' cross-reference against Settings/News/
+// ShopItem/User.avatar_url (see _uploads_used_by_lookup in admin_system.py) — NOT
+// exhaustive (profile covers, badge icons, DM attachments aren't checked, see that
+// function's docstring), so "неиспользуется" here means "not found by this check",
+// not a delete-safety guarantee. Still useful for spotting obvious cleanup candidates
+// (old news thumbnails, replaced logos) without scrolling the whole grid by eye.
+function _renderFilesGrid() {
+  const grid = document.getElementById('files-grid');
+  if (!grid) return;
+  document.getElementById('files-count').textContent = `Файлов: ${_allFiles.length}`;
+  const onlyUnused = document.getElementById('files-filter-unused')?.checked;
+  const files = onlyUnused ? _allFiles.filter(f => !(f.used_by && f.used_by.length)) : _allFiles;
+  if (!_allFiles.length) {
+    grid.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Загруженных файлов нет.</p>`;
+    return;
+  }
+  if (!files.length) {
+    grid.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Неиспользуемых файлов нет.</p>`;
+    return;
+  }
+  const fmtSize = b => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(1) + ' MB';
+  const isImg = n => /\.(jpe?g|png|gif|webp|svg|ico)$/i.test(n);
+  grid.innerHTML = files.map(f => {
+    const used = f.used_by && f.used_by.length;
+    const badge = used
+      ? `<span title="${esc(f.used_by.map(u => u.label).join(', '))}" style="position:absolute;top:.35rem;left:.35rem;z-index:1;background:rgba(0,70,15,.75);border:1px solid rgba(0,160,35,.5);color:#86efac;font-size:.58rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;">используется</span>`
+      : `<span title="Не найдено ни в одном из проверяемых мест сайта" style="position:absolute;top:.35rem;left:.35rem;z-index:1;background:rgba(90,70,0,.6);border:1px solid rgba(200,160,0,.4);color:#fde68a;font-size:.58rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;">не используется</span>`;
+    return `
       <div class="glass-card rounded-xl overflow-hidden" style="display:flex;flex-direction:column;position:relative;">
-        ${used ? `<span title="${esc(f.used_by.map(u => u.label).join(', '))}" style="position:absolute;top:.35rem;left:.35rem;z-index:1;background:rgba(0,70,15,.75);border:1px solid rgba(0,160,35,.5);color:#86efac;font-size:.58rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;">используется</span>` : ''}
+        ${badge}
         <div style="height:90px;background:rgba(8,0,16,.7);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;" onclick="window.open('${esc(f.url)}','_blank')">
           ${isImg(f.filename)
             ? `<img src="${esc(f.url)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;">`
@@ -5789,8 +6531,7 @@ async function loadAdminFiles() {
           </div>
         </div>
       </div>`;
-    }).join('');
-  } catch { if (grid0) grid0.innerHTML = `<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки.</p>`; }
+  }).join('');
 }
 
 async function deleteUploadedFile(filename) {
@@ -5831,11 +6572,14 @@ async function exportLogCsv() {
   try {
     const q = encodeURIComponent((document.getElementById('log-search')?.value || '').trim());
     const action = encodeURIComponent(document.getElementById('log-action-filter')?.value || '');
+    const dateFrom = document.getElementById('log-date-from')?.value || '';
+    const dateTo = document.getElementById('log-date-to')?.value || '';
+    const range = (dateFrom ? `&date_from=${dateFrom}` : '') + (dateTo ? `&date_to=${dateTo}` : '');
     // load all pages
     let allItems = [];
     let page = 1;
     while (true) {
-      const res = await fetch(`${API}/admin/audit-log?page=${page}&per_page=500&q=${q}&action=${action}`, { credentials: 'include', headers: authH() });
+      const res = await fetch(`${API}/admin/audit-log?page=${page}&per_page=500&q=${q}&action=${action}${range}`, { credentials: 'include', headers: authH() });
       if (!res.ok) break;
       const d = await res.json();
       allItems = allItems.concat(d.items || []);
@@ -5917,8 +6661,11 @@ async function loadAuditLog(page = 1) {
   loadLogActions();
   const q = encodeURIComponent((document.getElementById('log-search')?.value || '').trim());
   const action = encodeURIComponent(document.getElementById('log-action-filter')?.value || '');
+  const dateFrom = document.getElementById('log-date-from')?.value || '';
+  const dateTo = document.getElementById('log-date-to')?.value || '';
+  const range = (dateFrom ? `&date_from=${dateFrom}` : '') + (dateTo ? `&date_to=${dateTo}` : '');
   try {
-    const res = await fetch(`${API}/admin/audit-log?page=${page}&per_page=50&q=${q}&action=${action}`, { credentials: 'include', headers: authH() });
+    const res = await fetch(`${API}/admin/audit-log?page=${page}&per_page=50&q=${q}&action=${action}${range}`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const d = await res.json();
     document.getElementById('log-total').textContent = `Всего записей: ${d.total}`;
@@ -6015,6 +6762,59 @@ async function importSettings(input) {
   input.value = '';
 }
 
+// ─── Settings change history ────────────────────────────────────────────────
+// Every PUT /api/admin/settings/{key} already writes a "settings.update" AuditLog row
+// with detail "key=value" (see admin_settings.py's update_setting) — this just filters
+// GET /api/admin/audit-log down to one key via its existing q= substring search (which
+// matches against admin_username OR detail), rather than adding a new backend endpoint
+// or a second parallel logging path.
+function openSettingsHistory() {
+  const sel = document.getElementById('settings-history-key');
+  if (sel && !sel.options.length) {
+    sel.innerHTML = SETTINGS_FIELD_KEYS.slice().sort().map(k => `<option value="${esc(k)}">${esc(k)}</option>`).join('');
+  }
+  document.getElementById('settings-history-modal').style.display = '';
+  loadSettingsHistory();
+}
+
+function closeSettingsHistory() {
+  document.getElementById('settings-history-modal').style.display = 'none';
+}
+
+async function loadSettingsHistory() {
+  const body = document.getElementById('settings-history-body');
+  const key = document.getElementById('settings-history-key')?.value;
+  if (!body || !key) return;
+  body.innerHTML = '<p style="color:var(--muted);font-size:.8rem;">Загрузка…</p>';
+  try {
+    // "key=" (with the trailing "=") keeps e.g. "wipe_date=" from also matching
+    // "wipe_date2=..." rows — detail is always formatted as "<key>=<value>".
+    const q = encodeURIComponent(`${key}=`);
+    const res = await fetch(`${API}/admin/audit-log?action=settings.update&q=${q}&per_page=30`, { credentials: 'include', headers: authH() });
+    if (!res.ok) { handleAuth(res); return; }
+    const d = await res.json();
+    const items = d.items || [];
+    if (!items.length) {
+      body.innerHTML = '<p style="color:var(--muted);font-size:.8rem;">Изменений этой настройки пока не зафиксировано.</p>';
+      return;
+    }
+    body.innerHTML = items.map(item => {
+      // created_at from this endpoint is naive UTC with no offset (SQLite drops tzinfo,
+      // see CLAUDE.md) — append 'Z' before parsing, same workaround used elsewhere in
+      // this file (relativeTimeFromIso above) so it renders in the site timezone, not UTC.
+      const iso = item.created_at.endsWith('Z') ? item.created_at : item.created_at + 'Z';
+      const when = fmtDateTime(iso);
+      const eq = (item.detail || '').indexOf('=');
+      const val = eq >= 0 ? item.detail.slice(eq + 1) : (item.detail || '');
+      return `<div style="display:flex;gap:.6rem;align-items:flex-start;font-size:.78rem;padding:.4rem 0;border-bottom:1px solid rgba(255,255,255,.05);">
+        <span style="color:var(--muted);white-space:nowrap;min-width:110px;">${esc(when)}</span>
+        <span style="color:var(--gold);white-space:nowrap;">${esc(item.admin || item.admin_username || '?')}</span>
+        <span style="color:var(--text);word-break:break-word;flex:1;">${esc(val)}</span>
+      </div>`;
+    }).join('');
+  } catch { body.innerHTML = '<p style="color:#f87171;font-size:.8rem;">Ошибка загрузки.</p>'; }
+}
+
 // ─── Wipe history ─────────────────────────────────────────────────────────
 const WIPE_LABELS = { full: 'Полный', map: 'Карта', progress: 'Прогресс' };
 const WIPE_COLORS = { full: '#f87171', map: '#fbbf24', progress: '#34d399' };
@@ -6077,7 +6877,10 @@ async function _doAddWipe(server_num, wipe_type, dateVal, note) {
     const r = await fetch(`${API}/admin/wipes`, {
       method: 'POST',
       credentials: 'include', headers: authH(),
-      body: JSON.stringify({ server_num, wipe_type, wipe_date: new Date(dateVal).toISOString(), note }),
+      // Site-timezone conversion (window.__TZ), not the browser's own zone — see
+      // _siteTzToUtcIso's comment; Wipe.wipe_date is a real UTC DateTime column, same as
+      // Event.start_date/end_date, so this had the same off-by-browser-offset bug those did.
+      body: JSON.stringify({ server_num, wipe_type, wipe_date: _siteTzToUtcIso(dateVal), note }),
     });
     if (!r.ok) { const e = await r.json(); showToast(e.detail || 'Ошибка', 'error'); return; }
     document.getElementById('wipe-form').style.display = 'none';
@@ -6395,11 +7198,13 @@ function _renderMediaGrid() {
   const empty = document.getElementById('media-empty');
   if (!grid) return;
   const q = (document.getElementById('media-search')?.value || '').trim().toLowerCase();
-  const filtered = q ? _mediaAllItems.filter(f => f.filename.toLowerCase().includes(q)) : _mediaAllItems;
+  const onlyUnused = document.getElementById('media-filter-unused')?.checked;
+  let filtered = q ? _mediaAllItems.filter(f => f.filename.toLowerCase().includes(q)) : _mediaAllItems;
+  if (onlyUnused) filtered = filtered.filter(f => !(f.used_by && f.used_by.length));
   if (!filtered.length) {
     grid.innerHTML = '';
     document.getElementById('media-pagination').innerHTML = '';
-    if (empty) { empty.style.display = ''; empty.textContent = q ? 'Ничего не найдено.' : 'Нет загруженных файлов'; }
+    if (empty) { empty.style.display = ''; empty.textContent = (q || onlyUnused) ? 'Ничего не найдено.' : 'Нет загруженных файлов'; }
     return;
   }
   if (empty) empty.style.display = 'none';
@@ -6411,10 +7216,22 @@ function _renderMediaGrid() {
     const ext = f.filename.split('.').pop().toLowerCase();
     const isImg = imgExts.includes(ext);
     const kb = (f.size_bytes / 1024).toFixed(1);
+    // onerror replaces just the <img> itself (this.outerHTML), not the parent's whole
+    // innerHTML — a broken/missing file used to wipe out everything else inside
+    // .media-thumb on load failure (the info footer, and now the used_by badge below
+    // too, since both are siblings of the <img> inside that same container).
     const thumb = isImg
-      ? `<img class="media-thumb-img" src="${esc(f.url)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'media-thumb-img media-no-img\\'>📄</div>'">`
+      ? `<img class="media-thumb-img" src="${esc(f.url)}" loading="lazy" onerror="this.outerHTML='<div class=\\'media-thumb-img media-no-img\\'>📄</div>'">`
       : `<div class="media-thumb-img media-no-img">📄</div>`;
-    return `<div class="media-thumb">
+    // used_by — same cross-reference GET /api/admin/uploads already surfaces on the
+    // Файлы tab (see _uploads_used_by_lookup in admin_system.py); not exhaustive
+    // (covers/badges/DM attachments aren't checked), see that function's docstring.
+    const used = f.used_by && f.used_by.length;
+    const usageBadge = used
+      ? `<span title="${esc(f.used_by.map(u => u.label).join(', '))}" style="position:absolute;top:.3rem;left:.3rem;z-index:1;background:rgba(0,70,15,.75);border:1px solid rgba(0,160,35,.5);color:#86efac;font-size:.55rem;font-weight:700;padding:.1rem .4rem;border-radius:9999px;">используется</span>`
+      : `<span title="Не найдено ни в одном из проверяемых мест сайта" style="position:absolute;top:.3rem;left:.3rem;z-index:1;background:rgba(90,70,0,.6);border:1px solid rgba(200,160,0,.4);color:#fde68a;font-size:.55rem;font-weight:700;padding:.1rem .4rem;border-radius:9999px;">не используется</span>`;
+    return `<div class="media-thumb" style="position:relative;">
+      ${usageBadge}
       ${thumb}
       <div class="media-thumb-info">
         <div class="media-thumb-name" title="${esc(f.filename)}">${esc(f.filename)}</div>
@@ -6460,6 +7277,15 @@ async function deleteMedia(url, el) {
 
 // ─── Audit log section (Журнал действий) ──────────────────────────────────
 let _auditSectionPage = 1;
+// Keeps the plain <a download> CSV link (no fetch/headers involved, so it can't attach
+// a JS-built body/query easily any other way) pointed at the same tier/date-range
+// filters currently applied to the on-screen table.
+function _updateAuditlogExportLink(tier, range) {
+  const link = document.getElementById('auditlog-export-link');
+  if (!link) return;
+  const qs = (tier + range).replace(/^&/, '');
+  link.href = `/api/admin/export/audit-log${qs ? '?' + qs : ''}`;
+}
 async function loadAuditLogSection(page) {
   _auditSectionPage = page || 1;
   const tbody = document.getElementById('auditlog-body');
@@ -6470,8 +7296,12 @@ async function loadAuditLogSection(page) {
   // independently 403s a non-superadmin caller passing it anyway (see get_audit_log).
   const superadminOnly = meetsRole('superadmin') && !!document.getElementById('auditlog-superadmin-filter')?.checked;
   const tier = superadminOnly ? '&tier=superadmin' : '';
+  const dateFrom = document.getElementById('auditlog-date-from')?.value || '';
+  const dateTo = document.getElementById('auditlog-date-to')?.value || '';
+  const range = (dateFrom ? `&date_from=${dateFrom}` : '') + (dateTo ? `&date_to=${dateTo}` : '');
+  _updateAuditlogExportLink(tier, range);
   try {
-    const d = await fetch(`${API}/admin/audit-log?page=${_auditSectionPage}&per_page=50${tier}`, { credentials: 'include', headers: authH() }).then(r => r.json());
+    const d = await fetch(`${API}/admin/audit-log?page=${_auditSectionPage}&per_page=50${tier}${range}`, { credentials: 'include', headers: authH() }).then(r => r.json());
     const items = d.items || [];
     if (!items.length) {
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Нет записей</td></tr>';
@@ -6550,21 +7380,58 @@ function clearModLogSteamIdFilter() {
   history.replaceState(null, '', url.pathname + url.search + url.hash);
 }
 
+const _modlogSearchDebounced = debounce(() => loadModerationLog(), 350);
+
+// Keeps the plain <a download> CSV link pointed at whatever server/steam_id/q/date
+// filters are currently applied to the on-screen table — same reasoning as
+// _updateAuditlogExportLink above (a plain <a> can't attach a fetch body/headers).
+function _updateModlogExportLink(params) {
+  const link = document.getElementById('modlog-export-link');
+  if (!link) return;
+  const qs = new URLSearchParams(params);
+  qs.delete('limit');
+  link.href = `/api/admin/export/moderation-log?${qs}`;
+}
+
+// "Needs attention" glance (item 4): counts ban actions within the last 24h among the
+// currently loaded rows. Deliberately cheap/client-side over the already-fetched page
+// rather than a new aggregation endpoint — see the section's header comment.
+function _renderModlogRecentBansBadge() {
+  const badge = document.getElementById('modlog-recent-bans-badge');
+  if (!badge) return;
+  const cutoff = Date.now() - 24 * 3600 * 1000;
+  const recentBans = _modlogCache.filter(e => e.action === 'ban' && new Date(e.created_at).getTime() >= cutoff).length;
+  if (recentBans > 0) {
+    badge.style.display = 'inline-flex';
+    badge.textContent = `⚠ Банов за 24ч: ${recentBans}`;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
 async function loadModerationLog() {
   const tbody = document.getElementById('modlog-body');
   if (!tbody) return;
   tableShowSkeleton('modlog-body', 5);
   updateModLogSteamIdBadge();
   const serverNum = document.getElementById('modlog-server-filter')?.value || '';
+  const q = (document.getElementById('modlog-search')?.value || '').trim();
+  const dateFrom = document.getElementById('modlog-date-from')?.value || '';
+  const dateTo = document.getElementById('modlog-date-to')?.value || '';
   const params = new URLSearchParams({
     limit: 200,
     ...(serverNum ? { server_num: serverNum } : {}),
     ...(_modlogSteamIdFilter ? { steam_id: _modlogSteamIdFilter } : {}),
+    ...(q ? { q } : {}),
+    ...(dateFrom ? { date_from: dateFrom } : {}),
+    ...(dateTo ? { date_to: dateTo } : {}),
   });
+  _updateModlogExportLink(params);
   try {
     const d = await fetch(`${API}/admin/moderation-log?${params}`, { credentials: 'include', headers: authH() }).then(r => r.json());
     _modlogCache = d.log || [];
     renderModerationLog();
+    _renderModlogRecentBansBadge();
   } catch {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>';
   }
@@ -6673,16 +7540,24 @@ function _onReportCheck() {
 async function bulkReviewReports(status) {
   const ids = [...document.querySelectorAll('.report-check:checked')].map(el => Number(el.dataset.id));
   if (!ids.length) return;
-  try {
-    const r = await fetch(`${API}/admin/reports/bulk-review`, {
-      method: 'POST', credentials: 'include', headers: authH(),
-      body: JSON.stringify({ ids, status }),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) { showToast(d.detail || 'Ошибка обновления', 'error'); return; }
-    showToast(`Обновлено жалоб: ${d.succeeded} из ${ids.length}`, d.failed ? 'error' : 'success');
-  } catch { showToast('Ошибка соединения', 'error'); }
-  loadReports(_reportsPage);
+  const labels = { reviewed: 'рассмотренными', dismissed: 'отклонёнными' };
+  showConfirm({
+    title: `Отметить ${ids.length} жалоб ${labels[status] || status}?`,
+    text: 'Действие применится сразу ко всем выбранным жалобам.',
+    icon: status === 'reviewed' ? '✓' : '✗', okLabel: 'Применить',
+    onOk: async () => {
+      try {
+        const r = await fetch(`${API}/admin/reports/bulk-review`, {
+          method: 'POST', credentials: 'include', headers: authH(),
+          body: JSON.stringify({ ids, status }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { showToast(d.detail || 'Ошибка обновления', 'error'); return; }
+        showToast(`Обновлено жалоб: ${d.succeeded} из ${ids.length}`, d.failed ? 'error' : 'success');
+      } catch { showToast('Ошибка соединения', 'error'); }
+      loadReports(_reportsPage);
+    },
+  });
 }
 async function reviewReport(id, status) {
   await fetch(`${API}/admin/reports/${id}`, { method: 'PATCH', credentials: 'include', headers: authH(), body: JSON.stringify({ status }) });
@@ -6763,7 +7638,11 @@ async function loadEvents(page = 1) {
     renderPagination('events-pagination', page, Math.ceil((d.total||0) / 20), loadEvents);
     if (!items.length) { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--muted);">Нет событий</td></tr>'; return; }
     tbody.innerHTML = items.map(ev => {
-      const dt = ev.start_date ? new Date(ev.start_date).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+      // fmtDateTime (common.js) renders in the site's configured timezone (window.__TZ) —
+      // a plain `new Date(...).toLocaleString()` here would instead use the admin's own
+      // browser timezone, same class of bug as the ev-start/ev-end input conversion fixed
+      // above (see _siteTzToUtcIso's comment).
+      const dt = ev.start_date ? fmtDateTime(ev.start_date) : '—';
       const statusColor = EVENT_STATUS_COLORS[ev.status]||'var(--muted)';
       const pCount = ev.participant_count||0;
       const pMax = ev.max_participants ? `/${ev.max_participants}` : '';
@@ -6786,6 +7665,7 @@ async function loadEvents(page = 1) {
 
 async function openEventEditor(id) {
   _editingEventId = id;
+  _refreshSiteTzLabels();
   document.getElementById('event-editor-title').textContent = id ? 'Редактировать событие' : 'Новое событие';
   ['ev-title','ev-desc','ev-start','ev-end','ev-cover'].forEach(i => { const el=document.getElementById(i); if(el) el.value=''; });
   document.getElementById('ev-max').value = '';
@@ -6802,8 +7682,8 @@ async function openEventEditor(id) {
       document.getElementById('ev-status').value = ev.status||'upcoming';
       document.getElementById('ev-max').value = ev.max_participants||'';
       document.getElementById('ev-cover').value = ev.cover_url||'';
-      if (ev.start_date) document.getElementById('ev-start').value = ev.start_date.slice(0,16);
-      if (ev.end_date) document.getElementById('ev-end').value = ev.end_date.slice(0,16);
+      if (ev.start_date) document.getElementById('ev-start').value = _utcToSiteTzInput(ev.start_date);
+      if (ev.end_date) document.getElementById('ev-end').value = _utcToSiteTzInput(ev.end_date);
     } catch {}
   }
   document.getElementById('event-editor-modal').style.display = '';
@@ -6822,8 +7702,8 @@ async function saveEvent() {
     description: document.getElementById('ev-desc').value.trim()||null,
     event_type: document.getElementById('ev-type').value,
     status: document.getElementById('ev-status').value,
-    start_date: document.getElementById('ev-start').value||null,
-    end_date: document.getElementById('ev-end').value||null,
+    start_date: _siteTzToUtcIso(document.getElementById('ev-start').value)||null,
+    end_date: _siteTzToUtcIso(document.getElementById('ev-end').value)||null,
     max_participants: parseInt(document.getElementById('ev-max').value)||null,
     cover_url: document.getElementById('ev-cover').value.trim()||null,
   };
@@ -7174,6 +8054,18 @@ let _shopQueuePage = 1;
 const SHOP_REDEMPTION_STATUS_LABELS = { pending: 'Ожидает', fulfilled: 'Выдано', cancelled: 'Отменено' };
 const SHOP_REDEMPTION_STATUS_COLORS = { pending: '#facc15', fulfilled: '#4ade80', cancelled: 'var(--muted)' };
 
+// Weekly-redemption-limit indicator for the queue table — surfaces GET /api/admin/
+// shop/redemptions' weekly_used/weekly_limit_per_user (see ShopRedemptionOut's
+// docstring in schemas.py) so an admin sees "this player is at/near this item's cap"
+// directly, instead of only finding out when the player's next attempt 409s.
+function _weeklyLimitBadge(used, limit) {
+  const atLimit = used >= limit;
+  const near = !atLimit && used === limit - 1;
+  const color = atLimit ? '#f87171' : near ? '#facc15' : 'var(--muted)';
+  const bg = atLimit ? 'rgba(200,0,30,.15)' : near ? 'rgba(250,204,21,.12)' : 'rgba(255,255,255,.06)';
+  return `<div style="margin-top:.25rem;"><span title="Использовано ${used} из ${limit} за последние 7 дней" style="font-size:.6rem;font-weight:700;padding:.08rem .4rem;border-radius:9999px;background:${bg};color:${color};white-space:nowrap;">${used}/${limit} в нед.</span></div>`;
+}
+
 async function loadShopQueue(page) {
   _shopQueuePage = page || 1;
   const tbody = document.getElementById('shop-queue-tbody');
@@ -7196,9 +8088,12 @@ async function loadShopQueue(page) {
              <button onclick="cancelRedemption(${r.id})" class="btn-danger" style="font-size:.7rem;padding:.28rem .6rem;">Отменить</button>
            </div>`
         : `<span style="font-size:.72rem;color:var(--muted);">${esc(r.resolved_by || '')}</span>`;
+      const weeklyBadge = r.weekly_limit_per_user != null
+        ? _weeklyLimitBadge(r.weekly_used || 0, r.weekly_limit_per_user)
+        : '';
       return `<tr>
-        <td data-label="Игрок" style="font-size:.78rem;">${esc(r.username || '')}</td>
-        <td data-label="Товар" style="font-size:.78rem;">${esc(r.item_name_snapshot)}</td>
+        <td data-label="Игрок" style="font-size:.78rem;">${r.username ? `<a href="/user.html?u=${encodeURIComponent(r.username)}" target="_blank" style="color:var(--accent);text-decoration:none;">${esc(r.username)}</a>` : ''}</td>
+        <td data-label="Товар" style="font-size:.78rem;">${esc(r.item_name_snapshot)}${weeklyBadge}</td>
         <td data-label="Стоимость" style="font-size:.78rem;color:var(--gold);">${r.cost_snapshot}</td>
         <td data-label="Статус"><span style="font-size:.72rem;color:${color};font-weight:600;">${SHOP_REDEMPTION_STATUS_LABELS[r.status] || r.status}</span></td>
         <td data-label="Дата" style="font-size:.75rem;color:var(--muted);white-space:nowrap;">${dt}</td>
@@ -7297,6 +8192,7 @@ async function loadAnalytics() {
 
 // ─── Points economy dashboard ───────────────────────────────────────────────
 async function loadEconomyStats() {
+  loadGrantUserList(); // populates grant-user-list + __ADMIN_USERS_BY_NAME for the per-player export card below, in case Экономика is opened before Магазин
   try {
     const days = document.getElementById('economy-days')?.value || 30;
     const d = await fetch(`${API}/admin/economy-stats?days=${days}`, { credentials: 'include' }).then(r => r.json());
@@ -7336,8 +8232,44 @@ async function loadEconomyStats() {
   } catch(e) { console.error('Economy stats error:', e); }
 }
 
+function exportPlayerPointsCsv() {
+  const username = (document.getElementById('econ-export-username')?.value || '').trim();
+  if (!username) { showToast('Введите имя игрока', 'error'); return; }
+  const userId = window.__ADMIN_USERS_BY_NAME?.[username];
+  if (!userId) { showToast('Игрок не найден — выберите вариант из подсказки', 'error'); return; }
+  const a = document.createElement('a');
+  a.href = `${API}/admin/export/points-transactions?user_id=${userId}`;
+  a.click();
+}
+
 // ─── Backups ──────────────────────────────────────────────────────────────
+function _fmtBackupBytes(b) {
+  if (b == null) return '—';
+  if (b < 1024) return b + ' Б';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' КБ';
+  if (b < 1073741824) return (b / 1048576).toFixed(1) + ' МБ';
+  return (b / 1073741824).toFixed(2) + ' ГБ';
+}
+async function loadBackupsDiskUsage() {
+  const el = document.getElementById('backups-disk-usage');
+  if (!el) return;
+  try {
+    const d = await fetch(`${API}/admin/backups/disk-usage`, { credentials: 'include', headers: authH() }).then(r => { if (!r.ok) { handleAuth(r); throw new Error(); } return r.json(); });
+    const usedPct = d.disk_total ? Math.min(100, (d.disk_used / d.disk_total) * 100) : 0;
+    const barColor = usedPct >= 90 ? '#f87171' : usedPct >= 75 ? '#facc15' : '#4ade80';
+    el.style.display = '';
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem;">
+        <span style="font-size:.72rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;">Место на диске</span>
+        <span style="font-size:.75rem;color:var(--muted);">Свободно ${_fmtBackupBytes(d.disk_free)} из ${_fmtBackupBytes(d.disk_total)} · Бэкапы: ${_fmtBackupBytes(d.backups_total_bytes)} (${d.backups_count})</span>
+      </div>
+      <div style="height:6px;border-radius:9999px;background:rgba(255,255,255,.08);overflow:hidden;">
+        <div style="height:100%;width:${usedPct.toFixed(1)}%;background:${barColor};border-radius:9999px;"></div>
+      </div>`;
+  } catch { el.style.display = 'none'; }
+}
 async function loadBackups() {
+  loadBackupsDiskUsage();
   tableShowSkeleton('backups-table-body', 4);
   const data = await fetch(`${API}/admin/backups`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => []);
   const tbody = document.getElementById('backups-table-body');
@@ -7492,6 +8424,27 @@ async function loadErrors(page = 1) {
       <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;"><span style="color:var(--muted);">Регистрация</span><span id="userqv-created" style="color:var(--muted);"></span></div>
     </div>
     <div id="userqv-actions" style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:center;"></div>
+
+    <!-- Per-player moderation history (item 5): pulls from the same
+         GET /api/admin/moderation-log the "Журнал модерации" section itself uses,
+         filtered to this user's steam_id, so there's one underlying data source rather
+         than a separate history feed. Only meaningful for accounts linked to a game
+         character via .register/.login (steam_id set) — see loadUserQvModHistory's
+         "not linked" branch for accounts without one. -->
+    <details style="margin-top:1rem;">
+      <summary style="cursor:pointer;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">История модерации</summary>
+      <div id="userqv-modhistory" style="margin-top:.6rem;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:.4rem;"></div>
+    </details>
+
+    <!-- Nickname change history (item 9): PointsTransaction rows with
+         reason="nickname_change" already logged by POST /api/plugin/nickname-change
+         (backs the in-game ".nick" command) — detail is "OldName -> NewName". No new
+         table/endpoint needed, just surfaced here via the existing
+         GET /api/admin/points/transactions?user_id=... ledger, filtered client-side. -->
+    <details style="margin-top:.6rem;">
+      <summary style="cursor:pointer;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">История никнеймов</summary>
+      <div id="userqv-nickhistory" style="margin-top:.6rem;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:.4rem;"></div>
+    </details>
   </div>
 </div>
 

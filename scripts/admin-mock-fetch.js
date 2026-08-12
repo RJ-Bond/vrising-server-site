@@ -43,19 +43,81 @@
     points_per_minute_playtime: '1', points_streak_bonus: '10', points_streak_min_days: '2',
   }).map(([key, value]) => ({ key, value: String(value) }));
 
-  // ShopItemOut shape (backend/schemas.py) — GET /api/admin/shop/items.
+  // ShopItemOut shape (backend/schemas.py) — GET /api/admin/shop/items. Item #2 carries
+  // a weekly_limit_per_user so the queue preview below can exercise the weekly-limit
+  // badge (ShopRedemptionOut.weekly_limit_per_user/weekly_used).
   const fakeShopItems = [
-    { id: 1, name: 'Waypoint Shard', description: 'Телепорт-камень для быстрого перемещения.', cost: 50, image_url: null, is_active: true, stock: null, sort_order: 0, created_at: iso(10 * 24 * 3600 * 1000), updated_at: iso(2 * 24 * 3600 * 1000) },
-    { id: 2, name: 'Blood Rose Seeds', description: 'Редкие семена для фермы крови.', cost: 120, image_url: null, is_active: true, stock: 4, sort_order: 1, created_at: iso(8 * 24 * 3600 * 1000), updated_at: iso(8 * 24 * 3600 * 1000) },
-    { id: 3, name: 'Legendary Weapon Skin', description: 'Косметический скин оружия.', cost: 800, image_url: null, is_active: false, stock: 0, sort_order: 2, created_at: iso(5 * 24 * 3600 * 1000), updated_at: iso(1 * 24 * 3600 * 1000) },
+    { id: 1, name: 'Waypoint Shard', description: 'Телепорт-камень для быстрого перемещения.', cost: 50, image_url: null, is_active: true, stock: null, sort_order: 0, weekly_limit_per_user: null, created_at: iso(10 * 24 * 3600 * 1000), updated_at: iso(2 * 24 * 3600 * 1000) },
+    { id: 2, name: 'Blood Rose Seeds', description: 'Редкие семена для фермы крови.', cost: 120, image_url: null, is_active: true, stock: 4, sort_order: 1, weekly_limit_per_user: 3, created_at: iso(8 * 24 * 3600 * 1000), updated_at: iso(8 * 24 * 3600 * 1000) },
+    { id: 3, name: 'Legendary Weapon Skin', description: 'Косметический скин оружия.', cost: 800, image_url: null, is_active: false, stock: 0, sort_order: 2, weekly_limit_per_user: null, created_at: iso(5 * 24 * 3600 * 1000), updated_at: iso(1 * 24 * 3600 * 1000) },
   ];
 
   // ShopRedemptionOut shape (backend/schemas.py) — GET /api/admin/shop/redemptions.
+  // Redemption #2 (item #2, weekly_limit_per_user=3) carries weekly_used at/near the
+  // cap so the queue preview exercises both the "at limit" (red) and "near limit"
+  // (amber) badge states.
   const fakeShopRedemptions = [
-    { id: 1, user_id: 2, shop_item_id: 1, item_name_snapshot: 'Waypoint Shard', cost_snapshot: 50, status: 'pending', delivery_mode: 'manual', player_note: 'Заранее спасибо!', admin_note: null, created_at: iso(3600000), resolved_at: null, resolved_by: null, username: 'buhalovna' },
-    { id: 2, user_id: 3, shop_item_id: 2, item_name_snapshot: 'Blood Rose Seeds', cost_snapshot: 120, status: 'pending', delivery_mode: 'manual', player_note: null, admin_note: null, created_at: iso(7200000), resolved_at: null, resolved_by: null, username: 'Shadowfang' },
-    { id: 3, user_id: 4, shop_item_id: null, item_name_snapshot: 'Legendary Weapon Skin', cost_snapshot: 800, status: 'fulfilled', delivery_mode: 'manual', player_note: null, admin_note: 'Выдано в игре', created_at: iso(2 * 24 * 3600 * 1000), resolved_at: iso(23 * 3600 * 1000), resolved_by: 'RJ Bond', username: 'Dracarys' },
+    { id: 1, user_id: 2, shop_item_id: 1, item_name_snapshot: 'Waypoint Shard', cost_snapshot: 50, status: 'pending', delivery_mode: 'manual', player_note: 'Заранее спасибо!', admin_note: null, created_at: iso(3600000), resolved_at: null, resolved_by: null, username: 'buhalovna', weekly_limit_per_user: null, weekly_used: null },
+    { id: 2, user_id: 3, shop_item_id: 2, item_name_snapshot: 'Blood Rose Seeds', cost_snapshot: 120, status: 'pending', delivery_mode: 'manual', player_note: null, admin_note: null, created_at: iso(7200000), resolved_at: null, resolved_by: null, username: 'Shadowfang', weekly_limit_per_user: 3, weekly_used: 3 },
+    { id: 3, user_id: 4, shop_item_id: null, item_name_snapshot: 'Legendary Weapon Skin', cost_snapshot: 800, status: 'fulfilled', delivery_mode: 'manual', player_note: null, admin_note: 'Выдано в игре', created_at: iso(2 * 24 * 3600 * 1000), resolved_at: iso(23 * 3600 * 1000), resolved_by: 'RJ Bond', username: 'Dracarys', weekly_limit_per_user: null, weekly_used: null },
+    { id: 4, user_id: 9, shop_item_id: 2, item_name_snapshot: 'Blood Rose Seeds', cost_snapshot: 120, status: 'pending', delivery_mode: 'manual', player_note: null, admin_note: null, created_at: iso(9000000), resolved_at: null, resolved_by: null, username: 'MoonlitFang', weekly_limit_per_user: 3, weekly_used: 2 },
   ];
+
+  // GameClanOut shape (backend/schemas.py) — GET /api/clans. member_preview mixes
+  // linked (username set) and unlinked (username null) members to exercise both the
+  // profile-link and plain-text branches of admin.html's clans table.
+  const fakeClans = [
+    {
+      id: 1, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', clan_guid: 'guid-1',
+      name: 'Кровавые Клинки', motto: 'Сила в единстве', updated_at: iso(2 * 3600 * 1000), member_count: 7,
+      member_preview: [
+        { steam_id: '1', character_name: 'Dracarys', role: 'leader', username: 'Dracarys', avatar_url: null, is_online: true, physical_power: 320, spell_power: 210 },
+        { steam_id: '2', character_name: 'Shadowfang', role: 'officer', username: 'Shadowfang', avatar_url: null, is_online: false, physical_power: 280, spell_power: 190 },
+        { steam_id: '3', character_name: 'GuestPlayer', role: 'member', username: null, avatar_url: null, is_online: false, physical_power: 150, spell_power: 90 },
+      ],
+      bases: [],
+    },
+    {
+      id: 2, server_num: 1, server_name: '[RU] Just-Skill.Ru | Standart PvE', clan_guid: 'guid-2',
+      name: 'Ночные Стражи', motto: '', updated_at: iso(30 * 24 * 3600 * 1000), member_count: 2,
+      member_preview: [
+        { steam_id: '4', character_name: 'MoonlitFang', role: 'leader', username: 'MoonlitFang', avatar_url: null, is_online: true, physical_power: 210, spell_power: 140 },
+        { steam_id: '5', character_name: 'IronVeil', role: 'member', username: 'IronVeil', avatar_url: null, is_online: false, physical_power: 175, spell_power: 100 },
+      ],
+      bases: [],
+    },
+  ];
+
+  // GET /api/admin/uploads shape (backend/routers/admin_system.py's list_uploads) —
+  // used_by populated for the first item, empty for the second, to preview both the
+  // "используется"/"не используется" badges and the unused-file filter.
+  const fakeUploads = [
+    { filename: 'og-default.png', url: '/api/uploads/og-default.png', size: 245000, created_at: iso(5 * 24 * 3600 * 1000), used_by: [{ type: 'logo', label: 'Логотип сайта' }] },
+    { filename: 'orphaned-banner.jpg', url: '/api/uploads/orphaned-banner.jpg', size: 812000, created_at: iso(40 * 24 * 3600 * 1000), used_by: [] },
+  ];
+
+  // GET /api/admin/media shape (backend/routers/admin_system.py's list_media).
+  const fakeMedia = {
+    items: [
+      { filename: 'og-default.png', url: '/api/uploads/og-default.png', size_bytes: 245000, modified_at: iso(5 * 24 * 3600 * 1000), used_by: [{ type: 'logo', label: 'Логотип сайта' }] },
+      { filename: 'orphaned-banner.jpg', url: '/api/uploads/orphaned-banner.jpg', size_bytes: 812000, modified_at: iso(40 * 24 * 3600 * 1000), used_by: [] },
+      { filename: 'event-cover.webp', url: '/api/uploads/covers/event-cover.webp', size_bytes: 156000, modified_at: iso(12 * 24 * 3600 * 1000), used_by: [] },
+    ],
+  };
+
+  // GET /api/admin/backups shape (backend/routers/admin_system.py's list_backups).
+  const fakeBackups = [
+    { filename: 'vrising_20260812_030000.db', size: 18874368, created_at: iso(9 * 3600 * 1000) },
+    { filename: 'vrising_20260811_030000.db', size: 18628412, created_at: iso(33 * 3600 * 1000) },
+    { filename: 'vrising_20260810_030000.db', size: 18432009, created_at: iso(57 * 3600 * 1000) },
+  ];
+
+  // GET /api/admin/backups/disk-usage shape (backend_system.py's backups_disk_usage) —
+  // ~62% used, so the preview exercises the bar's default (green) color state.
+  const fakeDiskUsage = {
+    disk_total: 107374182400, disk_used: 66571993088, disk_free: 40802189312,
+    backups_total_bytes: fakeBackups.reduce((s, b) => s + b.size, 0), backups_count: fakeBackups.length,
+  };
 
   // ReportOut-ish shape (backend/schemas.py's ReportOut / backend/routers/reports.py's
   // list_reports()) — GET /api/admin/reports. Used to preview frontend/admin.html's
@@ -138,6 +200,15 @@
     })],
     [/\/api\/admin\/password-resets$/, () => []],
     [/\/api\/admin\/users$/, () => fakeUsers],
+    [/\/api\/clans$/, () => fakeClans],
+    [/\/api\/admin\/uploads$/, () => fakeUploads],
+    [/\/api\/admin\/media$/, () => fakeMedia],
+    // Must be registered ahead of the plain /api/admin/backups$ list pattern below —
+    // same route-ordering reasoning as the real backend's disk-usage endpoint being
+    // registered ahead of GET /api/admin/backups/{filename} (see that endpoint's
+    // docstring in admin_system.py).
+    [/\/api\/admin\/backups\/disk-usage$/, () => fakeDiskUsage],
+    [/\/api\/admin\/backups$/, () => fakeBackups],
     [/\/api\/admin\/settings$/, () => adminSettingsList.map(s => ({ ...s, updated_at: iso(0) }))],
     [/\/api\/admin\/shop\/items$/, () => fakeShopItems],
     [/\/api\/admin\/reports(\?.*)?$/, (url) => {
