@@ -2148,9 +2148,16 @@
 
     <!-- CLANS -->
     <div id="section-clans" class="hidden">
-      <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h1 class="section-title">Кланы</h1>
-        <span id="clans-total" style="font-size:.78rem;color:var(--muted);"></span>
+        <div style="display:flex;align-items:center;gap:.75rem;">
+          <select id="clans-sort" class="dark-input" style="width:auto;font-size:.8rem;padding:.4rem .7rem;" onchange="_renderClansTable()">
+            <option value="members">По количеству участников</option>
+            <option value="updated">По последней активности</option>
+            <option value="name">По названию</option>
+          </select>
+          <span id="clans-total" style="font-size:.78rem;color:var(--muted);"></span>
+        </div>
       </div>
       <div id="clans-table" class="glass-card rounded-xl overflow-hidden">
         <p class="p-6" style="color:var(--muted);font-size:.85rem;">Загрузка...</p>
@@ -2218,9 +2225,15 @@
 
     <!-- FILES -->
     <div id="section-files" class="hidden">
-      <div class="flex items-center justify-between mb-5">
+      <div class="flex items-center justify-between mb-5 flex-wrap gap-3">
         <h1 class="section-title">Файлы</h1>
-        <span id="files-count" style="font-size:.78rem;color:var(--muted);"></span>
+        <div style="display:flex;align-items:center;gap:.75rem;">
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.78rem;color:var(--muted);cursor:pointer;">
+            <input id="files-filter-unused" type="checkbox" style="width:auto;" onchange="_renderFilesGrid()">
+            Только неиспользуемые
+          </label>
+          <span id="files-count" style="font-size:.78rem;color:var(--muted);"></span>
+        </div>
       </div>
       <div id="files-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1rem;"></div>
     </div>
@@ -2403,6 +2416,25 @@
           <tbody id="economy-top-items"></tbody>
         </table>
       </div>
+
+      <!-- Per-player transaction export — full ledger (earn/spend/grant/refund) for
+           one specific player, e.g. for a support dispute over their balance history.
+           Separate from the global "Очередь наград" CSV export above the queue table
+           (that one's redemptions-only, every player). Reuses the same grant-user-list
+           datalist as the manual-grant form on the Магазин tab (loadGrantUserList()
+           populates window.__ADMIN_USERS_BY_NAME, called again here in case Экономика
+           is opened first). -->
+      <div class="glass-card" style="border-radius:.75rem;padding:1.25rem;margin-top:1.25rem;">
+        <div style="font-size:.72rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.85rem;">Экспорт истории игрока</div>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;">
+          <input id="econ-export-username" class="dark-input" list="grant-user-list" placeholder="Имя пользователя" style="width:auto;max-width:220px;font-size:.82rem;">
+          <button onclick="exportPlayerPointsCsv()" class="btn-ghost" style="font-size:.78rem;display:inline-flex;align-items:center;gap:.35rem;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="/icons.svg#icon-download"></use></svg>
+            Скачать CSV
+          </button>
+        </div>
+        <p class="s-desc" style="margin-top:.5rem;">Полная история начислений и списаний очков одного игрока (начисления за игру, стрик, ручные корректировки, покупки, возвраты).</p>
+      </div>
     </div>
 
     <!-- BACKUPS -->
@@ -2411,6 +2443,7 @@
         <h1 class="section-title">Бэкапы</h1>
         <button onclick="createBackup()" class="btn-primary" style="font-size:.82rem;">💾 Создать бэкап</button>
       </div>
+      <div id="backups-disk-usage" class="glass-card" style="border-radius:.75rem;padding:.9rem 1.1rem;margin-bottom:1rem;display:none;"></div>
       <div id="backup-msg" style="margin-bottom:.75rem;font-size:.85rem;"></div>
       <div class="glass-card rounded-xl overflow-hidden">
         <table>
@@ -2442,8 +2475,12 @@
     <div id="section-media" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
         <h2 class="section-title">Медиатека</h2>
-        <div style="display:flex;gap:.5rem;align-items:center;">
+        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
           <input id="media-search" type="text" placeholder="Поиск по имени файла…" class="dark-input" style="width:auto;padding:.4rem .7rem;font-size:.8rem;" oninput="_mediaFilter()">
+          <label style="display:flex;align-items:center;gap:.35rem;font-size:.78rem;color:var(--muted);cursor:pointer;">
+            <input id="media-filter-unused" type="checkbox" style="width:auto;" onchange="_mediaFilter()">
+            Только неиспользуемые
+          </label>
           <button onclick="loadMedia()" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
         </div>
       </div>
@@ -4676,35 +4713,64 @@ function showBanModal(username, onBan) {
 }
 
 // ─── Clans (read-only — synced from the game via the plugin) ────────────────
+let _allClans = [];
 async function loadAdminClans() {
   const el = document.getElementById('clans-table');
-  const totalEl = document.getElementById('clans-total');
   try {
-    const clans = await fetch(`${API}/clans`).then(r => r.json());
-    if (totalEl) totalEl.textContent = `Всего: ${clans.length}`;
-    if (!clans.length) {
-      el.innerHTML = '<p class="p-6" style="color:var(--muted);font-size:.85rem;">Кланов пока нет — появятся после первой синхронизации с игровым сервером.</p>';
-      return;
-    }
-    el.innerHTML = `
-      <table>
-        <thead><tr><th>Название</th><th>Девиз</th><th>Сервер</th><th>Участников</th><th>Обновлено</th></tr></thead>
-        <tbody>
-          ${clans.map(c => {
-            const updated = c.updated_at ? new Date(c.updated_at + (c.updated_at.endsWith('Z') ? '' : 'Z')).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' }) : '—';
-            return `<tr>
-            <td style="font-weight:600;">${esc(c.name)}</td>
-            <td style="color:var(--muted);">${esc(c.motto || '') || '—'}</td>
-            <td style="color:var(--muted);">${c.server_num}</td>
-            <td style="color:var(--muted);">${c.member_count}</td>
-            <td style="color:var(--muted);">${updated}</td>
-          </tr>`;
-          }).join('')}
-        </tbody>
-      </table>`;
+    _allClans = await fetch(`${API}/clans`).then(r => r.json());
+    _renderClansTable();
   } catch {
     el.innerHTML = '<p class="p-6" style="color:#fca5a5;font-size:.85rem;">Ошибка загрузки.</p>';
   }
+}
+
+// GET /api/clans already sorts by member_count desc server-side (see clans.py's own
+// "real communities first" comment), so the "members" option below just uses the
+// as-fetched order rather than re-sorting; "updated"/"name" re-sort client-side over
+// the same already-loaded list — no extra request, same pattern as _renderMediaGrid's
+// client-side search filter above.
+function _renderClansTable() {
+  const el = document.getElementById('clans-table');
+  const totalEl = document.getElementById('clans-total');
+  if (totalEl) totalEl.textContent = `Всего: ${_allClans.length}`;
+  if (!_allClans.length) {
+    el.innerHTML = '<p class="p-6" style="color:var(--muted);font-size:.85rem;">Кланов пока нет — появятся после первой синхронизации с игровым сервером.</p>';
+    return;
+  }
+  const sort = document.getElementById('clans-sort')?.value || 'members';
+  const clans = _allClans.slice();
+  if (sort === 'updated') clans.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+  else if (sort === 'name') clans.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+  else clans.sort((a, b) => b.member_count - a.member_count);
+  el.innerHTML = `
+    <table>
+      <thead><tr><th>Название</th><th>Девиз</th><th>Сервер</th><th>Участников</th><th>Обновлено</th></tr></thead>
+      <tbody>
+        ${clans.map(c => {
+          const updated = c.updated_at ? new Date(c.updated_at + (c.updated_at.endsWith('Z') ? '' : 'Z')).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' }) : '—';
+          // member_preview (up to 4, leaders/officers first) rides along on GET
+          // /api/clans already — no extra request needed to show who's in the clan.
+          // Only members with a linked site account (username set — see .register/
+          // .login in models.py's User.steam_id docstring) get a profile link;
+          // character_name alone isn't a clickable site identity.
+          const preview = (c.member_preview || []).map(m => m.username
+            ? `<a href="/user.html?u=${encodeURIComponent(m.username)}" target="_blank" style="color:var(--accent);text-decoration:none;">${esc(m.character_name)}</a>`
+            : `<span style="color:var(--muted);">${esc(m.character_name)}</span>`
+          ).join(', ');
+          const more = c.member_count > (c.member_preview || []).length ? ` +${c.member_count - c.member_preview.length}` : '';
+          return `<tr>
+          <td style="font-weight:600;">${esc(c.name)}</td>
+          <td style="color:var(--muted);">${esc(c.motto || '') || '—'}</td>
+          <td style="color:var(--muted);">${c.server_num}</td>
+          <td style="color:var(--muted);">
+            <div>${c.member_count}</div>
+            ${preview ? `<div style="font-size:.68rem;margin-top:.15rem;">${preview}${more}</div>` : ''}
+          </td>
+          <td style="color:var(--muted);">${updated}</td>
+        </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
 }
 
 // ─── Users ─────────────────────────────────────────────────────────────────
@@ -5760,21 +5826,41 @@ async function loadAdminFiles() {
   try {
     const res = await fetch(`${API}/admin/uploads`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); if (grid0) grid0.innerHTML = `<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки.</p>`; return; }
-    const files = await res.json();
-    _allFiles = files;
-    document.getElementById('files-count').textContent = `Файлов: ${files.length}`;
-    const grid = document.getElementById('files-grid');
-    if (!files.length) {
-      grid.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Загруженных файлов нет.</p>`;
-      return;
-    }
-    const fmtSize = b => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(1) + ' MB';
-    const isImg = n => /\.(jpe?g|png|gif|webp|svg|ico)$/i.test(n);
-    grid.innerHTML = files.map(f => {
-      const used = f.used_by && f.used_by.length;
-      return `
+    _allFiles = await res.json();
+    _renderFilesGrid();
+  } catch { if (grid0) grid0.innerHTML = `<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки.</p>`; }
+}
+
+// used_by comes from GET /api/admin/uploads' cross-reference against Settings/News/
+// ShopItem/User.avatar_url (see _uploads_used_by_lookup in admin_system.py) — NOT
+// exhaustive (profile covers, badge icons, DM attachments aren't checked, see that
+// function's docstring), so "неиспользуется" here means "not found by this check",
+// not a delete-safety guarantee. Still useful for spotting obvious cleanup candidates
+// (old news thumbnails, replaced logos) without scrolling the whole grid by eye.
+function _renderFilesGrid() {
+  const grid = document.getElementById('files-grid');
+  if (!grid) return;
+  document.getElementById('files-count').textContent = `Файлов: ${_allFiles.length}`;
+  const onlyUnused = document.getElementById('files-filter-unused')?.checked;
+  const files = onlyUnused ? _allFiles.filter(f => !(f.used_by && f.used_by.length)) : _allFiles;
+  if (!_allFiles.length) {
+    grid.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Загруженных файлов нет.</p>`;
+    return;
+  }
+  if (!files.length) {
+    grid.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Неиспользуемых файлов нет.</p>`;
+    return;
+  }
+  const fmtSize = b => b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(1) + ' MB';
+  const isImg = n => /\.(jpe?g|png|gif|webp|svg|ico)$/i.test(n);
+  grid.innerHTML = files.map(f => {
+    const used = f.used_by && f.used_by.length;
+    const badge = used
+      ? `<span title="${esc(f.used_by.map(u => u.label).join(', '))}" style="position:absolute;top:.35rem;left:.35rem;z-index:1;background:rgba(0,70,15,.75);border:1px solid rgba(0,160,35,.5);color:#86efac;font-size:.58rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;">используется</span>`
+      : `<span title="Не найдено ни в одном из проверяемых мест сайта" style="position:absolute;top:.35rem;left:.35rem;z-index:1;background:rgba(90,70,0,.6);border:1px solid rgba(200,160,0,.4);color:#fde68a;font-size:.58rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;">не используется</span>`;
+    return `
       <div class="glass-card rounded-xl overflow-hidden" style="display:flex;flex-direction:column;position:relative;">
-        ${used ? `<span title="${esc(f.used_by.map(u => u.label).join(', '))}" style="position:absolute;top:.35rem;left:.35rem;z-index:1;background:rgba(0,70,15,.75);border:1px solid rgba(0,160,35,.5);color:#86efac;font-size:.58rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;">используется</span>` : ''}
+        ${badge}
         <div style="height:90px;background:rgba(8,0,16,.7);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;" onclick="window.open('${esc(f.url)}','_blank')">
           ${isImg(f.filename)
             ? `<img src="${esc(f.url)}" alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;">`
@@ -5789,8 +5875,7 @@ async function loadAdminFiles() {
           </div>
         </div>
       </div>`;
-    }).join('');
-  } catch { if (grid0) grid0.innerHTML = `<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки.</p>`; }
+  }).join('');
 }
 
 async function deleteUploadedFile(filename) {
@@ -6395,11 +6480,13 @@ function _renderMediaGrid() {
   const empty = document.getElementById('media-empty');
   if (!grid) return;
   const q = (document.getElementById('media-search')?.value || '').trim().toLowerCase();
-  const filtered = q ? _mediaAllItems.filter(f => f.filename.toLowerCase().includes(q)) : _mediaAllItems;
+  const onlyUnused = document.getElementById('media-filter-unused')?.checked;
+  let filtered = q ? _mediaAllItems.filter(f => f.filename.toLowerCase().includes(q)) : _mediaAllItems;
+  if (onlyUnused) filtered = filtered.filter(f => !(f.used_by && f.used_by.length));
   if (!filtered.length) {
     grid.innerHTML = '';
     document.getElementById('media-pagination').innerHTML = '';
-    if (empty) { empty.style.display = ''; empty.textContent = q ? 'Ничего не найдено.' : 'Нет загруженных файлов'; }
+    if (empty) { empty.style.display = ''; empty.textContent = (q || onlyUnused) ? 'Ничего не найдено.' : 'Нет загруженных файлов'; }
     return;
   }
   if (empty) empty.style.display = 'none';
@@ -6411,10 +6498,22 @@ function _renderMediaGrid() {
     const ext = f.filename.split('.').pop().toLowerCase();
     const isImg = imgExts.includes(ext);
     const kb = (f.size_bytes / 1024).toFixed(1);
+    // onerror replaces just the <img> itself (this.outerHTML), not the parent's whole
+    // innerHTML — a broken/missing file used to wipe out everything else inside
+    // .media-thumb on load failure (the info footer, and now the used_by badge below
+    // too, since both are siblings of the <img> inside that same container).
     const thumb = isImg
-      ? `<img class="media-thumb-img" src="${esc(f.url)}" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'media-thumb-img media-no-img\\'>📄</div>'">`
+      ? `<img class="media-thumb-img" src="${esc(f.url)}" loading="lazy" onerror="this.outerHTML='<div class=\\'media-thumb-img media-no-img\\'>📄</div>'">`
       : `<div class="media-thumb-img media-no-img">📄</div>`;
-    return `<div class="media-thumb">
+    // used_by — same cross-reference GET /api/admin/uploads already surfaces on the
+    // Файлы tab (see _uploads_used_by_lookup in admin_system.py); not exhaustive
+    // (covers/badges/DM attachments aren't checked), see that function's docstring.
+    const used = f.used_by && f.used_by.length;
+    const usageBadge = used
+      ? `<span title="${esc(f.used_by.map(u => u.label).join(', '))}" style="position:absolute;top:.3rem;left:.3rem;z-index:1;background:rgba(0,70,15,.75);border:1px solid rgba(0,160,35,.5);color:#86efac;font-size:.55rem;font-weight:700;padding:.1rem .4rem;border-radius:9999px;">используется</span>`
+      : `<span title="Не найдено ни в одном из проверяемых мест сайта" style="position:absolute;top:.3rem;left:.3rem;z-index:1;background:rgba(90,70,0,.6);border:1px solid rgba(200,160,0,.4);color:#fde68a;font-size:.55rem;font-weight:700;padding:.1rem .4rem;border-radius:9999px;">не используется</span>`;
+    return `<div class="media-thumb" style="position:relative;">
+      ${usageBadge}
       ${thumb}
       <div class="media-thumb-info">
         <div class="media-thumb-name" title="${esc(f.filename)}">${esc(f.filename)}</div>
@@ -7174,6 +7273,18 @@ let _shopQueuePage = 1;
 const SHOP_REDEMPTION_STATUS_LABELS = { pending: 'Ожидает', fulfilled: 'Выдано', cancelled: 'Отменено' };
 const SHOP_REDEMPTION_STATUS_COLORS = { pending: '#facc15', fulfilled: '#4ade80', cancelled: 'var(--muted)' };
 
+// Weekly-redemption-limit indicator for the queue table — surfaces GET /api/admin/
+// shop/redemptions' weekly_used/weekly_limit_per_user (see ShopRedemptionOut's
+// docstring in schemas.py) so an admin sees "this player is at/near this item's cap"
+// directly, instead of only finding out when the player's next attempt 409s.
+function _weeklyLimitBadge(used, limit) {
+  const atLimit = used >= limit;
+  const near = !atLimit && used === limit - 1;
+  const color = atLimit ? '#f87171' : near ? '#facc15' : 'var(--muted)';
+  const bg = atLimit ? 'rgba(200,0,30,.15)' : near ? 'rgba(250,204,21,.12)' : 'rgba(255,255,255,.06)';
+  return `<div style="margin-top:.25rem;"><span title="Использовано ${used} из ${limit} за последние 7 дней" style="font-size:.6rem;font-weight:700;padding:.08rem .4rem;border-radius:9999px;background:${bg};color:${color};white-space:nowrap;">${used}/${limit} в нед.</span></div>`;
+}
+
 async function loadShopQueue(page) {
   _shopQueuePage = page || 1;
   const tbody = document.getElementById('shop-queue-tbody');
@@ -7196,9 +7307,12 @@ async function loadShopQueue(page) {
              <button onclick="cancelRedemption(${r.id})" class="btn-danger" style="font-size:.7rem;padding:.28rem .6rem;">Отменить</button>
            </div>`
         : `<span style="font-size:.72rem;color:var(--muted);">${esc(r.resolved_by || '')}</span>`;
+      const weeklyBadge = r.weekly_limit_per_user != null
+        ? _weeklyLimitBadge(r.weekly_used || 0, r.weekly_limit_per_user)
+        : '';
       return `<tr>
-        <td data-label="Игрок" style="font-size:.78rem;">${esc(r.username || '')}</td>
-        <td data-label="Товар" style="font-size:.78rem;">${esc(r.item_name_snapshot)}</td>
+        <td data-label="Игрок" style="font-size:.78rem;">${r.username ? `<a href="/user.html?u=${encodeURIComponent(r.username)}" target="_blank" style="color:var(--accent);text-decoration:none;">${esc(r.username)}</a>` : ''}</td>
+        <td data-label="Товар" style="font-size:.78rem;">${esc(r.item_name_snapshot)}${weeklyBadge}</td>
         <td data-label="Стоимость" style="font-size:.78rem;color:var(--gold);">${r.cost_snapshot}</td>
         <td data-label="Статус"><span style="font-size:.72rem;color:${color};font-weight:600;">${SHOP_REDEMPTION_STATUS_LABELS[r.status] || r.status}</span></td>
         <td data-label="Дата" style="font-size:.75rem;color:var(--muted);white-space:nowrap;">${dt}</td>
@@ -7297,6 +7411,7 @@ async function loadAnalytics() {
 
 // ─── Points economy dashboard ───────────────────────────────────────────────
 async function loadEconomyStats() {
+  loadGrantUserList(); // populates grant-user-list + __ADMIN_USERS_BY_NAME for the per-player export card below, in case Экономика is opened before Магазин
   try {
     const days = document.getElementById('economy-days')?.value || 30;
     const d = await fetch(`${API}/admin/economy-stats?days=${days}`, { credentials: 'include' }).then(r => r.json());
@@ -7336,8 +7451,44 @@ async function loadEconomyStats() {
   } catch(e) { console.error('Economy stats error:', e); }
 }
 
+function exportPlayerPointsCsv() {
+  const username = (document.getElementById('econ-export-username')?.value || '').trim();
+  if (!username) { showToast('Введите имя игрока', 'error'); return; }
+  const userId = window.__ADMIN_USERS_BY_NAME?.[username];
+  if (!userId) { showToast('Игрок не найден — выберите вариант из подсказки', 'error'); return; }
+  const a = document.createElement('a');
+  a.href = `${API}/admin/export/points-transactions?user_id=${userId}`;
+  a.click();
+}
+
 // ─── Backups ──────────────────────────────────────────────────────────────
+function _fmtBackupBytes(b) {
+  if (b == null) return '—';
+  if (b < 1024) return b + ' Б';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' КБ';
+  if (b < 1073741824) return (b / 1048576).toFixed(1) + ' МБ';
+  return (b / 1073741824).toFixed(2) + ' ГБ';
+}
+async function loadBackupsDiskUsage() {
+  const el = document.getElementById('backups-disk-usage');
+  if (!el) return;
+  try {
+    const d = await fetch(`${API}/admin/backups/disk-usage`, { credentials: 'include', headers: authH() }).then(r => { if (!r.ok) { handleAuth(r); throw new Error(); } return r.json(); });
+    const usedPct = d.disk_total ? Math.min(100, (d.disk_used / d.disk_total) * 100) : 0;
+    const barColor = usedPct >= 90 ? '#f87171' : usedPct >= 75 ? '#facc15' : '#4ade80';
+    el.style.display = '';
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem;">
+        <span style="font-size:.72rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;">Место на диске</span>
+        <span style="font-size:.75rem;color:var(--muted);">Свободно ${_fmtBackupBytes(d.disk_free)} из ${_fmtBackupBytes(d.disk_total)} · Бэкапы: ${_fmtBackupBytes(d.backups_total_bytes)} (${d.backups_count})</span>
+      </div>
+      <div style="height:6px;border-radius:9999px;background:rgba(255,255,255,.08);overflow:hidden;">
+        <div style="height:100%;width:${usedPct.toFixed(1)}%;background:${barColor};border-radius:9999px;"></div>
+      </div>`;
+  } catch { el.style.display = 'none'; }
+}
 async function loadBackups() {
+  loadBackupsDiskUsage();
   tableShowSkeleton('backups-table-body', 4);
   const data = await fetch(`${API}/admin/backups`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => []);
   const tbody = document.getElementById('backups-table-body');

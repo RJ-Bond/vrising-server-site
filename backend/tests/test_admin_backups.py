@@ -75,3 +75,32 @@ async def test_delete_nonexistent_backup_404s(client, db_session, backup_dir):
     superadmin = await _make_user(db_session, "backup_super_missing", role="superadmin")
     r = await client.delete("/api/admin/backups/vrising_does_not_exist.db", headers=_bearer(superadmin))
     assert r.status_code == 404
+
+
+# ─── GET /api/admin/backups/disk-usage ───────────────────────────────────────
+# Registered ahead of GET /api/admin/backups/{filename} (an untyped str path param, so
+# it would otherwise greedily match the literal segment "disk-usage" as a filename —
+# same class of route-ordering issue as GET /api/clans/leaderboard vs.
+# GET /api/clans/{clan_id} in clans.py). These tests exercise the real filesystem
+# (shutil.disk_usage has no meaningful fake), so they only assert shape/sanity, not
+# exact byte counts.
+
+async def test_disk_usage_requires_superadmin(client, db_session, backup_dir):
+    admin = await _make_user(db_session, "disk_admin", role="admin")
+    r = await client.get("/api/admin/backups/disk-usage", headers=_bearer(admin))
+    assert r.status_code == 403
+
+
+async def test_disk_usage_reports_totals_and_backup_size(client, db_session, backup_dir):
+    (backup_dir / "vrising_20260101_000000.db").write_bytes(b"x" * 1000)
+    (backup_dir / "vrising_20260102_000000.db").write_bytes(b"y" * 2000)
+    (backup_dir / "not_a_backup.txt").write_bytes(b"ignored")
+
+    superadmin = await _make_user(db_session, "disk_super", role="superadmin")
+    r = await client.get("/api/admin/backups/disk-usage", headers=_bearer(superadmin))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["backups_count"] == 2
+    assert body["backups_total_bytes"] == 3000
+    assert body["disk_total"] >= body["disk_used"] >= 0
+    assert body["disk_free"] >= 0
