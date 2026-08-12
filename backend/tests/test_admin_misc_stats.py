@@ -315,6 +315,39 @@ async def test_export_users_returns_csv_with_header_and_rows(client, db_session)
     assert "ExportTarget1" in usernames
 
 
+async def test_export_points_transactions_requires_admin(client, db_session):
+    user = await _make_user(db_session, "PtExportUser1", role="user")
+    r = await client.get("/api/admin/export/points-transactions", params={"user_id": user.id}, headers=_bearer(user))
+    assert r.status_code == 403
+
+
+async def test_export_points_transactions_unknown_user_404s(client, db_session):
+    admin = await _make_user(db_session, "PtExportAdmin1", role="admin")
+    r = await client.get("/api/admin/export/points-transactions", params={"user_id": 999999}, headers=_bearer(admin))
+    assert r.status_code == 404
+
+
+async def test_export_points_transactions_returns_only_that_players_rows(client, db_session):
+    admin = await _make_user(db_session, "PtExportAdmin2", role="admin")
+    target = await _make_user(db_session, "PtExportTarget1", role="user")
+    other = await _make_user(db_session, "PtExportOther1", role="user")
+    db_session.add_all([
+        PointsTransaction(user_id=target.id, delta=100, balance_after=100, reason="playtime", detail="session"),
+        PointsTransaction(user_id=target.id, delta=-40, balance_after=60, reason="redeem", detail="Sword"),
+        PointsTransaction(user_id=other.id, delta=500, balance_after=500, reason="playtime", detail="session"),
+    ])
+    await db_session.commit()
+
+    r = await client.get("/api/admin/export/points-transactions", params={"user_id": target.id}, headers=_bearer(admin))
+    assert r.status_code == 200
+    assert "text/csv" in r.headers["content-type"]
+    rows = list(csv.reader(io.StringIO(r.text)))
+    assert rows[0] == ["date", "delta", "balance_after", "reason", "detail"]
+    deltas = [row[1] for row in rows[1:]]
+    assert sorted(deltas) == ["-40", "100"]
+    assert "500" not in deltas  # the other player's row must not leak in
+
+
 async def test_export_audit_log_returns_csv(client, db_session):
     admin = await _make_user(db_session, "ExportAdmin2", role="admin")
     db_session.add(AuditLog(admin_username=admin.username, action="event.create", detail="did a thing"))

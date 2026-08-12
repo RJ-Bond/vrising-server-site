@@ -1196,6 +1196,17 @@ class ShopRedemptionOut(BaseModel):
     resolved_by: Optional[str] = None
     # Populated only on the admin queue view (joined in), not the player's own history.
     username: Optional[str] = None
+    # Weekly-limit context for the admin redemption queue (GET /api/admin/shop/
+    # redemptions) — the CURRENT ShopItem.weekly_limit_per_user (not a snapshot: a
+    # limit added/changed after this redemption was made should still show up
+    # correctly) and how many non-cancelled redemptions this user has made of this
+    # item in the trailing 7 days, so an admin sees "3/3 this week" directly in the
+    # queue instead of only discovering the cap via a 409 on the player's next
+    # attempt (see POST /api/shop/redeem's docstring for the underlying check this
+    # mirrors). Both None when the item has no weekly limit configured, or when the
+    # redemption's shop_item_id no longer resolves to a live item.
+    weekly_limit_per_user: Optional[int] = None
+    weekly_used: Optional[int] = None
 
     model_config = {"from_attributes": True}
 

@@ -1,5 +1,6 @@
 import csv
 import io
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -517,6 +518,44 @@ async def export_bans(
         iter([buf.getvalue()]),
         media_type="text/csv",
         headers={"Content-Disposition": "attachment; filename=bans.csv"},
+    )
+
+
+@router.get("/api/admin/export/points-transactions")
+async def export_player_points_transactions(
+    user_id: int = Query(...),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_admin_user),
+):
+    """Per-player CSV export of the full points ledger — a filtered variant of GET
+    /api/admin/points/transactions (points_shop.py, which already supports the same
+    user_id filter for the JSON/paginated view), for the "Экономика" dashboard's
+    per-player history export card. Admin tier (matching that endpoint's tier — the
+    global export_redemptions above is moderator-tier, but points/grant-bulk and the
+    rest of the manual-grant tooling this pairs with are admin-only, so this stays
+    consistent with that rather than with the redemptions export)."""
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(404, "User not found")
+    rows = (await db.execute(
+        select(PointsTransaction).where(PointsTransaction.user_id == user_id)
+        .order_by(PointsTransaction.created_at.desc())
+    )).scalars().all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["date", "delta", "balance_after", "reason", "detail"])
+    for t in rows:
+        w.writerow([t.created_at, t.delta, t.balance_after, t.reason, t.detail])
+    buf.seek(0)
+    # Filename is admin-authored data (the site's own username, not attacker input in
+    # any meaningful sense — same trust level as the other filenames in this file) but
+    # sanitized anyway since Content-Disposition treats these as a structured header,
+    # not free text.
+    safe_username = re.sub(r"[^A-Za-z0-9_-]", "_", user.username)[:64] or str(user.id)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=points_{safe_username}.csv"},
     )
 
 

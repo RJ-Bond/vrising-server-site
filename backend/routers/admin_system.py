@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from ..database import get_db
-from ..models import User, Setting, News
+from ..models import User, Setting, News, ShopItem
 from ..auth import get_admin_user, get_superadmin_user, get_current_user
 from ..helpers import UPLOAD_DIR, BACKUP_DIR, log_audit, optimize_image_bytes
 
@@ -441,42 +441,78 @@ async def site_update(_: User = Depends(get_superadmin_user)):
 
 # ─── File manager ────────────────────────────────────────────────────────────
 
+_USED_BY_SETTING_LABELS = {
+    "site_logo_url": ("logo", "Логотип сайта"),
+    "bg_image_url": ("background", "Фон сайта"),
+    "hero_logo_url": ("hero_logo", "Лого на главной"),
+    "favicon_url": ("favicon", "Favicon"),
+}
+
+
+async def _uploads_used_by_lookup(db: AsyncSession):
+    """Builds a `filename -> used_by list` lookup shared by GET /api/admin/uploads and
+    GET /api/admin/media (below), so "used by"/unused-file detection doesn't drift
+    between the two file-manager views the way it would with two separate copies of
+    this cross-reference. Extended from the original (uploads-only) version to also
+    check ShopItem.image_url and two more Settings keys (hero_logo_url, favicon_url) —
+    cheap to add since they're the same shape as the two settings already checked.
+
+    NOT exhaustive — deliberately doesn't attempt every URL-bearing column in the
+    schema: User.cover_url (profile cover) and User.badge_icon_url (badge icon) are
+    per-user like avatar_url below, but scanning every user for two more columns on
+    every file-manager load starts to add up, and DM/comment attachment_urls live at
+    message scale, not user scale. Those files also mostly live under uploads/covers,
+    uploads/dm (see serve_cover_upload/serve_dm_attachment_upload above) rather than
+    the root UPLOAD_DIR — a full accounting would need its own per-subdirectory query
+    shape, not just more rows in this lookup. Treat a file with no `used_by` entries as
+    "not found by this check", not as a verified-safe-to-delete guarantee — the file
+    manager UI's unused-file filter is a triage aid, not a deletion authorization."""
+    settings_rows = (await db.execute(
+        select(Setting).where(Setting.key.in_(list(_USED_BY_SETTING_LABELS)))
+    )).scalars().all()
+    settings_map = {s.key: s.value for s in settings_rows}
+    news_rows = (await db.execute(select(News.title, News.slug, News.thumbnail_url, News.content))).all()
+    avatar_rows = (await db.execute(select(User.username, User.avatar_url).where(User.avatar_url.isnot(None)))).all()
+    shop_rows = (await db.execute(select(ShopItem.name, ShopItem.image_url).where(ShopItem.image_url.isnot(None)))).all()
+
+    def used_by_for(filename: str) -> list[dict]:
+        used_by = []
+        for key, (type_, label) in _USED_BY_SETTING_LABELS.items():
+            if (settings_map.get(key) or "").endswith(filename):
+                used_by.append({"type": type_, "label": label})
+        for title, slug, thumb, content in news_rows:
+            if (thumb or "").endswith(filename):
+                used_by.append({"type": "news_thumb", "label": f"Миниатюра: {title}", "slug": slug})
+            elif filename in (content or ""):
+                used_by.append({"type": "news_content", "label": f"В тексте: {title}", "slug": slug})
+        for username, avatar in avatar_rows:
+            if (avatar or "").endswith(filename):
+                used_by.append({"type": "avatar", "label": f"Аватар: {username}"})
+        for name, image_url in shop_rows:
+            if (image_url or "").endswith(filename):
+                used_by.append({"type": "shop_item", "label": f"Товар магазина: {name}"})
+        return used_by
+
+    return used_by_for
+
+
 @router.get("/api/admin/uploads")
 async def list_uploads(_: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
     files = []
     if not UPLOAD_DIR.exists():
         return files
 
-    settings_rows = (await db.execute(
-        select(Setting).where(Setting.key.in_(["site_logo_url", "bg_image_url"]))
-    )).scalars().all()
-    settings_map = {s.key: s.value for s in settings_rows}
-    news_rows = (await db.execute(select(News.title, News.slug, News.thumbnail_url, News.content))).all()
-    avatar_rows = (await db.execute(select(User.username, User.avatar_url).where(User.avatar_url.isnot(None)))).all()
-
+    used_by_for = await _uploads_used_by_lookup(db)
     for f in sorted(UPLOAD_DIR.iterdir(), key=lambda x: x.stat().st_mtime, reverse=True):
         if not f.is_file():
             continue
         st = f.stat()
-        used_by = []
-        if settings_map.get("site_logo_url", "").endswith(f.name):
-            used_by.append({"type": "logo", "label": "Логотип сайта"})
-        if settings_map.get("bg_image_url", "").endswith(f.name):
-            used_by.append({"type": "background", "label": "Фон сайта"})
-        for title, slug, thumb, content in news_rows:
-            if (thumb or "").endswith(f.name):
-                used_by.append({"type": "news_thumb", "label": f"Миниатюра: {title}", "slug": slug})
-            elif f.name in (content or ""):
-                used_by.append({"type": "news_content", "label": f"В тексте: {title}", "slug": slug})
-        for username, avatar in avatar_rows:
-            if (avatar or "").endswith(f.name):
-                used_by.append({"type": "avatar", "label": f"Аватар: {username}"})
         files.append({
             "filename": f.name,
             "url": f"/api/uploads/{f.name}",
             "size": st.st_size,
             "created_at": datetime.utcfromtimestamp(st.st_mtime).isoformat(),
-            "used_by": used_by,
+            "used_by": used_by_for(f.name),
         })
     return files
 
@@ -494,10 +530,11 @@ async def delete_upload(filename: str, _: User = Depends(get_admin_user)):
 # ─── Media library ───────────────────────────────────────────────────────────
 
 @router.get("/api/admin/media")
-async def list_media(_: User = Depends(get_admin_user)):
+async def list_media(_: User = Depends(get_admin_user), db: AsyncSession = Depends(get_db)):
     items = []
     if not UPLOAD_DIR.exists():
         return {"items": items}
+    used_by_for = await _uploads_used_by_lookup(db)
     # scan root-level files
     for f in UPLOAD_DIR.iterdir():
         if f.is_file():
@@ -507,6 +544,7 @@ async def list_media(_: User = Depends(get_admin_user)):
                 "url": f"/api/uploads/{f.name}",
                 "size_bytes": st.st_size,
                 "modified_at": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat(),
+                "used_by": used_by_for(f.name),
             })
     # scan one level of subdirectories
     for subdir in UPLOAD_DIR.iterdir():
@@ -520,6 +558,7 @@ async def list_media(_: User = Depends(get_admin_user)):
                         "url": f"/api/uploads/{rel}",
                         "size_bytes": st.st_size,
                         "modified_at": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat(),
+                        "used_by": used_by_for(f.name),
                     })
     items.sort(key=lambda x: x["modified_at"], reverse=True)
     return {"items": items}
@@ -613,6 +652,31 @@ async def admin_rcon(body: RconBody, current_user: User = Depends(get_superadmin
 
 
 # ─── Auto backups list ────────────────────────────────────────────────────────
+
+@router.get("/api/admin/backups/disk-usage")
+async def backups_disk_usage(_: User = Depends(get_superadmin_user)):
+    """Disk space for the "Бэкапы" section — shutil.disk_usage() (stdlib, no new
+    dependency) reports the whole filesystem BACKUP_DIR lives on, not a per-directory
+    quota (there's no portable notion of one without OS-specific APIs, and this app
+    doesn't have one anyway), which is exactly what a superadmin deciding "are we about
+    to run out of disk" needs — plus backups_total_bytes/backups_count so it's also
+    visible how much of that is this app's own backup files specifically, without
+    SSHing in to run `df`/`du` by hand. Registered above the `/{filename}` route below
+    for the same reason /api/clans/leaderboard is registered above /api/clans/{clan_id}
+    in clans.py — a path-converter route would otherwise try (and fail) to treat
+    "disk-usage" as a filename first."""
+    import shutil
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    total, used, free = shutil.disk_usage(BACKUP_DIR)
+    backup_files = list(BACKUP_DIR.glob("vrising_*.db"))
+    return {
+        "disk_total": total,
+        "disk_used": used,
+        "disk_free": free,
+        "backups_total_bytes": sum(f.stat().st_size for f in backup_files if f.is_file()),
+        "backups_count": len(backup_files),
+    }
+
 
 @router.get("/api/admin/backups")
 async def list_backups(_: User = Depends(get_superadmin_user)):
