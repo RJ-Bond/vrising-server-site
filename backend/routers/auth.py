@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from jose import JWTError, jwt
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +20,8 @@ from ..auth import (
     get_admin_user,
     revoke_token,
     COOKIE_NAME,
+    SECRET_KEY,
+    ALGORITHM,
 )
 from ..rate_limit import limiter
 from ..helpers import (
@@ -154,6 +157,38 @@ async def me(current_user: User = Depends(get_current_user), db: AsyncSession = 
         current_user.last_active_at = now
         await db.commit()
     return UserOut.model_validate(current_user)
+
+
+@router.get("/api/auth/session-expiry")
+async def session_expiry(request: Request, current_user: User = Depends(get_current_user)):
+    """Lightweight companion to GET /api/auth/me for admin.html's session-expiry
+    warning (see CLAUDE.md's ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES note — admin/superadmin
+    tokens now expire after 12h instead of the normal 7 days). Returns just the JWT's
+    own `exp` claim so the frontend can warn before the session dies mid-edit, without
+    ever persisting the raw token client-side — login.html deliberately never stores
+    the access_token it gets back (see its comment on why), and this endpoint doesn't
+    change that: it re-decodes the same httpOnly cookie/Bearer token
+    get_current_user(...) above already validated, and hands back only the derived
+    timestamp, never the token itself.
+
+    get_current_user already proves the token is present, unrevoked and unexpired, so
+    the decode below can't meaningfully fail — but it's wrapped anyway rather than
+    trusting that invariant blindly across two functions."""
+    token = None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+    else:
+        token = request.cookies.get(COOKIE_NAME)
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token") from None
+    exp = payload.get("exp")
+    expires_at = datetime.fromtimestamp(exp, tz=timezone.utc).isoformat() if exp else None
+    return {"expires_at": expires_at}
 
 
 @router.post("/api/auth/accept-rules", response_model=UserOut)

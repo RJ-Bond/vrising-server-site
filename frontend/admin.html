@@ -410,6 +410,51 @@
     @media(max-width:900px) { #dash-stats-grid { grid-template-columns:repeat(3,1fr) !important; } }
     @media(max-width:560px) { #dash-stats-grid { grid-template-columns:repeat(2,1fr) !important; } }
 
+    /* ── Shared loading-skeleton shimmer — same class name/animation as
+       frontend/components.css's .skel (bans.html/clans.html/shop.html/…), copied in
+       locally rather than linked since admin.html doesn't load that stylesheet (see
+       the mobile-drawer comment below for the same reasoning). Use this for any *new*
+       admin.html loading state instead of inventing another one-off shimmer — the
+       existing .table-skel-row rules elsewhere in this file predate this and are left
+       alone (out of scope to retrofit here). ── */
+    @keyframes skel-shimmer { from{background-position:-200% 0} to{background-position:200% 0} }
+    .skel {
+      border-radius:.45rem; height:.75rem;
+      background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.09) 50%,rgba(255,255,255,.04) 75%);
+      background-size:200% 100%; animation:skel-shimmer 1.5s infinite;
+    }
+
+    /* ── Shared "nothing found" empty-state placeholder — see renderEmptyState() in
+       the script below. Introduced for section-dashboard; other sections currently
+       print an ad hoc <p>/nothing at all and could adopt this over time. ── */
+    .admin-empty-state {
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      gap:.4rem; padding:1.5rem .5rem; color:var(--muted); font-size:.8rem; text-align:center;
+    }
+    .admin-empty-state-icon { font-size:1.35rem; opacity:.6; line-height:1; }
+
+    /* ── Dashboard: week-over-week delta badge (▲/▼ vs the prior 7-day window) ── */
+    .dash-wow {
+      display:inline-flex; align-items:center; gap:.15rem; font-size:.62rem; font-weight:700;
+      margin-top:.25rem; letter-spacing:.01em;
+    }
+    .dash-wow.up   { color:#4ade80; }
+    .dash-wow.down { color:#f87171; }
+    .dash-wow.flat { color:var(--muted); }
+
+    /* ── Dashboard: system health widget (site API + game servers + plugin
+       heartbeats at a glance — see loadDashHealth() below) ── */
+    #dash-health-grid { display:flex; flex-wrap:wrap; gap:.55rem; }
+    .dash-health-pill {
+      display:inline-flex; align-items:center; gap:.4rem; font-size:.7rem; font-weight:600;
+      padding:.35rem .65rem; border-radius:.5rem; background:rgba(255,255,255,.03);
+      border:1px solid rgba(255,255,255,.06); color:var(--text); white-space:nowrap;
+    }
+    .dash-health-dot { width:.5rem; height:.5rem; border-radius:50%; flex-shrink:0; }
+    .dash-health-dot.ok    { background:#4ade80; box-shadow:0 0 6px rgba(74,222,128,.7); }
+    .dash-health-dot.bad   { background:#f87171; box-shadow:0 0 6px rgba(248,113,113,.7); }
+    .dash-health-dot.warn  { background:#fcd34d; box-shadow:0 0 6px rgba(252,211,77,.7); }
+
     /* ── Mobile sidebar drawer ── mirrors the .mobile-drawer/.mobile-overlay/
        .nav-burger pattern already used on the public pages (servers.html,
        clans.html, …/frontend/components.css) — admin.html doesn't load that
@@ -606,9 +651,9 @@
 </nav>
 
 <!-- Quick nav (Ctrl+K) -->
-<div id="quicknav-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:flex-start;justify-content:center;padding-top:10vh;" onclick="if(event.target===this)closeQuickNav()">
+<div id="quicknav-overlay" role="dialog" aria-modal="true" aria-label="Быстрый переход по разделам" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:flex-start;justify-content:center;padding-top:10vh;" onclick="if(event.target===this)closeQuickNav()">
   <div style="background:rgba(14,3,24,.98);border:1px solid rgba(150,0,28,.4);border-radius:.75rem;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;">
-    <input id="quicknav-input" type="text" placeholder="Перейти в раздел…" oninput="_quickNavFilter()" onkeydown="_quickNavKeydown(event)" style="width:100%;box-sizing:border-box;background:none;border:none;border-bottom:1px solid rgba(150,0,28,.3);padding:.9rem 1.1rem;color:var(--text);font-size:.9rem;outline:none;">
+    <input id="quicknav-input" type="text" placeholder="Перейти в раздел…" aria-label="Поиск раздела" oninput="_quickNavFilter()" onkeydown="_quickNavKeydown(event)" style="width:100%;box-sizing:border-box;background:none;border:none;border-bottom:1px solid rgba(150,0,28,.3);padding:.9rem 1.1rem;color:var(--text);font-size:.9rem;outline:none;">
     <div id="quicknav-results" style="max-height:50vh;overflow-y:auto;"></div>
   </div>
 </div>
@@ -701,25 +746,43 @@
       </div>
 
       <!-- Server status -->
-      <div id="dash-server-status" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem;"></div>
+      <div id="dash-server-status" style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem;"></div>
 
+      <!-- System health at a glance (site API + game servers + plugin heartbeats) —
+           combines section-plugin's connection pill and the server cards above into
+           one row so an admin doesn't have to visit Плагины separately just to check
+           whether everything is up. Read-only summary; loadDashHealth() below. -->
+      <div class="glass-card rounded-xl p-4" style="margin-bottom:1.5rem;">
+        <h2 class="gothic mb-3" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Состояние системы</h2>
+        <div id="dash-health-grid">
+          <span class="skel" style="width:7rem;height:1.6rem;display:inline-block;"></span>
+          <span class="skel" style="width:9rem;height:1.6rem;display:inline-block;"></span>
+          <span class="skel" style="width:8rem;height:1.6rem;display:inline-block;"></span>
+        </div>
+      </div>
+
+      <!-- dash-tile cards are div-as-button navigation shortcuts (onclick="showSection(...)")
+           — role="button" tabindex="0" + onkeydown (Enter/Space) added to all six below
+           so they're keyboard-reachable, matching the established pattern (see
+           map.html's region-cards, per CLAUDE.md); previously mouse/touch-only. -->
       <div id="dash-stats-grid" style="display:grid;grid-template-columns:repeat(6,1fr);gap:1rem;margin-bottom:1.5rem;">
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('users')" title="Перейти к пользователям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('users')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('users');}" title="Перейти к пользователям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">👥</div>
           <div id="dash-users" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Пользователи</div>
+          <div id="dash-users-wow"></div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('news')" title="Перейти к новостям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('news')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('news');}" title="Перейти к новостям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">📰</div>
           <div id="dash-news" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Новости</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('comments')" title="Перейти к комментариям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('comments')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('comments');}" title="Перейти к комментариям" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">💬</div>
           <div id="dash-comments" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Комментарии</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('files')" title="Перейти к файлам" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('files')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('files');}" title="Перейти к файлам" style="border-top:2px solid rgba(200,160,0,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">📁</div>
           <div id="dash-files" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--gold);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Файлы</div>
@@ -728,12 +791,12 @@
              just counts, no good/bad state to signal, see theme.css's status-token
              comment), these two actually represent state: green = a healthy
              activity signal, yellow = a pending queue the admin may need to act on. -->
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('users')" title="Активные за 7 дней" style="border-top:2px solid rgba(34,197,94,.3);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('users')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('users');}" title="Активные за 7 дней" style="border-top:2px solid rgba(34,197,94,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">⚡</div>
           <div id="dash-new7" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--green);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Активны 7 дней</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" onclick="showSection('resets')" title="Перейти к сбросу паролей" style="border-top:2px solid rgba(255,207,92,.35);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('resets')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('resets');}" title="Перейти к сбросу паролей" style="border-top:2px solid rgba(255,207,92,.35);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">🔑</div>
           <div id="dash-resets" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--yellow);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Сброс паролей</div>
@@ -772,11 +835,12 @@
         <div class="glass-card rounded-xl p-4">
           <div class="flex items-center justify-between mb-3">
             <h2 class="gothic" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;margin:0;">Онлайн за неделю</h2>
-            <select id="dash-graph-server" onchange="loadDashGraph()" class="dark-input" style="width:auto;padding:.25rem .55rem;font-size:.72rem;">
+            <select id="dash-graph-server" onchange="loadDashGraph()" class="dark-input" aria-label="Выбор сервера для графика онлайна" style="width:auto;padding:.25rem .55rem;font-size:.72rem;">
               <option value="1">Сервер 1</option>
               <option value="2">Сервер 2</option>
             </select>
           </div>
+          <div id="dash-traffic-summary" style="font-size:.65rem;color:var(--muted);margin-bottom:.4rem;"></div>
           <div id="dash-graph-wrap" style="position:relative;height:130px;">
             <canvas id="dash-graph-canvas" style="display:block;"></canvas>
           </div>
@@ -788,9 +852,19 @@
         </div>
       </div>
 
-      <div class="glass-card rounded-xl p-4">
-        <h2 class="gothic mb-4" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Последние комментарии</h2>
-        <div id="dash-recent-comments"></div>
+      <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:1rem;align-items:stretch;">
+        <div class="glass-card rounded-xl p-4">
+          <h2 class="gothic mb-4" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Последние комментарии</h2>
+          <div id="dash-recent-comments"></div>
+        </div>
+        <!-- Mini "you just did X" action log — session-local, client-side only (see
+             recordAdminAction() below). Only this section's own mutating action
+             (recent-comment delete) feeds it today; the mechanism is ready for other
+             sections to call once they adopt it too. -->
+        <div class="glass-card rounded-xl p-4">
+          <h2 class="gothic mb-3" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Ваши действия за сессию</h2>
+          <div id="dash-action-log"></div>
+        </div>
       </div>
     </div>
 
@@ -3061,6 +3135,35 @@ const SECTION_MIN_ROLE = {
   }).catch(() => {});
 })();
 
+// ─── Session-expiry warning ─────────────────────────────────────────────────
+// Admin/superadmin tokens were just tightened to a 12h lifetime (see
+// ADMIN_ACCESS_TOKEN_EXPIRE_MINUTES in backend/auth.py) instead of the old flat
+// 7-day one, so a long work session (half-written news article, an open editor tab,
+// …) can now genuinely run into the session dying underneath it. The token itself is
+// an httpOnly cookie (see backend/helpers.py's _set_auth_cookie) — deliberately never
+// exposed to JS — so this can't just decode a locally-stored JWT; it asks the small
+// GET /api/auth/session-expiry companion endpoint (backend/routers/auth.py) for the
+// token's own `exp` claim instead. Not a token-refresh flow: just a heads-up toast in
+// the last SESSION_WARN_MINUTES so the admin can finish/save before being redirected
+// to /login.html on the next 401 (handleAuth already covers that part).
+const SESSION_WARN_MINUTES = 15;
+let _sessionExpiryWarned = false;
+async function _checkSessionExpiry() {
+  try {
+    const res = await fetch(`${API}/auth/session-expiry`, { credentials: 'include' });
+    if (!res.ok) return; // 401 here just means the session is already gone — handleAuth() on the next real request covers that
+    const { expires_at } = await res.json();
+    if (!expires_at) return;
+    const remainingMin = (new Date(expires_at).getTime() - Date.now()) / 60000;
+    if (remainingMin > 0 && remainingMin <= SESSION_WARN_MINUTES && !_sessionExpiryWarned) {
+      _sessionExpiryWarned = true;
+      showToast(`Сессия истекает через ${Math.max(1, Math.round(remainingMin))} мин. — сохраните изменения.`, 'warning', 9000);
+    }
+  } catch { /* offline blip — next periodic check retries */ }
+}
+_checkSessionExpiry();
+setInterval(_checkSessionExpiry, 5 * 60 * 1000);
+
 window.__TZ = 'Europe/Moscow';
 window.__H12 = false;
 window.__DATEFMT = 'dd.mm.yyyy';
@@ -3197,6 +3300,11 @@ function showSection(name) {
     return;
   }
   closeSidebarDrawer(); // no-op on desktop; on mobile, picking a section closes the drawer
+  // Live server-status SSE (startDashStatusSSE) only makes sense while the dashboard
+  // is actually visible — close it on the way to any other section so it doesn't sit
+  // open as a leaked connection while the admin browses elsewhere; loadDashboard()
+  // below re-opens it whenever the dashboard is (re-)entered.
+  if (name !== 'dashboard') stopDashStatusSSE();
   ['dashboard','news','editor','settings','plugin','users','comments','players','files','log','resets','clans','reports','analytics','economy','backups','errors','media','auditlog','events','modlog','shop-catalog','shop-queue'].forEach(s => {
     const el = document.getElementById(`section-${s}`);
     if (el) {
@@ -3323,8 +3431,13 @@ function _renderQuickNavResults(items) {
   const el = document.getElementById('quicknav-results');
   if (!el) return;
   if (!items.length) { el.innerHTML = '<div style="padding:1rem 1.1rem;color:var(--muted);font-size:.82rem;">Ничего не найдено</div>'; return; }
+  // role="button" tabindex="0" + onkeydown (Enter/Space) — same div-as-button pattern
+  // as map.html's region-cards (see CLAUDE.md) — these were previously mouse/Enter-
+  // via-the-input only, with no way to reach an individual result by keyboard.
   el.innerHTML = items.map((it, i) => `
-    <div class="quicknav-item" data-section="${it.id}" onclick="showSection('${it.id}');closeQuickNav();"
+    <div class="quicknav-item" data-section="${it.id}" role="button" tabindex="0"
+      onclick="showSection('${it.id}');closeQuickNav();"
+      onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('${it.id}');closeQuickNav();}"
       style="padding:.65rem 1.1rem;cursor:pointer;font-size:.85rem;color:${i===0?'var(--text)':'var(--muted)'};background:${i===0?'rgba(150,0,28,.15)':'none'};border-bottom:1px solid rgba(255,255,255,.04);"
       onmouseover="this.style.background='rgba(150,0,28,.15)'" onmouseout="this.style.background=[...document.querySelectorAll('.quicknav-item')].indexOf(this)===0?'rgba(150,0,28,.15)':'none'">${esc(it.label)}</div>
   `).join('');
@@ -3334,6 +3447,7 @@ function _quickNavFilter() {
   _renderQuickNavResults(q ? _quickNavItems.filter(it => it.label.toLowerCase().includes(q)) : _quickNavItems);
 }
 function _quickNavKeydown(e) {
+  if (e.key === 'Escape') { closeQuickNav(); return; }
   if (e.key !== 'Enter') return;
   const first = document.querySelector('.quicknav-item');
   if (first) { showSection(first.dataset.section); closeQuickNav(); }
@@ -5437,6 +5551,44 @@ async function saveRules() {
   } else { showToast('Ошибка сохранения', 'error'); }
 }
 
+// ─── Shared "nothing found" empty-state helper ─────────────────────────────
+// Consistent placeholder for any container, replacing the ad hoc <p>-with-inline-
+// style pattern the dashboard used to hand-roll per call site (see the .admin-empty-
+// state/.admin-empty-state-icon rules in this file's inline style block). Introduced here
+// as section-dashboard's own first real usage — other sections still print their own
+// one-off empty text (e.g. loadAdminNews's "Новостей нет.") and could adopt this over
+// time; that's out of scope for this pass since it'd mean touching sections other
+// agents own.
+function renderEmptyState(container, message, icon = '🗂') {
+  const el = typeof container === 'string' ? document.getElementById(container) : container;
+  if (!el) return;
+  el.innerHTML = `<div class="admin-empty-state"><span class="admin-empty-state-icon" aria-hidden="true">${icon}</span><span>${esc(message)}</span></div>`;
+}
+
+// ─── Mini admin action log ("you just did X") ──────────────────────────────
+// Session-local, in-memory only — no server-side tracking (see task description).
+// recordAdminAction(description) is the shared hook: any section could call it once
+// touched by a future pass, but today only this section's own mutating action
+// (dashDeleteRecentComment below) actually calls it — the mechanism is ready, the
+// wiring elsewhere isn't (out of this pass's file-editing boundary).
+const _ADMIN_ACTION_LOG_MAX = 8;
+let _adminActionLog = [];
+function recordAdminAction(description) {
+  _adminActionLog.unshift({ description, at: Date.now() });
+  if (_adminActionLog.length > _ADMIN_ACTION_LOG_MAX) _adminActionLog.length = _ADMIN_ACTION_LOG_MAX;
+  _renderAdminActionLog();
+}
+function _renderAdminActionLog() {
+  const el = document.getElementById('dash-action-log');
+  if (!el) return;
+  if (!_adminActionLog.length) { renderEmptyState(el, 'Действий в этой сессии пока нет.', '📝'); return; }
+  el.innerHTML = _adminActionLog.map(a => `
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:.6rem;padding:.32rem 0;border-bottom:1px solid rgba(150,0,28,.08);">
+      <span style="font-size:.76rem;color:var(--text);">${esc(a.description)}</span>
+      <span style="font-size:.62rem;color:var(--muted);white-space:nowrap;">${new Date(a.at).toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'})}</span>
+    </div>`).join('');
+}
+
 // ─── Dashboard ────────────────────────────────────────────────────────────
 async function loadDashboard() {
   try {
@@ -5449,14 +5601,14 @@ async function loadDashboard() {
     animateKpi(document.getElementById('dash-files'),    d.file_count);
     const rc = document.getElementById('dash-recent-comments');
     if (!d.recent_comments.length) {
-      rc.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Комментариев пока нет.</p>`;
+      renderEmptyState(rc, 'Комментариев пока нет.', '💬');
     } else {
       rc.innerHTML = d.recent_comments.map(c => `
         <div style="padding:.55rem 0;border-bottom:1px solid rgba(150,0,28,.1);display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap;">
           <span style="font-size:.7rem;font-weight:600;color:#c9a04a;white-space:nowrap;">${esc(c.author)}</span>
           <span style="font-size:.7rem;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.content)}</span>
           <a href="/?news=${esc(c.news_slug)}&comment=${c.id}" target="_blank" style="font-size:.65rem;color:var(--muted);white-space:nowrap;text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">${esc(c.news_title)}</a>
-          <button onclick="deleteAdminComment(${c.id})" style="background:none;border:none;color:rgba(200,0,30,.45);cursor:pointer;font-size:.8rem;padding:0 .2rem;flex-shrink:0;" onmouseover="this.style.color='rgba(240,0,40,.9)'" onmouseout="this.style.color='rgba(200,0,30,.45)'">✕</button>
+          <button onclick="dashDeleteRecentComment(${c.id}, '${esc(c.author).replace(/'/g, "\\'")}')" aria-label="Удалить комментарий от ${esc(c.author)}" style="background:none;border:none;color:rgba(200,0,30,.45);cursor:pointer;font-size:.8rem;padding:0 .2rem;flex-shrink:0;" onmouseover="this.style.color='rgba(240,0,40,.9)'" onmouseout="this.style.color='rgba(200,0,30,.45)'">✕</button>
         </div>`).join('');
     }
   } catch { }
@@ -5464,6 +5616,31 @@ async function loadDashboard() {
   loadDashRecentUsers();
   loadDashGraph();
   loadDashExtraStats();
+  loadDashWow();
+  loadDashHealth();
+  _renderAdminActionLog();
+}
+
+// Dashboard-owned variant of the shared deleteAdminComment() (used by
+// section-comments — out of this pass's edit boundary) so the recent-comments widget
+// can both (a) give real success/error feedback via showToast, which it previously
+// had none of at all, and (b) feed the action log above. Duplicates the small
+// delete+fallback request rather than reaching into the shared function, since that
+// function's onOk callback refreshes section-comments' own list/page state, not
+// this widget's.
+async function dashDeleteRecentComment(id, author) {
+  showConfirm({
+    title: 'Удалить комментарий?',
+    text: 'Комментарий будет удалён без возможности восстановления.',
+    onOk: async () => {
+      const r = await fetch(`${API}/admin/comments/${id}`, { method: 'DELETE', credentials: 'include', headers: authH() });
+      if (!r.ok) { showToast('Ошибка удаления', 'error'); return; }
+      showToast('Комментарий удалён', 'success');
+      recordAdminAction(`Удалён комментарий (${author})`);
+      loadDashboard();
+      loadSidebarBadges();
+    },
+  });
 }
 
 async function loadDashExtraStats() {
@@ -5487,6 +5664,56 @@ async function loadDashExtraStats() {
 }
 
 // ─── Dashboard: server status cards ───────────────────────────────────────
+// Live-updated via SSE (startDashStatusSSE below) instead of only refreshing on page
+// load/manual re-entry: /api/monitor/status/stream is the same public push channel
+// servers.html's startSrvSSE() already subscribes to (main.py's _broadcast_status(),
+// fired every _monitor_poll_cycle()) — reusing it here needed no backend change.
+// _dashSrvData/_dashSrvMeta cache the latest known state per server_num so the SSE
+// handler can re-render just from memory without re-fetching on every push.
+let _dashSrvData = {};             // { [server_num]: statusPayload | null }
+let _dashSrvMeta = { hasServer2: false, srvName: 'Сервер 1', srvName2: 'Сервер 2' };
+let _dashStatusSSE = null;
+
+function _dashServerCard(data, name, accent) {
+  if (!data) return `<div class="glass-card rounded-xl p-4" style="color:var(--muted);font-size:.8rem;">Нет данных</div>`;
+  const dot = data.online ? '#4ade80' : '#f87171';
+  const label = data.online ? 'Онлайн' : 'Оффлайн';
+  return `<div class="glass-card rounded-xl p-4">
+    <div class="flex items-center justify-between mb-2">
+      <span style="font-size:.78rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name || data.name || 'Сервер')}</span>
+      <span style="display:flex;align-items:center;gap:.35rem;font-size:.68rem;font-weight:700;color:${dot};">
+        <span style="width:.45rem;height:.45rem;border-radius:50%;background:${dot};box-shadow:0 0 8px ${dot};flex-shrink:0;"></span>${label}
+      </span>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:.4rem;">
+      <span style="font-size:1.6rem;font-family:'Cinzel',serif;color:${accent};">${data.players ?? 0}</span>
+      <span style="font-size:.78rem;color:var(--muted);">/ ${data.max_players ?? 0} игроков</span>
+    </div>
+    ${data.map && data.map !== 'N/A' ? `<div style="font-size:.68rem;color:var(--muted);margin-top:.3rem;">Карта: ${esc(data.map)}</div>` : ''}
+  </div>`;
+}
+
+function _renderDashServerStatus() {
+  const wrap = document.getElementById('dash-server-status');
+  if (!wrap) return;
+  const { hasServer2, srvName, srvName2 } = _dashSrvMeta;
+  wrap.innerHTML = _dashServerCard(_dashSrvData[1], srvName, '#e05575')
+    + (hasServer2 ? _dashServerCard(_dashSrvData[2], srvName2, '#9955ee') : '');
+  const totalOnline = Object.values(_dashSrvData).reduce((s, d) => s + (d?.online ? (d.players || 0) : 0), 0);
+  const anyOnline   = Object.values(_dashSrvData).some(d => d?.online);
+  const badge = document.getElementById('sb-online');
+  const badgeTxt = document.getElementById('sb-online-text');
+  if (badge && badgeTxt) {
+    badge.className = anyOnline ? '' : 'offline';
+    badgeTxt.textContent = anyOnline ? `${totalOnline} онлайн` : 'Серверы офлайн';
+  }
+  const lu = document.getElementById('dash-last-updated');
+  if (lu) lu.textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+  // Health widget's server dots reuse this same cache — keep them in sync on every
+  // render (initial fetch AND every SSE push) rather than only on dashboard load.
+  _renderDashHealthServers();
+}
+
 async function loadDashServerStatus() {
   const wrap = document.getElementById('dash-server-status');
   if (!wrap) return;
@@ -5499,49 +5726,54 @@ async function loadDashServerStatus() {
     if (hasServer2) reqs.push(fetch(`${API}/monitor/status2`).then(r => r.ok ? r.json() : null));
     const results = await Promise.all(reqs);
 
-    const card = (data, name, accent) => {
-      if (!data) return `<div class="glass-card rounded-xl p-4" style="color:var(--muted);font-size:.8rem;">Нет данных</div>`;
-      const dot = data.online ? '#4ade80' : '#f87171';
-      const label = data.online ? 'Онлайн' : 'Оффлайн';
-      return `<div class="glass-card rounded-xl p-4">
-        <div class="flex items-center justify-between mb-2">
-          <span style="font-size:.78rem;font-weight:700;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(name || data.name || 'Сервер')}</span>
-          <span style="display:flex;align-items:center;gap:.35rem;font-size:.68rem;font-weight:700;color:${dot};">
-            <span style="width:.45rem;height:.45rem;border-radius:50%;background:${dot};box-shadow:0 0 8px ${dot};flex-shrink:0;"></span>${label}
-          </span>
-        </div>
-        <div style="display:flex;align-items:baseline;gap:.4rem;">
-          <span style="font-size:1.6rem;font-family:'Cinzel',serif;color:${accent};">${data.players ?? 0}</span>
-          <span style="font-size:.78rem;color:var(--muted);">/ ${data.max_players ?? 0} игроков</span>
-        </div>
-        ${data.map && data.map !== 'N/A' ? `<div style="font-size:.68rem;color:var(--muted);margin-top:.3rem;">Карта: ${esc(data.map)}</div>` : ''}
-      </div>`;
-    };
-
     const srvName  = (smap.server_name  || '').trim() || 'Сервер 1';
     const srvName2 = (smap.server2_name || '').trim() || 'Сервер 2';
-    wrap.innerHTML = card(results[0], srvName, '#e05575') + (hasServer2 ? card(results[1], srvName2, '#9955ee') : '');
+    _dashSrvMeta = { hasServer2, srvName, srvName2 };
+    _dashSrvData = { 1: results[0], 2: hasServer2 ? results[1] : null };
+
     // Sync select names
     const sel = document.getElementById('dash-graph-server');
     if (sel) {
       if (sel.options[0]) sel.options[0].text = srvName;
       if (sel.options[1]) sel.options[1].text = srvName2;
     }
-    // Update sidebar online badge
-    const totalOnline = results.reduce((s, d) => s + (d?.online ? (d.players || 0) : 0), 0);
-    const anyOnline   = results.some(d => d?.online);
-    const badge = document.getElementById('sb-online');
-    const badgeTxt = document.getElementById('sb-online-text');
-    if (badge && badgeTxt) {
-      badge.className = anyOnline ? '' : 'offline';
-      badgeTxt.textContent = anyOnline ? `${totalOnline} онлайн` : 'Серверы офлайн';
-    }
-    // Update last-updated timestamp
-    const lu = document.getElementById('dash-last-updated');
-    if (lu) lu.textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
+    _renderDashServerStatus();
+    startDashStatusSSE();
   } catch {
     wrap.innerHTML = `<div class="glass-card rounded-xl p-4" style="color:var(--muted);font-size:.8rem;">Ошибка загрузки статуса.</div>`;
   }
+}
+
+// Opens (once) the same public SSE stream servers.html's startSrvSSE() uses, so the
+// server-status cards + sidebar online badge update the moment a poll cycle sees a
+// change instead of waiting for the next manual dashboard visit. Closed again when
+// navigating away from the dashboard (see showSection below) — an admin panel is an
+// SPA with many other sections, unlike servers.html where the connection lives for
+// the whole page, so leaving it open indefinitely while browsing other sections would
+// just be a leaked connection.
+function startDashStatusSSE() {
+  if (_dashStatusSSE) return;
+  try {
+    _dashStatusSSE = new EventSource(`${API}/monitor/status/stream`);
+    _dashStatusSSE.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.ping || !data.server) return;
+        if (data.server === 2 && data.enabled === false) {
+          _dashSrvData[2] = null;
+          _renderDashServerStatus();
+          return;
+        }
+        if (data.server === 2) _dashSrvMeta.hasServer2 = true;
+        _dashSrvData[data.server] = data;
+        _renderDashServerStatus();
+      } catch { /* malformed push — ignore, next one will arrive within 25s */ }
+    };
+    _dashStatusSSE.onerror = () => { /* EventSource auto-reconnects; nothing to do */ };
+  } catch { /* EventSource unsupported/blocked — dashboard still has its one-shot fetch */ }
+}
+function stopDashStatusSSE() {
+  if (_dashStatusSSE) { _dashStatusSSE.close(); _dashStatusSSE = null; }
 }
 
 // ─── Dashboard: recent registrations ──────────────────────────────────────
@@ -5552,14 +5784,14 @@ async function loadDashRecentUsers() {
     const res = await fetch(`${API}/admin/users`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const users = await res.json();
-    if (!users.length) { el.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Пользователей пока нет.</p>`; return; }
+    if (!users.length) { renderEmptyState(el, 'Пользователей пока нет.', '👥'); return; }
     const recent = [...users].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
     el.innerHTML = recent.map(u => `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.3rem 0;">
         <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" style="font-size:.78rem;font-weight:600;color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'">${esc(u.username)}</a>
         <span style="font-size:.68rem;color:var(--muted);white-space:nowrap;">${new Date(u.created_at).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'2-digit',year:'2-digit'})}</span>
       </div>`).join('');
-  } catch { el.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Ошибка загрузки.</p>`; }
+  } catch { renderEmptyState(el, 'Ошибка загрузки.', '⚠'); }
 }
 
 // ─── Dashboard: weekly online graph ───────────────────────────────────────
@@ -5586,6 +5818,104 @@ async function loadDashGraph() {
   } catch {
     renderPlayerChart(canvas, [], {});
     if (empty) { empty.style.display = ''; empty.textContent = 'Ошибка загрузки графика.'; }
+  }
+}
+
+// ─── Dashboard: week-over-week deltas ──────────────────────────────────────
+// Reuses GET /api/admin/analytics (already backs section-analytics — see
+// admin_misc.py's get_analytics) with days=14 instead of its default 7, purely to
+// get two full 7-day windows back from a single call — no new backend endpoint or
+// time-series table needed, per the task's own instruction to check whether
+// day-level breakdown already exists before building one. users_by_day gives the
+// registrations split this compares; by_day (page views) gives the traffic split.
+function _wowDelta(curTotal, prevTotal) {
+  if (!prevTotal) return curTotal > 0 ? { dir: 'up', label: `новых: ${curTotal}` } : { dir: 'flat', label: 'без изменений' };
+  const pct = Math.round(((curTotal - prevTotal) / prevTotal) * 100);
+  if (pct === 0) return { dir: 'flat', label: '0% за неделю' };
+  return { dir: pct > 0 ? 'up' : 'down', label: `${pct > 0 ? '+' : ''}${pct}% за неделю` };
+}
+function _renderWowBadge(elId, curTotal, prevTotal) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const { dir, label } = _wowDelta(curTotal, prevTotal);
+  const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '●';
+  el.innerHTML = `<span class="dash-wow ${dir}">${arrow} ${esc(label)}</span>`;
+}
+async function loadDashWow() {
+  try {
+    const d = await fetch(`${API}/admin/analytics?days=14`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : null);
+    if (!d) return;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const dayKey = (offset) => { const t = new Date(today); t.setDate(t.getDate() - offset); return t.toISOString().slice(0, 10); };
+    const last7Keys = new Set(Array.from({length: 7}, (_, i) => dayKey(i)));
+    const prev7Keys = new Set(Array.from({length: 7}, (_, i) => dayKey(i + 7)));
+
+    const usersThisWeek = (d.users_by_day || []).filter(r => last7Keys.has(r.date)).reduce((s, r) => s + r.count, 0);
+    const usersPrevWeek = (d.users_by_day || []).filter(r => prev7Keys.has(r.date)).reduce((s, r) => s + r.count, 0);
+    _renderWowBadge('dash-users-wow', usersThisWeek, usersPrevWeek);
+
+    const viewsThisWeek = (d.by_day || []).filter(r => last7Keys.has(r.day)).reduce((s, r) => s + r.views, 0);
+    const viewsPrevWeek = (d.by_day || []).filter(r => prev7Keys.has(r.day)).reduce((s, r) => s + r.views, 0);
+    const trafficEl = document.getElementById('dash-traffic-summary');
+    if (trafficEl) {
+      const { dir, label } = _wowDelta(viewsThisWeek, viewsPrevWeek);
+      const arrow = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '●';
+      trafficEl.innerHTML = `Просмотров сайта за 7 дней: <strong style="color:var(--text);">${viewsThisWeek}</strong> <span class="dash-wow ${dir}" style="margin-top:0;">${arrow} ${esc(label)}</span>`;
+    }
+  } catch { /* WoW badges are a nice-to-have overlay — leave the plain numbers if this fails */ }
+}
+
+// ─── Dashboard: system health widget ───────────────────────────────────────
+// One-glance combination of site API reachability + both game servers + plugin
+// heartbeats, so an admin doesn't need to visit section-plugin separately just to
+// check whether everything is up. Read-only summary — section-plugin's own
+// connection pill (renderPluginStatusPill) stays the authoritative, detailed view.
+let _dashHealthPlugins = [];
+function _healthPill(dotClass, label) {
+  return `<span class="dash-health-pill"><span class="dash-health-dot ${dotClass}" aria-hidden="true"></span>${esc(label)}</span>`;
+}
+function _renderDashHealthServers() {
+  // Called both after the initial fetch and after every SSE push (see
+  // _renderDashServerStatus above) so the widget's server dots never lag behind the
+  // cards above it.
+  const el = document.getElementById('dash-health-grid');
+  if (!el || el.dataset.apiPending === '1') return; // still waiting on the /healthz + plugin-status fetch below
+  const pills = [];
+  pills.push(el.dataset.apiOk === '1'
+    ? _healthPill('ok', 'Сайт: работает')
+    : _healthPill('bad', 'Сайт: недоступен'));
+  const names = { 1: _dashSrvMeta.srvName, 2: _dashSrvMeta.srvName2 };
+  [1, 2].forEach(n => {
+    if (n === 2 && !_dashSrvMeta.hasServer2) return;
+    const d = _dashSrvData[n];
+    pills.push(d?.online ? _healthPill('ok', `${names[n]}: онлайн`) : _healthPill('bad', `${names[n]}: офлайн`));
+  });
+  _dashHealthPlugins.forEach(hb => {
+    const secAgo = (Date.now() - new Date(hb.last_seen_at + (hb.last_seen_at.endsWith('Z') ? '' : 'Z')).getTime()) / 1000;
+    const stale = !isFinite(secAgo) || secAgo > 120;
+    const name = (hb.server_name || '').trim() || `Сервер ${hb.server_num}`;
+    pills.push(stale ? _healthPill('bad', `Плагин (${name}): нет связи`) : _healthPill('ok', `Плагин (${name}): подключён`));
+  });
+  if (!_dashHealthPlugins.length) pills.push(_healthPill('warn', 'Плагин: не подключался'));
+  el.innerHTML = pills.join('');
+}
+async function loadDashHealth() {
+  const el = document.getElementById('dash-health-grid');
+  if (!el) return;
+  el.dataset.apiPending = '1';
+  try {
+    const [healthRes, plugins] = await Promise.all([
+      fetch('/healthz').then(r => r.ok).catch(() => false),
+      fetch(`${API}/admin/plugin-status`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : []).catch(() => []),
+    ]);
+    el.dataset.apiOk = healthRes ? '1' : '0';
+    _dashHealthPlugins = plugins || [];
+  } catch {
+    el.dataset.apiOk = '0';
+    _dashHealthPlugins = [];
+  } finally {
+    el.dataset.apiPending = '0';
+    _renderDashHealthServers();
   }
 }
 
