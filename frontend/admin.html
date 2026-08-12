@@ -2246,6 +2246,12 @@
           <select id="log-action-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="loadAuditLog(1)">
             <option value="">Все действия</option>
           </select>
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--muted);white-space:nowrap;">С
+            <input id="log-date-from" type="date" class="dark-input" style="width:auto;font-size:.78rem;padding:.35rem .5rem;" onchange="loadAuditLog(1)">
+          </label>
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--muted);white-space:nowrap;">По
+            <input id="log-date-to" type="date" class="dark-input" style="width:auto;font-size:.78rem;padding:.35rem .5rem;" onchange="loadAuditLog(1)">
+          </label>
           <button onclick="exportLogCsv()" class="btn-ghost" style="display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="/icons.svg#icon-download"></use></svg>
             Скачать CSV
@@ -2540,8 +2546,14 @@
             <input type="checkbox" id="auditlog-superadmin-filter" onchange="loadAuditLogSection(1)">
             Только супер-админ
           </label>
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--muted);white-space:nowrap;">С
+            <input id="auditlog-date-from" type="date" class="dark-input" style="width:auto;font-size:.78rem;padding:.35rem .5rem;" onchange="loadAuditLogSection(1)">
+          </label>
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--muted);white-space:nowrap;">По
+            <input id="auditlog-date-to" type="date" class="dark-input" style="width:auto;font-size:.78rem;padding:.35rem .5rem;" onchange="loadAuditLogSection(1)">
+          </label>
           <button onclick="loadAuditLogSection(1)" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
-          <a href="/api/admin/export/audit-log" class="btn-ghost" style="font-size:.75rem;" download>⬇ CSV</a>
+          <a id="auditlog-export-link" href="/api/admin/export/audit-log" class="btn-ghost" style="font-size:.75rem;" download>⬇ CSV</a>
         </div>
       </div>
       <div class="glass-card" style="border-radius:.75rem;overflow:hidden;">
@@ -2574,8 +2586,13 @@
           Фильтр по игроку: <span id="modlog-steamid-value" style="font-family:'Courier New',monospace;"></span>
           <button onclick="clearModLogSteamIdFilter()" title="Сбросить фильтр по игроку" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.9rem;line-height:1;padding:0;">×</button>
         </div>
+        <!-- "Needs attention" glance: bans issued in the last 24h among the currently
+             loaded page — a cheap client-side count over _modlogCache (item 4 of the
+             admin-b task list), not a separate aggregation endpoint. -->
+        <span id="modlog-recent-bans-badge" style="display:none;align-items:center;gap:.35rem;font-size:.72rem;color:#fca5a5;background:rgba(150,0,20,.12);border:1px solid rgba(220,40,60,.3);border-radius:.4rem;padding:.3rem .6rem;"></span>
       </div>
-      <div style="display:flex;align-items:center;justify-content:flex-end;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
+        <input id="modlog-search" type="text" class="dark-input" placeholder="Поиск по игроку, админу, деталям…" style="width:auto;max-width:240px;font-size:.78rem;padding:.35rem .6rem;" oninput="_modlogSearchDebounced()">
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
           <select id="modlog-action-filter" class="dark-input" style="font-size:.78rem;padding:.35rem .6rem;width:auto;" onchange="renderModerationLog()">
             <option value="">Все действия</option>
@@ -2594,7 +2611,17 @@
             <option value="1">Сервер 1</option>
             <option value="2">Сервер 2</option>
           </select>
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--muted);white-space:nowrap;">С
+            <input id="modlog-date-from" type="date" class="dark-input" style="width:auto;font-size:.78rem;padding:.35rem .5rem;" onchange="loadModerationLog()">
+          </label>
+          <label style="display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--muted);white-space:nowrap;">По
+            <input id="modlog-date-to" type="date" class="dark-input" style="width:auto;font-size:.78rem;padding:.35rem .5rem;" onchange="loadModerationLog()">
+          </label>
           <button onclick="loadModerationLog()" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
+          <a id="modlog-export-link" href="/api/admin/export/moderation-log" class="btn-ghost" style="display:inline-flex;align-items:center;gap:.35rem;font-size:.78rem;" download>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="/icons.svg#icon-download"></use></svg>
+            CSV
+          </a>
           <button onclick="clearModerationLog()" class="modlog-superadmin-only" style="display:none;font-size:.78rem;background:rgba(150,0,20,0.18);border:1px solid rgba(220,40,60,0.4);color:#fca5a5;border-radius:.4rem;padding:.35rem .7rem;cursor:pointer;font-family:'Inter',sans-serif;" title="Удаляет кик/мут/рестарт-записи и уже снятые баны — активные баны и предупреждения не трогает">🗑 Очистить журнал</button>
         </div>
       </div>
@@ -3021,6 +3048,11 @@ function applySiteBackground(bg) {
 // ── Role hierarchy (mirrors backend/auth.py's ROLE_LEVELS) ──────────────────
 const ROLE_LEVELS = { user: 0, moderator: 1, admin: 2, superadmin: 3 };
 const ROLE_LABELS = { user: 'Игрок', moderator: 'Модератор', admin: 'Админ', superadmin: 'Суперадмин' };
+// Starter list for the ban-reason preset dropdown (showBanModal) — picking one just
+// fills the free-text input below it, which stays fully editable either way. Not
+// backed by a settings key/DB table (no other admin-configurable dropdown in this file
+// works that way either); revisit only if an admin actually asks to customize the list.
+const BAN_REASON_PRESETS = ['Читы', 'Оскорбления', 'Гриферство', 'Реклама', 'Мультиаккаунт', 'Обход бана'];
 function roleLevel(role) { return ROLE_LEVELS[role] ?? 0; }
 function meetsRole(minRole) { return roleLevel(window.__MY_ROLE) >= ROLE_LEVELS[minRole]; }
 window.__MY_ROLE = 'user';
@@ -3117,6 +3149,14 @@ async function loadSidebarBadges() {
       const appeals = await fetch(`${API}/admin/appeals?status=pending`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : null);
       if (appeals) setBadge('badge-appeals', (appeals.appeals || []).length);
     }
+  } catch {}
+  try {
+    // "Needs attention" glance (item 4 of the admin-b task list): count of unresolved
+    // reports on the "Жалобы" sidebar entry — the badge element itself already existed
+    // (#badge-reports) but nothing was ever setting it. Moderator-tier endpoint, unlike
+    // the admin-only shop-queue/appeals badges above, so no meetsRole() gate needed.
+    const reports = await fetch(`${API}/admin/reports?status=pending&per_page=1`, { credentials: 'include', headers: authH() }).then(r => r.ok ? r.json() : null);
+    if (reports) setBadge('badge-reports', reports.total || 0);
   } catch {}
 }
 loadSidebarBadges();
@@ -4641,7 +4681,11 @@ function showBanModal(username, onBan) {
         <div style="font-size:1.8rem;margin-bottom:.6rem;">⛔</div>
         <h3 style="font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;margin-bottom:.4rem;" id="ban-modal-title">Забанить игрока</h3>
         <p style="font-size:.8rem;color:#9488a8;margin-bottom:1rem;" id="ban-modal-sub"></p>
-        <input id="ban-reason-input" type="text" class="dark-input" placeholder="Причина бана…" style="margin-bottom:1rem;" maxlength="256">
+        <select id="ban-reason-preset" class="dark-input" style="margin-bottom:.6rem;" onchange="if(this.value)document.getElementById('ban-reason-input').value=this.value;">
+          <option value="">— Готовая причина —</option>
+          ${BAN_REASON_PRESETS.map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join('')}
+        </select>
+        <input id="ban-reason-input" type="text" class="dark-input" placeholder="Причина бана… (можно своя)" style="margin-bottom:1rem;" maxlength="256">
         <div style="display:flex;gap:.65rem;justify-content:center;">
           <button id="ban-cancel-btn" style="background:rgba(40,10,60,.6);border:1px solid rgba(110,0,150,.3);border-radius:.55rem;padding:.5rem 1.2rem;color:#9488a8;font-size:.8rem;cursor:pointer;transition:all .2s;" onmouseover="this.style.color='#e2d8f0'" onmouseout="this.style.color='#9488a8'">Отмена</button>
           <button id="ban-ok-btn" style="background:linear-gradient(135deg,#7a0015,#b8001e);border:none;border-radius:.55rem;padding:.5rem 1.4rem;color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;box-shadow:0 0 16px rgba(180,0,30,.45);">Забанить</button>
@@ -4652,6 +4696,7 @@ function showBanModal(username, onBan) {
   modal.querySelector('#ban-modal-title').textContent = `Забанить: ${username}`;
   modal.querySelector('#ban-modal-sub').textContent = 'Введите причину бана. Игрок будет добавлен в список банов.';
   modal.querySelector('#ban-reason-input').value = '';
+  modal.querySelector('#ban-reason-preset').value = '';
   modal.classList.add('open');
   modal.style.display = 'flex';
   modal.style.position = 'fixed';
@@ -4808,9 +4853,79 @@ function openUserQuickView(id) {
   document.getElementById('userqv-lastactive').innerHTML = `<span style="color:${info.color};">${esc(info.label)}</span>`;
   document.getElementById('userqv-created').textContent = fmtDate(u.created_at);
   document.getElementById('userqv-actions').innerHTML = buildUserActionsHtml(u, currentUser);
+  loadUserQvModHistory(u);
+  loadUserQvNickHistory(u);
   const m = document.getElementById('userqv-modal');
   m.style.display = 'flex';
   requestAnimationFrame(() => { m.style.opacity = '1'; });
+}
+
+// ─── User quick-view: per-player moderation history (item 5) ───────────────
+// Reuses GET /api/admin/moderation-log (the same endpoint "Журнал модерации" itself
+// calls) filtered to this user's steam_id, rather than a separate history feed —
+// there's exactly one source of truth for moderation events.
+async function loadUserQvModHistory(u) {
+  const el = document.getElementById('userqv-modhistory');
+  if (!el) return;
+  if (!u.steam_id) {
+    el.innerHTML = `<p style="font-size:.75rem;color:var(--muted);">Аккаунт не привязан к игровому персонажу (.register/.login в игре) — историю модерации показать нельзя.</p>`;
+    return;
+  }
+  el.innerHTML = `<p style="font-size:.75rem;color:var(--muted);">Загрузка…</p>`;
+  try {
+    const d = await fetch(`${API}/admin/moderation-log?steam_id=${encodeURIComponent(u.steam_id)}&limit=15`, { credentials: 'include', headers: authH() }).then(r => r.json());
+    const items = d.log || [];
+    if (!items.length) {
+      el.innerHTML = `<p style="font-size:.75rem;color:var(--muted);">Записей модерации нет.</p>`;
+      return;
+    }
+    el.innerHTML = items.map(e => {
+      const label = MODLOG_ACTION_LABELS[e.action] || e.action;
+      const color = MODLOG_ACTION_COLORS[e.action] || 'rgba(150,150,150,.15)';
+      return `<div style="display:flex;align-items:center;gap:.5rem;font-size:.75rem;padding:.3rem .1rem;border-bottom:1px solid rgba(150,0,28,.1);">
+        <span style="padding:.1rem .4rem;border-radius:.3rem;background:${color};white-space:nowrap;">${esc(label)}</span>
+        <span style="color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(e.details || '')}">${esc(e.details || '—')}</span>
+        <span style="color:var(--muted);white-space:nowrap;">${fmtDate(e.created_at)}</span>
+      </div>`;
+    }).join('') + `<a href="/admin.html?tab=moderation-log&steam_id=${encodeURIComponent(u.steam_id)}" target="_blank" rel="noopener" style="display:block;margin-top:.5rem;font-size:.72rem;color:var(--gold);text-decoration:none;">Открыть полный журнал →</a>`;
+  } catch {
+    el.innerHTML = `<p style="font-size:.75rem;color:#fca5a5;">Ошибка загрузки.</p>`;
+  }
+}
+
+// ─── User quick-view: nickname change history (item 9) ─────────────────────
+// No dedicated nickname-history table — POST /api/plugin/nickname-change (the ".nick"
+// in-game command) already logs every change as a PointsTransaction row
+// (reason="nickname_change", detail="OldName -> NewName", see plugin_integration.py),
+// since it's the same points-ledger spend as any other shop cost. Reused as-is here via
+// the existing GET /api/admin/points/transactions?user_id=... admin ledger endpoint,
+// filtered to that one reason client-side rather than adding a reason= server param
+// used nowhere else.
+async function loadUserQvNickHistory(u) {
+  const el = document.getElementById('userqv-nickhistory');
+  if (!el) return;
+  el.innerHTML = `<p style="font-size:.75rem;color:var(--muted);">Загрузка…</p>`;
+  try {
+    const d = await fetch(`${API}/admin/points/transactions?user_id=${u.id}&per_page=200`, { credentials: 'include', headers: authH() }).then(r => r.json());
+    const items = (d.items || []).filter(tx => tx.reason === 'nickname_change');
+    if (!items.length) {
+      el.innerHTML = `<p style="font-size:.75rem;color:var(--muted);">Игрок ещё не менял никнейм через .nick.</p>`;
+      return;
+    }
+    el.innerHTML = items.map(tx => {
+      const parts = (tx.detail || '').split(' -> ');
+      const oldName = parts[0] || '?';
+      const newName = parts[1] || tx.detail || '?';
+      return `<div style="display:flex;align-items:center;gap:.4rem;font-size:.75rem;padding:.3rem .1rem;border-bottom:1px solid rgba(150,0,28,.1);flex-wrap:wrap;">
+        <span style="color:var(--muted);text-decoration:line-through;">${esc(oldName)}</span>
+        <span style="color:var(--muted);">→</span>
+        <span style="font-weight:600;">${esc(newName)}</span>
+        <span style="color:var(--muted);margin-left:auto;white-space:nowrap;">${fmtDate(tx.created_at)}</span>
+      </div>`;
+    }).join('');
+  } catch {
+    el.innerHTML = `<p style="font-size:.75rem;color:#fca5a5;">Ошибка загрузки.</p>`;
+  }
 }
 function closeUserQv() {
   const m = document.getElementById('userqv-modal');
@@ -5831,11 +5946,14 @@ async function exportLogCsv() {
   try {
     const q = encodeURIComponent((document.getElementById('log-search')?.value || '').trim());
     const action = encodeURIComponent(document.getElementById('log-action-filter')?.value || '');
+    const dateFrom = document.getElementById('log-date-from')?.value || '';
+    const dateTo = document.getElementById('log-date-to')?.value || '';
+    const range = (dateFrom ? `&date_from=${dateFrom}` : '') + (dateTo ? `&date_to=${dateTo}` : '');
     // load all pages
     let allItems = [];
     let page = 1;
     while (true) {
-      const res = await fetch(`${API}/admin/audit-log?page=${page}&per_page=500&q=${q}&action=${action}`, { credentials: 'include', headers: authH() });
+      const res = await fetch(`${API}/admin/audit-log?page=${page}&per_page=500&q=${q}&action=${action}${range}`, { credentials: 'include', headers: authH() });
       if (!res.ok) break;
       const d = await res.json();
       allItems = allItems.concat(d.items || []);
@@ -5917,8 +6035,11 @@ async function loadAuditLog(page = 1) {
   loadLogActions();
   const q = encodeURIComponent((document.getElementById('log-search')?.value || '').trim());
   const action = encodeURIComponent(document.getElementById('log-action-filter')?.value || '');
+  const dateFrom = document.getElementById('log-date-from')?.value || '';
+  const dateTo = document.getElementById('log-date-to')?.value || '';
+  const range = (dateFrom ? `&date_from=${dateFrom}` : '') + (dateTo ? `&date_to=${dateTo}` : '');
   try {
-    const res = await fetch(`${API}/admin/audit-log?page=${page}&per_page=50&q=${q}&action=${action}`, { credentials: 'include', headers: authH() });
+    const res = await fetch(`${API}/admin/audit-log?page=${page}&per_page=50&q=${q}&action=${action}${range}`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const d = await res.json();
     document.getElementById('log-total').textContent = `Всего записей: ${d.total}`;
@@ -6460,6 +6581,15 @@ async function deleteMedia(url, el) {
 
 // ─── Audit log section (Журнал действий) ──────────────────────────────────
 let _auditSectionPage = 1;
+// Keeps the plain <a download> CSV link (no fetch/headers involved, so it can't attach
+// a JS-built body/query easily any other way) pointed at the same tier/date-range
+// filters currently applied to the on-screen table.
+function _updateAuditlogExportLink(tier, range) {
+  const link = document.getElementById('auditlog-export-link');
+  if (!link) return;
+  const qs = (tier + range).replace(/^&/, '');
+  link.href = `/api/admin/export/audit-log${qs ? '?' + qs : ''}`;
+}
 async function loadAuditLogSection(page) {
   _auditSectionPage = page || 1;
   const tbody = document.getElementById('auditlog-body');
@@ -6470,8 +6600,12 @@ async function loadAuditLogSection(page) {
   // independently 403s a non-superadmin caller passing it anyway (see get_audit_log).
   const superadminOnly = meetsRole('superadmin') && !!document.getElementById('auditlog-superadmin-filter')?.checked;
   const tier = superadminOnly ? '&tier=superadmin' : '';
+  const dateFrom = document.getElementById('auditlog-date-from')?.value || '';
+  const dateTo = document.getElementById('auditlog-date-to')?.value || '';
+  const range = (dateFrom ? `&date_from=${dateFrom}` : '') + (dateTo ? `&date_to=${dateTo}` : '');
+  _updateAuditlogExportLink(tier, range);
   try {
-    const d = await fetch(`${API}/admin/audit-log?page=${_auditSectionPage}&per_page=50${tier}`, { credentials: 'include', headers: authH() }).then(r => r.json());
+    const d = await fetch(`${API}/admin/audit-log?page=${_auditSectionPage}&per_page=50${tier}${range}`, { credentials: 'include', headers: authH() }).then(r => r.json());
     const items = d.items || [];
     if (!items.length) {
       tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Нет записей</td></tr>';
@@ -6550,21 +6684,58 @@ function clearModLogSteamIdFilter() {
   history.replaceState(null, '', url.pathname + url.search + url.hash);
 }
 
+const _modlogSearchDebounced = debounce(() => loadModerationLog(), 350);
+
+// Keeps the plain <a download> CSV link pointed at whatever server/steam_id/q/date
+// filters are currently applied to the on-screen table — same reasoning as
+// _updateAuditlogExportLink above (a plain <a> can't attach a fetch body/headers).
+function _updateModlogExportLink(params) {
+  const link = document.getElementById('modlog-export-link');
+  if (!link) return;
+  const qs = new URLSearchParams(params);
+  qs.delete('limit');
+  link.href = `/api/admin/export/moderation-log?${qs}`;
+}
+
+// "Needs attention" glance (item 4): counts ban actions within the last 24h among the
+// currently loaded rows. Deliberately cheap/client-side over the already-fetched page
+// rather than a new aggregation endpoint — see the section's header comment.
+function _renderModlogRecentBansBadge() {
+  const badge = document.getElementById('modlog-recent-bans-badge');
+  if (!badge) return;
+  const cutoff = Date.now() - 24 * 3600 * 1000;
+  const recentBans = _modlogCache.filter(e => e.action === 'ban' && new Date(e.created_at).getTime() >= cutoff).length;
+  if (recentBans > 0) {
+    badge.style.display = 'inline-flex';
+    badge.textContent = `⚠ Банов за 24ч: ${recentBans}`;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
 async function loadModerationLog() {
   const tbody = document.getElementById('modlog-body');
   if (!tbody) return;
   tableShowSkeleton('modlog-body', 5);
   updateModLogSteamIdBadge();
   const serverNum = document.getElementById('modlog-server-filter')?.value || '';
+  const q = (document.getElementById('modlog-search')?.value || '').trim();
+  const dateFrom = document.getElementById('modlog-date-from')?.value || '';
+  const dateTo = document.getElementById('modlog-date-to')?.value || '';
   const params = new URLSearchParams({
     limit: 200,
     ...(serverNum ? { server_num: serverNum } : {}),
     ...(_modlogSteamIdFilter ? { steam_id: _modlogSteamIdFilter } : {}),
+    ...(q ? { q } : {}),
+    ...(dateFrom ? { date_from: dateFrom } : {}),
+    ...(dateTo ? { date_to: dateTo } : {}),
   });
+  _updateModlogExportLink(params);
   try {
     const d = await fetch(`${API}/admin/moderation-log?${params}`, { credentials: 'include', headers: authH() }).then(r => r.json());
     _modlogCache = d.log || [];
     renderModerationLog();
+    _renderModlogRecentBansBadge();
   } catch {
     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>';
   }
@@ -6673,16 +6844,24 @@ function _onReportCheck() {
 async function bulkReviewReports(status) {
   const ids = [...document.querySelectorAll('.report-check:checked')].map(el => Number(el.dataset.id));
   if (!ids.length) return;
-  try {
-    const r = await fetch(`${API}/admin/reports/bulk-review`, {
-      method: 'POST', credentials: 'include', headers: authH(),
-      body: JSON.stringify({ ids, status }),
-    });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) { showToast(d.detail || 'Ошибка обновления', 'error'); return; }
-    showToast(`Обновлено жалоб: ${d.succeeded} из ${ids.length}`, d.failed ? 'error' : 'success');
-  } catch { showToast('Ошибка соединения', 'error'); }
-  loadReports(_reportsPage);
+  const labels = { reviewed: 'рассмотренными', dismissed: 'отклонёнными' };
+  showConfirm({
+    title: `Отметить ${ids.length} жалоб ${labels[status] || status}?`,
+    text: 'Действие применится сразу ко всем выбранным жалобам.',
+    icon: status === 'reviewed' ? '✓' : '✗', okLabel: 'Применить',
+    onOk: async () => {
+      try {
+        const r = await fetch(`${API}/admin/reports/bulk-review`, {
+          method: 'POST', credentials: 'include', headers: authH(),
+          body: JSON.stringify({ ids, status }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) { showToast(d.detail || 'Ошибка обновления', 'error'); return; }
+        showToast(`Обновлено жалоб: ${d.succeeded} из ${ids.length}`, d.failed ? 'error' : 'success');
+      } catch { showToast('Ошибка соединения', 'error'); }
+      loadReports(_reportsPage);
+    },
+  });
 }
 async function reviewReport(id, status) {
   await fetch(`${API}/admin/reports/${id}`, { method: 'PATCH', credentials: 'include', headers: authH(), body: JSON.stringify({ status }) });
@@ -7492,6 +7671,27 @@ async function loadErrors(page = 1) {
       <div style="display:flex;justify-content:space-between;align-items:center;gap:.75rem;"><span style="color:var(--muted);">Регистрация</span><span id="userqv-created" style="color:var(--muted);"></span></div>
     </div>
     <div id="userqv-actions" style="display:flex;gap:.35rem;flex-wrap:wrap;justify-content:center;"></div>
+
+    <!-- Per-player moderation history (item 5): pulls from the same
+         GET /api/admin/moderation-log the "Журнал модерации" section itself uses,
+         filtered to this user's steam_id, so there's one underlying data source rather
+         than a separate history feed. Only meaningful for accounts linked to a game
+         character via .register/.login (steam_id set) — see loadUserQvModHistory's
+         "not linked" branch for accounts without one. -->
+    <details style="margin-top:1rem;">
+      <summary style="cursor:pointer;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">История модерации</summary>
+      <div id="userqv-modhistory" style="margin-top:.6rem;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:.4rem;"></div>
+    </details>
+
+    <!-- Nickname change history (item 9): PointsTransaction rows with
+         reason="nickname_change" already logged by POST /api/plugin/nickname-change
+         (backs the in-game ".nick" command) — detail is "OldName -> NewName". No new
+         table/endpoint needed, just surfaced here via the existing
+         GET /api/admin/points/transactions?user_id=... ledger, filtered client-side. -->
+    <details style="margin-top:.6rem;">
+      <summary style="cursor:pointer;font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">История никнеймов</summary>
+      <div id="userqv-nickhistory" style="margin-top:.6rem;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:.4rem;"></div>
+    </details>
   </div>
 </div>
 

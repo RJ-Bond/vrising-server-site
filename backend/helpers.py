@@ -257,6 +257,30 @@ def _fmt_dt_z(dt: datetime | None) -> str | None:
     return dt.isoformat() + "Z"
 
 
+def _parse_date_range(date_from: Optional[str], date_to: Optional[str]) -> tuple[Optional[datetime], Optional[datetime]]:
+    """Parses admin-panel date-range filter params ("YYYY-MM-DD", from an <input
+    type=date>) into naive-UTC datetime bounds for a start<=created_at<end query —
+    start is midnight of date_from, end is midnight of the day AFTER date_to
+    (exclusive), so a single-day range like from=to="2026-08-12" still includes every
+    row on that day rather than only ones at exactly 00:00:00. Bad/unparseable input is
+    treated as "no bound" rather than a 400 — an admin's native date picker won't
+    produce anything else, and swallowing a stray/blank query param beats erroring the
+    whole page out over it. Used by the log/audit-log/moderation-log admin endpoints'
+    date-range filter (both the paginated GET and the CSV export variant of each)."""
+    start = end = None
+    if date_from:
+        try:
+            start = datetime.fromisoformat(date_from[:10])
+        except ValueError:
+            start = None
+    if date_to:
+        try:
+            end = datetime.fromisoformat(date_to[:10]) + timedelta(days=1)
+        except ValueError:
+            end = None
+    return start, end
+
+
 def _utc_ts(dt: datetime) -> float:
     """Unix epoch for a DB datetime. SQLite drops tzinfo, so a naive value must be
     treated as UTC — otherwise .timestamp() assumes the server's local zone and

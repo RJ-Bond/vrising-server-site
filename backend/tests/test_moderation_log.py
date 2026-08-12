@@ -241,6 +241,77 @@ async def test_moderation_log_steam_id_filter_combines_with_server_num(client, d
     assert log[0]["server_num"] == 2
 
 
+async def test_moderation_log_date_range_filter(client, db_session):
+    now = datetime.utcnow()
+    db_session.add_all([
+        Warning(server_num=1, steam_id="s-old", character_name="Old", reason="r", admin_name="A",
+                created_at=now - timedelta(days=10)),
+        Warning(server_num=1, steam_id="s-recent", character_name="Recent", reason="r", admin_name="A",
+                created_at=now - timedelta(hours=1)),
+    ])
+    await db_session.commit()
+
+    admin = await _make_admin(db_session)
+    date_from = (now - timedelta(days=2)).strftime("%Y-%m-%d")
+    r = await client.get("/api/admin/moderation-log", params={"date_from": date_from}, headers=_bearer(admin))
+    assert r.status_code == 200
+    log = r.json()["log"]
+    assert len(log) == 1
+    assert log[0]["target_steam_id"] == "s-recent"
+
+    date_to_old = (now - timedelta(days=5)).strftime("%Y-%m-%d")
+    r2 = await client.get("/api/admin/moderation-log", params={"date_to": date_to_old}, headers=_bearer(admin))
+    log2 = r2.json()["log"]
+    assert len(log2) == 1
+    assert log2[0]["target_steam_id"] == "s-old"
+
+
+async def test_moderation_log_q_filter_matches_player_admin_or_details(client, db_session):
+    await _set_plugin_key(db_session)
+    now = datetime.utcnow()
+    db_session.add(Warning(
+        server_num=1, steam_id="s-sneaky", character_name="SneakyPlayer",
+        reason="ключевые слова", admin_name="ModeratorA", created_at=now,
+    ))
+    db_session.add(Warning(
+        server_num=1, steam_id="s-other", character_name="OtherPlayer",
+        reason="unrelated", admin_name="ModeratorB", created_at=now,
+    ))
+    await db_session.commit()
+
+    admin = await _make_admin(db_session)
+    r = await client.get("/api/admin/moderation-log", params={"q": "Sneaky"}, headers=_bearer(admin))
+    assert r.status_code == 200
+    log = r.json()["log"]
+    assert len(log) == 1
+    assert log[0]["target_steam_id"] == "s-sneaky"
+
+    # Case-insensitive, and also matches against admin_name/details, not just the player.
+    r2 = await client.get("/api/admin/moderation-log", params={"q": "moderatorb"}, headers=_bearer(admin))
+    log2 = r2.json()["log"]
+    assert len(log2) == 1
+    assert log2[0]["target_steam_id"] == "s-other"
+
+
+async def test_export_moderation_log_respects_q_and_date_filters(client, db_session):
+    now = datetime.utcnow()
+    db_session.add_all([
+        Warning(server_num=1, steam_id="s-keep", character_name="KeepMe", reason="r", admin_name="A", created_at=now),
+        Warning(server_num=1, steam_id="s-drop", character_name="DropMe", reason="r", admin_name="A",
+                created_at=now - timedelta(days=30)),
+    ])
+    await db_session.commit()
+
+    admin = await _make_admin(db_session)
+    date_from = (now - timedelta(days=2)).strftime("%Y-%m-%d")
+    r = await client.get(
+        "/api/admin/export/moderation-log", params={"date_from": date_from}, headers=_bearer(admin),
+    )
+    assert r.status_code == 200
+    assert "KeepMe" in r.text
+    assert "DropMe" not in r.text
+
+
 # ─── DELETE /api/admin/moderation-log (superadmin-only "clear log") ──────────
 
 async def _make_superadmin(db_session, username="ModLogSuperadmin"):
