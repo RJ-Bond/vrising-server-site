@@ -237,6 +237,18 @@ function esc(s) {
 // this project's actual commit history, not placeholders.
 const CHANGELOG = [
   {
+    date: '2026-08-13', tag_ru: 'Профиль', tag_en: 'Profile',
+    title_ru: 'Обновлённая страница профиля', title_en: 'Profile page overhaul',
+    desc_ru: 'Страница профиля получила крупный проход по функциональности: вкладка «Безопасность» теперь показывает текущую сессию и историю входов, вкладка «Очки» — фильтр по типу операции и экспорт в CSV, а на вкладке «Админ» появилась личная статистика модераторских действий. Также добавлена история смены игрового ника, исправлен виджет клана (не отображался из-за устаревших полей) и сделан общий проход по мобильной вёрстке и переводу интерфейса.',
+    desc_en: 'The profile page got a large functionality pass: the Security tab now shows the current session and login history, the Points tab gained a reason-type filter and CSV export, and the Admin tab gained a personal moderation-actions summary. Also added a nickname-change history panel, fixed the clan widget (it silently never rendered due to stale field names), and did a general pass on mobile layout and interface translation.',
+  },
+  {
+    date: '2026-08-12', tag_ru: 'Админка', tag_en: 'Admin panel',
+    title_ru: 'Админ-панель: проход по 50 пунктам', title_en: 'Admin panel: a 50-point improvement pass',
+    desc_ru: 'Панель администратора получила живые счётчики на дашборде (через SSE), виджет состояния системы, историю изменений настроек, ручной пере-опрос статуса плагина, фильтры по дате и экспорт в CSV для журнала модерации, значки недельных лимитов в очереди магазина, виджет использования диска для резервных копий и исправлен часовой пояс в датах событий. Разделы бокового меню отмечены тематическими эмодзи для более быстрой навигации.',
+    desc_en: 'The admin panel gained live dashboard counters (via SSE), a system-health widget, a settings change-history view, a manual plugin re-poll button, date-range filters and CSV export for the moderation log, weekly-limit badges in the shop redemption queue, a disk-usage widget for backups, and a timezone display fix for event dates. The sidebar section groups also got themed emoji for faster navigation.',
+  },
+  {
     date: '2026-08-09', tag_ru: 'Безопасность', tag_en: 'Security',
     title_ru: 'Резервные коды для 2FA', title_en: '2FA recovery codes',
     desc_ru: 'Добавлен запасной вход для игроков с включённой двухфакторной аутентификацией, которые потеряли доступ к приложению-аутентификатору: 10 одноразовых резервных кодов выдаются при включении 2FA и могут быть перевыпущены из профиля в любой момент. Перевыпуск сразу аннулирует всю предыдущую партию кодов — включая ещё не использованные.',
