@@ -318,7 +318,7 @@
     /* ── Settings redesign ── */
     .s-row { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
     .s-card { background:var(--card); border:1px solid var(--border); border-radius:1rem; padding:1.5rem; box-shadow:0 0 30px rgba(0,0,0,.5),inset 0 0 20px rgba(80,0,120,.03); }
-    .s-card-head { display:flex; align-items:flex-start; gap:.75rem; padding-bottom:1.2rem; margin-bottom:1.2rem; border-bottom:1px solid rgba(150,0,28,.2); }
+    .s-card-head { display:flex; align-items:flex-start; gap:.75rem; padding-bottom:.9rem; margin-bottom:.9rem; border-bottom:1px solid rgba(150,0,28,.2); }
     .s-icon { width:2.2rem; height:2.2rem; border-radius:.5rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .s-card-head h2 { font-family:'Cinzel',serif; font-size:.8rem; letter-spacing:.12em; color:var(--gold); text-transform:uppercase; margin:0; line-height:1.4; }
     /* Settings-card subtitle — was copy-pasted as an inline style on 22 separate
@@ -846,7 +846,7 @@
           <div id="dash-new7" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--green);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Активны 7 дней</div>
         </div>
-        <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('resets')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('resets');}" title="Перейти к сбросу паролей" style="border-top:2px solid rgba(255,207,92,.35);position:relative;overflow:hidden;">
+        <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('resets')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('resets');}" title="Перейти к сбросу паролей" style="border-top:2px solid rgba(255,207,92,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">🔑</div>
           <div id="dash-resets" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--yellow);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Сброс паролей</div>
@@ -1017,16 +1017,16 @@
         <div class="glass-card rounded-xl p-4 flex items-center justify-between flex-wrap gap-3">
           <div class="flex items-center gap-4 flex-wrap">
             <div class="flex items-center gap-2">
-              <input id="editor-news-published" type="checkbox" checked style="width:1rem;height:1rem;accent-color:var(--accent);" />
+              <input id="editor-news-published" type="checkbox" checked class="site-checkbox" />
               <label style="margin:0;text-transform:none;font-size:.9rem;color:var(--text);">Опубликовано</label>
             </div>
             <div class="flex items-center gap-2">
-              <input id="editor-news-is-template" type="checkbox" style="width:1rem;height:1rem;accent-color:var(--accent);" />
+              <input id="editor-news-is-template" type="checkbox" class="site-checkbox" />
               <label style="margin:0;text-transform:none;font-size:.9rem;color:var(--text);">Шаблон</label>
             </div>
             <div id="schedule-wrap" style="margin-top:.65rem;">
               <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:.35rem;">
-                <input type="checkbox" id="schedule-cb" onchange="toggleSchedule()" style="cursor:pointer;">
+                <input type="checkbox" id="schedule-cb" onchange="toggleSchedule()" class="site-checkbox">
                 Запланировать публикацию
               </label>
               <div id="schedule-dt-wrap" style="display:none;">
@@ -1226,7 +1226,7 @@
         <div class="s-card">
           <div class="s-card-head">
             <div class="s-icon" style="background:rgba(150,100,0,.18);border:1px solid rgba(200,150,0,.3);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c9a04a" stroke-width="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/><circle cx="7.5" cy="10.5" r=".5" fill="#c9a04a"/><circle cx="12" cy="7.5" r=".5" fill="#c9a04a"/><circle cx="16.5" cy="10.5" r=".5" fill="#c9a04a"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/><circle cx="7.5" cy="10.5" r=".5" fill="var(--gold)"/><circle cx="12" cy="7.5" r=".5" fill="var(--gold)"/><circle cx="16.5" cy="10.5" r=".5" fill="var(--gold)"/></svg>
             </div>
             <div>
               <h2>Внешний вид</h2>
@@ -2526,7 +2526,7 @@
 
     <!-- ANALYTICS -->
     <div id="section-analytics" class="hidden">
-      <h2 class="section-title" style="margin-bottom:1.5rem;">Аналитика сайта</h2>
+      <h1 class="section-title" style="margin-bottom:1.5rem;">Аналитика сайта</h1>
 
       <!-- KPI tiles -->
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.85rem;margin-bottom:1.5rem;" id="analytics-kpis">
@@ -2568,7 +2568,7 @@
       <div class="glass-card" style="border-radius:.75rem;overflow:hidden;margin-top:1.25rem;">
         <div style="padding:.85rem 1rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;">
           <span style="font-size:.72rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;">Самые посещаемые страницы</span>
-          <select id="analytics-pages-days" onchange="loadAnalytics()" style="background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:.4rem;color:var(--text);font-size:.75rem;padding:.3rem .5rem;">
+          <select id="analytics-pages-days" onchange="loadAnalytics()" class="dark-input" style="width:auto;font-size:.75rem;padding:.3rem .5rem;">
             <option value="7" selected>7 дней</option>
             <option value="30">30 дней</option>
           </select>
@@ -2582,7 +2582,7 @@
 
     <!-- ECONOMY -->
     <div id="section-economy" class="hidden">
-      <h2 class="section-title" style="margin-bottom:1.5rem;">Экономика очков</h2>
+      <h1 class="section-title" style="margin-bottom:1.5rem;">Экономика очков</h1>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.85rem;margin-bottom:1.5rem;">
         <div class="glass-card" style="border-radius:.75rem;padding:1.25rem;text-align:center;">
@@ -2597,7 +2597,7 @@
       <div class="glass-card" style="border-radius:.75rem;padding:1.25rem;margin-bottom:1.25rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;flex-wrap:wrap;gap:.5rem;">
           <span style="font-size:.72rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;">Начислено vs потрачено</span>
-          <select id="economy-days" onchange="loadEconomyStats()" style="background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:.4rem;color:var(--text);font-size:.75rem;padding:.3rem .5rem;">
+          <select id="economy-days" onchange="loadEconomyStats()" class="dark-input" style="width:auto;font-size:.75rem;padding:.3rem .5rem;">
             <option value="7">7 дней</option>
             <option value="30" selected>30 дней</option>
             <option value="90">90 дней</option>
@@ -6097,7 +6097,7 @@ async function loadDashboard() {
     } else {
       rc.innerHTML = d.recent_comments.map(c => `
         <div style="padding:.55rem 0;border-bottom:1px solid rgba(150,0,28,.1);display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap;">
-          <span style="font-size:.7rem;font-weight:600;color:#c9a04a;white-space:nowrap;">${esc(c.author)}</span>
+          <span style="font-size:.7rem;font-weight:600;color:var(--gold);white-space:nowrap;">${esc(c.author)}</span>
           <span style="font-size:.7rem;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.content)}</span>
           <a href="/?news=${esc(c.news_slug)}&comment=${c.id}" target="_blank" style="font-size:.65rem;color:var(--muted);white-space:nowrap;text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">${esc(c.news_title)}</a>
           <button onclick="dashDeleteRecentComment(${c.id}, '${esc(c.author).replace(/'/g, "\\'")}')" aria-label="Удалить комментарий от ${esc(c.author)}" style="background:none;border:none;color:rgba(200,0,30,.45);cursor:pointer;font-size:.8rem;padding:0 .2rem;flex-shrink:0;" onmouseover="this.style.color='rgba(240,0,40,.9)'" onmouseout="this.style.color='rgba(200,0,30,.45)'">✕</button>
