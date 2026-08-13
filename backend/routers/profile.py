@@ -11,6 +11,7 @@ from sqlalchemy import select, delete, update, func
 
 from ..database import get_db
 from ..models import (
+    AuditLog,
     Comment,
     CommentReaction,
     Clan,
@@ -316,6 +317,35 @@ async def export_my_data(
         media_type="application/json",
         headers={"Content-Disposition": 'attachment; filename="my-data.json"'},
     )
+
+
+# ─── Self-service "my own moderation activity" summary ────────────────────────
+# A much lighter-weight thing than the full admin panel's audit log (GET /api/admin/
+# audit-log, admin_misc.py) — that endpoint is get_admin_user-gated (admin/superadmin
+# only), so a moderator, who the profile page's Admin tab is also shown to (see
+# _staffTiers in profile.html), can't call it at all. This backs a small "Ваши
+# действия" tile on that tab instead: just a count of the caller's own AuditLog rows
+# (scoped by admin_username, never accepting a target user) in a trailing window, not a
+# duplicate of the admin panel's full log/filter UI.
+
+@router.get("/api/profile/moderation-actions/me")
+async def my_recent_moderation_actions(
+    days: int = 7,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not is_at_least(current_user, "moderator"):
+        raise HTTPException(status_code=403, detail="Только для персонала")
+    days = max(1, min(days, 90))
+    cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=days)
+    count = (await db.execute(
+        select(func.count(AuditLog.id))
+        .where(AuditLog.admin_username == current_user.username, AuditLog.created_at >= cutoff)
+    )).scalar_one()
+    last_at = (await db.execute(
+        select(func.max(AuditLog.created_at)).where(AuditLog.admin_username == current_user.username)
+    )).scalar_one()
+    return {"window_days": days, "count": count, "last_action_at": _fmt_dt(last_at) if last_at else None}
 
 
 # ─── Self-service account deletion ────────────────────────────────────────────

@@ -1,9 +1,12 @@
 import asyncio
+import csv
+import io
 import json
 from datetime import datetime, timedelta
 from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_, update, delete
 
@@ -775,18 +778,108 @@ async def my_shop_redemptions(
     return {"total": total, "page": page, "per_page": per_page, "items": [ShopRedemptionOut.model_validate(r) for r in rows]}
 
 
+# ─── Points economy — own-ledger type filter (player-facing) ──────────────────
+# Reason strings actually written by _award_points()/the redeem path today (grep across
+# plugin_integration.py, points_shop.py, users.py, helpers.py): "playtime", "streak",
+# "redeem", "refund", "nickname_change" are the five fixed ones; POST /api/admin/points/
+# grant(-bulk) additionally accepts a free-text reason from the admin (up to 32 chars,
+# "donation"/"admin_adjust" are just its two shipped defaults, nothing enforces those
+# specific strings). Bucketed into 4 user-facing types for the Points tab's filter
+# dropdown — anything not in the explicit lists below (i.e. any admin-typed grant
+# reason) falls into "gifted" as a catch-all, since a manual balance adjustment is
+# definitionally "someone gave/took you points", not automatic earning or a
+# player-initiated spend.
+_POINTS_TX_TYPE_REASONS = {
+    "earned": ("playtime", "streak"),
+    "spent": ("redeem", "nickname_change"),
+    "refund": ("refund",),
+}
+_POINTS_TX_KNOWN_NON_GIFTED_REASONS = tuple(r for reasons in _POINTS_TX_TYPE_REASONS.values() for r in reasons)
+
+
+def _points_tx_type_filter(type_: str):
+    """SQLAlchemy filter expression for the `type` param shared by GET /api/points/
+    transactions/me and GET /api/points/transactions/export. Raises 400 on an unknown
+    value rather than silently ignoring it (matching e.g. PUT /api/profile/badge-style's
+    validation style)."""
+    if type_ in _POINTS_TX_TYPE_REASONS:
+        return PointsTransaction.reason.in_(_POINTS_TX_TYPE_REASONS[type_])
+    if type_ == "gifted":
+        return PointsTransaction.reason.notin_(_POINTS_TX_KNOWN_NON_GIFTED_REASONS)
+    raise HTTPException(400, "Unknown type filter — use earned, spent, refund, or gifted")
+
+
 @router.get("/api/points/transactions/me")
 async def my_points_transactions(
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
+    tx_type: Optional[str] = Query(default=None, alias="type", description="earned | spent | refund | gifted"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Caller's own full ledger — earn rows (playtime/streak) as well as spend/refund."""
+    """Caller's own full ledger — earn rows (playtime/streak) as well as spend/refund.
+    Optional `type` narrows to one bucket, see _points_tx_type_filter()."""
     filters = [PointsTransaction.user_id == current_user.id]
+    if tx_type is not None:
+        filters.append(_points_tx_type_filter(tx_type))
     total = (await db.execute(select(func.count(PointsTransaction.id)).where(*filters))).scalar_one()
     rows = (await db.execute(
         select(PointsTransaction).where(*filters).order_by(PointsTransaction.created_at.desc())
         .offset((page - 1) * per_page).limit(per_page)
     )).scalars().all()
     return {"total": total, "page": page, "per_page": per_page, "items": [PointsTransactionOut.model_validate(t) for t in rows]}
+
+
+@router.get("/api/points/transactions/export")
+async def export_my_points_transactions(
+    tx_type: Optional[str] = Query(default=None, alias="type", description="earned | spent | refund | gifted"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Self-service CSV export of the caller's OWN points ledger — same CSV column shape
+    as the moderator/admin-gated GET /api/admin/export/points-transactions
+    (admin_misc.py), but scoped strictly to current_user.id with no user_id parameter
+    accepted at all, matching the "only ever your own data" pattern GET /api/profile/
+    export (routers/profile.py) already establishes for the GDPR JSON export — there is
+    no way to make this act on anyone else's history. Optional `type` filter mirrors GET
+    /api/points/transactions/me's, so the Points tab's active filter carries over into
+    the download."""
+    filters = [PointsTransaction.user_id == current_user.id]
+    if tx_type is not None:
+        filters.append(_points_tx_type_filter(tx_type))
+    rows = (await db.execute(
+        select(PointsTransaction).where(*filters).order_by(PointsTransaction.created_at.desc())
+    )).scalars().all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["date", "delta", "balance_after", "reason", "detail"])
+    for t in rows:
+        w.writerow([t.created_at, t.delta, t.balance_after, t.reason, t.detail])
+    buf.seek(0)
+    return StreamingResponse(
+        iter([buf.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=my_points_history.csv"},
+    )
+
+
+@router.get("/api/points/earn-rate/me")
+async def my_points_earn_rate(
+    days: int = Query(default=30, ge=1, le=90),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Simple rolling average of NET points/day over the trailing `days` days — sum of
+    every PointsTransaction.delta in the window (earning AND spending both included, so
+    a heavy recent spender correctly sees a lower/negative rate, not an inflated
+    gross-earn number) divided by the window length. Backs the Points tab's "~N дней"
+    affordability estimate next to wishlisted items the user can't yet afford (see
+    profile.html). Deliberately simple, per the feature's own scope — no smoothing, no
+    separate earn-vs-spend split; the frontend labels the result as an estimate."""
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    total = (await db.execute(
+        select(func.coalesce(func.sum(PointsTransaction.delta), 0))
+        .where(PointsTransaction.user_id == current_user.id, PointsTransaction.created_at >= cutoff)
+    )).scalar_one()
+    total = int(total)
+    return {"window_days": days, "net_delta": total, "avg_per_day": total / days}

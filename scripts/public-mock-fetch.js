@@ -260,6 +260,10 @@
     { id: 2, name: 'Blood Rose Seeds', description: 'Редкие семена для фермы крови.', cost: 120, image_url: null, is_active: true, stock: 4, sort_order: 1, category: 'Ресурсы', weekly_limit_per_user: null, weekly_remaining: null, wishlisted: false, created_at: iso(8 * 24 * 3600 * 1000), updated_at: iso(8 * 24 * 3600 * 1000) },
     { id: 3, name: 'Плащ вампира', description: 'Косметический плащ — не влияет на характеристики.', cost: 300, image_url: null, is_active: true, stock: null, sort_order: 2, category: 'Косметика', weekly_limit_per_user: 2, weekly_remaining: 1, wishlisted: false, created_at: iso(5 * 24 * 3600 * 1000), updated_at: iso(24 * 3600 * 1000) },
     { id: 4, name: 'Смена внешности', description: 'Полная перекройка персонажа в игре.', cost: 200, image_url: null, is_active: true, stock: null, sort_order: 3, category: 'Косметика', weekly_limit_per_user: 1, weekly_remaining: 0, wishlisted: true, created_at: iso(15 * 24 * 3600 * 1000), updated_at: iso(3 * 24 * 3600 * 1000) },
+    // Wishlisted but costlier than shopAuthedUser.points_balance (340) — exercises
+    // profile.html's Points-tab wishlist "~N дней" affordability estimate, which only
+    // renders next to items the mock user can't afford yet.
+    { id: 5, name: 'VIP-статус на месяц', description: 'Приоритет в очереди и косметический значок на месяц.', cost: 800, image_url: null, is_active: true, stock: null, sort_order: 4, category: 'VIP', weekly_limit_per_user: null, weekly_remaining: null, wishlisted: true, created_at: iso(4 * 24 * 3600 * 1000), updated_at: iso(4 * 24 * 3600 * 1000) },
   ];
   const shopWishlist = shopItems.filter(i => i.wishlisted);
   // UserOut shape (backend/schemas.py) — GET /api/auth/me for the authenticated-preview
@@ -274,23 +278,42 @@
     bio: null, points_balance: 340, newsletter_opt_in: true,
   };
   const myShopRedemptions = {
-    total: 1, page: 1, per_page: 20,
+    total: 2, page: 1, per_page: 20,
     items: [
       { id: 1, user_id: 1, shop_item_id: 1, item_name_snapshot: 'Waypoint Shard', cost_snapshot: 50, status: 'pending', delivery_mode: 'manual', player_note: null, admin_note: null, created_at: iso(3600000), resolved_at: null, resolved_by: null },
+      // status="cancelled" — exercises profile.html's Points tab cancelled/refunded
+      // visual differentiation (strikethrough + red border/status + "Возвращено" note).
+      { id: 2, user_id: 1, shop_item_id: 2, item_name_snapshot: 'Blood Rose Seeds', cost_snapshot: 120, status: 'cancelled', delivery_mode: 'manual', player_note: null, admin_note: 'нет в наличии', created_at: iso(2 * 24 * 3600 * 1000), resolved_at: iso(24 * 3600 * 1000), resolved_by: 'Overseer' },
     ],
   };
-  // GET /api/points/transactions/me (backend/routers/points_shop.py) — own points
-  // ledger, shown on profile.html's Очки tab AND (filtered to reason="nickname_change")
-  // the Profile tab's #10 own-nickname-history panel (loadNickHistory()). One
-  // nickname_change row included so that panel's screenshot isn't just an empty state.
+  // GET /api/points/transactions/me (backend/routers/points_shop.py) — profile.html's
+  // Points tab ledger table. One row per reason bucket the `type` filter dropdown
+  // distinguishes (earned/spent/refund/gifted) so all four render with correct
+  // label/colour in the screenshot; balance_after running total ends at 340 to match
+  // shopAuthedUser.points_balance below. Also includes one reason="nickname_change" row
+  // so the Profile tab's #10 own-nickname-history panel (loadNickHistory(), which
+  // filters this same endpoint's response client-side) isn't just an empty state. The
+  // mock ignores the `type` query param itself (same simplification as e.g.
+  // leaderboard's snapshot-range mock) — the real filtering behavior is covered by
+  // backend/tests/test_points_shop.py instead.
   const myPointsTransactions = {
-    total: 3, page: 1, per_page: 30,
+    total: 7, page: 1, per_page: 30,
     items: [
-      { id: 1, user_id: 1, delta: 60, balance_after: 340, reason: 'playtime', detail: '3600s session on server 1', created_at: iso(2 * 3600 * 1000) },
-      { id: 2, user_id: 1, delta: -100, balance_after: 280, reason: 'nickname_change', detail: 'OldVortigern -> Vortigern', created_at: iso(20 * 24 * 3600 * 1000) },
-      { id: 3, user_id: 1, delta: -50, balance_after: 380, reason: 'redeem', detail: 'Waypoint Shard', created_at: iso(3600000) },
+      { id: 7, user_id: 1, delta: 35, balance_after: 340, reason: 'streak', detail: 'streak day 5', ref_type: null, ref_id: null, created_at: iso(30 * 60 * 1000) },
+      { id: 6, user_id: 1, delta: -50, balance_after: 305, reason: 'redeem', detail: 'Waypoint Shard', ref_type: 'shop_redemption', ref_id: 1, created_at: iso(6 * 3600 * 1000) },
+      { id: 5, user_id: 1, delta: 120, balance_after: 355, reason: 'refund', detail: 'cancelled redemption #2: Blood Rose Seeds', ref_type: 'shop_redemption', ref_id: 2, created_at: iso(24 * 3600 * 1000) },
+      { id: 4, user_id: 1, delta: 220, balance_after: 235, reason: 'donation', detail: 'др', ref_type: null, ref_id: null, created_at: iso(2 * 24 * 3600 * 1000) },
+      { id: 3, user_id: 1, delta: -100, balance_after: 15, reason: 'nickname_change', detail: 'OldVortigern -> Vortigern', ref_type: null, ref_id: null, created_at: iso(20 * 24 * 3600 * 1000) },
+      { id: 2, user_id: 1, delta: 5, balance_after: 115, reason: 'streak', detail: 'streak day 3', ref_type: null, ref_id: null, created_at: iso(3 * 24 * 3600 * 1000) },
+      { id: 1, user_id: 1, delta: 10, balance_after: 10, reason: 'playtime', detail: '600s session on server 1', ref_type: null, ref_id: null, created_at: iso(4 * 24 * 3600 * 1000) },
     ],
   };
+  // GET /api/points/earn-rate/me — feeds the wishlist panel's "~N дней" affordability
+  // estimate. avg_per_day=5 against the 800-cost wishlisted item below (id 5, balance
+  // 340) gives a visible, plausible "~92 дн." rather than an empty/zero estimate.
+  const myPointsEarnRate = { window_days: 30, net_delta: 150, avg_per_day: 5 };
+  // GET /api/profile/moderation-actions/me — profile.html's Admin tab "Ваши действия" tile.
+  const myModerationActions = { window_days: 7, count: 4, last_action_at: iso(5 * 3600 * 1000) };
 
   // SearchResultOut shape (backend/routers/search.py) — GET /api/search?q=, backing
   // the Ctrl+K global search dropdown (frontend/common.js openGlobalSearch()). One
@@ -428,14 +451,19 @@
     [/\/api\/points\/transactions\/me/, () => myPointsTransactions],
     [/\/api\/auth\/current-session/, () => currentSession],
     [/\/api\/auth\/login-history/, () => loginHistory],
+    [/\/api\/points\/earn-rate\/me/, () => myPointsEarnRate],
+    [/\/api\/profile\/moderation-actions\/me/, () => myModerationActions],
   ];
 
   // shop.html and profile.html are the pages this file mocks as a logged-in visitor
-  // rather than anonymous — both are entirely behind an auth gate with no anonymous
+  // rather than anonymous — their content is behind an auth gate with no anonymous
   // fallback (unlike every other page here), so previewing them (category/wishlist/
-  // weekly-limit UI for shop.html; the Profile-tab widgets, security-tab cards, etc.
-  // for profile.html) needs GET /api/auth/me to actually succeed.
-  const _mockAuthedUser = /shop\.html|profile\.html/.test(location.pathname);
+  // weekly-limit UI for shop.html; the Profile-tab widgets, security-tab cards,
+  // Admin-tab moderation tile, etc. for profile.html) needs GET /api/auth/me to
+  // actually succeed. profile.html gets role="admin" (rather than shop.html's plain
+  // "user") so its Admin tab actually has something to render.
+  const _isProfilePage = /profile\.html/.test(location.pathname);
+  const _mockAuthedUser = _isProfilePage || /shop\.html/.test(location.pathname);
 
   // GET /api/auth/current-session, GET /api/auth/login-history — added for
   // profile.html's security-tab "current session" / "login history" cards (see
@@ -463,7 +491,8 @@
     const url = typeof input === 'string' ? input : (input && input.url) || '';
     if (/\/api\/auth\/me$/.test(url)) {
       if (_mockAuthedUser) {
-        return Promise.resolve(new Response(JSON.stringify(shopAuthedUser), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        const body = _isProfilePage ? { ...shopAuthedUser, role: 'admin' } : shopAuthedUser;
+        return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }));
       }
       return Promise.resolve(new Response('{"detail":"Not authenticated"}', { status: 401, headers: { 'Content-Type': 'application/json' } }));
     }
