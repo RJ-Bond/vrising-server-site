@@ -20,6 +20,7 @@ import pytest_asyncio  # noqa: E402
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker  # noqa: E402
 from backend.models import Base  # noqa: E402
 from backend.rate_limit import limiter  # noqa: E402
+from backend.helpers import _failed_totp_attempts  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -31,6 +32,26 @@ def _reset_rate_limiter():
     added across backend/routers/*.py and rate_limit.py)."""
     limiter.reset()
     yield
+
+
+@pytest.fixture(autouse=True)
+def _reset_totp_bruteforce_state():
+    """_failed_totp_attempts (backend/helpers.py, backing _totp_attempts_exceeded/
+    _record_failed_totp/_reset_failed_totp) is a process-global dict keyed by
+    user_id — same "not reset between tests" hazard _reset_rate_limiter above
+    already handles for slowapi's Limiter, just for a second in-memory store.
+    Each test gets its own fresh file-based sqlite DB (db_engine fixture below), so
+    autoincrement IDs restart at 1 every time — a test late in the full suite can
+    easily create a user with the SAME id an earlier, unrelated TOTP-brute-force
+    test (e.g. test_login_totp_bruteforce.py, or the deliberately-failing-TOTP
+    cases in test_login_history.py) already recorded 5 failed attempts against.
+    Without this reset, that later test's otherwise-correct TOTP code gets
+    rejected with "too many attempts" instead of succeeding — reproduced via
+    backend/tests/test_login_totp.py::test_login_with_correct_totp_code_succeeds
+    passing standalone but failing in a full `pytest backend/tests/` run."""
+    _failed_totp_attempts.clear()
+    yield
+    _failed_totp_attempts.clear()
 
 
 @pytest_asyncio.fixture

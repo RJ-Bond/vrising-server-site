@@ -244,6 +244,14 @@
   #profile-main .g-card { margin-bottom:.75rem !important; }
 }
 
+/* Security tab: password-strength meter — same class names/heuristic as
+   login.html/reset.html/setup.html so the look is consistent across every
+   "set a new password" form on the site. */
+.pw-strength { margin-top:.4rem; }
+.pw-strength-bar { height:4px; background:rgba(255,255,255,.08); border-radius:2px; overflow:hidden; }
+.pw-strength-fill { height:100%; border-radius:2px; transition:width .3s,background .3s; width:0; }
+.pw-strength-label { font-size:.62rem; color:var(--muted); margin-top:.2rem; }
+
   </style>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#06000f">
@@ -555,7 +563,16 @@
       <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Сменить пароль —" data-i18n-en="— Change password —">— Сменить пароль —</h2>
       <div style="display:flex;flex-direction:column;gap:.6rem;">
         <input id="pw-old"     class="field" type="password" placeholder="Текущий пароль"              data-i18n-ph-ru="Текущий пароль" data-i18n-ph-en="Current password" autocomplete="current-password">
-        <input id="pw-new"     class="field" type="password" placeholder="Новый пароль (мин. 6 символов)" data-i18n-ph-ru="Новый пароль (мин. 6 символов)" data-i18n-ph-en="New password (min. 6 characters)" autocomplete="new-password">
+        <input id="pw-new"     class="field" type="password" placeholder="Новый пароль (мин. 6 символов)" data-i18n-ph-ru="Новый пароль (мин. 6 символов)" data-i18n-ph-en="New password (min. 6 characters)" autocomplete="new-password"
+          oninput="updateChangePwStrength()">
+        <!-- Visual-only strength meter, same markup/heuristic as login.html/reset.html/
+             setup.html's password fields (kept consistent across the site) — purely
+             client-side feedback, does not change the actual policy enforced server-side
+             (ChangePasswordBody.pw_min_length in backend/schemas.py: 6 chars minimum). -->
+        <div class="pw-strength" id="cpw-strength" style="display:none;">
+          <div class="pw-strength-bar"><div class="pw-strength-fill" id="cpw-fill"></div></div>
+          <div class="pw-strength-label" id="cpw-label"></div>
+        </div>
         <input id="pw-confirm" class="field" type="password" placeholder="Повторите новый пароль"      data-i18n-ph-ru="Повторите новый пароль" data-i18n-ph-en="Repeat new password" autocomplete="new-password"
           onkeydown="if(event.key==='Enter')changePassword()">
         <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
@@ -573,6 +590,28 @@
       <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
         <button onclick="logoutEverywhere()" class="btn btn-ghost" style="font-size:.75rem;" data-i18n-ru="Выйти на всех других устройствах" data-i18n-en="Log out everywhere else">Выйти на всех других устройствах</button>
         <span id="logout-everywhere-msg" style="font-size:.78rem;display:none;"></span>
+      </div>
+    </div>
+
+    <!-- Current session (GET /api/auth/current-session, backend/routers/auth.py).
+         This app is stateless JWT + a single revoke_before cutoff, not a per-token
+         session store — there is no way to list or individually revoke OTHER active
+         sessions/devices (that would need real session storage, a materially bigger
+         feature). This card is the honest smaller version: only THIS session's own
+         IP/device/issued/expiry, never other devices. -->
+    <div id="current-session-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Этот сеанс —" data-i18n-en="— This session —">— Этот сеанс —</h2>
+      <div id="current-session-body" style="font-size:.8rem;color:var(--text);display:grid;grid-template-columns:auto 1fr;gap:.4rem 1rem;">Загрузка…</div>
+      <p style="font-size:.68rem;color:var(--muted);margin-top:.85rem;" data-i18n-ru="Список остальных активных сеансов на других устройствах пока недоступен — используйте «Другие устройства» выше, чтобы завершить их все сразу." data-i18n-en="A list of other active sessions on other devices isn't available yet — use “Other devices” above to end them all at once.">Список остальных активных сеансов на других устройствах пока недоступен — используйте «Другие устройства» выше, чтобы завершить их все сразу.</p>
+    </div>
+
+    <!-- Login history (GET /api/auth/login-history, backend/routers/auth.py) — every
+         POST /api/auth/login attempt against this account, success or failure. -->
+    <div id="login-history-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— История входов —" data-i18n-en="— Login history —">— История входов —</h2>
+      <div id="login-history-body" style="font-size:.78rem;">Загрузка…</div>
+      <div style="margin-top:.75rem;">
+        <button id="login-history-more-btn" onclick="loadLoginHistory(false)" class="btn btn-ghost" style="font-size:.72rem;display:none;" data-i18n-ru="Показать ещё" data-i18n-en="Show more">Показать ещё</button>
       </div>
     </div>
 
@@ -1251,6 +1290,148 @@ async function logoutEverywhere() {
   } catch { show('Ошибка соединения', false); }
 }
 
+/* ── Password strength meter (visual-only, on the change-password form) ──
+   Same scoring heuristic and 5-level scale as login.html/reset.html/setup.html's
+   password fields, reused verbatim for a consistent look across the site. Purely
+   client-side UX — the actual enforced minimum stays whatever
+   ChangePasswordBody.pw_min_length (backend/schemas.py) already requires (6 chars);
+   this doesn't relax or tighten it. */
+function _profilePwStrengthScore(pw) {
+  if (!pw) return 0;
+  let score = 0;
+  if (pw.length >= 6)  score++;
+  if (pw.length >= 10) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[0-9]/.test(pw)) score++;
+  if (/[^A-Za-z0-9]/.test(pw)) score++;
+  return score;
+}
+function updateChangePwStrength() {
+  const pw = document.getElementById('pw-new').value;
+  const bar = document.getElementById('cpw-strength');
+  const fill = document.getElementById('cpw-fill');
+  const label = document.getElementById('cpw-label');
+  if (!pw) { bar.style.display = 'none'; return; }
+  bar.style.display = 'block';
+  const score = _profilePwStrengthScore(pw);
+  const levels = [
+    { w: '20%',  color: '#ef4444', text: _t('Очень слабый', 'Very weak') },
+    { w: '40%',  color: '#f97316', text: _t('Слабый', 'Weak') },
+    { w: '60%',  color: '#eab308', text: _t('Средний', 'Medium') },
+    { w: '80%',  color: '#84cc16', text: _t('Хороший', 'Good') },
+    { w: '100%', color: '#22c55e', text: _t('Надёжный', 'Strong') },
+  ];
+  const lvl = levels[Math.min(score, 4)];
+  fill.style.width = lvl.w;
+  fill.style.background = lvl.color;
+  label.textContent = lvl.text;
+  label.style.color = lvl.color;
+}
+
+/* ── Current session (GET /api/auth/current-session) ──
+   Deliberately scoped: this app has no per-device session store (see the HTML
+   comment above #current-session-card and POST /api/auth/logout-everywhere's own
+   docstring in backend/routers/auth.py), so this can only ever describe THIS
+   request's own token, never a list of other devices. */
+async function loadCurrentSession() {
+  const body = document.getElementById('current-session-body');
+  if (!body) return;
+  const fmtDt = (iso) => {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleString(_t('ru-RU', 'en-US')); } catch { return iso; }
+  };
+  try {
+    const res = await fetch(`${API}/auth/current-session`, { credentials: 'include' });
+    if (!res.ok) { body.textContent = _t('Не удалось загрузить', 'Failed to load'); return; }
+    const d = await res.json();
+    const rows = [
+      [_t('IP-адрес', 'IP address'), d.ip_address || '—'],
+      [_t('Устройство', 'Device'), _secDescribeUserAgent(d.user_agent)],
+      [_t('Вход выполнен', 'Signed in'), fmtDt(d.issued_at)],
+      [_t('Сеанс истекает', 'Session expires'), fmtDt(d.expires_at)],
+      [_t('Последняя активность', 'Last active'), fmtDt(d.last_active_at)],
+    ];
+    body.innerHTML = rows.map(([k, v]) =>
+      `<span style="color:var(--muted);">${k}:</span><span>${_secEscapeHtml(String(v))}</span>`
+    ).join('');
+  } catch { body.textContent = _t('Ошибка соединения', 'Connection error'); }
+}
+
+/* Small heuristic label from a raw User-Agent string — not a library, just enough
+   to show "Chrome on Windows" instead of a raw UA blob. Falls back to a truncated
+   raw string when nothing recognizable matches. */
+function _secDescribeUserAgent(ua) {
+  if (!ua) return _t('неизвестно', 'unknown');
+  let browser = 'Browser';
+  if (/Edg\//.test(ua)) browser = 'Edge';
+  else if (/OPR\//.test(ua)) browser = 'Opera';
+  else if (/Chrome\//.test(ua)) browser = 'Chrome';
+  else if (/Firefox\//.test(ua)) browser = 'Firefox';
+  else if (/Safari\//.test(ua) && !/Chrome/.test(ua)) browser = 'Safari';
+  let os = '';
+  if (/Windows/.test(ua)) os = 'Windows';
+  else if (/Android/.test(ua)) os = 'Android';
+  else if (/iPhone|iPad|iOS/.test(ua)) os = 'iOS';
+  else if (/Mac OS X/.test(ua)) os = 'macOS';
+  else if (/Linux/.test(ua)) os = 'Linux';
+  if (!os) return ua.length > 60 ? ua.slice(0, 60) + '…' : ua;
+  return `${browser} · ${os}`;
+}
+
+function _secEscapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ── Login history (GET /api/auth/login-history, paginated) ── */
+let _loginHistoryOffset = 0;
+const _LOGIN_HISTORY_PAGE_SIZE = 20;
+const _LOGIN_FAILURE_LABELS = {
+  invalid_credentials: ['Неверные данные', 'Invalid credentials'],
+  account_inactive:    ['Аккаунт заблокирован', 'Account blocked'],
+  totp_required:       ['Требовался код 2FA', '2FA code required'],
+  invalid_totp:        ['Неверный код 2FA', 'Invalid 2FA code'],
+  totp_rate_limited:   ['Превышен лимит попыток 2FA', '2FA attempt limit exceeded'],
+};
+async function loadLoginHistory(reset) {
+  const body = document.getElementById('login-history-body');
+  const moreBtn = document.getElementById('login-history-more-btn');
+  if (!body) return;
+  if (reset) { _loginHistoryOffset = 0; body.innerHTML = ''; }
+  try {
+    const res = await fetch(`${API}/auth/login-history?limit=${_LOGIN_HISTORY_PAGE_SIZE}&offset=${_loginHistoryOffset}`, { credentials: 'include' });
+    if (!res.ok) { body.textContent = _t('Не удалось загрузить', 'Failed to load'); return; }
+    const d = await res.json();
+    if (_loginHistoryOffset === 0 && (!d.items || !d.items.length)) {
+      body.textContent = _t('Входов ещё не было', 'No logins yet');
+      moreBtn.style.display = 'none';
+      return;
+    }
+    const rows = (d.items || []).map(item => {
+      const dt = new Date(item.created_at).toLocaleString(_t('ru-RU', 'en-US'));
+      const ok = item.success;
+      const failureLabel = _t(
+        (_LOGIN_FAILURE_LABELS[item.failure_reason] || [])[0] || item.failure_reason || 'Ошибка',
+        (_LOGIN_FAILURE_LABELS[item.failure_reason] || [])[1] || item.failure_reason || 'Failed',
+      );
+      const badge = ok
+        ? `<span style="color:#4ade80;">✔ ${_t('Успешно', 'Success')}</span>`
+        : `<span style="color:#f87171;">✘ ${_secEscapeHtml(failureLabel)}</span>`;
+      const device = _secDescribeUserAgent(item.user_agent);
+      return `<div style="display:flex;flex-wrap:wrap;gap:.15rem .6rem;padding:.45rem 0;border-bottom:1px solid rgba(110,0,150,.12);">
+        <span style="min-width:7.5rem;">${badge}</span>
+        <span style="color:var(--muted);">${_secEscapeHtml(dt)}</span>
+        <span style="color:var(--muted);">${_secEscapeHtml(item.ip_address || '—')}</span>
+        <span style="color:var(--muted);">${_secEscapeHtml(device)}</span>
+      </div>`;
+    }).join('');
+    body.insertAdjacentHTML('beforeend', rows);
+    _loginHistoryOffset += (d.items || []).length;
+    moreBtn.style.display = (_loginHistoryOffset < (d.total || 0)) ? '' : 'none';
+  } catch { body.textContent = _t('Ошибка соединения', 'Connection error'); }
+}
+
 /* ── Danger zone: self-service account deletion (DELETE /api/profile/me) ── */
 function toggleDangerZone() {
   const body = document.getElementById('danger-zone-body');
@@ -1334,6 +1515,8 @@ async function loadProfile() {
     loadActivity(u.username);
     _initTwoFACard(u.totp_enabled || false);
     initPushCard();
+    loadCurrentSession();
+    loadLoginHistory(true);
     const newsletterCb = document.getElementById('newsletter-opt-in-cb');
     if (newsletterCb) newsletterCb.checked = !!u.newsletter_opt_in;
     document.getElementById('profile-name').textContent  = u.username;

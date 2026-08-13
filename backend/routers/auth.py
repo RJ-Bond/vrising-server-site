@@ -1,17 +1,20 @@
+import asyncio
+import html
 import logging
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import Optional
 
 from jose import JWTError, jwt
 from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, text
+from sqlalchemy import select, delete, func, text
 
 from ..database import get_db
-from ..models import User, PasswordReset
+from ..models import User, PasswordReset, LoginHistory
 from ..auth import (
     verify_password,
     get_password_hash,
@@ -32,6 +35,8 @@ from ..helpers import (
     _set_auth_cookie,
     _clear_auth_cookie,
     _send_reset_email,
+    _send_notification_email,
+    _fmt_dt,
     optimize_image_bytes,
     _totp_attempts_exceeded,
     _record_failed_totp,
@@ -80,16 +85,107 @@ async def register(request: Request, body: UserRegister, response: Response, db:
     return TokenOut(access_token=token, user=UserOut.model_validate(user))
 
 
+async def _record_login_attempt(
+    db: AsyncSession,
+    *,
+    user_id: Optional[int],
+    username_attempted: str,
+    success: bool,
+    failure_reason: Optional[str],
+    ip_address: str,
+    user_agent: str,
+) -> None:
+    """Best-effort audit row for POST /api/auth/login (LoginHistory, models.py) —
+    written on every attempt, success or failure. Never allowed to break the actual
+    login flow: a failure writing this row is logged and swallowed rather than
+    propagated, same "best-effort, never breaks the caller" posture as
+    send_push()/copy_backup_offsite() elsewhere in this codebase. user_id is None
+    for a failed attempt against a username that never resolved to a real account —
+    that's exactly the case worth auditing, so it can't require an FK match."""
+    try:
+        db.add(LoginHistory(
+            user_id=user_id,
+            username_attempted=(username_attempted or "")[:64],
+            success=success,
+            failure_reason=failure_reason,
+            ip_address=(ip_address or "")[:64] or None,
+            user_agent=(user_agent or "")[:256] or None,
+        ))
+        await db.commit()
+    except Exception:
+        logger.exception("Failed to record login-history row for username=%r", username_attempted)
+        await db.rollback()
+
+
+async def _maybe_notify_new_device(db: AsyncSession, user: User, ip_address: str, user_agent: str) -> None:
+    """Best-effort "new device" email, built on top of the LoginHistory audit trail
+    _record_login_attempt() above writes. Fires only when this successful login's IP
+    has never appeared on a PRIOR successful login for this account — deliberately
+    IP-only, not IP+user-agent: simpler, and a changed browser on an already-trusted
+    network is a much weaker signal than a brand-new network. Must be called BEFORE
+    this login's own success row is recorded, otherwise the row would always find
+    itself and never send anything.
+
+    Skips the account's very first-ever successful login (no prior success rows at
+    all) — that's just "welcome", not "new device", and shouldn't alarm someone right
+    after registering. Never raises: a failure here must never affect the login
+    response, matching send_newsletter_digest()'s "never breaks the caller" posture
+    in helpers.py."""
+    if not ip_address or ip_address == "unknown" or not user.email:
+        return
+    try:
+        seen_this_ip = (await db.execute(
+            select(LoginHistory.id).where(
+                LoginHistory.user_id == user.id,
+                LoginHistory.success.is_(True),
+                LoginHistory.ip_address == ip_address,
+            ).limit(1)
+        )).scalar_one_or_none()
+        if seen_this_ip is not None:
+            return
+        had_prior_success = (await db.execute(
+            select(LoginHistory.id).where(
+                LoginHistory.user_id == user.id, LoginHistory.success.is_(True)
+            ).limit(1)
+        )).scalar_one_or_none()
+        if had_prior_success is None:
+            return
+        safe_username = html.escape(user.username)
+        safe_ip = html.escape(ip_address)
+        safe_ua = html.escape((user_agent or "неизвестно")[:200])
+        asyncio.create_task(_send_notification_email(
+            user.email,
+            "Вход в аккаунт с нового устройства",
+            f"Выполнен вход в ваш аккаунт {user.username} с IP-адреса, которого раньше не было в истории входов:\n\n"
+            f"IP: {ip_address}\nУстройство: {user_agent or 'неизвестно'}\n\n"
+            f"Если это были не вы — срочно смените пароль и включите двухфакторную аутентификацию в личном кабинете.",
+            f"<p>Выполнен вход в ваш аккаунт <b>{safe_username}</b> с IP-адреса, которого раньше не было в истории входов:</p>"
+            f"<p>IP: <b>{safe_ip}</b><br>Устройство: {safe_ua}</p>"
+            f"<p>Если это были не вы — срочно смените пароль и включите двухфакторную аутентификацию в личном кабинете.</p>",
+        ))
+    except Exception:
+        logger.exception("Failed new-device email check for user_id=%s", user.id)
+
+
 @router.post("/api/auth/login", response_model=TokenOut)
 @limiter.limit("10/minute")
 async def login(request: Request, body: UserLogin, response: Response, db: AsyncSession = Depends(get_db)):
     client_ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "")
     result = await db.execute(select(User).where(User.username == body.username))
     user = result.scalar_one_or_none()
     if user is None or not verify_password(body.password, user.hashed_password):
         logger.warning("Failed login for username=%r from ip=%s (invalid credentials)", body.username, client_ip)
+        await _record_login_attempt(
+            db, user_id=user.id if user else None, username_attempted=body.username,
+            success=False, failure_reason="invalid_credentials", ip_address=client_ip, user_agent=user_agent,
+        )
         raise HTTPException(status_code=401, detail="Invalid credentials")
     if not user.is_active:
+        await _record_login_attempt(
+            db, user_id=user.id, username_attempted=body.username,
+            success=False, failure_reason="account_inactive", ip_address=client_ip, user_agent=user_agent,
+        )
         raise HTTPException(status_code=403, detail="Ваш аккаунт был заблокирован.")
     if user.totp_enabled:
         import pyotp
@@ -100,6 +196,10 @@ async def login(request: Request, body: UserLogin, response: Response, db: Async
         # specific account. Independent of and in addition to that global limit.
         if _totp_attempts_exceeded(user.id):
             logger.warning("Failed login for username=%r from ip=%s (TOTP attempts exceeded)", body.username, client_ip)
+            await _record_login_attempt(
+                db, user_id=user.id, username_attempted=body.username,
+                success=False, failure_reason="totp_rate_limited", ip_address=client_ip, user_agent=user_agent,
+            )
             raise HTTPException(status_code=401, detail="Слишком много неверных попыток 2FA, попробуйте позже")
         # Accept either a live TOTP code or a single-use recovery code in the same
         # `totp_code` field (see frontend/login.html's "use a recovery code instead"
@@ -114,6 +214,11 @@ async def login(request: Request, body: UserLogin, response: Response, db: Async
         if not totp_ok:
             _record_failed_totp(user.id)
             logger.warning("Failed login for username=%r from ip=%s (invalid TOTP code)", body.username, client_ip)
+            await _record_login_attempt(
+                db, user_id=user.id, username_attempted=body.username,
+                success=False, failure_reason=("totp_required" if not body.totp_code else "invalid_totp"),
+                ip_address=client_ip, user_agent=user_agent,
+            )
             raise HTTPException(status_code=401, detail="Требуется код 2FA")
         if used_recovery:
             # Persist the used_at stamp from _consume_recovery_code() so the same
@@ -123,6 +228,13 @@ async def login(request: Request, body: UserLogin, response: Response, db: Async
         _reset_failed_totp(user.id)
     token = create_access_token_for_user(user)
     _set_auth_cookie(response, token, user.role)
+    # Must run before _record_login_attempt below — it needs to see prior successful
+    # logins WITHOUT this one already counted, otherwise it would always find itself.
+    await _maybe_notify_new_device(db, user, client_ip, user_agent)
+    await _record_login_attempt(
+        db, user_id=user.id, username_attempted=body.username,
+        success=True, failure_reason=None, ip_address=client_ip, user_agent=user_agent,
+    )
     return TokenOut(access_token=token, user=UserOut.model_validate(user))
 
 
@@ -189,6 +301,86 @@ async def session_expiry(request: Request, current_user: User = Depends(get_curr
     exp = payload.get("exp")
     expires_at = datetime.fromtimestamp(exp, tz=timezone.utc).isoformat() if exp else None
     return {"expires_at": expires_at}
+
+
+@router.get("/api/auth/current-session")
+async def current_session(request: Request, current_user: User = Depends(get_current_user)):
+    """Small, honest substitute for true per-session listing on frontend/profile.html's
+    security tab. This app is stateless JWT-in-a-cookie plus one revoke_before cutoff
+    column (see POST /api/auth/logout-everywhere's docstring above) — there is no
+    per-token session store, so there is no way to enumerate or individually revoke
+    OTHER active sessions/devices. Real per-device tracking would need an actual
+    sessions table (device fingerprint, issued-at, revoked flag) keyed by token, which
+    is a materially bigger feature than this pass. What IS honest to show: THIS
+    request's own token — the IP/device currently looking at the page, and when this
+    specific token was issued/expires. Reuses the same re-decode approach as
+    GET /api/auth/session-expiry just above (never persists the token, only derives
+    values already proven valid by get_current_user's dependency)."""
+    token = None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+    else:
+        token = request.cookies.get(COOKIE_NAME)
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token") from None
+    iat = payload.get("iat")
+    exp = payload.get("exp")
+    return {
+        "ip_address": request.client.host if request.client else None,
+        "user_agent": request.headers.get("user-agent"),
+        "issued_at": datetime.fromtimestamp(iat, tz=timezone.utc).isoformat() if iat else None,
+        "expires_at": datetime.fromtimestamp(exp, tz=timezone.utc).isoformat() if exp else None,
+        "last_active_at": _fmt_dt(current_user.last_active_at),
+    }
+
+
+@router.get("/api/auth/login-history")
+async def get_login_history(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    limit: int = 20,
+    offset: int = 0,
+):
+    """Paginated self-service view of this account's own POST /api/auth/login
+    attempts (LoginHistory, models.py — written by _record_login_attempt() above),
+    success and failure both. Strictly scoped to LoginHistory.user_id ==
+    current_user.id: there is no way to see another user's history through this
+    endpoint, admin or not — a separate admin-facing view would need its own
+    dedicated endpoint, out of scope here."""
+    limit = max(1, min(limit, 50))
+    offset = max(0, offset)
+    result = await db.execute(
+        select(LoginHistory)
+        .where(LoginHistory.user_id == current_user.id)
+        .order_by(LoginHistory.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
+    rows = result.scalars().all()
+    total = (await db.execute(
+        select(func.count(LoginHistory.id)).where(LoginHistory.user_id == current_user.id)
+    )).scalar_one()
+    return {
+        "items": [
+            {
+                "id": r.id,
+                "success": r.success,
+                "failure_reason": r.failure_reason,
+                "ip_address": r.ip_address,
+                "user_agent": r.user_agent,
+                "created_at": _fmt_dt(r.created_at),
+            }
+            for r in rows
+        ],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @router.post("/api/auth/accept-rules", response_model=UserOut)

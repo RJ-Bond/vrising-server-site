@@ -16,6 +16,7 @@ from ..models import (
     Clan,
     Event,
     EventParticipant,
+    LoginHistory,
     Message,
     News,
     Notification,
@@ -394,6 +395,10 @@ async def delete_my_account(
     await db.execute(delete(PollVote).where(PollVote.user_id == uid))
     await db.execute(delete(EventParticipant).where(EventParticipant.user_id == uid))
     await db.execute(delete(PasswordReset).where(PasswordReset.user_id == uid))
+    # Login history carries IP/user-agent (personal data), same reasoning as the
+    # rows above — deleted outright rather than SET NULL like Comment/Report, since
+    # unlike those there's no "attributed content" reason to keep it around headless.
+    await db.execute(delete(LoginHistory).where(LoginHistory.user_id == uid))
     await db.execute(delete(Message).where((Message.sender_id == uid) | (Message.recipient_id == uid)))
     await db.execute(delete(ShopRedemption).where(ShopRedemption.user_id == uid))
     await db.execute(delete(PointsTransaction).where(PointsTransaction.user_id == uid))
