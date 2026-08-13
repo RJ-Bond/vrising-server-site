@@ -3178,6 +3178,24 @@ function _setupDraftListeners() {
 
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
 function authH()   { return { 'Content-Type': 'application/json' }; }
+
+// FastAPI's own validation errors (422) send `detail` as an array of
+// {loc,msg,type} objects, not a string — a plain `d.detail || fallback` renders
+// that as the literal text "[object Object]" once assigned to .textContent
+// (Array.prototype.toString() stringifies each element that way). Every
+// error-display call site should route through this instead of inlining the
+// same `typeof d.detail === 'string' ? ... : JSON.stringify(...)` check.
+function apiErrorText(d, fallback) {
+  if (d && typeof d.detail === 'string' && d.detail) return d.detail;
+  if (d && d.detail != null) {
+    if (Array.isArray(d.detail)) {
+      const msgs = d.detail.map(e => (e && e.msg) || JSON.stringify(e)).filter(Boolean);
+      if (msgs.length) return msgs.join('; ');
+    }
+    try { return JSON.stringify(d.detail); } catch { /* fall through */ }
+  }
+  return fallback;
+}
 async function logout() {
   await fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' }).catch(() => {});
   localStorage.removeItem('user'); sessionStorage.removeItem('user');
@@ -3927,7 +3945,7 @@ async function submitEditor() {
     });
     if (!res.ok) {
       const d = await res.json();
-      errEl.textContent = d.detail || 'Ошибка сохранения';
+      errEl.textContent = apiErrorText(d, 'Ошибка сохранения');
       errEl.classList.remove('hidden'); return;
     }
     _clearDraft();
@@ -4404,7 +4422,7 @@ async function saveAnnouncement() {
     const method = _annEditingId ? 'PUT' : 'POST';
     const res = await fetch(url, { method, credentials: 'include', headers: authH(), body: JSON.stringify(body) });
     const d = await res.json().catch(() => ({}));
-    if (!res.ok) return show(d.detail || 'Ошибка сохранения', false);
+    if (!res.ok) return show(apiErrorText(d, 'Ошибка сохранения'), false);
     show('Сохранено!', true);
     _resetAnnouncementForm();
     loadAnnouncements();
@@ -4428,7 +4446,7 @@ async function testSendAnnouncement() {
       if (d.detail === 'steam_id_not_linked') {
         return show('Сначала привяжите игровой аккаунт командой .register или .login в игре', false);
       }
-      return show(d.detail || 'Ошибка отправки', false);
+      return show(apiErrorText(d, 'Ошибка отправки'), false);
     }
     show('Отправлено — придёт в игру в течение минуты, если ваш персонаж сейчас в сети', true);
   } catch { show('Ошибка сети', false); }
@@ -5849,7 +5867,7 @@ async function execRcon() {
       body: JSON.stringify({server: srv, command: cmd})
     });
     const d = await res.json();
-    if (!res.ok) { out.textContent = '❌ ' + (d.detail || 'Ошибка'); out.style.color='#fca5a5'; return; }
+    if (!res.ok) { out.textContent = '❌ ' + apiErrorText(d, 'Ошибка'); out.style.color='#fca5a5'; return; }
     out.style.color = '#93c5fd';
     out.textContent = '> ' + cmd + '\n' + (d.output || '(пустой ответ)');
   } catch(e) {
@@ -6409,7 +6427,7 @@ async function bulkDeleteComments() {
           body: JSON.stringify({ ids }),
         });
         const d = await r.json().catch(() => ({}));
-        if (!r.ok) { showToast(d.detail || 'Ошибка удаления', 'error'); return; }
+        if (!r.ok) { showToast(apiErrorText(d, 'Ошибка удаления'), 'error'); return; }
         showToast(`Удалено: ${d.succeeded} из ${ids.length}`, d.failed ? 'error' : 'success');
       } catch { showToast('Ошибка соединения', 'error'); }
       loadAdminComments(_commentsPage);
@@ -7552,7 +7570,7 @@ async function bulkReviewReports(status) {
           body: JSON.stringify({ ids, status }),
         });
         const d = await r.json().catch(() => ({}));
-        if (!r.ok) { showToast(d.detail || 'Ошибка обновления', 'error'); return; }
+        if (!r.ok) { showToast(apiErrorText(d, 'Ошибка обновления'), 'error'); return; }
         showToast(`Обновлено жалоб: ${d.succeeded} из ${ids.length}`, d.failed ? 'error' : 'success');
       } catch { showToast('Ошибка соединения', 'error'); }
       loadReports(_reportsPage);
@@ -7591,7 +7609,7 @@ async function addAutoFlagRule() {
       method: 'POST', credentials: 'include', headers: authH(),
       body: JSON.stringify({ keyword }),
     });
-    if (!r.ok) { const d = await r.json().catch(() => ({})); showToast(d.detail || 'Ошибка добавления', 'error'); return; }
+    if (!r.ok) { const d = await r.json().catch(() => ({})); showToast(apiErrorText(d, 'Ошибка добавления'), 'error'); return; }
     input.value = '';
     loadAutoFlagRules();
   } catch { showToast('Ошибка соединения', 'error'); }
@@ -7976,7 +7994,7 @@ async function saveShopItem() {
     const method = _editingShopItemId ? 'PUT' : 'POST';
     const r = await fetch(url, {method, credentials:'include', headers:authH(), body:JSON.stringify(body)});
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) return show(d.detail || 'Ошибка', false);
+    if (!r.ok) return show(apiErrorText(d, 'Ошибка'), false);
     show('Сохранено!', true);
     setTimeout(() => { closeShopItemEditor(); loadShopCatalog(); }, 800);
   } catch { show('Ошибка соединения', false); }
@@ -8009,7 +8027,7 @@ async function grantPoints() {
   try {
     const r = await fetch(`${API}/admin/points/grant`, {method:'POST', credentials:'include', headers:authH(), body:JSON.stringify(body)});
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) return show(d.detail || 'Ошибка', false);
+    if (!r.ok) return show(apiErrorText(d, 'Ошибка'), false);
     show(`Начислено. Баланс: ${d.balance_after}`, true);
     document.getElementById('grant-username').value = '';
     document.getElementById('grant-delta').value = '';
@@ -8036,7 +8054,7 @@ async function grantPointsBulk() {
   try {
     const r = await fetch(`${API}/admin/points/grant-bulk`, {method:'POST', credentials:'include', headers:authH(), body:JSON.stringify(body)});
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) return show(d.detail || 'Ошибка', false);
+    if (!r.ok) return show(apiErrorText(d, 'Ошибка'), false);
     show(`Успешно: ${d.succeeded}, ошибок: ${d.failed}`, d.failed === 0);
     resultsBox.style.display = 'block';
     resultsBox.innerHTML = (d.results || []).map(res => `
