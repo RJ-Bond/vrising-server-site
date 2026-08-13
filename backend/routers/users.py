@@ -12,7 +12,7 @@ from sqlalchemy import select, func, text, or_
 from ..database import get_db
 from ..models import User, PlayerRecord, PlayerRankSnapshot, GameClan, GameClanMember, Comment, Reaction, News, PlayerDailyActivity, Notification
 from ..auth import get_moderator_user, get_admin_user, get_superadmin_user, role_level
-from ..helpers import log_audit, _audit, _fmt_dt, _award_points, send_push
+from ..helpers import log_audit, _audit, _fmt_dt, _award_points, send_push, _get_server_names
 from ..schemas import UserOut, LinkedAccountOut
 
 router = APIRouter()
@@ -240,12 +240,19 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         select(func.sum(PlayerRecord.session_count)).where(PlayerRecord.player_name == lookup_name)
     )
     session_count = int(session_count_result.scalar_one() or 0)
+    # last_duration/server_num both come off the single most-recently-touched
+    # PlayerRecord row (max last_seen, possibly on a different server_num than the
+    # aggregate total_seconds/session_count above, which SUM across every server) — the
+    # "which server was this player last on" surfaced as last_server_num below (see
+    # profile.html's "current/last server" widget).
     last_dur_result = await db.execute(
-        select(PlayerRecord.last_duration).where(
+        select(PlayerRecord.last_duration, PlayerRecord.server_num).where(
             PlayerRecord.player_name == lookup_name
         ).order_by(PlayerRecord.last_seen.desc()).limit(1)
     )
-    last_duration = last_dur_result.scalar_one_or_none() or 0
+    last_row = last_dur_result.first()
+    last_duration = (last_row.last_duration if last_row else 0) or 0
+    last_server_num = last_row.server_num if last_row else None
     # True once at least one PlayerRecord row for this player was claimed by a real
     # /api/plugin/sessions report (steam_id set), vs. total_seconds being purely an
     # older Steam-A2S-polling estimate never confirmed by the plugin.
@@ -256,20 +263,37 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
     )
     verified = verified_result.scalar_one_or_none() is not None
     # Clan membership now comes from the game-synced roster (matched via the verified
-    # steam_id link), not the old web-managed Clan/User.clan_id system.
+    # steam_id link), not the old web-managed Clan/User.clan_id system. GameClanMember's
+    # role/is_online ride along on the same join — is_online is the closest thing this
+    # app has to a live "currently in-game" signal (refreshed on the plugin's clan-sync
+    # cadence, "live-ish" per that column's own docstring in models.py — NOT a real-time
+    # presence feed), and it only exists for players who are in a clan at all. A player
+    # with no clan has no live-presence data anywhere in this schema (PlayerRecord.
+    # last_seen is only ever written on disconnect, never on connect — see
+    # POST /api/plugin/sessions's docstring), so is_online is None (unknown), not False,
+    # for an unclanned or unlinked account — the frontend must tell "known offline" apart
+    # from "not tracked" rather than showing a false "офлайн".
     clan = None
+    is_online = None
+    online_server_num = None
     if user.steam_id:
         clan_result = await db.execute(
-            select(GameClan).join(GameClanMember, GameClanMember.clan_id == GameClan.id)
+            select(GameClan, GameClanMember.role, GameClanMember.is_online)
+            .join(GameClanMember, GameClanMember.clan_id == GameClan.id)
             .where(GameClanMember.steam_id == user.steam_id)
         )
-        clan_row = clan_result.scalars().first()
-        if clan_row:
-            clan = {"id": clan_row.id, "name": clan_row.name}
+        clan_row_result = clan_result.first()
+        if clan_row_result:
+            clan_row, member_role, member_online = clan_row_result
+            clan = {"id": clan_row.id, "name": clan_row.name, "role": member_role, "is_online": bool(member_online)}
+            is_online = bool(member_online)
+            if is_online:
+                online_server_num = clan_row.server_num
     comment_count_res = await db.execute(
         select(func.count(Comment.id)).where(Comment.author_id == user.id)
     )
     comment_count = comment_count_res.scalar_one() or 0
+    server_names = await _get_server_names(db)
     return {
         "username": user.username,
         "avatar_url": user.avatar_url,
@@ -288,6 +312,14 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
         "badge_icon_url": user.badge_icon_url,
         "badge_style": user.badge_style or "default",
         "comment_count": comment_count,
+        # Live-ish "currently in-game" status — see the comment above the clan lookup:
+        # None = not tracked (no clan/no linked steam_id), true/false = known from the
+        # last clan-roster sync.
+        "is_online": is_online,
+        "online_server_num": online_server_num,
+        "online_server_name": server_names.get(online_server_num) if online_server_num else None,
+        "last_server_num": last_server_num,
+        "last_server_name": server_names.get(last_server_num) if last_server_num else None,
     }
 
 

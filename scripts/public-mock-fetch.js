@@ -205,13 +205,21 @@
     { id: 3, username: 'Nightwatch', avatar_url: null, created_at: iso(200 * 24 * 3600 * 1000), admin_title: 'Модератор чата', last_active_at: iso(20 * 24 * 3600 * 1000), is_online: false, badge_icon_url: null, badge_style: 'flame', role: 'admin' },
   ];
 
+  // clan.role/is_online + top-level is_online/online_server_*/last_server_* mirror the
+  // fields GET /api/users/{username} (backend/routers/users.py get_public_profile)
+  // gained alongside profile.html's #1/#2/#3 online-status/current-server/clan-role
+  // widgets — is_online true here so the preview exercises the "online now" state,
+  // not just the "last known server" fallback state.
   const userProfile = {
     username: 'Vortigern', avatar_url: null, cover_url: null, role: 'user',
     created_at: iso(180 * 24 * 3600 * 1000), game_nickname: 'Vortigern',
     total_seconds: 500000, last_seen: iso(3600 * 1000), session_count: 45,
-    last_duration: 5400, verified: true, clan: { id: 1, name: 'Кровавые Клыки' },
+    last_duration: 5400, verified: true,
+    clan: { id: 1, name: 'Кровавые Клыки', role: 'leader', is_online: true },
     admin_title: null, last_active_at: iso(600000), badge_icon_url: null,
     badge_style: 'default', comment_count: 23,
+    is_online: true, online_server_num: 1, online_server_name: '[RU] Just-Skill.Ru | Standart PvE',
+    last_server_num: 1, last_server_name: '[RU] Just-Skill.Ru | Standart PvE',
   };
   const userActivity = {
     username: 'Vortigern',
@@ -220,6 +228,23 @@
       { type: 'reaction', created_at: iso(5 * 3600 * 1000), news_slug: 'news-2', news_title: 'Хэллоуин ивент', emoji: '🔥' },
       { type: 'comment', created_at: iso(26 * 3600 * 1000), news_slug: 'news-1', news_title: 'Обновление сервера', preview: 'Когда следующий вайп?' },
     ],
+  };
+  // GET /api/users/{u}/activity-trend (backend/routers/users.py) — daily playtime deltas
+  // feeding the renderBarChart() "Активность за месяц" card on both user.html and (as of
+  // the profile-tab work adding #6) profile.html. >=2 points so the card doesn't hide
+  // itself (see that endpoint's own docstring on why a single day is dropped).
+  const userActivityTrend = [0, 1, 2, 3, 4, 5, 6].map((daysAgo) => ({
+    date: new Date(now - daysAgo * 24 * 3600 * 1000).toISOString().slice(0, 10),
+    seconds: [5400, 9000, 0, 12600, 7200, 3600, 10800][daysAgo],
+  })).reverse();
+  // GET /api/users/{u}/activity-heatmap — presence-only calendar (see that endpoint's
+  // docstring), also the data source for profile.html's #5 connect-streak stat tile
+  // (computed client-side — see loadProfileHeatmapAndStreak()). Today plus the 4
+  // preceding days are active so the streak tile shows a non-trivial "5".
+  const userActivityHeatmap = {
+    days: 180,
+    active_dates: [0, 1, 2, 3, 4, 10, 11, 20].map((daysAgo) =>
+      new Date(now - daysAgo * 24 * 3600 * 1000).toISOString().slice(0, 10)),
   };
 
   // ShopItemOut shape (backend/schemas.py) — GET /api/shop/items. shop.html is
@@ -237,8 +262,10 @@
     { id: 4, name: 'Смена внешности', description: 'Полная перекройка персонажа в игре.', cost: 200, image_url: null, is_active: true, stock: null, sort_order: 3, category: 'Косметика', weekly_limit_per_user: 1, weekly_remaining: 0, wishlisted: true, created_at: iso(15 * 24 * 3600 * 1000), updated_at: iso(3 * 24 * 3600 * 1000) },
   ];
   const shopWishlist = shopItems.filter(i => i.wishlisted);
-  // UserOut shape (backend/schemas.py) — GET /api/auth/me for shop.html's authenticated
-  // preview only (see _mockAuthedUser below).
+  // UserOut shape (backend/schemas.py) — GET /api/auth/me for the authenticated-preview
+  // pages (shop.html and profile.html, see _mockAuthedUser below). Username matches
+  // userProfile above so profile.html's own-profile fetch of GET /api/users/{username}
+  // resolves to the same identity as /api/auth/me.
   const shopAuthedUser = {
     id: 1, username: 'Vortigern', email: 'vortigern@example.com', role: 'user', is_active: true,
     created_at: iso(240 * 24 * 3600 * 1000), avatar_url: null, cover_url: null,
@@ -250,6 +277,18 @@
     total: 1, page: 1, per_page: 20,
     items: [
       { id: 1, user_id: 1, shop_item_id: 1, item_name_snapshot: 'Waypoint Shard', cost_snapshot: 50, status: 'pending', delivery_mode: 'manual', player_note: null, admin_note: null, created_at: iso(3600000), resolved_at: null, resolved_by: null },
+    ],
+  };
+  // GET /api/points/transactions/me (backend/routers/points_shop.py) — own points
+  // ledger, shown on profile.html's Очки tab AND (filtered to reason="nickname_change")
+  // the Profile tab's #10 own-nickname-history panel (loadNickHistory()). One
+  // nickname_change row included so that panel's screenshot isn't just an empty state.
+  const myPointsTransactions = {
+    total: 3, page: 1, per_page: 30,
+    items: [
+      { id: 1, user_id: 1, delta: 60, balance_after: 340, reason: 'playtime', detail: '3600s session on server 1', created_at: iso(2 * 3600 * 1000) },
+      { id: 2, user_id: 1, delta: -100, balance_after: 280, reason: 'nickname_change', detail: 'OldVortigern -> Vortigern', created_at: iso(20 * 24 * 3600 * 1000) },
+      { id: 3, user_id: 1, delta: -50, balance_after: 380, reason: 'redeem', detail: 'Waypoint Shard', created_at: iso(3600000) },
     ],
   };
 
@@ -354,6 +393,11 @@
     [/\/api\/auth\/me$/, () => null], // anonymous visitor — handled as 401 below
     [/\/api\/team/, () => team],
     [/\/api\/users\/recent/, () => recentUsers],
+    // activity-trend/activity-heatmap registered before the generic .../activity below —
+    // that broader pattern has no trailing anchor, so "activity-trend"/"activity-heatmap"
+    // would otherwise match it first and get the wrong (activity-feed) response shape.
+    [/\/api\/users\/[^/]+\/activity-trend/, () => userActivityTrend],
+    [/\/api\/users\/[^/]+\/activity-heatmap/, () => userActivityHeatmap],
     [/\/api\/users\/[^/]+\/activity/, () => userActivity],
     [/\/api\/users\/[^/]+$/, () => userProfile],
     [/\/api\/servers\/\d+\/restart-status/, (url) => restartStatus(Number(url.match(/\/api\/servers\/(\d+)\/restart-status/)[1]))],
@@ -381,13 +425,15 @@
     [/\/api\/shop\/items$/, () => shopItems],
     [/\/api\/shop\/wishlist\/me$/, () => shopWishlist],
     [/\/api\/shop\/redemptions\/me/, () => myShopRedemptions],
+    [/\/api\/points\/transactions\/me/, () => myPointsTransactions],
   ];
 
-  // shop.html is the one page this file mocks as a logged-in visitor rather than
-  // anonymous — its entire content is behind an auth gate with no anonymous fallback
-  // (unlike every other page here), so previewing the category/wishlist/weekly-limit UI
-  // added alongside this mock update needs GET /api/auth/me to actually succeed.
-  const _mockAuthedUser = /shop\.html/.test(location.pathname);
+  // shop.html and profile.html are the pages this file mocks as a logged-in visitor
+  // rather than anonymous — both are entirely behind an auth gate with no anonymous
+  // fallback (unlike every other page here), so previewing them (category/wishlist/
+  // weekly-limit UI for shop.html; the #1/#2/#3/#5/#6/#10 Profile-tab widgets for
+  // profile.html) needs GET /api/auth/me to actually succeed.
+  const _mockAuthedUser = /shop\.html|profile\.html/.test(location.pathname);
 
   const realFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {

@@ -101,6 +101,12 @@
       border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; position:absolute;
     }
     @keyframes spin { to { transform:rotate(360deg); } }
+    /* #9 Upload progress percentage — sits next to the spinner (avatar) or over the
+       cover overlay (cover), shown while an XHR upload is in flight. */
+    .upload-progress-text {
+      display:none; position:absolute; font-size:.62rem; font-weight:700; color:#fff;
+      text-shadow:0 1px 3px rgba(0,0,0,0.8); z-index:4; letter-spacing:.02em; pointer-events:none;
+    }
 
     /* RANK */
     .rank-bar-wrap { height:5px; background:rgba(255,255,255,0.07); border-radius:9999px; overflow:hidden; margin-top:.45rem; }
@@ -303,6 +309,8 @@
       <div class="cover-stars" id="cover-stars"></div>
       <div class="cover-title" id="cover-subtitle" data-i18n-ru="— Профиль игрока —" data-i18n-en="— Player profile —">— Профиль игрока —</div>
       <div class="cover-glow"></div>
+      <!-- #9 Cover upload progress — centered over the cover while an XHR upload is in flight. -->
+      <span class="upload-progress-text" id="cover-progress-text" style="top:50%;left:50%;transform:translate(-50%,-50%);font-size:.95rem;background:rgba(0,0,0,0.55);padding:.3rem .8rem;border-radius:.4rem;z-index:6;"></span>
       <div class="cover-change-overlay" id="cover-change-overlay" role="button" tabindex="0"
         onclick="document.getElementById('cover-file-input').click()"
         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('cover-file-input').click();}"
@@ -321,8 +329,13 @@
             title="Сменить аватар" data-i18n-title-ru="Сменить аватар" data-i18n-title-en="Change avatar">
             <div class="avatar-overlay"><span data-i18n-ru="Сменить" data-i18n-en="Change">Сменить</span></div>
             <div class="upload-spinner" id="avatar-spinner"></div>
-            <!-- #4 Online indicator -->
-            <span id="avatar-online-dot" title="Онлайн сейчас" style="position:absolute;bottom:4px;right:4px;width:14px;height:14px;border-radius:50%;background:#22c55e;border:2px solid rgba(14,5,22,1);box-shadow:0 0 6px rgba(34,197,94,0.7);z-index:3;"></span>
+            <span class="upload-progress-text" id="avatar-progress-text" style="bottom:2px;left:0;right:0;text-align:center;"></span>
+            <!-- #4 Online indicator — hidden by default, only shown once loadProfile()
+                 confirms the linked steam_id is a currently-online clan member (see
+                 GameClanMember.is_online via GET /api/users/{username} "is_online").
+                 There is no live presence signal at all for unclanned/unlinked
+                 accounts, so this must stay hidden rather than default "online". -->
+            <span id="avatar-online-dot" title="Онлайн сейчас" data-i18n-title-ru="Онлайн сейчас" data-i18n-title-en="Online now" style="display:none;position:absolute;bottom:4px;right:4px;width:14px;height:14px;border-radius:50%;background:#22c55e;border:2px solid rgba(14,5,22,1);box-shadow:0 0 6px rgba(34,197,94,0.7);z-index:3;"></span>
           </div>
         </div>
         <div style="padding-bottom:.35rem;display:flex;gap:.5rem;flex-wrap:wrap;">
@@ -355,11 +368,14 @@
         </div>
 
         <!-- #6 Clan widget -->
-        <div id="clan-widget" style="display:none;margin-top:.55rem;align-items:center;gap:.5rem;">
+        <div id="clan-widget" style="display:none;margin-top:.55rem;align-items:center;gap:.5rem;flex-wrap:wrap;">
           <a id="clan-link" href="/clans.html" style="display:inline-flex;align-items:center;gap:.4rem;text-decoration:none;background:rgba(80,0,15,0.25);border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;padding:.22rem .65rem;transition:all .18s;" onmouseover="this.style.borderColor='rgba(200,0,40,0.5)'" onmouseout="this.style.borderColor='rgba(150,0,28,0.3)'">
             <span style="font-size:.65rem;font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.06em;color:var(--crimson);" id="clan-tag-display"></span>
             <span style="font-size:.65rem;color:var(--muted);" id="clan-name-display"></span>
           </a>
+          <!-- Clan role (leader/officer/member), from GameClanMember.role synced by the
+               plugin — see clan-widget population in loadProfile(). -->
+          <span id="clan-role-badge" style="display:none;font-size:.6rem;font-weight:700;letter-spacing:.05em;padding:.18rem .55rem;border-radius:9999px;"></span>
         </div>
 
         <!-- #1 Stat tiles -->
@@ -456,6 +472,14 @@
             style="padding:.5rem 1rem;background:rgba(150,0,28,.2);border:1px solid rgba(150,0,28,.4);color:#e2d8f0;border-radius:.55rem;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap;" data-i18n-ru="Сохранить" data-i18n-en="Save">Сохранить</button>
         </div>
         <div id="game-nickname-status" style="font-size:.7rem;margin-top:.3rem;"></div>
+        <button type="button" onclick="toggleNickHistory()" style="margin-top:.4rem;background:none;border:none;padding:0;font-size:.68rem;color:var(--muted);text-decoration:underline;cursor:pointer;" data-i18n-ru="История смен ника" data-i18n-en="Nickname change history">История смен ника</button>
+        <!-- #10 Own nickname-change history — mirrors admin.html's loadUserQvNickHistory()
+             (item 9 there), but via the self-service GET /api/points/transactions/me
+             ledger instead of the admin-gated one, filtered client-side to
+             reason==="nickname_change" (see plugin_nickname_change() in
+             plugin_integration.py, which logs every ".nick" change as that same
+             PointsTransaction reason). -->
+        <div id="nick-history-panel" style="display:none;margin-top:.5rem;padding:.6rem .7rem;background:rgba(8,0,14,0.5);border:1px solid rgba(110,0,150,0.2);border-radius:.5rem;max-height:220px;overflow-y:auto;"></div>
       </div>
       <div id="game-stats-wrap" style="display:none;border-top:1px solid rgba(110,0,150,0.18);padding-top:.85rem;margin-top:.5rem;">
         <div style="font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.55rem;" data-i18n-ru="Статистика на сервере" data-i18n-en="Server stats">Статистика на сервере</div>
@@ -468,6 +492,25 @@
             <div id="gs-last" style="font-size:1.1rem;font-weight:700;font-family:'Oswald',sans-serif;color:#ecd8e0;">—</div>
             <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;" data-i18n-ru="Последняя игра" data-i18n-en="Last played">Последняя игра</div>
           </div>
+          <!-- #1/#2 Online status + current/last server — only shown when the linked
+               steam_id has any tracked signal at all (see loadProfile()'s handling of
+               pubData.is_online / last_server_name; is_online is `null`/untracked for
+               unclanned or unlinked accounts, not a false "offline"). -->
+          <div id="gs-online-wrap" style="display:none;">
+            <div id="gs-online" style="font-size:1.1rem;font-weight:700;font-family:'Oswald',sans-serif;">—</div>
+            <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;" data-i18n-ru="Статус" data-i18n-en="Status">Статус</div>
+          </div>
+          <div id="gs-server-wrap" style="display:none;">
+            <div id="gs-server" style="font-size:1.1rem;font-weight:700;font-family:'Oswald',sans-serif;color:#ecd8e0;">—</div>
+            <div id="gs-server-label" style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;" data-i18n-ru="Сервер" data-i18n-en="Server">Сервер</div>
+          </div>
+          <!-- #5 Connect-streak — computed client-side from GET /api/users/{u}/activity-heatmap's
+               active_dates (same data POST /api/plugin/connect-streak's in-game message is
+               built from), see renderConnectStreak() below. -->
+          <div id="gs-streak-wrap" style="display:none;">
+            <div id="gs-streak" style="font-size:1.1rem;font-weight:700;font-family:'Oswald',sans-serif;color:#facc15;">—</div>
+            <div style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;" data-i18n-ru="Дней подряд" data-i18n-en="Day streak">Дней подряд</div>
+          </div>
         </div>
       </div>
     </div>
@@ -477,6 +520,28 @@
       <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Последняя активность —" data-i18n-en="— Recent activity —">— Последняя активность —</h2>
       <div id="activity-list" style="display:flex;flex-direction:column;gap:.5rem;">
         <div style="color:var(--muted);font-size:.78rem;text-align:center;padding:.5rem 0;">Загрузка…</div>
+      </div>
+    </div>
+
+    <!-- #6 Playtime-per-day chart — GET /api/users/{u}/activity-trend, same endpoint/
+         renderBarChart() already used by user.html's public profile view (pub-trend-card),
+         just not previously wired into this page's own Profile tab. Hidden until there
+         are ≥2 days of PlayerRankSnapshot history to diff (see that endpoint's docstring). -->
+    <div id="profile-trend-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Активность за месяц —" data-i18n-en="— Activity this month —">— Активность за месяц —</h2>
+      <div style="height:120px;position:relative;"><canvas id="profile-trend-chart"></canvas></div>
+    </div>
+
+    <!-- GitHub-style contribution calendar — GET /api/users/{u}/activity-heatmap, same
+         data source the #5 connect-streak widget above is computed from client-side. -->
+    <div id="profile-heatmap-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;display:none;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Календарь активности —" data-i18n-en="— Activity calendar —">— Календарь активности —</h2>
+      <div id="profile-heatmap-grid" style="display:flex;gap:3px;overflow-x:auto;padding-bottom:.3rem;"></div>
+      <div style="display:flex;align-items:center;gap:.35rem;margin-top:.6rem;font-size:.62rem;color:var(--muted);">
+        <span data-i18n-ru="Меньше" data-i18n-en="Less">Меньше</span>
+        <span style="width:10px;height:10px;border-radius:2px;background:rgba(255,255,255,0.06);display:inline-block;"></span>
+        <span style="width:10px;height:10px;border-radius:2px;background:rgba(180,0,35,0.75);display:inline-block;"></span>
+        <span data-i18n-ru="Больше" data-i18n-en="More">Больше</span>
       </div>
     </div>
 
@@ -750,6 +815,8 @@
      (used to be this page's own #profile-confirm-modal markup, see
      showProfileConfirm() below, which is now a thin call to the shared version). -->
 
+<script src="/chart.min.js"></script>
+<script src="/charts.js?v=2"></script>
 <script src="/common.js?v=16"></script>
 <script>
 const API = '/api';
@@ -1050,7 +1117,8 @@ function setAvatarEl(url, initial) {
   const overlay = el.querySelector('.avatar-overlay');
   const spinner = el.querySelector('.upload-spinner');
   const dot = el.querySelector('#avatar-online-dot');
-  [...el.childNodes].forEach(n => { if (n !== overlay && n !== spinner && n !== dot) n.remove(); });
+  const progressText = el.querySelector('#avatar-progress-text');
+  [...el.childNodes].forEach(n => { if (n !== overlay && n !== spinner && n !== dot && n !== progressText) n.remove(); });
   if (url) {
     const img = document.createElement('img'); img.src = url; img.alt = initial;
     el.insertBefore(img, overlay);
@@ -1059,23 +1127,70 @@ function setAvatarEl(url, initial) {
   }
 }
 
+// #8/#9 Local preview (FileReader, shown instantly, before any network round trip)
+// + upload progress (plain fetch() has no upload-progress signal, so this uses
+// XMLHttpRequest specifically for that — everything else on this page stays on fetch).
 async function uploadAvatar(input) {
-  if (!input.files?.[0]) return;
+  const file = input.files?.[0];
+  if (!file) return;
+  const initial = (getUser()?.username || '?').charAt(0).toUpperCase();
+  const prevUrl = getUser()?.avatar_url || '';
   const spinner = document.getElementById('avatar-spinner');
+  const progressText = document.getElementById('avatar-progress-text');
   spinner.style.display = 'block';
-  const form = new FormData();
-  form.append('file', input.files[0]);
+  if (progressText) { progressText.style.display = 'block'; progressText.textContent = '0%'; }
+
+  // #8 Instant local preview, replaced by the real uploaded URL on success (or reverted
+  // to the previous avatar on failure — see the reject handler below).
   try {
-    const res = await fetch(`${API}/auth/avatar`, {
-      method:'POST', credentials:'include', body:form,
+    const previewUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
     });
-    if (!res.ok) { const e = await res.json().catch(()=>({})); showToast?.(e?.detail||'Ошибка загрузки', 'error'); return; }
-    const { avatar_url } = await res.json();
+    setAvatarEl(previewUrl, initial);
+  } catch { /* preview is best-effort; the upload below still proceeds */ }
+
+  try {
+    const { avatar_url } = await _uploadWithProgress(`${API}/auth/avatar`, file, (pct) => {
+      if (progressText) progressText.textContent = pct + '%';
+    });
     const u = getUser();
     if (u) { u.avatar_url = avatar_url; (localStorage.getItem('user') ? localStorage : sessionStorage).setItem('user', JSON.stringify(u)); }
-    setAvatarEl(avatar_url, (getUser()?.username||'?').charAt(0).toUpperCase());
-  } catch { showToast?.('Ошибка загрузки аватара', 'error'); }
-  finally { spinner.style.display = 'none'; input.value = ''; }
+    setAvatarEl(avatar_url, initial);
+  } catch (e) {
+    showToast?.(e?.detail || 'Ошибка загрузки аватара', 'error');
+    setAvatarEl(prevUrl, initial);
+  } finally {
+    spinner.style.display = 'none';
+    if (progressText) progressText.style.display = 'none';
+    input.value = '';
+  }
+}
+
+// Shared XHR-based upload helper (fetch() cannot report upload progress) — used by both
+// uploadAvatar() and uploadCover() below. Resolves with the parsed JSON body on 2xx,
+// rejects with the parsed error body (or {detail: fallbackMsg}) otherwise.
+function _uploadWithProgress(url, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const form = new FormData();
+    form.append('file', file);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.withCredentials = true;
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100));
+    };
+    xhr.onload = () => {
+      let body = {};
+      try { body = JSON.parse(xhr.responseText || '{}'); } catch { /* non-JSON error body */ }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body);
+      else reject(body?.detail ? body : { detail: 'Ошибка загрузки' });
+    };
+    xhr.onerror = () => reject({ detail: 'Ошибка соединения' });
+    xhr.send(form);
+  });
 }
 
 async function changePassword() {
@@ -1309,14 +1424,61 @@ async function loadProfile() {
         tiles.style.display = 'flex';
       }
 
-      // #6 Clan widget
-      if (pubData.clan_tag || pubData.clan_name) {
+      // #3/#6 Clan widget — was reading pubData.clan_tag/clan_name, fields the backend
+      // has never actually returned since clan membership moved to the game-synced
+      // GameClan roster (GET /api/users/{u} returns a nested `clan: {id, name, role,
+      // is_online}` object, no top-level clan_tag/clan_name, and GameClan itself has no
+      // `tag` column at all — that was the old web-managed Clan model). The widget was
+      // therefore silently dead for every account; fixed here to read pubData.clan and
+      // to show the member's role (leader/officer/member) alongside the name.
+      if (pubData.clan) {
         const clanWidget = document.getElementById('clan-widget');
         const clanTag = document.getElementById('clan-tag-display');
         const clanName = document.getElementById('clan-name-display');
-        if (clanTag) clanTag.textContent = pubData.clan_tag ? `[${pubData.clan_tag}]` : '';
-        if (clanName) clanName.textContent = pubData.clan_name || '';
+        const roleBadge = document.getElementById('clan-role-badge');
+        if (clanTag) clanTag.textContent = '';
+        if (clanName) clanName.textContent = pubData.clan.name || '';
+        if (roleBadge) {
+          const roleColors = {
+            leader:  { bg: 'rgba(201,169,74,0.14)',  border: 'rgba(201,169,74,0.35)',  color: 'var(--gold)' },
+            officer: { bg: 'rgba(80,0,130,0.14)',    border: 'rgba(110,0,150,0.35)',   color: '#c4b5fd' },
+            member:  { bg: 'rgba(50,50,70,0.14)',    border: 'rgba(100,100,130,0.25)', color: 'var(--muted)' },
+          };
+          const roleLabels = { leader: 'Лидер', officer: 'Офицер', member: 'Участник' };
+          const rc = roleColors[pubData.clan.role] || roleColors.member;
+          roleBadge.textContent = roleLabels[pubData.clan.role] || 'Участник';
+          roleBadge.style.background = rc.bg; roleBadge.style.border = `1px solid ${rc.border}`; roleBadge.style.color = rc.color;
+          roleBadge.style.display = '';
+        }
         if (clanWidget) clanWidget.style.display = 'flex';
+      }
+
+      // #1/#2 Online status + current/last server. is_online is `null` (untracked) for
+      // an unlinked/unclanned account — only render the status chip when it's actually
+      // known, per GET /api/users/{u}'s docstring on why that's not shown as "offline".
+      const onlineDot = document.getElementById('avatar-online-dot');
+      if (pubData.is_online !== null && pubData.is_online !== undefined) {
+        const onlineWrap = document.getElementById('gs-online-wrap');
+        const onlineEl = document.getElementById('gs-online');
+        if (onlineWrap && onlineEl) {
+          onlineEl.textContent = pubData.is_online ? 'В сети' : 'Не в сети';
+          onlineEl.style.color = pubData.is_online ? '#4ade80' : 'var(--muted)';
+          onlineWrap.style.display = '';
+        }
+        if (onlineDot) onlineDot.style.display = pubData.is_online ? '' : 'none';
+      } else if (onlineDot) {
+        onlineDot.style.display = 'none';
+      }
+      const serverName = pubData.is_online ? pubData.online_server_name : pubData.last_server_name;
+      if (serverName) {
+        const serverWrap = document.getElementById('gs-server-wrap');
+        const serverEl = document.getElementById('gs-server');
+        const serverLabelEl = document.getElementById('gs-server-label');
+        if (serverWrap && serverEl) {
+          serverEl.textContent = serverName;
+          if (serverLabelEl) { serverLabelEl.textContent = pubData.is_online ? 'Сервер сейчас' : 'Последний сервер'; }
+          serverWrap.style.display = '';
+        }
       }
 
       if (pubData.total_seconds > 0 || pubData.last_seen) {
@@ -1333,6 +1495,12 @@ async function loadProfile() {
           }
         }
       }
+
+      // #6 Playtime-per-day chart + activity calendar, and #5 connect-streak computed
+      // from the same calendar data — all three reuse endpoints already shipped for
+      // user.html's public profile view, just not previously called from this page.
+      loadProfileTrend(u.username);
+      loadProfileHeatmapAndStreak(u.username);
     } catch { renderRank(0); }
 
     // #5 Render achievements (with whatever activity data we have so far)
@@ -1495,25 +1663,49 @@ async function clearBadgeIcon() {
 }
 
 // ── Cover upload ──────────────────────────────────────────────────────────────
+// #8/#9 Same local-preview + XHR-progress treatment as uploadAvatar() above, via the
+// shared _uploadWithProgress() helper.
 async function uploadCover(input) {
-  if (!input.files?.[0]) return;
-  const form = new FormData();
-  form.append('file', input.files[0]);
+  const file = input.files?.[0];
+  if (!file) return;
+  const prevUrl = getUser()?.cover_url || '';
+  const progressText = document.getElementById('cover-progress-text');
+  if (progressText) { progressText.style.display = 'block'; progressText.textContent = '0%'; }
+
   try {
-    const res = await fetch(`${API}/profile/cover`, { method:'POST', credentials:'include', body:form });
-    if (!res.ok) { const e = await res.json().catch(()=>{}); showToast?.(e?.detail||'Ошибка загрузки', 'error'); return; }
-    const { cover_url } = await res.json();
+    const previewUrl = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    applyCoverUrl(previewUrl);
+  } catch { /* preview is best-effort */ }
+
+  try {
+    const { cover_url } = await _uploadWithProgress(`${API}/profile/cover`, file, (pct) => {
+      if (progressText) progressText.textContent = pct + '%';
+    });
+    const u = getUser();
+    if (u) { u.cover_url = cover_url; (localStorage.getItem('user') ? localStorage : sessionStorage).setItem('user', JSON.stringify(u)); }
     applyCoverUrl(cover_url);
-  } catch { showToast?.('Ошибка загрузки обложки', 'error'); }
-  finally { input.value = ''; }
+  } catch (e) {
+    showToast?.(e?.detail || 'Ошибка загрузки обложки', 'error');
+    applyCoverUrl(prevUrl || null);
+  } finally {
+    if (progressText) progressText.style.display = 'none';
+    input.value = '';
+  }
 }
 function applyCoverUrl(url) {
-  if (!url) return;
   const cover = document.getElementById('profile-cover');
-  if (cover) {
+  if (!cover) return;
+  if (url) {
     cover.style.backgroundImage = `url('${url}')`;
     cover.style.backgroundSize = 'cover';
     cover.style.backgroundPosition = 'center';
+  } else {
+    cover.style.backgroundImage = '';
   }
 }
 
@@ -1596,6 +1788,142 @@ function _timeAgo(date) {
   if (s < 3600) return `${Math.floor(s/60)} мин. назад`;
   if (s < 86400) return `${Math.floor(s/3600)} ч. назад`;
   return `${Math.floor(s/86400)} дн. назад`;
+}
+
+// ── #6 Playtime-per-day chart ─────────────────────────────────────────────────
+// GET /api/users/{u}/activity-trend + renderBarChart() (frontend/charts.js) — same
+// endpoint/renderer already used by user.html's public pub-trend-card, ported here so
+// the account owner sees the same chart on their own Profile tab.
+async function loadProfileTrend(username) {
+  const card = document.getElementById('profile-trend-card');
+  const canvas = document.getElementById('profile-trend-chart');
+  if (!card || !canvas || typeof renderBarChart !== 'function') return;
+  try {
+    const rows = await fetch(`${API}/users/${encodeURIComponent(username)}/activity-trend`).then(r => r.ok ? r.json() : null);
+    // <2 points means nothing to diff yet (see the endpoint's own docstring).
+    if (!rows || rows.length < 2) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    const shortDate = (dateStr) => new Date(dateStr + 'T00:00:00Z')
+      .toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', timeZone: 'UTC' });
+    const data = rows.map(r => ({ x: shortDate(r.date), y: Math.round(r.seconds / 360) / 10 }));
+    renderBarChart(canvas, { data, color: '#c8002a', rgb: '200,0,42' }, {
+      valueLabel: 'ч', valueFormatter: (n) => n.toFixed(1), xTicks: 8,
+    });
+  } catch { card.style.display = 'none'; }
+}
+
+// ── #6 Activity calendar + #5 connect-streak ──────────────────────────────────
+// GET /api/users/{u}/activity-heatmap (presence-only — see that endpoint's docstring
+// on why there's no per-day duration/intensity) drives both the GitHub-style calendar
+// AND the connect-streak stat tile: the streak is just "how many consecutive days,
+// walking back from today, appear in active_dates" — the exact same rule
+// POST /api/plugin/connect-streak (backend/routers/plugin_integration.py) applies
+// server-side for the in-game ".../streak" chat message, just recomputed client-side
+// from the same PlayerDailyActivity-backed data instead of adding a new endpoint.
+async function loadProfileHeatmapAndStreak(username) {
+  const card = document.getElementById('profile-heatmap-card');
+  const grid = document.getElementById('profile-heatmap-grid');
+  const streakWrap = document.getElementById('gs-streak-wrap');
+  const streakEl = document.getElementById('gs-streak');
+  let data = null;
+  try {
+    data = await fetch(`${API}/users/${encodeURIComponent(username)}/activity-heatmap?days=180`).then(r => r.ok ? r.json() : null);
+  } catch { /* handled below */ }
+
+  const activeDates = data?.active_dates;
+  if (!activeDates || !activeDates.length) {
+    if (card) card.style.display = 'none';
+    if (streakWrap) streakWrap.style.display = 'none';
+    return;
+  }
+  const activeSet = new Set(activeDates);
+
+  // Streak: walk back from today (site-local calendar day, same as the server-side
+  // computation) until the first day with no activity row.
+  if (streakWrap && streakEl) {
+    const tz = window.__TZ || 'Europe/Moscow';
+    let cursor = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
+    let streak = 0;
+    while (true) {
+      const iso = `${cursor.getFullYear()}-${String(cursor.getMonth()+1).padStart(2,'0')}-${String(cursor.getDate()).padStart(2,'0')}`;
+      if (!activeSet.has(iso)) break;
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    if (streak > 0) {
+      streakEl.textContent = String(streak);
+      streakWrap.style.display = '';
+    } else {
+      streakWrap.style.display = 'none';
+    }
+  }
+
+  if (!card || !grid) return;
+  const days = data.days || 180;
+  const today = new Date(); today.setUTCHours(0,0,0,0);
+  const start = new Date(today); start.setUTCDate(start.getUTCDate() - days);
+  const dow = (start.getUTCDay() + 6) % 7; // 0=Mon
+  start.setUTCDate(start.getUTCDate() - dow);
+
+  const weeks = [];
+  let cursor = new Date(start);
+  while (cursor <= today) {
+    const week = [];
+    for (let d = 0; d < 7; d++) {
+      const iso = cursor.toISOString().slice(0, 10);
+      week.push({ iso, active: activeSet.has(iso), future: cursor > today });
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+    weeks.push(week);
+  }
+
+  grid.innerHTML = weeks.map(week => `
+    <div style="display:flex;flex-direction:column;gap:3px;">
+      ${week.map(d => d.future
+        ? `<span style="width:10px;height:10px;"></span>`
+        : `<span data-tip="${d.active ? 'Играл ' : 'Не играл '}${new Date(d.iso+'T00:00:00Z').toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',timeZone:'UTC'})}" style="width:10px;height:10px;border-radius:2px;display:inline-block;background:${d.active ? 'rgba(180,0,35,0.75)' : 'rgba(255,255,255,0.06)'};"></span>`
+      ).join('')}
+    </div>`).join('');
+  card.style.display = '';
+}
+
+// ── #10 Own nickname-change history ───────────────────────────────────────────
+let _nickHistoryLoaded = false;
+function toggleNickHistory() {
+  const panel = document.getElementById('nick-history-panel');
+  if (!panel) return;
+  const showing = panel.style.display !== 'none';
+  panel.style.display = showing ? 'none' : '';
+  if (!showing) loadNickHistory();
+}
+async function loadNickHistory() {
+  if (_nickHistoryLoaded) return;
+  _nickHistoryLoaded = true;
+  const panel = document.getElementById('nick-history-panel');
+  if (!panel) return;
+  panel.innerHTML = '<p style="font-size:.72rem;color:var(--muted);">Загрузка…</p>';
+  try {
+    const d = await fetch(`${API}/points/transactions/me?per_page=200`, { credentials: 'include' }).then(r => r.json());
+    const items = (d.items || []).filter(tx => tx.reason === 'nickname_change');
+    if (!items.length) {
+      panel.innerHTML = '<p style="font-size:.72rem;color:var(--muted);">Вы ещё не меняли ник через .nick.</p>';
+      return;
+    }
+    panel.innerHTML = items.map(tx => {
+      const parts = (tx.detail || '').split(' -> ');
+      const oldName = parts[0] || '?';
+      const newName = parts[1] || tx.detail || '?';
+      return `<div style="display:flex;align-items:center;gap:.4rem;font-size:.72rem;padding:.3rem 0;border-bottom:1px solid rgba(150,0,28,.1);flex-wrap:wrap;">
+        <span style="color:var(--muted);text-decoration:line-through;">${esc(oldName)}</span>
+        <span style="color:var(--muted);">→</span>
+        <span style="font-weight:600;">${esc(newName)}</span>
+        <span style="color:var(--muted);margin-left:auto;white-space:nowrap;">${fmtDate(tx.created_at)}</span>
+      </div>`;
+    }).join('');
+  } catch {
+    _nickHistoryLoaded = false;
+    panel.innerHTML = '<p style="font-size:.72rem;color:#f87171;">Ошибка загрузки.</p>';
+  }
 }
 
 // ── Email change ──────────────────────────────────────────────────────────────
