@@ -186,8 +186,11 @@
     label { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .3rem; }
     .section-title { font-family: 'Cinzel', serif; font-size: 1.15rem; font-weight: 700; color: var(--gold); letter-spacing: .08em; display:flex; align-items:center; gap:.6rem; }
     .section-title::before { content:''; display:inline-block; width:3px; height:1.1em; background:linear-gradient(180deg,var(--accent),rgba(181,0,42,.3)); border-radius:2px; flex-shrink:0; }
-    .badge-pub { background: var(--ok-soft); border: 1px solid var(--ok-border); color: var(--ok); font-size: .65rem; padding: .15rem .5rem; border-radius: 9999px; }
-    .badge-draft { background: rgba(60,60,60,0.3); border: 1px solid rgba(100,100,100,0.4); color: var(--muted); font-size: .65rem; padding: .15rem .5rem; border-radius: 9999px; }
+    /* Shared pill geometry for the news-status badges (color/background stay per-variant below,
+       .badge-scheduled included further down near its own section). */
+    .badge-pub, .badge-draft, .badge-scheduled { font-size: .65rem; padding: .15rem .5rem; border-radius: 9999px; }
+    .badge-pub { background: var(--ok-soft); border: 1px solid var(--ok-border); color: var(--ok); }
+    .badge-draft { background: rgba(60,60,60,0.3); border: 1px solid rgba(100,100,100,0.4); color: var(--muted); }
     .error-box { background: var(--danger-soft); border: 1px solid var(--danger-border); color: var(--danger); border-radius: .5rem; padding: .55rem .85rem; font-size: .82rem; }
     .success-box { background: var(--ok-soft); border: 1px solid var(--ok-border); color: var(--ok); border-radius: .5rem; padding: .55rem .85rem; font-size: .82rem; }
     table { width: 100%; border-collapse: collapse; font-size: .82rem; }
@@ -226,7 +229,7 @@
     .news-stat-cell b { color:var(--text); }
 
     /* ── Scheduled badge ── */
-    .badge-scheduled { background:var(--warn-soft); border:1px solid var(--warn-border); color:var(--warn); font-size:.65rem; padding:.15rem .5rem; border-radius:9999px; }
+    .badge-scheduled { background:var(--warn-soft); border:1px solid var(--warn-border); color:var(--warn); }
 
     /* ── Users table extras: avatar circle, "new" badge, search-match highlight,
        click-to-copy email icon. (A sticky <thead> was tried here too but Chrome
@@ -1981,7 +1984,7 @@
       <div style="margin-top:1.5rem;">
         <h2 class="gothic" style="font-size:.8rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;margin-bottom:.75rem;">Серверы</h2>
         <div id="plugin-server-tabs" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.25rem;"></div>
-        <div id="plugin-server-empty" class="glass-card rounded-xl" style="display:none;padding:1.5rem;text-align:center;color:var(--muted);font-size:.85rem;">
+        <div id="plugin-server-empty" class="glass-card rounded-xl admin-empty-state" style="display:none;">
           Серверы появятся здесь после первого подключения плагина
         </div>
       </div>
@@ -2604,7 +2607,7 @@
           </select>
         </div>
         <div style="height:180px;position:relative;"><canvas id="economy-chart"></canvas></div>
-        <p id="economy-chart-empty" class="text-sm" style="display:none;color:var(--muted);text-align:center;padding:1rem 0;">Нет данных за этот период.</p>
+        <p id="economy-chart-empty" class="admin-empty-state" style="display:none;">Нет данных за этот период.</p>
       </div>
 
       <!-- Top redeemed items -->
@@ -2688,7 +2691,7 @@
       <div id="media-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;">
         <div style="color:var(--muted);font-size:.82rem;grid-column:1/-1;text-align:center;padding:2rem 0;">Загрузка…</div>
       </div>
-      <div id="media-empty" style="display:none;text-align:center;padding:3rem 1rem;color:var(--muted);font-size:.85rem;">Нет загруженных файлов</div>
+      <div id="media-empty" class="admin-empty-state" style="display:none;">Нет загруженных файлов</div>
       <div id="media-pagination" style="display:flex;justify-content:center;gap:.5rem;margin-top:1rem;"></div>
     </div>
 
