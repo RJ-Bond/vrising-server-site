@@ -315,6 +315,24 @@
   // GET /api/profile/moderation-actions/me — profile.html's Admin tab "Ваши действия" tile.
   const myModerationActions = { window_days: 7, count: 4, last_action_at: iso(5 * 3600 * 1000) };
 
+  // UserOut shape (backend/schemas.py) — GET /api/auth/me for profile.html's
+  // authenticated preview only (see _mockAuthedUser below). profile.html is also
+  // fully auth-gated like shop.html (redirects to the #profile-error CTA on a 401),
+  // so it needs the same treatment. role:'admin' + totp_enabled:true + a filled
+  // admin_title/badge/bio/game_nickname so the mobile QA pass (item 6 in the
+  // profile-page task) can see every card populated at once — Admin tab, 2FA
+  // disable/recovery-regen area, badge preview — in a single screenshot pass
+  // instead of needing a second mock user just to reach those states.
+  const profileAuthedUser = {
+    id: 1, username: 'Vortigern', email: 'vortigern@example.com', role: 'admin', is_active: true,
+    created_at: iso(240 * 24 * 3600 * 1000), avatar_url: null, cover_url: null,
+    rules_accepted_at: iso(240 * 24 * 3600 * 1000), game_nickname: 'Vortigern',
+    admin_title: 'Главный администратор', last_active_at: iso(5 * 60000),
+    badge_icon_url: null, badge_style: 'crown', totp_enabled: true,
+    bio: 'Играю с самого запуска сервера. Люблю рейды и строительство.',
+    points_balance: 4820, newsletter_opt_in: true,
+  };
+
   // SearchResultOut shape (backend/routers/search.py) — GET /api/search?q=, backing
   // the Ctrl+K global search dropdown (frontend/common.js openGlobalSearch()). One
   // canned result per category so the dropdown's six grouped sections + snippet
@@ -453,17 +471,28 @@
     [/\/api\/auth\/login-history/, () => loginHistory],
     [/\/api\/points\/earn-rate\/me/, () => myPointsEarnRate],
     [/\/api\/profile\/moderation-actions\/me/, () => myModerationActions],
+    // GET /api/notifications (backend/main.py) — the shared nav bell, only shown once
+    // this call succeeds (profile.html/loadNotifications()). Two unread so both the
+    // badge count and populated dropdown list render.
+    [/\/api\/notifications$/, () => ({
+      unread: 2,
+      items: [
+        { id: 1, type: 'reply', read: false, created_at: iso(1800 * 1000), data: { from_username: 'Shadowfang', preview: 'Согласен, отличное обновление!' } },
+        { id: 2, type: 'points_grant', read: false, created_at: iso(3 * 3600 * 1000), data: { delta: 50 } },
+        { id: 3, type: 'shop_fulfilled', read: true, created_at: iso(24 * 3600 * 1000), data: { item_name: 'Waypoint Shard' } },
+      ],
+    })],
   ];
 
-  // shop.html and profile.html are the pages this file mocks as a logged-in visitor
-  // rather than anonymous — their content is behind an auth gate with no anonymous
-  // fallback (unlike every other page here), so previewing them (category/wishlist/
-  // weekly-limit UI for shop.html; the Profile-tab widgets, security-tab cards,
-  // Admin-tab moderation tile, etc. for profile.html) needs GET /api/auth/me to
-  // actually succeed. profile.html gets role="admin" (rather than shop.html's plain
-  // "user") so its Admin tab actually has something to render.
-  const _isProfilePage = /profile\.html/.test(location.pathname);
-  const _mockAuthedUser = _isProfilePage || /shop\.html/.test(location.pathname);
+  // shop.html and profile.html are the two pages this file mocks as a logged-in
+  // visitor rather than anonymous — both fully auth-gated with no anonymous fallback
+  // (unlike every other page here), so previewing their real content needs GET
+  // /api/auth/me to actually succeed. Each gets its own canned user (see
+  // shopAuthedUser / profileAuthedUser above) rather than sharing one, since
+  // profile.html's preview deliberately uses role:'admin' + totp_enabled:true to
+  // exercise cards shop.html doesn't have.
+  const _mockAuthedUser = /shop\.html/.test(location.pathname) || /profile\.html/.test(location.pathname);
+  const _authedUserForPath = () => /profile\.html/.test(location.pathname) ? profileAuthedUser : shopAuthedUser;
 
   // GET /api/auth/current-session, GET /api/auth/login-history — added for
   // profile.html's security-tab "current session" / "login history" cards (see
@@ -491,8 +520,7 @@
     const url = typeof input === 'string' ? input : (input && input.url) || '';
     if (/\/api\/auth\/me$/.test(url)) {
       if (_mockAuthedUser) {
-        const body = _isProfilePage ? { ...shopAuthedUser, role: 'admin' } : shopAuthedUser;
-        return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        return Promise.resolve(new Response(JSON.stringify(_authedUserForPath()), { status: 200, headers: { 'Content-Type': 'application/json' } }));
       }
       return Promise.resolve(new Response('{"detail":"Not authenticated"}', { status: 401, headers: { 'Content-Type': 'application/json' } }));
     }

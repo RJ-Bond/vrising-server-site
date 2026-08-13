@@ -180,7 +180,7 @@
       font-size:.74rem; font-weight:700; font-family:'Inter',sans-serif;
       letter-spacing:.06em; text-transform:uppercase; cursor:pointer;
       transition:all .18s; border:1px solid transparent; color:var(--muted);
-      background:none;
+      background:none; flex-shrink:0;
     }
     .profile-tab-btn.active {
       background:rgba(200,0,40,0.18); border:1px solid rgba(200,0,40,0.4);
@@ -200,6 +200,19 @@
       .avatar-wrap { margin-top:-42px; }
       /* Prevent iOS Safari zoom-on-focus for the bio / settings inputs. */
       input, textarea, select { font-size:16px !important; }
+      /* 4 tabs ("Профиль"/"Безопасность"/"Очки"/"Администратор") don't fit a
+         390px viewport — with body's overflow-x:hidden above, the last tab
+         (Администратор, staff-only) was silently clipped off-screen with no
+         way to reach it. Let the bar itself scroll horizontally instead. */
+      .profile-tab-bar { overflow-x:auto; flex-wrap:nowrap; scrollbar-width:thin; -webkit-overflow-scrolling:touch; }
+      /* #badge-style-grid (Admin tab, tab-panel-admin content — this override is
+         page-level CSS only, the grid markup itself is owned by another agent's
+         worktree) — a bare repeat(3,1fr) has no minimum-shrink floor, and each
+         swatch's badge pill is white-space:nowrap (shared _renderAdminBadge() in
+         common.js), so at 390px the 3rd column ("Щит") got pushed off-screen and
+         silently clipped by body's overflow-x:hidden above, same failure mode as
+         the tab bar. 2 columns with minmax(0,1fr) keeps every swatch reachable. */
+      #badge-style-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
     }
     @media (max-width:400px) {
       .g-card { padding:.85rem !important; }
@@ -359,6 +372,12 @@
         <div style="display:flex;align-items:center;gap:.65rem;flex-wrap:wrap;margin-bottom:.2rem;">
           <h1 class="gothic" id="profile-name" style="font-size:1.45rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;">—</h1>
           <span id="profile-role-badge" style="font-size:.6rem;padding:.15rem .6rem;border-radius:9999px;border:1px solid rgba(200,0,40,.4);color:#fca5a5;background:rgba(120,0,20,.2);">загрузка...</span>
+          <!-- #9 Member-since badge — header-area duplicate of the "На сервере с" row
+               already in the Account-info card (tab-panel-profile), kept in sync from
+               the same u.created_at in loadProfile(). Placed here (page-level header,
+               not inside a tab panel) so it's visible immediately without switching
+               tabs, per item 9's "public-facing part of the profile display area". -->
+          <span id="profile-member-since-badge" style="display:none;font-size:.6rem;padding:.15rem .6rem;border-radius:9999px;border:1px solid rgba(110,0,150,.35);color:var(--muted);background:rgba(60,0,100,.15);white-space:nowrap;"></span>
         </div>
         <!-- Rank -->
         <div id="rank-wrap" style="display:none;margin-top:.5rem;">
@@ -378,7 +397,7 @@
         <!-- #6 Clan widget -->
         <div id="clan-widget" style="display:none;margin-top:.55rem;align-items:center;gap:.5rem;flex-wrap:wrap;">
           <a id="clan-link" href="/clans.html" style="display:inline-flex;align-items:center;gap:.4rem;text-decoration:none;background:rgba(80,0,15,0.25);border:1px solid rgba(150,0,28,0.3);border-radius:.45rem;padding:.22rem .65rem;transition:all .18s;" onmouseover="this.style.borderColor='rgba(200,0,40,0.5)'" onmouseout="this.style.borderColor='rgba(150,0,28,0.3)'">
-            <span style="font-size:.65rem;font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.06em;color:var(--crimson);" id="clan-tag-display"></span>
+            <span style="font-size:.65rem;font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.06em;color:var(--crimson);" id="clan-tag-display">🛡</span>
             <span style="font-size:.65rem;color:var(--muted);" id="clan-name-display"></span>
           </a>
           <!-- Clan role (leader/officer/member), from GameClanMember.role synced by the
@@ -390,19 +409,19 @@
         <div id="stat-tiles" style="display:none;flex-direction:row;gap:.55rem;margin-top:.75rem;flex-wrap:wrap;">
           <div id="stat-tile-playtime" style="background:rgba(8,0,14,0.45);border:1px solid rgba(110,0,150,0.2);border-radius:.55rem;padding:.5rem .9rem;text-align:center;flex:1;min-width:80px;">
             <div id="stat-tile-playtime-val" style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--text);">—</div>
-            <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:.15rem;">Наиграно</div>
+            <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:.15rem;" data-i18n-ru="Наиграно" data-i18n-en="Playtime">Наиграно</div>
           </div>
           <div id="stat-tile-last" style="background:rgba(8,0,14,0.45);border:1px solid rgba(110,0,150,0.2);border-radius:.55rem;padding:.5rem .9rem;text-align:center;flex:1;min-width:80px;">
             <div id="stat-tile-last-val" style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--text);">—</div>
-            <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:.15rem;">Последний визит</div>
+            <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:.15rem;" data-i18n-ru="Последний визит" data-i18n-en="Last seen">Последний визит</div>
           </div>
           <div id="stat-tile-rank" style="background:rgba(8,0,14,0.45);border:1px solid rgba(110,0,150,0.2);border-radius:.55rem;padding:.5rem .9rem;text-align:center;flex:1;min-width:80px;">
             <div id="stat-tile-rank-val" style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--text);">—</div>
-            <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:.15rem;">Ранг</div>
+            <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:.15rem;" data-i18n-ru="Ранг" data-i18n-en="Rank">Ранг</div>
           </div>
           <div id="stat-tile-points" style="background:rgba(8,0,14,0.45);border:1px solid rgba(110,0,150,0.2);border-radius:.55rem;padding:.5rem .9rem;text-align:center;flex:1;min-width:80px;">
             <div id="stat-tile-points-val" style="font-family:'Oswald',sans-serif;font-size:1rem;font-weight:600;color:var(--gold);">—</div>
-            <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:.15rem;">Очки</div>
+            <div style="font-size:.55rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:.15rem;" data-i18n-ru="Очки" data-i18n-en="Points">Очки</div>
           </div>
         </div>
       </div>
@@ -410,15 +429,15 @@
   </div>
 
   <!-- #2 Tab bar -->
-  <div class="profile-tab-bar">
-    <button class="profile-tab-btn active" id="tab-btn-profile" onclick="switchProfileTab('profile')" data-i18n-ru="Профиль" data-i18n-en="Profile">Профиль</button>
-    <button class="profile-tab-btn" id="tab-btn-security" onclick="switchProfileTab('security')" data-i18n-ru="Безопасность" data-i18n-en="Security">Безопасность</button>
-    <button class="profile-tab-btn" id="tab-btn-points" onclick="switchProfileTab('points')" data-i18n-ru="Очки" data-i18n-en="Points">Очки</button>
-    <button class="profile-tab-btn" id="tab-btn-admin" onclick="switchProfileTab('admin')" style="display:none;" data-i18n-ru="Администратор" data-i18n-en="Admin">Администратор</button>
+  <div class="profile-tab-bar" role="tablist" aria-label="Разделы профиля" data-i18n-aria-ru="Разделы профиля" data-i18n-aria-en="Profile sections" onkeydown="_profileTabBarKeydown(event)">
+    <button class="profile-tab-btn active" id="tab-btn-profile" role="tab" aria-selected="true" aria-controls="tab-panel-profile" tabindex="0" onclick="switchProfileTab('profile')" data-i18n-ru="Профиль" data-i18n-en="Profile">Профиль</button>
+    <button class="profile-tab-btn" id="tab-btn-security" role="tab" aria-selected="false" aria-controls="tab-panel-security" tabindex="-1" onclick="switchProfileTab('security')" data-i18n-ru="Безопасность" data-i18n-en="Security">Безопасность</button>
+    <button class="profile-tab-btn" id="tab-btn-points" role="tab" aria-selected="false" aria-controls="tab-panel-points" tabindex="-1" onclick="switchProfileTab('points')" data-i18n-ru="Очки" data-i18n-en="Points">Очки</button>
+    <button class="profile-tab-btn" id="tab-btn-admin" role="tab" aria-selected="false" aria-controls="tab-panel-admin" tabindex="-1" onclick="switchProfileTab('admin')" style="display:none;" data-i18n-ru="Администратор" data-i18n-en="Admin">Администратор</button>
   </div>
 
   <!-- TAB: Профиль -->
-  <div id="tab-panel-profile" class="profile-tab-panel active">
+  <div id="tab-panel-profile" class="profile-tab-panel active" role="tabpanel" aria-labelledby="tab-btn-profile" tabindex="0">
 
     <!-- #3 Bio card -->
     <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
@@ -556,7 +575,7 @@
   </div><!-- /tab-panel-profile -->
 
   <!-- TAB: Безопасность -->
-  <div id="tab-panel-security" class="profile-tab-panel">
+  <div id="tab-panel-security" class="profile-tab-panel" role="tabpanel" aria-labelledby="tab-btn-security" tabindex="0">
 
     <!-- Change password -->
     <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
@@ -691,10 +710,22 @@
       <div id="newsletter-msg" style="font-size:.75rem;margin-top:.55rem;display:none;"></div>
     </div>
 
-    <!-- Data export (self-service "download my data") -->
+    <!-- Data export (self-service "download my data").
+         NOTE — shared-boundary crossing: the expandable "what's in the file" list
+         below (#export-preview-toggle / #export-preview-list) was added here per
+         the page-level task's item 8, inside tab-panel-security content which is
+         otherwise owned by another agent. Kept as the smallest possible surgical
+         addition — no other markup in this card touched — flagged for the merge. -->
     <div id="data-export-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
       <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Мои данные —" data-i18n-en="— My data —">— Мои данные —</h2>
-      <p style="font-size:.78rem;color:var(--muted);margin-bottom:.85rem;" data-i18n-ru="Скачайте копию своих данных на сайте: историю очков, заявки в магазине и комментарии." data-i18n-en="Download a copy of your data on the site: points history, shop redemptions and comments.">Скачайте копию своих данных на сайте: историю очков, заявки в магазине и комментарии.</p>
+      <p style="font-size:.78rem;color:var(--muted);margin-bottom:.6rem;" data-i18n-ru="Скачайте копию своих данных на сайте: историю очков, заявки в магазине и комментарии." data-i18n-en="Download a copy of your data on the site: points history, shop redemptions and comments.">Скачайте копию своих данных на сайте: историю очков, заявки в магазине и комментарии.</p>
+      <button type="button" id="export-preview-toggle" onclick="toggleExportPreview()" style="background:none;border:none;padding:0;margin-bottom:.7rem;font-size:.7rem;color:var(--muted);text-decoration:underline;cursor:pointer;" aria-expanded="false" aria-controls="export-preview-list" data-i18n-ru="Что будет в файле?" data-i18n-en="What's in the file?">Что будет в файле?</button>
+      <ul id="export-preview-list" style="display:none;font-size:.72rem;color:var(--muted);margin:0 0 .9rem 1.1rem;padding:0;">
+        <li data-i18n-ru="Данные аккаунта: имя, email, дата регистрации, био, игровой ник, баланс очков" data-i18n-en="Account data: username, email, registration date, bio, in-game nickname, points balance">Данные аккаунта: имя, email, дата регистрации, био, игровой ник, баланс очков</li>
+        <li data-i18n-ru="История очков: все начисления и списания с датами" data-i18n-en="Points history: every credit and debit with dates">История очков: все начисления и списания с датами</li>
+        <li data-i18n-ru="Заявки в магазине: название товара, стоимость, статус, даты" data-i18n-en="Shop redemptions: item name, cost, status, dates">Заявки в магазине: название товара, стоимость, статус, даты</li>
+        <li data-i18n-ru="Комментарии: текст и дата ваших комментариев" data-i18n-en="Comments: the text and date of your own comments">Комментарии: текст и дата ваших комментариев</li>
+      </ul>
       <a href="/api/profile/export" download="my-data.json" class="btn btn-ghost" style="font-size:.75rem;" data-i18n-ru="⬇ Скачать мои данные" data-i18n-en="⬇ Download my data">⬇ Скачать мои данные</a>
     </div>
 
@@ -723,7 +754,7 @@
 
   <!-- TAB: Очки — points ledger + own redemption history, see
        GET /api/points/transactions/me and GET /api/shop/redemptions/me. -->
-  <div id="tab-panel-points" class="profile-tab-panel">
+  <div id="tab-panel-points" class="profile-tab-panel" role="tabpanel" aria-labelledby="tab-btn-points" tabindex="0">
 
     <!-- Wishlist — GET /api/shop/wishlist/me. Full browsing/toggling lives on shop.html;
          this is a compact read-only summary + "~N дней" affordability estimate (from
@@ -778,7 +809,7 @@
   </div><!-- /tab-panel-points -->
 
   <!-- TAB: Администратор -->
-  <div id="tab-panel-admin" class="profile-tab-panel">
+  <div id="tab-panel-admin" class="profile-tab-panel" role="tabpanel" aria-labelledby="tab-btn-admin" tabindex="0">
 
     <!-- Own moderation activity — GET /api/profile/moderation-actions/me. A single small
          count tile, not a log/list — the full audit log lives in admin.html (admin-tier
@@ -946,11 +977,40 @@ function switchProfileTab(tab) {
   ['profile','security','points','admin'].forEach(t => {
     const btn = document.getElementById('tab-btn-' + t);
     const panel = document.getElementById('tab-panel-' + t);
-    if (btn) btn.classList.toggle('active', t === tab);
-    if (panel) panel.classList.toggle('active', t === tab);
+    const active = t === tab;
+    if (btn) {
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+      btn.tabIndex = active ? 0 : -1;
+    }
+    if (panel) panel.classList.toggle('active', active);
   });
   if (tab === 'points') loadPointsHistory();
   if (tab === 'admin') loadOwnModerationActivity();
+}
+
+// Arrow-key navigation between tabs (roving tabindex, ARIA APG tabs pattern) —
+// skips tab-btn-admin when it's hidden (display:none for non-staff), Home/End
+// jump to the first/last *visible* tab for the same reason. Tab+Enter/Space
+// activation already works via native <button> semantics + the onclick above.
+function _profileTabBarKeydown(e) {
+  const keys = ['ArrowLeft', 'ArrowRight', 'Home', 'End'];
+  if (!keys.includes(e.key)) return;
+  const tabs = ['profile', 'security', 'points', 'admin']
+    .map(t => document.getElementById('tab-btn-' + t))
+    .filter(btn => btn && btn.offsetParent !== null);
+  const curIdx = tabs.indexOf(document.activeElement);
+  if (curIdx === -1) return;
+  e.preventDefault();
+  let nextIdx;
+  if (e.key === 'ArrowLeft') nextIdx = (curIdx - 1 + tabs.length) % tabs.length;
+  else if (e.key === 'ArrowRight') nextIdx = (curIdx + 1) % tabs.length;
+  else if (e.key === 'Home') nextIdx = 0;
+  else nextIdx = tabs.length - 1;
+  const nextBtn = tabs[nextIdx];
+  const tabName = nextBtn.id.replace('tab-btn-', '');
+  switchProfileTab(tabName);
+  nextBtn.focus();
 }
 
 // #3 Bio save
@@ -1469,6 +1529,15 @@ async function loadLoginHistory(reset) {
   } catch { body.textContent = _t('Ошибка соединения', 'Connection error'); }
 }
 
+/* ── Data export preview toggle (item 8 — see HTML comment on #data-export-card) ── */
+function toggleExportPreview() {
+  const list = document.getElementById('export-preview-list');
+  const btn = document.getElementById('export-preview-toggle');
+  const open = list.style.display === 'none';
+  list.style.display = open ? '' : 'none';
+  btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
 /* ── Danger zone: self-service account deletion (DELETE /api/profile/me) ── */
 function toggleDangerZone() {
   const body = document.getElementById('danger-zone-body');
@@ -1577,6 +1646,12 @@ async function loadProfile() {
       roleEl.innerHTML = '<span style="font-size:.8rem;font-weight:700;letter-spacing:.06em;padding:.25rem .75rem;border-radius:9999px;background:rgba(80,40,140,0.2);border:1px solid rgba(120,80,200,0.4);color:#c4b5fd;font-family:\'Inter\',sans-serif;">Игрок</span>';
     }
     document.getElementById('profile-since').textContent = fmtDate(u.created_at);
+    // #9 Member-since badge (header) — see HTML comment on #profile-member-since-badge
+    const memberSinceBadge = document.getElementById('profile-member-since-badge');
+    if (memberSinceBadge && u.created_at) {
+      memberSinceBadge.textContent = _t('участник с ', 'member since ') + fmtDate(u.created_at);
+      memberSinceBadge.style.display = '';
+    }
 
     const statusEl = document.getElementById('profile-status');
     statusEl.textContent = u.is_active ? '✔ Активен' : '✘ Заблокирован';
@@ -1649,15 +1724,16 @@ async function loadProfile() {
       // GameClan roster (GET /api/users/{u} returns a nested `clan: {id, name, role,
       // is_online}` object, no top-level clan_tag/clan_name, and GameClan itself has no
       // `tag` column at all — that was the old web-managed Clan model). The widget was
-      // therefore silently dead for every account; fixed here to read pubData.clan and
-      // to show the member's role (leader/officer/member) alongside the name.
-      if (pubData.clan) {
+      // therefore silently dead for every account; fixed here to read pubData.clan,
+      // deep-link to the clan's detail modal on clans.html, and show the member's role
+      // (leader/officer/member) alongside the name.
+      if (pubData.clan && pubData.clan.name) {
         const clanWidget = document.getElementById('clan-widget');
-        const clanTag = document.getElementById('clan-tag-display');
+        const clanLink = document.getElementById('clan-link');
         const clanName = document.getElementById('clan-name-display');
         const roleBadge = document.getElementById('clan-role-badge');
-        if (clanTag) clanTag.textContent = '';
-        if (clanName) clanName.textContent = pubData.clan.name || '';
+        if (clanLink) clanLink.href = `/clans.html?clan=${encodeURIComponent(pubData.clan.id)}`;
+        if (clanName) clanName.textContent = pubData.clan.name;
         if (roleBadge) {
           const roleColors = {
             leader:  { bg: 'rgba(201,169,74,0.14)',  border: 'rgba(201,169,74,0.35)',  color: 'var(--gold)' },
@@ -1838,8 +1914,8 @@ function _buildBadgeStyleGrid() {
   if (!grid) return;
   grid.innerHTML = _BADGE_STYLES.map(s => `
     <button id="bsg-${s.key}" onclick="selectBadgeStyle('${s.key}')"
-      style="padding:.5rem .3rem;border-radius:.55rem;border:1px solid rgba(110,0,20,.28);background:rgba(10,2,18,.5);cursor:pointer;transition:all .18s;display:flex;flex-direction:column;align-items:center;gap:.3rem;">
-      ${_renderAdminBadge({ role:'admin', admin_title:_badgeState.title||'Админ', badge_icon_url:null, badge_style:s.key })}
+      style="padding:.5rem .3rem;border-radius:.55rem;border:1px solid rgba(110,0,20,.28);background:rgba(10,2,18,.5);cursor:pointer;transition:all .18s;display:flex;flex-direction:column;align-items:center;gap:.3rem;max-width:100%;">
+      <span style="display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_renderAdminBadge({ role:'admin', admin_title:_badgeState.title||'Админ', badge_icon_url:null, badge_style:s.key })}</span>
       <span style="font-size:.58rem;color:var(--muted);">${s.label}</span>
     </button>`).join('');
 }
@@ -2331,6 +2407,8 @@ async function disableTwoFA() {
   const msg = document.getElementById('twofa-disable-msg');
   const show = (t, ok) => { msg.textContent=t; msg.style.color=ok?'#4ade80':'#f87171'; msg.style.display=''; };
   if (code.length !== 6) return show('Введите 6-значный код', false);
+  const ok = await showProfileConfirm('Отключить двухфакторную аутентификацию? Это снизит защиту аккаунта — вход больше не будет требовать код из приложения.');
+  if (!ok) return;
   try {
     const res = await fetch(`${API}/auth/2fa/disable`, {method:'POST', credentials:'include', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code})});
     const d = await res.json().catch(()=>({}));
