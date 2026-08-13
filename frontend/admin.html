@@ -22,7 +22,23 @@
     :root {
       --accent: #b5002a; --accent-glow: rgba(181,0,42,0.4);
       --card: rgba(14,3,24,0.92); --border: rgba(150,0,28,0.3);
-      --text: #c8c5d4; --muted: #7a7290; --gold: #c9a04a;
+      /* --text/--muted/--gold aligned to theme.css's verified values (public
+         pages don't load this file, so these had drifted to slightly different
+         hex over time — --muted in particular was right at the WCAG AA floor
+         here vs. theme.css's --muted, checked at 6.26:1). */
+      --text: #e2d8f0; --muted: #9488a8; --gold: #c9a94a;
+      /* Semantic status tokens — consolidates what used to be 3 different
+         "green"s and 2+ different "red"s scattered across badges/buttons/dash
+         widgets with no shared source. Reserve these for actual state
+         (success/danger/pending/informational), same convention as
+         theme.css's --green/--yellow/--red on the public pages. */
+      --ok: #4ade80; --ok-soft: rgba(0,180,40,.16); --ok-border: rgba(0,180,40,.4);
+      --danger: #f87171; --danger-soft: rgba(200,30,30,.16); --danger-border: rgba(200,30,30,.45);
+      --warn: #fbbf24; --warn-soft: rgba(220,160,0,.16); --warn-border: rgba(220,160,0,.4);
+      --info: #60a5fa; --info-soft: rgba(60,130,220,.16); --info-border: rgba(60,130,220,.4);
+      /* Border-radius scale — was 9 distinct ad hoc values for equivalent-weight
+         components; new/updated components should snap to one of these three. */
+      --r-sm: .4rem; --r-md: .55rem; --r-lg: .75rem;
     }
     * { box-sizing: border-box; }
     body {
@@ -86,7 +102,7 @@
     .sidebar-group.collapsed .sidebar-btn,
     .sidebar-group.collapsed > a.sidebar-btn { display: none; }
     .sidebar-badge {
-      background: rgba(181,0,42,0.3); border: 1px solid rgba(200,0,45,0.4); color: #fca5a5;
+      background: rgba(181,0,42,0.3); border: 1px solid rgba(200,0,45,0.4); color: var(--danger);
       font-size: .62rem; font-weight: 700; padding: .05rem .42rem; border-radius: 9999px;
       flex-shrink: 0; line-height: 1.4;
     }
@@ -170,16 +186,14 @@
     label { display: block; font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .3rem; }
     .section-title { font-family: 'Cinzel', serif; font-size: 1.15rem; font-weight: 700; color: var(--gold); letter-spacing: .08em; display:flex; align-items:center; gap:.6rem; }
     .section-title::before { content:''; display:inline-block; width:3px; height:1.1em; background:linear-gradient(180deg,var(--accent),rgba(181,0,42,.3)); border-radius:2px; flex-shrink:0; }
-    .badge-pub { background: rgba(0,70,15,0.3); border: 1px solid rgba(0,160,35,0.4); color: #86efac; font-size: .65rem; padding: .15rem .5rem; border-radius: 9999px; }
+    .badge-pub { background: var(--ok-soft); border: 1px solid var(--ok-border); color: var(--ok); font-size: .65rem; padding: .15rem .5rem; border-radius: 9999px; }
     .badge-draft { background: rgba(60,60,60,0.3); border: 1px solid rgba(100,100,100,0.4); color: var(--muted); font-size: .65rem; padding: .15rem .5rem; border-radius: 9999px; }
-    .error-box { background: rgba(140,0,20,0.25); border: 1px solid rgba(180,0,30,0.5); color: #fca5a5; border-radius: .5rem; padding: .55rem .85rem; font-size: .82rem; }
-    .success-box { background: rgba(0,70,15,0.25); border: 1px solid rgba(0,160,35,0.4); color: #86efac; border-radius: .5rem; padding: .55rem .85rem; font-size: .82rem; }
+    .error-box { background: var(--danger-soft); border: 1px solid var(--danger-border); color: var(--danger); border-radius: .5rem; padding: .55rem .85rem; font-size: .82rem; }
+    .success-box { background: var(--ok-soft); border: 1px solid var(--ok-border); color: var(--ok); border-radius: .5rem; padding: .55rem .85rem; font-size: .82rem; }
     table { width: 100%; border-collapse: collapse; font-size: .82rem; }
     th { background: rgba(14,3,24,0.8); color: var(--muted); text-transform: uppercase; font-size: .65rem; letter-spacing: .1em; padding: .75rem 1rem; text-align: left; border-bottom: 1px solid rgba(150,0,28,0.2); }
-    td { padding: .65rem 1rem; border-bottom: 1px solid rgba(150,0,28,0.1); color: var(--text); }
+    td { padding: .65rem 1rem; border-bottom: 1px solid rgba(150,0,28,0.1); color: var(--text); transition: background .15s; }
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(150,0,28,0.05); }
-    td { transition: background .15s; }
     tbody tr:nth-child(even) td { background: rgba(255,255,255,0.015); }
     tbody tr { transition: background .15s; position:relative; }
     tbody tr:hover td { background: rgba(150,0,28,0.08) !important; }
@@ -212,7 +226,7 @@
     .news-stat-cell b { color:var(--text); }
 
     /* ── Scheduled badge ── */
-    .badge-scheduled { background:rgba(30,60,0,0.3); border:1px solid rgba(90,160,0,0.4); color:#bef264; font-size:.65rem; padding:.15rem .5rem; border-radius:9999px; }
+    .badge-scheduled { background:var(--warn-soft); border:1px solid var(--warn-border); color:var(--warn); font-size:.65rem; padding:.15rem .5rem; border-radius:9999px; }
 
     /* ── Users table extras: avatar circle, "new" badge, search-match highlight,
        click-to-copy email icon. (A sticky <thead> was tried here too but Chrome
@@ -225,7 +239,7 @@
       display: inline-flex; align-items: center; justify-content: center;
       font-size: .68rem; font-weight: 700; color: #fff; object-fit: cover;
     }
-    .badge-new { background: rgba(0,120,220,0.2); border: 1px solid rgba(60,150,255,0.4); color: #7dd3fc; font-size: .58rem; font-weight: 700; padding: .1rem .42rem; border-radius: 9999px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+    .badge-new { background: var(--info-soft); border: 1px solid var(--info-border); color: var(--info); font-size: .58rem; font-weight: 700; padding: .1rem .42rem; border-radius: 9999px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
     mark.hl { background: rgba(201,169,74,0.4); color: inherit; border-radius: .2rem; padding: 0 .1rem; }
     .email-copy-btn { background: none; border: none; color: var(--muted); cursor: pointer; padding: .15rem; display: inline-flex; opacity: .55; transition: opacity .15s, color .15s; vertical-align: middle; }
     .email-copy-btn:hover { opacity: 1; color: var(--gold); }
@@ -246,26 +260,30 @@
       border-radius: 0 0 .75rem .75rem;
       font-family: 'Inter', system-ui, sans-serif !important;
       font-size: .92rem !important;
-      color: #e0c8d8 !important;
+      color: var(--text) !important;
     }
-    .ql-editor { color: #e0c8d8 !important; min-height: 380px; line-height: 1.7; padding: 1.25rem 1.5rem; }
-    .ql-editor.ql-blank::before { color: #4a2d55 !important; font-style: normal !important; }
-    .ql-toolbar .ql-stroke { stroke: #7a5d8a !important; transition: stroke .15s; }
-    .ql-toolbar .ql-fill { fill: #7a5d8a !important; transition: fill .15s; }
+    /* Below: was a fully separate hardcoded palette (#e0c8d8/#7a5d8a/#4a2d55/
+       #c9a04a repeated ~10x) with zero relationship to the page's own --text/
+       --muted/--gold/--accent tokens — a token tweak up top wouldn't touch the
+       editor at all. Mapped each to the token filling the equivalent role. */
+    .ql-editor { color: var(--text) !important; min-height: 380px; line-height: 1.7; padding: 1.25rem 1.5rem; }
+    .ql-editor.ql-blank::before { color: var(--muted) !important; font-style: normal !important; }
+    .ql-toolbar .ql-stroke { stroke: var(--muted) !important; transition: stroke .15s; }
+    .ql-toolbar .ql-fill { fill: var(--muted) !important; transition: fill .15s; }
     .ql-toolbar button:hover .ql-stroke, .ql-toolbar button.ql-active .ql-stroke,
-    .ql-toolbar .ql-picker-label:hover .ql-stroke { stroke: #e0c8d8 !important; }
+    .ql-toolbar .ql-picker-label:hover .ql-stroke { stroke: var(--text) !important; }
     .ql-toolbar button:hover .ql-fill, .ql-toolbar button.ql-active .ql-fill,
-    .ql-toolbar .ql-picker-label:hover .ql-fill { fill: #e0c8d8 !important; }
-    .ql-toolbar .ql-picker-label { color: #7a5d8a !important; }
-    .ql-toolbar .ql-picker-label:hover, .ql-toolbar .ql-picker-label.ql-active { color: #e0c8d8 !important; }
+    .ql-toolbar .ql-picker-label:hover .ql-fill { fill: var(--text) !important; }
+    .ql-toolbar .ql-picker-label { color: var(--muted) !important; }
+    .ql-toolbar .ql-picker-label:hover, .ql-toolbar .ql-picker-label.ql-active { color: var(--text) !important; }
     .ql-toolbar .ql-picker-options {
       background: rgba(12,2,22,0.98) !important;
       border: 1px solid rgba(150,0,28,0.4) !important;
       border-radius: .5rem; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
     }
-    .ql-toolbar .ql-picker-item { color: #7a5d8a !important; }
-    .ql-toolbar .ql-picker-item:hover, .ql-toolbar .ql-picker-item.ql-selected { color: #e0c8d8 !important; background: rgba(150,0,28,0.15) !important; }
-    .ql-editor h1, .ql-editor h2, .ql-editor h3 { font-family: 'Cinzel', serif; color: #c9a04a; margin: 1.1rem 0 .5rem; }
+    .ql-toolbar .ql-picker-item { color: var(--muted) !important; }
+    .ql-toolbar .ql-picker-item:hover, .ql-toolbar .ql-picker-item.ql-selected { color: var(--text) !important; background: rgba(150,0,28,0.15) !important; }
+    .ql-editor h1, .ql-editor h2, .ql-editor h3 { font-family: 'Cinzel', serif; color: var(--gold); margin: 1.1rem 0 .5rem; }
     .ql-editor h1 { font-size: 1.5rem; }
     .ql-editor h2 { font-size: 1.2rem; }
     .ql-editor h3 { font-size: 1rem; }
@@ -274,23 +292,23 @@
       border-left: 3px solid rgba(181,0,42,0.6); color: #9a7aaa;
       padding-left: 1rem; margin: .75rem 0; font-style: italic;
     }
-    .ql-editor code, .ql-editor pre { background: rgba(40,0,60,0.5); border-radius: .35rem; color: #c9a04a; }
+    .ql-editor code, .ql-editor pre { background: rgba(40,0,60,0.5); border-radius: .35rem; color: var(--gold); }
     .ql-editor pre { padding: .75rem 1rem; }
-    .ql-editor a { color: #b5002a; }
+    .ql-editor a { color: var(--accent); }
     .ql-editor img { max-width: 100%; border-radius: .5rem; margin: .5rem 0; }
     .ql-editor iframe.ql-video { width: 100%; aspect-ratio: 16/9; height: auto; border-radius: .5rem; margin: .5rem 0; border: none; }
     .ql-editor ul, .ql-editor ol { padding-left: 1.5rem; }
     .ql-tooltip {
       background: rgba(12,2,22,0.98) !important; border: 1px solid rgba(150,0,28,0.4) !important;
-      color: #e0c8d8 !important; box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important;
+      color: var(--text) !important; box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important;
       border-radius: .5rem !important;
     }
     .ql-tooltip input[type=text] {
       background: rgba(8,0,16,0.8) !important; border: 1px solid rgba(120,0,24,0.4) !important;
-      color: #e0c8d8 !important; border-radius: .35rem; padding: .3rem .6rem;
+      color: var(--text) !important; border-radius: .35rem; padding: .3rem .6rem;
     }
-    .ql-tooltip a.ql-action::after { color: #b5002a !important; }
-    .ql-tooltip a.ql-remove::before { color: #f87171 !important; }
+    .ql-tooltip a.ql-action::after { color: var(--accent) !important; }
+    .ql-tooltip a.ql-remove::before { color: var(--danger) !important; }
     .ql-snow.ql-toolbar button { border-radius: .3rem; padding: .2rem .3rem; }
     .ql-snow.ql-toolbar button:hover, .ql-snow.ql-toolbar button.ql-active {
       background: rgba(150,0,28,0.18) !important;
@@ -303,6 +321,21 @@
     .s-card-head { display:flex; align-items:flex-start; gap:.75rem; padding-bottom:1.2rem; margin-bottom:1.2rem; border-bottom:1px solid rgba(150,0,28,.2); }
     .s-icon { width:2.2rem; height:2.2rem; border-radius:.5rem; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .s-card-head h2 { font-family:'Cinzel',serif; font-size:.8rem; letter-spacing:.12em; color:var(--gold); text-transform:uppercase; margin:0; line-height:1.4; }
+    /* Settings-card subtitle — was copy-pasted as an inline style on 22 separate
+       <p> tags across the settings sections instead of factored into a class. */
+    .s-card-sub { font-size:.68rem; color:var(--muted); margin-top:.12rem; font-weight:400; letter-spacing:0; text-transform:none; font-family:'Inter',sans-serif; }
+    /* Bulk-action panel (users/comments/reports selection toolbars) — was the
+       same inline style string copy-pasted at all three call sites. */
+    .bulk-action-panel { display:none; align-items:center; gap:.75rem; padding:.75rem 1rem; margin-bottom:.75rem; background:rgba(120,0,28,.15); border:1px solid rgba(180,0,42,.3); border-radius:.6rem; }
+    /* Modal close ("✕") button — was three different sizes/hit-targets across
+       preview/userqv/broadcast vs. settings-history/event-editor/templates. */
+    .modal-close {
+      background:none; border:none; color:var(--muted); cursor:pointer;
+      font-size:1.15rem; line-height:1; padding:.3rem; border-radius:.35rem;
+      transition:color .15s, background .15s;
+    }
+    .modal-close:hover { color:var(--text); background:rgba(150,0,28,.15); }
+    .modal-close:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
     .s-field { margin-bottom:1.1rem; }
     .s-field:last-child { margin-bottom:0; }
     .s-field-row { display:flex; gap:.5rem; margin-top:.3rem; }
@@ -346,11 +379,22 @@
       flex-shrink:0; text-decoration:none; padding:0;
     }
     .act-btn:hover { background:rgba(150,0,28,.18); border-color:rgba(200,0,40,.5); color:#d4c0e8; transform:translateY(-1px); box-shadow:0 2px 8px rgba(0,0,0,.35); }
-    .act-btn.ag:hover { background:rgba(0,80,20,.3); border-color:rgba(0,180,40,.45); color:#86efac; }
-    .act-btn.ay:hover { background:rgba(80,55,0,.3); border-color:rgba(220,160,0,.4); color:#fbbf24; }
+    .act-btn.ag:hover { background:var(--ok-soft); border-color:var(--ok-border); color:var(--ok); }
+    .act-btn.ay:hover { background:var(--warn-soft); border-color:var(--warn-border); color:var(--warn); }
     .act-btn.ao:hover { background:rgba(80,30,0,.3); border-color:rgba(220,100,0,.4); color:#fb923c; }
-    .act-btn.ar:hover { background:rgba(100,0,10,.3); border-color:rgba(200,30,30,.45); color:#f87171; }
-    .act-btn.ab:hover { background:rgba(0,30,80,.3); border-color:rgba(60,130,220,.4); color:#60a5fa; }
+    .act-btn.ar:hover { background:var(--danger-soft); border-color:var(--danger-border); color:var(--danger); }
+    .act-btn.ab:hover { background:var(--info-soft); border-color:var(--info-border); color:var(--info); }
+    /* admin.html doesn't load theme.css's global :focus-visible rule (see the
+       .site-checkbox comment above) — every custom interactive component needs
+       its own, otherwise keyboard navigation has no visible focus indicator at
+       all on it (found during a design audit: act-btn/qa-card/dash-tile/sidebar
+       group toggles all had none). */
+    .act-btn:focus-visible, .qa-card:focus-visible, .dash-tile:focus-visible,
+    .sidebar-group-label:focus-visible, .pagination-btn:focus-visible,
+    .btn-ghost:focus-visible, .btn-danger:focus-visible, .btn-primary:focus-visible,
+    .server-subtab:focus-visible {
+      outline: 2px solid var(--gold); outline-offset: 2px;
+    }
     /* Tooltip */
     .act-btn::before {
       content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
@@ -368,7 +412,9 @@
 
     /* ── Clickable dash tiles ── */
     .dash-tile { cursor:pointer; transition:transform .15s, box-shadow .15s, border-color .2s; }
-    .dash-tile:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.4), 0 0 0 1px rgba(150,0,28,.3); }
+    /* -1px, not -2px — matches the lift used by every other clickable card/button
+       on this page (.qa-card, .act-btn, .btn-primary) instead of its own value. */
+    .dash-tile:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(0,0,0,.4), 0 0 0 1px rgba(150,0,28,.3); }
 
     /* ── Quick action cards ── */
     .qa-card {
@@ -438,8 +484,8 @@
       display:inline-flex; align-items:center; gap:.15rem; font-size:.62rem; font-weight:700;
       margin-top:.25rem; letter-spacing:.01em;
     }
-    .dash-wow.up   { color:#4ade80; }
-    .dash-wow.down { color:#f87171; }
+    .dash-wow.up   { color:var(--ok); }
+    .dash-wow.down { color:var(--danger); }
     .dash-wow.flat { color:var(--muted); }
 
     /* ── Dashboard: system health widget (site API + game servers + plugin
@@ -451,9 +497,9 @@
       border:1px solid rgba(255,255,255,.06); color:var(--text); white-space:nowrap;
     }
     .dash-health-dot { width:.5rem; height:.5rem; border-radius:50%; flex-shrink:0; }
-    .dash-health-dot.ok    { background:#4ade80; box-shadow:0 0 6px rgba(74,222,128,.7); }
-    .dash-health-dot.bad   { background:#f87171; box-shadow:0 0 6px rgba(248,113,113,.7); }
-    .dash-health-dot.warn  { background:#fcd34d; box-shadow:0 0 6px rgba(252,211,77,.7); }
+    .dash-health-dot.ok    { background:var(--ok); box-shadow:0 0 6px rgba(74,222,128,.7); }
+    .dash-health-dot.bad   { background:var(--danger); box-shadow:0 0 6px rgba(248,113,113,.7); }
+    .dash-health-dot.warn  { background:var(--warn); box-shadow:0 0 6px rgba(252,211,77,.7); }
 
     /* ── Mobile sidebar drawer ── mirrors the .mobile-drawer/.mobile-overlay/
        .nav-burger pattern already used on the public pages (servers.html,
@@ -632,7 +678,7 @@
 <nav class="glass-nav sticky top-0 z-40 relative">
   <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
     <div class="flex items-center gap-3">
-      <a href="/" id="nav-logo" class="gothic" style="font-size:1.05rem;font-weight:900;letter-spacing:.1em;color:#e0c8d8;text-decoration:none;"></a>
+      <a href="/" id="nav-logo" class="gothic" style="font-size:1.05rem;font-weight:900;letter-spacing:.1em;color:var(--text);text-decoration:none;"></a>
       <span id="nav-role-pill" class="gothic" style="display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .7rem;border-radius:9999px;background:rgba(150,0,28,0.18);border:1px solid rgba(200,0,45,0.4);color:var(--gold);font-size:.65rem;letter-spacing:.08em;">
         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><use href="/icons.svg#icon-shield"></use></svg>
         Админ
@@ -1038,7 +1084,7 @@
             </div>
             <div>
               <h2>Сервер 1</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Основной игровой сервер</p>
+              <p class="s-card-sub">Основной игровой сервер</p>
             </div>
           </div>
           <div class="s-field">
@@ -1107,7 +1153,7 @@
             </div>
             <div>
               <h2>Сервер 2</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Опциональный второй сервер</p>
+              <p class="s-card-sub">Опциональный второй сервер</p>
             </div>
           </div>
           <div class="s-field">
@@ -1151,7 +1197,7 @@
           </div>
           <div class="s-field">
             <label style="display:flex;align-items:center;gap:.4rem;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9955ee" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
               Следующий вайп <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span>
             </label>
             <div class="s-field-row" style="gap:.5rem;">
@@ -1180,7 +1226,7 @@
             </div>
             <div>
               <h2>Внешний вид</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Оформление и брендинг сайта</p>
+              <p class="s-card-sub">Оформление и брендинг сайта</p>
             </div>
           </div>
 
@@ -1487,7 +1533,7 @@
             <div class="s-icon" style="background:rgba(80,0,140,.18);border:1px solid rgba(140,0,220,.3);">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="1.8"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
             </div>
-            <div><h2>Видимость навигации</h2><p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Скрыть пункты меню, которые ещё не готовы. Страница остаётся доступной по прямой ссылке.</p></div>
+            <div><h2>Видимость навигации</h2><p class="s-card-sub">Скрыть пункты меню, которые ещё не готовы. Страница остаётся доступной по прямой ссылке.</p></div>
           </div>
           <div class="s-field">
             <label class="s-label">Скрытые пункты меню</label>
@@ -1536,7 +1582,7 @@
             <div class="s-icon" style="background:rgba(120,0,20,.18);border:1px solid rgba(200,0,40,.3);">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </div>
-            <div><h2>Баннер события</h2><p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Отображается на главной странице над новостями</p></div>
+            <div><h2>Баннер события</h2><p class="s-card-sub">Отображается на главной странице над новостями</p></div>
           </div>
           <div class="s-field">
             <label class="s-label">Активен</label>
@@ -1590,7 +1636,7 @@
                 <h2>HTTPS / SSL</h2>
                 <span id="https-badge" class="s-status-badge s-status-http">HTTP</span>
               </div>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Let's Encrypt — бесплатный TLS сертификат</p>
+              <p class="s-card-sub">Let's Encrypt — бесплатный TLS сертификат</p>
             </div>
           </div>
 
@@ -1634,7 +1680,7 @@
             </div>
             <div>
               <h2>Форматирование дат и времени</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Применяется ко всем страницам сайта</p>
+              <p class="s-card-sub">Применяется ко всем страницам сайта</p>
             </div>
           </div>
 
@@ -1698,7 +1744,7 @@
               <div style="display:flex;align-items:center;gap:.55rem;">
                 <h2>Обновление сайта</h2>
               </div>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">git pull — скачать изменения и применить мгновенно</p>
+              <p class="s-card-sub">git pull — скачать изменения и применить мгновенно</p>
             </div>
           </div>
 
@@ -1732,7 +1778,7 @@
             </div>
             <div>
               <h2>RCON Консоль</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Выполнение команд на игровом сервере</p>
+              <p class="s-card-sub">Выполнение команд на игровом сервере</p>
             </div>
           </div>
           <div class="s-field">
@@ -1790,7 +1836,7 @@
             </div>
             <div style="flex:1;">
               <h2>Правила сервера</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Отображаются на главной странице</p>
+              <p class="s-card-sub">Отображаются на главной странице</p>
             </div>
             <button onclick="saveRules()" style="display:inline-flex;align-items:center;gap:.4rem;padding:.42rem .9rem;background:rgba(80,50,0,.22);border:1px solid rgba(200,155,0,.4);color:var(--gold);border-radius:.5rem;font-size:.75rem;font-weight:700;cursor:pointer;transition:all .2s;flex-shrink:0;" onmouseover="this.style.background='rgba(100,65,0,.32)'" onmouseout="this.style.background='rgba(80,50,0,.22)'">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
@@ -1907,7 +1953,7 @@
             </div>
             <div>
               <h2>Подключение плагина</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Ключ для .register/.login из игры (vrising-bepinex-plugin) — общий для всех серверов</p>
+              <p class="s-card-sub">Ключ для .register/.login из игры (vrising-bepinex-plugin) — общий для всех серверов</p>
             </div>
           </div>
           <div class="s-field" style="margin-bottom:0;">
@@ -1947,7 +1993,7 @@
             </div>
             <div style="flex:1;">
               <h2>Статус подключения</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Последний heartbeat от плагина на этом сервере — плагин отправляет его раз в минуту</p>
+              <p class="s-card-sub">Последний heartbeat от плагина на этом сервере — плагин отправляет его раз в минуту</p>
             </div>
             <!-- Manual re-poll — re-fetches GET /api/admin/plugin-status (the same endpoint the
                  pill above already renders) instead of waiting for the admin to switch tabs away
@@ -1979,7 +2025,7 @@
             </div>
             <div style="flex:1;">
               <h2>Недавние события плагина</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Кик/мут/рестарт, о которых плагин сообщил сам — полный журнал со всеми действиями см. в «Журнал модерации»</p>
+              <p class="s-card-sub">Кик/мут/рестарт, о которых плагин сообщил сам — полный журнал со всеми действиями см. в «Журнал модерации»</p>
             </div>
             <button type="button" class="btn-ghost" style="font-size:.7rem;padding:.3rem .65rem;flex-shrink:0;white-space:nowrap;" onclick="loadPluginRecentLog()" title="Обновить список">↻</button>
           </div>
@@ -1998,7 +2044,7 @@
             </div>
             <div>
               <h2>API-ключ этого сервера</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Необязательный отдельный ключ только для этого сервера — изоляция на случай утечки конфига</p>
+              <p class="s-card-sub">Необязательный отдельный ключ только для этого сервера — изоляция на случай утечки конфига</p>
             </div>
           </div>
           <div class="s-field" style="margin-bottom:0;">
@@ -2021,7 +2067,7 @@
             </div>
             <div>
               <h2>Объявления в игровой чат</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Разовые и повторяющиеся сообщения — плагин опрашивает их вместе с heartbeat (раз в минуту)</p>
+              <p class="s-card-sub">Разовые и повторяющиеся сообщения — плагин опрашивает их вместе с heartbeat (раз в минуту)</p>
             </div>
           </div>
 
@@ -2114,7 +2160,7 @@
             </div>
             <div>
               <h2>Шаблоны сообщений</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Текст сообщений о подключении/отключении игрока в игровом чате</p>
+              <p class="s-card-sub">Текст сообщений о подключении/отключении игрока в игровом чате</p>
             </div>
           </div>
 
@@ -2173,7 +2219,7 @@
             </div>
             <div>
               <h2>Рестарт сервера</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Плагин опрашивает раз в минуту, транслирует обратный отсчёт игрокам и выполняет рестарт по истечении таймера</p>
+              <p class="s-card-sub">Плагин опрашивает раз в минуту, транслирует обратный отсчёт игрокам и выполняет рестарт по истечении таймера</p>
             </div>
           </div>
 
@@ -2251,7 +2297,7 @@
         </div>
       </div>
       <!-- Bulk panel -->
-      <div id="bulk-panel" style="display:none;align-items:center;gap:.75rem;padding:.75rem 1rem;margin-bottom:.75rem;background:rgba(120,0,28,.15);border:1px solid rgba(180,0,42,.3);border-radius:.6rem;">
+      <div id="bulk-panel" class="bulk-action-panel">
         <span id="bulk-count" style="font-size:.82rem;color:var(--muted);"></span>
         <button onclick="executeBulk('ban')" style="font-size:.75rem;background:rgba(200,80,0,.2);border:1px solid rgba(200,100,0,.3);border-radius:.35rem;padding:.3rem .65rem;color:#fdba74;cursor:pointer;">🚫 Заблокировать</button>
         <button onclick="executeBulk('unban')" style="font-size:.75rem;background:rgba(0,150,80,.15);border:1px solid rgba(0,180,100,.25);border-radius:.35rem;padding:.3rem .65rem;color:#6ee7b7;cursor:pointer;">✅ Разблокировать</button>
@@ -2303,7 +2349,7 @@
           <span id="comments-total" style="font-size:.78rem;color:var(--muted);white-space:nowrap;"></span>
         </div>
       </div>
-      <div id="comments-bulk-panel" style="display:none;align-items:center;gap:.75rem;padding:.75rem 1rem;margin-bottom:.75rem;background:rgba(120,0,28,.15);border:1px solid rgba(180,0,42,.3);border-radius:.6rem;">
+      <div id="comments-bulk-panel" class="bulk-action-panel">
         <span id="comments-bulk-count" style="font-size:.82rem;color:var(--text);"></span>
         <button onclick="bulkDeleteComments()" class="btn-danger" style="font-size:.78rem;">Удалить выбранное</button>
         <button onclick="clearCommentsBulk()" class="btn-ghost" style="font-size:.78rem;">Отменить выбор</button>
@@ -2424,7 +2470,7 @@
           </select>
         </div>
       </div>
-      <div id="reports-bulk-panel" style="display:none;align-items:center;gap:.75rem;padding:.75rem 1rem;margin-bottom:.75rem;background:rgba(120,0,28,.15);border:1px solid rgba(180,0,42,.3);border-radius:.6rem;">
+      <div id="reports-bulk-panel" class="bulk-action-panel">
         <span id="reports-bulk-count" style="font-size:.82rem;color:var(--text);"></span>
         <button onclick="bulkReviewReports('reviewed')" style="font-size:.78rem;background:rgba(0,150,100,.2);border:1px solid rgba(0,200,130,.3);border-radius:.4rem;padding:.4rem .8rem;color:#6ee7b7;cursor:pointer;">✓ Отметить рассмотренными</button>
         <button onclick="bulkReviewReports('dismissed')" style="font-size:.78rem;background:rgba(100,100,100,.15);border:1px solid rgba(150,150,150,.2);border-radius:.4rem;padding:.4rem .8rem;color:var(--muted);cursor:pointer;">✗ Отклонить</button>
@@ -2469,7 +2515,7 @@
           <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.3rem;">Пользователей</div>
         </div>
         <div class="glass-card" style="border-radius:.75rem;padding:1.25rem;text-align:center;">
-          <div style="font-family:'Cinzel',serif;font-size:1.8rem;font-weight:700;color:#c8002a;" id="kpi-news">—</div>
+          <div style="font-family:'Cinzel',serif;font-size:1.8rem;font-weight:700;color:var(--accent);" id="kpi-news">—</div>
           <div style="font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.3rem;">Новостей</div>
         </div>
         <div class="glass-card" style="border-radius:.75rem;padding:1.25rem;text-align:center;">
@@ -2838,7 +2884,7 @@
             </div>
             <div>
               <h2>Начисление очков</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Ставки автоматического начисления за игру и стрик</p>
+              <p class="s-card-sub">Ставки автоматического начисления за игру и стрик</p>
             </div>
           </div>
           <div class="s-field">
@@ -2874,7 +2920,7 @@
             </div>
             <div>
               <h2>Ручное начисление</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Например, за донат — платёжной интеграции пока нет</p>
+              <p class="s-card-sub">Например, за донат — платёжной интеграции пока нет</p>
             </div>
           </div>
           <div class="s-field">
@@ -2930,7 +2976,7 @@
             </div>
             <div>
               <h2>Диагностика начисления</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Реально ли сейчас начисляются очки за игру/стрик</p>
+              <p class="s-card-sub">Реально ли сейчас начисляются очки за игру/стрик</p>
             </div>
             <button onclick="loadPointsDiagnostics()" class="btn-ghost" style="font-size:.72rem;margin-left:auto;">↻ Обновить</button>
           </div>
@@ -2949,7 +2995,7 @@
             </div>
             <div>
               <h2>Аномалии начисления очков</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Признаки накрутки: невозможная скорость начисления за игру, всплески транзакций</p>
+              <p class="s-card-sub">Признаки накрутки: невозможная скорость начисления за игру, всплески транзакций</p>
             </div>
             <button onclick="loadPointsAnomalies()" class="btn-ghost" style="font-size:.72rem;margin-left:auto;">↻ Обновить</button>
           </div>
@@ -2968,7 +3014,7 @@
             </div>
             <div>
               <h2>Массовое начисление</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Список игроков (имя пользователя или SteamID), через запятую или с новой строки</p>
+              <p class="s-card-sub">Список игроков (имя пользователя или SteamID), через запятую или с новой строки</p>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1.25rem;">
@@ -3019,7 +3065,7 @@
             </div>
             <div>
               <h2>Смена ника за очки</h2>
-              <p style="font-size:.68rem;color:var(--muted);margin-top:.12rem;font-weight:400;letter-spacing:0;text-transform:none;font-family:'Inter',sans-serif;">Игровая команда .nick — тратит очки на смену имени персонажа</p>
+              <p class="s-card-sub">Игровая команда .nick — тратит очки на смену имени персонажа</p>
             </div>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
@@ -6859,7 +6905,7 @@ async function loadWipeHistory() {
       const label = WIPE_LABELS[w.wipe_type] || w.wipe_type;
       const color = WIPE_COLORS[w.wipe_type] || '#d4c4e0';
       const srv = w.server_num === 2 ? srvName2 : srvName;
-      const srvColor = w.server_num === 2 ? '#818cf8' : '#4ade80';
+      const srvColor = w.server_num === 2 ? '#9955ee' : '#4ade80';
       const isPast = dt < new Date();
       return `<div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;background:rgba(14,5,18,0.5);border:1px solid rgba(110,0,20,.18);border-radius:.5rem;opacity:${isPast ? '.75' : '1'};">
         <span style="color:${srvColor};font-size:.65rem;font-weight:700;min-width:58px;">${srv}</span>
@@ -8416,7 +8462,7 @@ async function loadErrors(page = 1) {
     </div>
     <div style="padding:2rem;">
       <img id="preview-thumb" src="" alt="" loading="lazy" style="width:100%;max-height:260px;object-fit:cover;border-radius:.65rem;margin-bottom:1.25rem;">
-      <h1 id="preview-title" style="font-family:'Cinzel',serif;font-size:1.5rem;color:#e0c8d8;margin-bottom:.6rem;line-height:1.3;"></h1>
+      <h1 id="preview-title" style="font-family:'Cinzel',serif;font-size:1.5rem;color:var(--gold);margin-bottom:.6rem;line-height:1.3;"></h1>
       <p id="preview-summary" style="color:var(--muted);font-size:.9rem;margin-bottom:1.5rem;line-height:1.6;border-left:2px solid rgba(181,0,42,.5);padding-left:.85rem;"></p>
       <div id="preview-content" class="ql-editor" style="padding:0;min-height:0;pointer-events:none;"></div>
     </div>
@@ -8431,7 +8477,7 @@ async function loadErrors(page = 1) {
     <div style="display:flex;align-items:center;gap:.85rem;margin-bottom:1.1rem;">
       <div id="userqv-avatar"></div>
       <div style="min-width:0;">
-        <div id="userqv-username" style="font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;color:#e0c8d8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+        <div id="userqv-username" style="font-family:'Cinzel',serif;font-size:1.05rem;font-weight:700;color:var(--gold);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
         <div id="userqv-role" style="margin-top:.3rem;"></div>
       </div>
     </div>
