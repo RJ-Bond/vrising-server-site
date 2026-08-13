@@ -549,6 +549,36 @@ class RevokedToken(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
 
 
+class LoginHistory(Base):
+    """Append-only audit log of POST /api/auth/login attempts, one row per call —
+    written by login() in backend/routers/auth.py regardless of outcome. user_id is
+    nullable: a failed attempt against a username that doesn't resolve to a real
+    account still needs a row (that's exactly the case worth auditing), so this can't
+    require an FK match. username_attempted preserves what was actually typed,
+    independent of whether it resolved. ip_address/user_agent are read straight from
+    the request (request.client.host / the User-Agent header) — best-effort, never
+    verified or geolocated. Surfaced to the account owner via paginated
+    GET /api/auth/login-history (frontend/profile.html's security tab); also the
+    device-tracking signal POST /api/auth/login uses to decide whether a successful
+    login is from a previously-unseen IP for that account (see the "new device" email
+    logic in login()). created_at is naive UTC (this repo's usual DateTime
+    convention)."""
+    __tablename__ = "login_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    username_attempted = Column(String(64), nullable=False)
+    success = Column(Boolean, nullable=False)
+    # "invalid_credentials" | "account_inactive" | "totp_required" | "invalid_totp" |
+    # "totp_rate_limited" | None (only set on success)
+    failure_reason = Column(String(32), nullable=True)
+    ip_address = Column(String(64), nullable=True)
+    user_agent = Column(String(256), nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    __table_args__ = (Index("ix_login_history_user_created", "user_id", "created_at"),)
+
+
 class Event(Base):
     __tablename__ = "events"
 

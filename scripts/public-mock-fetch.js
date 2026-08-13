@@ -381,13 +381,36 @@
     [/\/api\/shop\/items$/, () => shopItems],
     [/\/api\/shop\/wishlist\/me$/, () => shopWishlist],
     [/\/api\/shop\/redemptions\/me/, () => myShopRedemptions],
+    [/\/api\/auth\/current-session/, () => currentSession],
+    [/\/api\/auth\/login-history/, () => loginHistory],
   ];
 
-  // shop.html is the one page this file mocks as a logged-in visitor rather than
-  // anonymous — its entire content is behind an auth gate with no anonymous fallback
-  // (unlike every other page here), so previewing the category/wishlist/weekly-limit UI
-  // added alongside this mock update needs GET /api/auth/me to actually succeed.
-  const _mockAuthedUser = /shop\.html/.test(location.pathname);
+  // shop.html/profile.html are the pages this file mocks as a logged-in visitor
+  // rather than anonymous — both are entirely behind an auth gate with no anonymous
+  // fallback (unlike every other page here), so previewing them needs GET
+  // /api/auth/me to actually succeed.
+  const _mockAuthedUser = /shop\.html|profile\.html/.test(location.pathname);
+
+  // GET /api/auth/current-session, GET /api/auth/login-history — added for
+  // profile.html's security-tab "current session" / "login history" cards (see
+  // backend/routers/auth.py). Shapes match those endpoints' real JSON exactly.
+  const currentSession = {
+    ip_address: '203.0.113.42',
+    user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+    issued_at: iso(15 * 60 * 1000),
+    expires_at: new Date(now + 7 * 24 * 3600 * 1000).toISOString(),
+    last_active_at: iso(30 * 1000),
+  };
+  const loginHistory = {
+    items: [
+      { id: 5, success: true, failure_reason: null, ip_address: '203.0.113.42', user_agent: currentSession.user_agent, created_at: iso(30 * 1000) },
+      { id: 4, success: false, failure_reason: 'invalid_totp', ip_address: '203.0.113.42', user_agent: currentSession.user_agent, created_at: iso(20 * 60 * 1000) },
+      { id: 3, success: true, failure_reason: null, ip_address: '198.51.100.7', user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1', created_at: iso(2 * 24 * 3600 * 1000) },
+      { id: 2, success: false, failure_reason: 'invalid_credentials', ip_address: '203.0.113.99', user_agent: currentSession.user_agent, created_at: iso(5 * 24 * 3600 * 1000) },
+      { id: 1, success: true, failure_reason: null, ip_address: '203.0.113.42', user_agent: currentSession.user_agent, created_at: iso(30 * 24 * 3600 * 1000) },
+    ],
+    total: 5, limit: 20, offset: 0,
+  };
 
   const realFetch = window.fetch.bind(window);
   window.fetch = (input, init) => {
