@@ -875,3 +875,170 @@ async def test_weekly_remaining_surfaced_on_public_listing(client, db_session):
     out = next(i for i in r.json() if i["id"] == item.id)
     assert out["weekly_limit_per_user"] == 3
     assert out["weekly_remaining"] == 2
+
+
+# ─── Own-ledger `type` filter (GET /api/points/transactions/me) ───────────────
+
+async def test_ledger_type_filter_earned_vs_spent(client, db_session):
+    await _set_plugin_key(db_session)
+    steam_id = "76500000000000401"
+    user = await _make_user(db_session, "TypeFilterUser", steam_id=steam_id, points_balance=0)
+
+    r1 = await client.post(
+        "/api/plugin/sessions",
+        json={"server_num": 1, "steam_id": steam_id, "character_name": "TypeFilterUser", "session_seconds": 600},
+        headers=_hdr(),
+    )
+    assert r1.status_code == 200  # reason="playtime", +10
+
+    item = await _make_item(db_session, name="Type Filter Item", cost=5)
+    r2 = await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+    assert r2.status_code == 201  # reason="redeem", -5
+
+    r_earned = await client.get("/api/points/transactions/me?type=earned", headers=_bearer(user))
+    assert r_earned.status_code == 200
+    earned_items = r_earned.json()["items"]
+    assert len(earned_items) == 1
+    assert earned_items[0]["reason"] == "playtime"
+
+    r_spent = await client.get("/api/points/transactions/me?type=spent", headers=_bearer(user))
+    assert r_spent.status_code == 200
+    spent_items = r_spent.json()["items"]
+    assert len(spent_items) == 1
+    assert spent_items[0]["reason"] == "redeem"
+
+    r_all = await client.get("/api/points/transactions/me", headers=_bearer(user))
+    assert r_all.json()["total"] == 2
+
+
+async def test_ledger_type_filter_gifted_catches_admin_grant_reasons(client, db_session):
+    admin = await _make_user(db_session, "TypeFilterAdmin", role="admin")
+    user = await _make_user(db_session, "TypeFilterGiftedUser", points_balance=0)
+
+    r = await client.post(
+        "/api/admin/points/grant",
+        json={"user_id": user.id, "delta": 50, "reason": "donation", "note": "birthday"},
+        headers=_bearer(admin),
+    )
+    assert r.status_code == 201
+
+    r_gifted = await client.get("/api/points/transactions/me?type=gifted", headers=_bearer(user))
+    assert r_gifted.status_code == 200
+    items = r_gifted.json()["items"]
+    assert len(items) == 1
+    assert items[0]["reason"] == "donation"
+
+    r_earned = await client.get("/api/points/transactions/me?type=earned", headers=_bearer(user))
+    assert r_earned.json()["items"] == []
+
+
+async def test_ledger_type_filter_refund_bucket(client, db_session):
+    admin = await _make_user(db_session, "TypeFilterRefundAdmin", role="admin")
+    user = await _make_user(db_session, "TypeFilterRefundUser", points_balance=100)
+    item = await _make_item(db_session, name="Refund Filter Item", cost=20)
+    redeem_r = await client.post("/api/shop/redeem", json={"shop_item_id": item.id}, headers=_bearer(user))
+    redemption_id = redeem_r.json()["id"]
+
+    cancel_r = await client.post(f"/api/admin/shop/redemptions/{redemption_id}/cancel", headers=_bearer(admin))
+    assert cancel_r.status_code == 200
+
+    r = await client.get("/api/points/transactions/me?type=refund", headers=_bearer(user))
+    assert r.status_code == 200
+    items = r.json()["items"]
+    assert len(items) == 1
+    assert items[0]["reason"] == "refund"
+    assert items[0]["delta"] == 20
+
+
+async def test_ledger_type_filter_invalid_value_400s(client, db_session):
+    user = await _make_user(db_session, "TypeFilterInvalidUser")
+    r = await client.get("/api/points/transactions/me?type=bogus", headers=_bearer(user))
+    assert r.status_code == 400
+
+
+# ─── Self-service CSV export (GET /api/points/transactions/export) ────────────
+
+async def test_self_export_requires_login(client, db_session):
+    r = await client.get("/api/points/transactions/export")
+    assert r.status_code == 401
+
+
+async def test_self_export_returns_only_own_csv_rows(client, db_session):
+    user_a = await _make_user(db_session, "SelfExportAlice", points_balance=10)
+    user_b = await _make_user(db_session, "SelfExportBob", points_balance=10)
+    db_session.add(PointsTransaction(user_id=user_a.id, delta=10, balance_after=10, reason="playtime", detail="alice-only"))
+    db_session.add(PointsTransaction(user_id=user_b.id, delta=999, balance_after=999, reason="donation", detail="bob-only"))
+    await db_session.commit()
+
+    r = await client.get("/api/points/transactions/export", headers=_bearer(user_a))
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "attachment; filename=my_points_history.csv" in r.headers["content-disposition"]
+
+    body = r.text
+    lines = body.strip().splitlines()
+    assert lines[0] == "date,delta,balance_after,reason,detail"
+    assert len(lines) == 2
+    assert "alice-only" in body
+    assert "bob-only" not in body
+
+
+async def test_self_export_respects_type_filter(client, db_session):
+    user = await _make_user(db_session, "SelfExportFilterUser", points_balance=10)
+    db_session.add(PointsTransaction(user_id=user.id, delta=10, balance_after=10, reason="playtime"))
+    db_session.add(PointsTransaction(user_id=user.id, delta=-5, balance_after=5, reason="redeem"))
+    await db_session.commit()
+
+    r = await client.get("/api/points/transactions/export?type=spent", headers=_bearer(user))
+    assert r.status_code == 200
+    lines = r.text.strip().splitlines()
+    assert len(lines) == 2  # header + 1 "redeem" row
+    assert "redeem" in lines[1]
+
+
+# ─── Rolling net earn-rate (GET /api/points/earn-rate/me) ─────────────────────
+
+async def test_earn_rate_requires_login(client, db_session):
+    r = await client.get("/api/points/earn-rate/me")
+    assert r.status_code == 401
+
+
+async def test_earn_rate_computes_net_average_over_window(client, db_session):
+    user = await _make_user(db_session, "EarnRateUser", points_balance=0)
+    db_session.add(PointsTransaction(user_id=user.id, delta=100, balance_after=100, reason="playtime"))
+    db_session.add(PointsTransaction(user_id=user.id, delta=-40, balance_after=60, reason="redeem"))
+    await db_session.commit()
+
+    r = await client.get("/api/points/earn-rate/me?days=10", headers=_bearer(user))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["window_days"] == 10
+    assert body["net_delta"] == 60
+    assert body["avg_per_day"] == 6.0
+
+
+async def test_earn_rate_excludes_transactions_outside_window(client, db_session):
+    user = await _make_user(db_session, "EarnRateOldTxUser", points_balance=0)
+    old_tx = PointsTransaction(user_id=user.id, delta=500, balance_after=500, reason="playtime")
+    db_session.add(old_tx)
+    await db_session.commit()
+    await db_session.refresh(old_tx)
+    old_tx.created_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=60)
+    await db_session.commit()
+
+    r = await client.get("/api/points/earn-rate/me?days=30", headers=_bearer(user))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["net_delta"] == 0
+    assert body["avg_per_day"] == 0.0
+
+
+async def test_earn_rate_isolated_per_user(client, db_session):
+    user_a = await _make_user(db_session, "EarnRateAlice", points_balance=0)
+    user_b = await _make_user(db_session, "EarnRateBob", points_balance=0)
+    db_session.add(PointsTransaction(user_id=user_a.id, delta=10, balance_after=10, reason="playtime"))
+    db_session.add(PointsTransaction(user_id=user_b.id, delta=1000, balance_after=1000, reason="donation"))
+    await db_session.commit()
+
+    r = await client.get("/api/points/earn-rate/me", headers=_bearer(user_a))
+    assert r.json()["net_delta"] == 10

@@ -621,6 +621,19 @@
        GET /api/points/transactions/me and GET /api/shop/redemptions/me. -->
   <div id="tab-panel-points" class="profile-tab-panel">
 
+    <!-- Wishlist — GET /api/shop/wishlist/me. Full browsing/toggling lives on shop.html;
+         this is a compact read-only summary + "~N дней" affordability estimate (from
+         GET /api/points/earn-rate/me) for items the tab wouldn't otherwise surface at all. -->
+    <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
+        <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin:0;" data-i18n-ru="— Избранное —" data-i18n-en="— Wishlist —">— Избранное —</h2>
+        <a href="/shop.html" class="btn btn-ghost" style="font-size:.7rem;padding:.35rem .75rem;" data-i18n-ru="Открыть магазин →" data-i18n-en="Open shop →">Открыть магазин →</a>
+      </div>
+      <div id="points-wishlist-list" style="display:flex;flex-direction:column;gap:.5rem;">
+        <p style="color:var(--muted);font-size:.82rem;">Загрузка…</p>
+      </div>
+    </div>
+
     <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
       <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Мои заявки в магазине —" data-i18n-en="— My shop redemptions —">— Мои заявки в магазине —</h2>
       <div id="points-redemptions-list" style="display:flex;flex-direction:column;gap:.5rem;">
@@ -629,7 +642,21 @@
     </div>
 
     <div class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
-      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— История очков —" data-i18n-en="— Points history —">— История очков —</h2>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;margin-bottom:1rem;flex-wrap:wrap;">
+        <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin:0;" data-i18n-ru="— История очков —" data-i18n-en="— Points history —">— История очков —</h2>
+        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;">
+          <label for="points-history-type-filter" style="font-size:.68rem;color:var(--muted);white-space:nowrap;" data-i18n-ru="Фильтр:" data-i18n-en="Filter:">Фильтр:</label>
+          <select id="points-history-type-filter" onchange="onPointsHistoryTypeFilterChange()"
+            style="background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.25);border-radius:.5rem;padding:.35rem .6rem;color:#e2d8f0;font-size:.72rem;font-family:'Inter',sans-serif;outline:none;">
+            <option value="" data-i18n-ru="Все" data-i18n-en="All">Все</option>
+            <option value="earned" data-i18n-ru="Заработано" data-i18n-en="Earned">Заработано</option>
+            <option value="spent" data-i18n-ru="Потрачено" data-i18n-en="Spent">Потрачено</option>
+            <option value="refund" data-i18n-ru="Возвраты" data-i18n-en="Refunds">Возвраты</option>
+            <option value="gifted" data-i18n-ru="Начислено админом" data-i18n-en="Admin-granted">Начислено админом</option>
+          </select>
+          <a id="points-history-export-link" href="/api/points/transactions/export" class="btn btn-ghost" style="font-size:.7rem;padding:.35rem .75rem;" download data-i18n-ru="⬇ CSV" data-i18n-en="⬇ CSV">⬇ CSV</a>
+        </div>
+      </div>
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:.8rem;">
           <thead>
@@ -648,6 +675,15 @@
 
   <!-- TAB: Администратор -->
   <div id="tab-panel-admin" class="profile-tab-panel">
+
+    <!-- Own moderation activity — GET /api/profile/moderation-actions/me. A single small
+         count tile, not a log/list — the full audit log lives in admin.html (admin-tier
+         gated, GET /api/admin/audit-log) and is out of scope to duplicate here; a
+         moderator (who this tab is also shown to) can't reach that endpoint at all. -->
+    <div id="own-moderation-activity-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
+      <h2 class="gothic" style="font-size:.68rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;" data-i18n-ru="— Ваши действия —" data-i18n-en="— Your actions —">— Ваши действия —</h2>
+      <div id="own-moderation-activity-body" style="font-size:.82rem;color:var(--muted);">Загрузка…</div>
+    </div>
 
     <!-- Admin title (admins only) -->
     <div id="admin-title-card" class="g-card" style="padding:1.4rem 1.5rem;margin-bottom:1.1rem;">
@@ -808,6 +844,7 @@ function switchProfileTab(tab) {
     if (panel) panel.classList.toggle('active', t === tab);
   });
   if (tab === 'points') loadPointsHistory();
+  if (tab === 'admin') loadOwnModerationActivity();
 }
 
 // #3 Bio save
@@ -1377,6 +1414,33 @@ async function saveGameNickname() {
   setTimeout(() => { statusEl.textContent = ''; }, 3000);
 }
 
+// GET /api/profile/moderation-actions/me (backend/routers/profile.py) — a compact count
+// tile, deliberately not a mini version of admin.html's audit log (see the HTML comment
+// above own-moderation-activity-card). 403 for a plain player is expected/impossible to
+// hit here in practice (the admin tab itself is hidden below moderator), so it's folded
+// into the same generic error message as a network failure rather than special-cased.
+let _ownModActivityLoaded = false;
+async function loadOwnModerationActivity() {
+  if (_ownModActivityLoaded) return;
+  _ownModActivityLoaded = true;
+  const body = document.getElementById('own-moderation-activity-body');
+  if (!body) return;
+  try {
+    const d = await fetch(`${API}/profile/moderation-actions/me?days=7`, { credentials: 'include' }).then(r => r.ok ? r.json() : Promise.reject());
+    const lastLine = d.last_action_at
+      ? `${_t('Последнее', 'Last')}: ${fmtDate(d.last_action_at)}`
+      : _t('Действий пока не было', 'No actions yet');
+    body.innerHTML = `
+      <div style="display:flex;align-items:baseline;gap:.4rem;">
+        <span style="font-size:1.6rem;font-weight:700;color:var(--gold);">${d.count}</span>
+        <span style="font-size:.78rem;color:var(--muted);">${_t('действий за 7 дней', 'actions in the last 7 days')}</span>
+      </div>
+      <div style="font-size:.72rem;color:var(--muted);margin-top:.3rem;">${lastLine}</div>`;
+  } catch {
+    body.innerHTML = `<span style="color:#f87171;">${_t('Ошибка загрузки', 'Failed to load')}</span>`;
+  }
+}
+
 async function saveAdminTitle() {
   const input = document.getElementById('admin-title-input');
   const statusEl = document.getElementById('admin-title-status');
@@ -1518,46 +1582,126 @@ function applyCoverUrl(url) {
 }
 
 // ── Activity timeline ─────────────────────────────────────────────────────────
-// ─── Points economy: own ledger + redemption history (tab-panel-points) ────
+// ─── Points economy: own ledger + redemption history + wishlist (tab-panel-points) ──
 const POINTS_REASON_LABELS = { playtime: 'Игра', streak: 'Стрик захода', donation: 'Донат', redeem: 'Покупка', refund: 'Возврат', admin_adjust: 'Коррекция', nickname_change: 'Смена ника' };
+// Cancelled reads as "refunded, not delivered" (see loadShopRedemptionsList below), so it
+// gets its own colour distinct from both the fulfilled (green) and pending (gold) states
+// rather than the neutral muted grey it used to share with nothing in particular.
 const SHOP_REDEMPTION_STATUS_LABELS_PROFILE = { pending: 'Ожидает', fulfilled: 'Выдано', cancelled: 'Отменено' };
+const SHOP_REDEMPTION_STATUS_COLORS_PROFILE = { pending: '#facc15', fulfilled: '#4ade80', cancelled: '#f87171' };
 let _pointsHistoryLoaded = false;
 
 async function loadPointsHistory() {
   if (_pointsHistoryLoaded) return;
   _pointsHistoryLoaded = true;
+  loadPointsWishlist();
+  loadShopRedemptionsList();
+  loadPointsHistoryTable('');
+}
 
+// GET /api/shop/wishlist/me + GET /api/points/earn-rate/me — compact read-only summary of
+// items the user has favourited on shop.html (the actual browsing/toggling UI), plus a
+// rough "~N дней" affordability estimate for the ones they can't afford yet, computed from
+// a simple rolling average of net points/day over the trailing 30 days. Deliberately not a
+// full shop catalog — that's what the "Открыть магазин →" link is for.
+async function loadPointsWishlist() {
+  const list = document.getElementById('points-wishlist-list');
+  if (!list) return;
+  try {
+    const [items, rate] = await Promise.all([
+      fetch(`${API}/shop/wishlist/me`, { credentials: 'include' }).then(r => r.json()),
+      fetch(`${API}/points/earn-rate/me`, { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    if (!Array.isArray(items) || !items.length) {
+      list.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">${_t('В избранном пока пусто — добавьте товары в', 'Your wishlist is empty — add items in the')} <a href="/shop.html" style="color:var(--crimson);text-decoration:none;">${_t('магазине', 'shop')}</a>.</p>`;
+      return;
+    }
+    // _profileUser is populated by the page's main GET /api/auth/me call, but that call
+    // and this tab's own loads can race — e.g. a notification deep-link straight to
+    // ?tab=points fires switchProfileTab() (and thus this function) before the main
+    // init flow's fetch has resolved. Falling back to a direct call here (rather than
+    // silently rendering every item as "unknown afford-ability") keeps the estimate
+    // correct regardless of load order; the extra request only happens in that race.
+    let balance = (_profileUser && _profileUser.points_balance != null) ? _profileUser.points_balance : null;
+    if (balance == null) {
+      try {
+        const me = await fetch(`${API}/auth/me`, { credentials: 'include' }).then(r => r.ok ? r.json() : null);
+        if (me && me.points_balance != null) balance = me.points_balance;
+      } catch { /* leave balance unknown — items render without an afford-ability colour/estimate */ }
+    }
+    const avgPerDay = (rate && typeof rate.avg_per_day === 'number' && rate.avg_per_day > 0) ? rate.avg_per_day : null;
+    list.innerHTML = items.map(it => {
+      const affordable = balance != null && balance >= it.cost;
+      let etaHtml = '';
+      if (balance != null && !affordable && avgPerDay) {
+        const days = Math.ceil((it.cost - balance) / avgPerDay);
+        etaHtml = `<div style="font-size:.68rem;color:var(--muted);margin-top:.15rem;" title="${_t('Грубая оценка по среднему приросту очков за последние 30 дней', 'Rough estimate based on average net points gained over the last 30 days')}">~${days} ${_t('дн.', 'days')} (${_t('оценка', 'estimate')})</div>`;
+      }
+      const priceColor = balance == null ? 'var(--text)' : (affordable ? '#4ade80' : 'var(--gold)');
+      return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.5rem .65rem;background:rgba(8,0,14,0.4);border:1px solid rgba(110,0,150,0.15);border-radius:.5rem;">
+        <div style="min-width:0;">
+          <div style="font-size:.82rem;color:var(--text);">${esc(it.name)}</div>
+          ${etaHtml}
+        </div>
+        <span style="font-size:.78rem;font-weight:600;color:${priceColor};white-space:nowrap;">${it.cost} ${_t('очков', 'pts')}</span>
+      </div>`;
+    }).join('');
+  } catch { list.innerHTML = '<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки.</p>'; }
+}
+
+async function loadShopRedemptionsList() {
   const redList = document.getElementById('points-redemptions-list');
-  const histBody = document.getElementById('points-history-tbody');
-
+  if (!redList) return;
   try {
     const d = await fetch(`${API}/shop/redemptions/me?per_page=20`, { credentials: 'include' }).then(r => r.json());
     const items = d.items || [];
-    if (redList) {
-      redList.innerHTML = items.length ? items.map(r => `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.5rem .65rem;background:rgba(8,0,14,0.4);border:1px solid rgba(110,0,150,0.15);border-radius:.5rem;">
+    redList.innerHTML = items.length ? items.map(r => {
+      const isCancelled = r.status === 'cancelled';
+      const refundNote = isCancelled
+        ? `<div style="font-size:.66rem;color:#f87171;margin-top:.1rem;">${_t('Возвращено', 'Refunded')}: +${r.cost_snapshot} ${_t('очков', 'pts')}</div>`
+        : '';
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:.75rem;padding:.5rem .65rem;background:rgba(8,0,14,0.4);border:1px solid ${isCancelled ? 'rgba(248,113,113,0.22)' : 'rgba(110,0,150,0.15)'};border-radius:.5rem;${isCancelled ? 'opacity:.75;' : ''}">
           <div>
-            <div style="font-size:.82rem;color:var(--text);">${esc(r.item_name_snapshot)}</div>
+            <div style="font-size:.82rem;color:var(--text);${isCancelled ? 'text-decoration:line-through;text-decoration-color:rgba(248,113,113,0.5);' : ''}">${esc(r.item_name_snapshot)}</div>
             <div style="font-size:.68rem;color:var(--muted);margin-top:.1rem;">${fmtDate(r.created_at)} · ${r.cost_snapshot} очков</div>
+            ${refundNote}
           </div>
-          <span style="font-size:.7rem;font-weight:600;color:${r.status==='fulfilled'?'#4ade80':r.status==='cancelled'?'var(--muted)':'#facc15'};">${SHOP_REDEMPTION_STATUS_LABELS_PROFILE[r.status]||r.status}</span>
-        </div>`).join('') : '<p style="color:var(--muted);font-size:.82rem;">Заявок пока нет.</p>';
-    }
-  } catch { if (redList) redList.innerHTML = '<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки.</p>'; }
+          <span style="font-size:.7rem;font-weight:600;color:${SHOP_REDEMPTION_STATUS_COLORS_PROFILE[r.status] || 'var(--muted)'};white-space:nowrap;">${SHOP_REDEMPTION_STATUS_LABELS_PROFILE[r.status] || r.status}</span>
+        </div>`;
+    }).join('') : '<p style="color:var(--muted);font-size:.82rem;">Заявок пока нет.</p>';
+  } catch { redList.innerHTML = '<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки.</p>'; }
+}
 
+// GET /api/points/transactions/me, optionally narrowed by `type` (earned/spent/refund/
+// gifted — see the matching categorization in backend/routers/points_shop.py). Re-callable
+// (unlike the rest of loadPointsHistory, which is a one-shot per tab visit) so the filter
+// dropdown can reload just this table without re-fetching the wishlist/redemptions above.
+async function loadPointsHistoryTable(type) {
+  const histBody = document.getElementById('points-history-tbody');
+  if (!histBody) return;
+  histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:.75rem;">Загрузка…</td></tr>';
   try {
-    const d = await fetch(`${API}/points/transactions/me?per_page=30`, { credentials: 'include' }).then(r => r.json());
+    const qs = type ? `&type=${encodeURIComponent(type)}` : '';
+    const d = await fetch(`${API}/points/transactions/me?per_page=30${qs}`, { credentials: 'include' }).then(r => r.json());
     const items = d.items || [];
-    if (histBody) {
-      histBody.innerHTML = items.length ? items.map(t => `
-        <tr style="border-top:1px solid rgba(110,0,150,0.12);">
-          <td style="padding:.4rem .5rem;color:var(--muted);font-size:.75rem;white-space:nowrap;">${fmtDate(t.created_at)}</td>
-          <td style="padding:.4rem .5rem;">${POINTS_REASON_LABELS[t.reason]||t.reason}</td>
-          <td style="padding:.4rem .5rem;font-weight:600;color:${t.delta>=0?'#4ade80':'#f87171'};">${t.delta>=0?'+':''}${t.delta}</td>
-          <td style="padding:.4rem .5rem;color:var(--gold);">${t.balance_after}</td>
-        </tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:.75rem;">Истории пока нет</td></tr>';
-    }
-  } catch { if (histBody) histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;padding:.75rem;">Ошибка загрузки</td></tr>'; }
+    histBody.innerHTML = items.length ? items.map(t => `
+      <tr style="border-top:1px solid rgba(110,0,150,0.12);">
+        <td style="padding:.4rem .5rem;color:var(--muted);font-size:.75rem;white-space:nowrap;">${fmtDate(t.created_at)}</td>
+        <td style="padding:.4rem .5rem;">${POINTS_REASON_LABELS[t.reason]||t.reason}</td>
+        <td style="padding:.4rem .5rem;font-weight:600;color:${t.delta>=0?'#4ade80':'#f87171'};">${t.delta>=0?'+':''}${t.delta}</td>
+        <td style="padding:.4rem .5rem;color:var(--gold);">${t.balance_after}</td>
+      </tr>`).join('') : '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:.75rem;">Истории пока нет</td></tr>';
+  } catch { histBody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;padding:.75rem;">Ошибка загрузки</td></tr>'; }
+}
+
+function onPointsHistoryTypeFilterChange() {
+  const sel = document.getElementById('points-history-type-filter');
+  const type = sel ? sel.value : '';
+  loadPointsHistoryTable(type);
+  const exportLink = document.getElementById('points-history-export-link');
+  if (exportLink) exportLink.href = `${API}/points/transactions/export` + (type ? `?type=${encodeURIComponent(type)}` : '');
 }
 
 async function loadActivity(username) {

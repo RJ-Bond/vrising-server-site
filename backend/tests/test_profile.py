@@ -3,13 +3,14 @@ similarly-named test_nickname_change.py covers the unrelated plugin ".nick" chat
 command, not this router). One happy-path + one auth/permission-boundary case per
 endpoint, plus the export endpoint's cross-user data isolation."""
 import base64
+from datetime import datetime, timedelta, timezone
 from io import BytesIO
 
 import pytest
 from sqlalchemy import select
 
 from backend.auth import create_access_token, get_password_hash
-from backend.models import Comment, News, PointsTransaction, ShopRedemption, User
+from backend.models import AuditLog, Comment, News, PointsTransaction, ShopRedemption, User
 
 pytestmark = pytest.mark.asyncio
 
@@ -257,6 +258,43 @@ async def test_export_never_contains_another_users_data(client, db_session):
     assert all(tx["detail"] != "bob-only" for tx in body["points_transactions"])
     assert body["shop_redemptions"] == []
     assert body["comments"] == []
+
+
+# ── GET /api/profile/moderation-actions/me ──────────────────────────────────
+
+async def test_moderation_actions_requires_moderator_or_above(client, db_session):
+    user = await _make_user(db_session, "ModActionsPlain", role="user")
+    r = await client.get("/api/profile/moderation-actions/me", headers=_bearer(user))
+    assert r.status_code == 403
+
+
+async def test_moderation_actions_counts_own_actions_only(client, db_session):
+    mod = await _make_user(db_session, "ModActionsMod", role="moderator")
+    other = await _make_user(db_session, "ModActionsOther", role="admin")
+    db_session.add(AuditLog(admin_username=mod.username, action="comment.delete", detail="x"))
+    db_session.add(AuditLog(admin_username=mod.username, action="comment.delete", detail="y"))
+    db_session.add(AuditLog(admin_username=other.username, action="points.grant", detail="z"))
+    await db_session.commit()
+
+    r = await client.get("/api/profile/moderation-actions/me", headers=_bearer(mod))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["count"] == 2
+    assert body["last_action_at"] is not None
+
+
+async def test_moderation_actions_excludes_actions_outside_window(client, db_session):
+    mod = await _make_user(db_session, "ModActionsOldMod", role="moderator")
+    old_entry = AuditLog(admin_username=mod.username, action="comment.delete", detail="old")
+    db_session.add(old_entry)
+    await db_session.commit()
+    await db_session.refresh(old_entry)
+    old_entry.created_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30)
+    await db_session.commit()
+
+    r = await client.get("/api/profile/moderation-actions/me?days=7", headers=_bearer(mod))
+    assert r.status_code == 200
+    assert r.json()["count"] == 0
 
 
 # ── DELETE /api/profile/me ──────────────────────────────────────────────────
