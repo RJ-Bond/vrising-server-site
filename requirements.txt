@@ -1,6 +1,6 @@
 fastapi==0.141.1
 uvicorn[standard]==0.52.1
-sqlalchemy==2.0.51
+sqlalchemy==2.0.52
 aiosqlite==0.22.1
 python-jose[cryptography]==3.5.0
 bcrypt==5.0.0
@@ -8,18 +8,18 @@ python-multipart==0.0.32
 requests==2.34.2
 httpx==0.28.1
 pydantic[email]==2.13.4
-pydantic-settings==2.14.2
+pydantic-settings==2.15.0
 slowapi==0.1.10
-aiosmtplib>=3.0
-pyotp>=2.9.0
-tzdata>=2024.1
-Pillow>=10.3.0
-alembic==1.19.0
-sentry-sdk[fastapi]==2.66.1
+aiosmtplib>=5.1.2
+pyotp>=2.10.0
+tzdata>=2026.3
+Pillow>=12.3.0
+alembic==1.19.1
+sentry-sdk[fastapi]==2.67.1
 # Web Push (VAPID signing + aes128gcm payload encryption for the browser Push API).
 # Hand-rolling this (ECDH key agreement, HKDF, AES-GCM content encoding per RFC 8291,
 # plus the VAPID JWT per RFC 8292) is exactly the kind of crypto code that's easy to
 # get subtly wrong; pywebpush bundles py-vapid + http-ece and is the de-facto standard
 # for this. Pulls in requests (already pinned above, matches) plus py-vapid/http-ece/
 # cryptography as new transitive deps.
-pywebpush==2.3.0
+pywebpush==2.4.0
