@@ -2152,7 +2152,6 @@
 
       <div class="flex items-center justify-between" style="margin-top:1.25rem;margin-bottom:.75rem;">
         <h2 class="gothic" style="font-size:.8rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Список объявлений</h2>
-        <span id="announcements-total" style="font-size:.78rem;color:var(--muted);"></span>
       </div>
       <div class="glass-card rounded-xl overflow-hidden">
         <div style="overflow-x:auto;">
@@ -2165,6 +2164,9 @@
             </tbody>
           </table>
         </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:.5rem;">
+        <div id="announcements-count-footer" class="table-foot" style="display:none;"></div>
       </div>
 
       <!-- Connect/disconnect message templates -->
@@ -2271,7 +2273,6 @@
       <!-- Linked game accounts (global — a site account links one SteamID, not tied to a server) -->
       <div class="flex items-center justify-between" style="margin-top:1.25rem;margin-bottom:.75rem;">
         <h2 class="gothic" style="font-size:.8rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Привязанные игровые аккаунты</h2>
-        <span id="linked-accounts-total" style="font-size:.78rem;color:var(--muted);"></span>
       </div>
       <div class="glass-card rounded-xl overflow-hidden">
         <div style="overflow-x:auto;">
@@ -2284,6 +2285,9 @@
             </tbody>
           </table>
         </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:.5rem;">
+        <div id="linked-accounts-count-footer" class="table-foot" style="display:none;"></div>
       </div>
     </div>
 
@@ -2357,7 +2361,6 @@
             <option value="updated">По последней активности</option>
             <option value="name">По названию</option>
           </select>
-          <span id="clans-total" style="font-size:.78rem;color:var(--muted);"></span>
         </div>
       </div>
       <div id="clans-table" class="glass-card rounded-xl overflow-hidden">
@@ -2365,6 +2368,9 @@
           <thead><tr><th>Название</th><th>Девиз</th><th>Сервер</th><th>Участников</th><th>Обновлено</th></tr></thead>
           <tbody><tr class="table-skel-row"><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td></tr><tr class="table-skel-row"><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td></tr><tr class="table-skel-row"><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td></tr><tr class="table-skel-row"><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td></tr><tr class="table-skel-row"><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td></tr></tbody>
         </table>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:.5rem;">
+        <div id="clans-count-footer" class="table-foot" style="display:none;"></div>
       </div>
     </div>
 
@@ -2664,6 +2670,9 @@
           <tbody id="backups-table-body"></tbody>
         </table>
       </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:.5rem;">
+        <div id="backups-count-footer" class="table-foot" style="display:none;"></div>
+      </div>
     </div>
 
     <!-- ERROR LOG -->
@@ -2687,7 +2696,7 @@
     <!-- MEDIA LIBRARY -->
     <div id="section-media" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
-        <h2 class="section-title">Медиатека</h2>
+        <h1 class="section-title">Медиатека</h1>
         <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
           <input id="media-search" type="text" placeholder="Поиск по имени файла…" class="dark-input" style="width:auto;padding:.4rem .7rem;font-size:.8rem;" oninput="_mediaFilter()">
           <label style="display:flex;align-items:center;gap:.35rem;font-size:.78rem;color:var(--muted);cursor:pointer;">
@@ -2707,7 +2716,7 @@
     <!-- EVENTS -->
     <div id="section-events" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
-        <h2 class="section-title">События и турниры</h2>
+        <h1 class="section-title">События и турниры</h1>
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
           <select id="events-status-filter" class="dark-input" style="width:auto;font-size:.82rem;padding:.4rem .7rem;" onchange="loadEvents(1)">
             <option value="">Все статусы</option>
@@ -2780,7 +2789,7 @@
     <!-- AUDIT LOG (Журнал действий) -->
     <div id="section-auditlog" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
-        <h2 class="section-title">Журнал действий</h2>
+        <h1 class="section-title">Журнал действий</h1>
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
           <!-- Superadmin-tier-only filter toggle: hidden for moderator/admin viewers (see
                applyRoleVisibility()'s .auditlog-superadmin-only handling below) since the
@@ -2822,7 +2831,7 @@
          the site's own admin-panel audit trail (news edits, settings changes, etc). -->
     <div id="section-modlog" style="display:none;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.75rem;">
-        <h2 class="section-title">Журнал модерации</h2>
+        <h1 class="section-title">Журнал модерации</h1>
         <!-- Player filter, set via ?tab=moderation-log&steam_id=... deep link (e.g. from
              bans.html's "История" link on a ban row) — layered on top of the action/server
              dropdowns below, which keep working standalone when this is absent. -->
@@ -2889,7 +2898,7 @@
          and the /api/admin/shop/items* endpoints in main.py. -->
     <div id="section-shop-catalog" class="hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
-        <h2 class="section-title">Экономика — Магазин</h2>
+        <h1 class="section-title">Экономика — Магазин</h1>
         <button onclick="openShopItemEditor(null)" class="btn-primary" style="font-size:.82rem;">+ Добавить товар</button>
       </div>
 
@@ -3167,7 +3176,7 @@
          fulfilled MANUALLY in-game by an admin (v1, see ShopRedemption.delivery_mode). -->
     <div id="section-shop-queue" class="hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
-        <h2 class="section-title">Очередь наград</h2>
+        <h1 class="section-title">Очередь наград</h1>
         <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
           <input id="shop-queue-search" class="dark-input" style="font-size:.78rem;padding:.35rem .6rem;width:auto;" placeholder="Поиск по игроку/товару" onkeydown="if(event.key==='Enter')loadShopQueue(1)">
           <select id="shop-queue-status" class="dark-input" style="font-size:.78rem;padding:.35rem .6rem;width:auto;" onchange="loadShopQueue(1)">
@@ -4403,8 +4412,8 @@ async function loadAnnouncements() {
   if (_pluginActiveServer == null) {
     _annCache = [];
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Нет данных</td></tr>';
-    const total = document.getElementById('announcements-total');
-    if (total) total.textContent = '';
+    const footer = document.getElementById('announcements-count-footer');
+    if (footer) footer.style.display = 'none';
     return;
   }
   tableShowSkeleton('announcements-tbody', 6);
@@ -4412,8 +4421,11 @@ async function loadAnnouncements() {
     const res = await fetch(`${API}/admin/announcements?server_num=${_pluginActiveServer}`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     _annCache = await res.json();
-    const total = document.getElementById('announcements-total');
-    if (total) total.textContent = _annCache.length ? `${_annCache.length} шт.` : '';
+    const footer = document.getElementById('announcements-count-footer');
+    if (footer) {
+      footer.style.display = _annCache.length ? 'block' : 'none';
+      footer.textContent = `Всего: ${_annCache.length} объявлений`;
+    }
     if (!_annCache.length) {
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);">Объявлений нет</td></tr>';
       return;
@@ -4797,8 +4809,11 @@ async function loadLinkedAccounts() {
     const res = await fetch(`${API}/admin/linked-accounts`, { credentials: 'include', headers: authH() });
     if (!res.ok) { handleAuth(res); return; }
     const rows = await res.json();
-    const total = document.getElementById('linked-accounts-total');
-    if (total) total.textContent = rows.length ? `${rows.length} шт.` : '';
+    const footer = document.getElementById('linked-accounts-count-footer');
+    if (footer) {
+      footer.style.display = rows.length ? 'block' : 'none';
+      footer.textContent = `Всего: ${rows.length} аккаунтов`;
+    }
     if (!rows.length) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--muted);">Привязанных аккаунтов нет</td></tr>';
       return;
@@ -5223,8 +5238,11 @@ async function loadAdminClans() {
 // client-side search filter above.
 function _renderClansTable() {
   const el = document.getElementById('clans-table');
-  const totalEl = document.getElementById('clans-total');
-  if (totalEl) totalEl.textContent = `Всего: ${_allClans.length}`;
+  const footer = document.getElementById('clans-count-footer');
+  if (footer) {
+    footer.style.display = _allClans.length ? 'block' : 'none';
+    footer.textContent = `Всего: ${_allClans.length} кланов`;
+  }
   if (!_allClans.length) {
     el.innerHTML = '<p class="p-6" style="color:var(--muted);font-size:.85rem;">Кланов пока нет — появятся после первой синхронизации с игровым сервером.</p>';
     return;
@@ -7737,6 +7755,16 @@ let _editingEventId = null;
 const EVENT_TYPE_LABELS = {pvp:'PvP',pve:'PvE',social:'Социальное',other:'Другое'};
 const EVENT_STATUS_LABELS = {upcoming:'Предстоящее',active:'Активное',ended:'Завершено',cancelled:'Отменено'};
 const EVENT_STATUS_COLORS = {upcoming:'var(--gold)',active:'var(--ok)',ended:'var(--muted)',cancelled:'var(--danger)'};
+// Pill background/border pairs matching the status text colors above — same
+// low-alpha-fill + soft-border geometry as .badge-pub/.badge-scheduled (font-size:.65rem;
+// padding:.15rem .5rem;border-radius:9999px), so event status reads as a pill like every
+// other status-like value in the app instead of the one remaining bare colored text.
+// "upcoming" uses --gold, which (unlike --ok/--danger/--warn/--info) has no matching
+// -soft/-border token pair defined at the top of this file, so it reuses the same gold
+// rgba() convention already used elsewhere for --gold-tinted chips (e.g. the steamid
+// filter badge near #section-modlog). "ended" similarly reuses .badge-draft's rgba pair.
+const EVENT_STATUS_BG = {upcoming:'rgba(201,169,74,.14)', active:'var(--ok-soft)', ended:'rgba(60,60,60,0.3)', cancelled:'var(--danger-soft)'};
+const EVENT_STATUS_BORDER = {upcoming:'rgba(201,169,74,.35)', active:'var(--ok-border)', ended:'rgba(100,100,100,0.4)', cancelled:'var(--danger-border)'};
 
 let _eventsPage = 1;
 async function loadEvents(page = 1) {
@@ -7760,13 +7788,15 @@ async function loadEvents(page = 1) {
       // above (see _siteTzToUtcIso's comment).
       const dt = ev.start_date ? fmtDateTime(ev.start_date) : '—';
       const statusColor = EVENT_STATUS_COLORS[ev.status]||'var(--muted)';
+      const statusBg = EVENT_STATUS_BG[ev.status]||'rgba(100,100,100,.15)';
+      const statusBorder = EVENT_STATUS_BORDER[ev.status]||'rgba(150,150,150,.3)';
       const pCount = ev.participant_count||0;
       const pMax = ev.max_participants ? `/${ev.max_participants}` : '';
       return `<tr>
         <td><span style="font-weight:600;">${esc(ev.title)}</span></td>
         <td style="font-size:.78rem;">${EVENT_TYPE_LABELS[ev.event_type]||ev.event_type}</td>
         <td style="font-size:.75rem;color:var(--muted);">${dt}</td>
-        <td><span style="font-size:.72rem;color:${statusColor};font-weight:600;">${EVENT_STATUS_LABELS[ev.status]||ev.status}</span></td>
+        <td><span style="font-size:.65rem;font-weight:600;padding:.15rem .5rem;border-radius:9999px;background:${statusBg};border:1px solid ${statusBorder};color:${statusColor};">${EVENT_STATUS_LABELS[ev.status]||ev.status}</span></td>
         <td style="text-align:center;">${pCount}${pMax}</td>
         <td>
           <div style="display:flex;gap:.35rem;">
@@ -7874,8 +7904,8 @@ function _renderShopItemsTable() {
       <td>${it.is_active ? '<span style="color:var(--ok);font-size:.75rem;">Да</span>' : '<span style="color:var(--muted);font-size:.75rem;">Нет</span>'}</td>
       <td>
         <div style="display:flex;gap:.35rem;">
-          <button onclick="openShopItemEditor(${it.id})" class="btn-ghost" style="font-size:.7rem;padding:.28rem .6rem;">Изменить</button>
-          <button onclick="deleteShopItem(${it.id})" class="btn-danger" style="font-size:.7rem;padding:.28rem .6rem;">Удалить</button>
+          <button class="act-btn ab" data-tip="Изменить" aria-label="Изменить товар ${esc(it.name)}" title="Изменить товар" onclick="openShopItemEditor(${it.id})"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-edit"></use></svg></button>
+          <button class="act-btn ar" data-tip="Удалить" aria-label="Удалить товар ${esc(it.name)}" title="Удалить товар" onclick="deleteShopItem(${it.id})">${_svgTrash}</button>
         </div>
       </td>
     </tr>`).join('');
@@ -8389,6 +8419,11 @@ async function loadBackups() {
   tableShowSkeleton('backups-table-body', 4);
   const data = await fetch(`${API}/admin/backups`, { credentials: 'include', headers: authH() }).then(r => r.json()).catch(() => []);
   const tbody = document.getElementById('backups-table-body');
+  const footer = document.getElementById('backups-count-footer');
+  if (footer) {
+    footer.style.display = data.length ? 'block' : 'none';
+    footer.textContent = `Всего: ${data.length} бэкапов`;
+  }
   if (!data.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Бэкапов нет</td></tr>'; return; }
   // Delete is superadmin-only (DELETE /api/admin/backups/{filename}) — same
   // meetsRole() gate used for the role-management controls in the users table.
