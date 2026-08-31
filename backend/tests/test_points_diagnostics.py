@@ -3,7 +3,7 @@
 support question where playtime/streak points appeared to have stopped. See that
 endpoint's own docstring for why linked-vs-unlinked active players and recent-award
 recency are the two signals it surfaces."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -62,7 +62,7 @@ async def test_diagnostics_requires_admin(client, db_session):
 async def test_diagnostics_counts_linked_vs_unlinked_active_players(client, db_session):
     admin = await _make_user(db_session, "DiagAdmin", role="admin")
     linked_user = await _make_user(db_session, "LinkedPlayer", steam_id="76500000000000201")
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     await _make_player_record(db_session, linked_user.steam_id, last_seen=now)
     await _make_player_record(db_session, "76500000000000999", last_seen=now, name="GhostPlayer")
 
@@ -77,7 +77,7 @@ async def test_diagnostics_counts_linked_vs_unlinked_active_players(client, db_s
 async def test_diagnostics_excludes_stale_player_records(client, db_session):
     admin = await _make_user(db_session, "DiagAdmin2", role="admin")
     stale_user = await _make_user(db_session, "StalePlayer", steam_id="76500000000000202")
-    await _make_player_record(db_session, stale_user.steam_id, last_seen=datetime.utcnow() - timedelta(days=30))
+    await _make_player_record(db_session, stale_user.steam_id, last_seen=datetime.now(timezone.utc) - timedelta(days=30))
 
     r = await client.get("/api/admin/points/diagnostics", headers=_bearer(admin))
     assert r.status_code == 200
@@ -89,7 +89,7 @@ async def test_diagnostics_excludes_stale_player_records(client, db_session):
 async def test_diagnostics_reports_award_totals_and_7d_recency(client, db_session):
     admin = await _make_user(db_session, "DiagAdmin3", role="admin")
     user = await _make_user(db_session, "AwardedPlayer", steam_id="76500000000000203")
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     # One recent playtime award (inside the 7-day window) and one stale one (outside it).
     await _make_tx(db_session, user, "playtime", now - timedelta(days=1))
     await _make_tx(db_session, user, "playtime", now - timedelta(days=20))

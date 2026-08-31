@@ -759,7 +759,7 @@ async def plugin_nickname_change(
     db.add(PointsTransaction(
         user_id=user.id, delta=-cost, balance_after=fresh_balance,
         reason="nickname_change", detail=f"{old_display} -> {new_name}"[:256],
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     ))
     await db.commit()
     return {"ok": True, "new_nickname": new_name, "cost": cost, "balance": fresh_balance}

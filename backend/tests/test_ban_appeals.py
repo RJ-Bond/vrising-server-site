@@ -53,7 +53,7 @@ async def _make_active_ban(db_session, steam_id="steam-appeal-1", **kwargs):
         character_name=kwargs.pop("character_name", "Appealer"),
         admin_name=kwargs.pop("admin_name", "Overseer"),
         reason=kwargs.pop("reason", "duping"),
-        banned_at=datetime.utcnow(),
+        banned_at=datetime.now(timezone.utc),
         unban_at=kwargs.pop("unban_at", None),
     )
     db_session.add(ban)
@@ -170,7 +170,7 @@ async def test_resolve_requires_admin_auth(client, db_session):
 
 
 async def test_resolve_approve_lifts_ban_and_marks_appeal(client, db_session):
-    ban = await _make_active_ban(db_session, steam_id="steam-appeal-6", unban_at=datetime.utcnow() + timedelta(days=5))
+    ban = await _make_active_ban(db_session, steam_id="steam-appeal-6", unban_at=datetime.now(timezone.utc) + timedelta(days=5))
     await client.post("/api/appeals", json={"steam_id": ban.steam_id, "character_name": "X", "message": "m"})
 
     admin = await _make_admin(db_session)
@@ -202,7 +202,7 @@ async def test_resolve_approve_lifts_ban_and_marks_appeal(client, db_session):
 
 
 async def test_resolve_reject_does_not_touch_ban(client, db_session):
-    original_unban_at = datetime.utcnow() + timedelta(days=5)
+    original_unban_at = datetime.now(timezone.utc) + timedelta(days=5)
     ban = await _make_active_ban(db_session, steam_id="steam-appeal-7", unban_at=original_unban_at)
     await client.post("/api/appeals", json={"steam_id": ban.steam_id, "character_name": "X", "message": "m"})
 
@@ -222,7 +222,10 @@ async def test_resolve_reject_does_not_touch_ban(client, db_session):
     assert resolved["status"] == "rejected"
 
     await db_session.refresh(ban)
-    assert ban.unban_at == original_unban_at
+    # Ban.unban_at is naive UTC (this repo's usual DateTime convention, see
+    # models.Ban's docstring) — SQLite drops tzinfo on the round trip through the DB,
+    # so the aware original_unban_at needs the same normalization before comparing.
+    assert ban.unban_at == original_unban_at.replace(tzinfo=None)
 
 
 async def test_resolve_404_for_nonexistent_appeal(client, db_session):
@@ -269,7 +272,7 @@ async def test_admin_appeals_pagination_pages_dont_overlap_and_total_is_correct(
             character_name="X",
             message="m",
             status="pending",
-            created_at=datetime.utcnow() - timedelta(minutes=i),
+            created_at=datetime.now(timezone.utc) - timedelta(minutes=i),
         ))
     await db_session.commit()
 

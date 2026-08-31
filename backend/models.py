@@ -838,7 +838,7 @@ class PointsTransaction(Base):
     detail = Column(String(256), nullable=True)
     ref_type = Column(String(32), nullable=True)  # e.g. "shop_redemption"
     ref_id = Column(Integer, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (Index("ix_points_transactions_user", "user_id", "created_at"),)
 
@@ -860,8 +860,8 @@ class ShopItem(Base):
     sort_order = Column(Integer, nullable=False, default=0)
     category = Column(String(32), nullable=True)  # NULL = uncategorized, always shown in "all" filter view
     weekly_limit_per_user = Column(Integer, nullable=True)  # NULL = unlimited; else max redemptions/user per trailing 7 days
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
-    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
 
 class ShopRedemption(Base):
@@ -884,7 +884,7 @@ class ShopRedemption(Base):
     delivery_mode = Column(String(16), nullable=False, default="manual")  # always "manual" in v1
     player_note = Column(String(500), nullable=True)
     admin_note = Column(String(500), nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     resolved_at = Column(DateTime, nullable=True)
     resolved_by = Column(String(64), nullable=True)
 
@@ -909,6 +909,6 @@ class ShopWishlistItem(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     shop_item_id = Column(Integer, ForeignKey("shop_items.id", ondelete="CASCADE"), nullable=False)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
     __table_args__ = (UniqueConstraint("user_id", "shop_item_id", name="uq_shop_wishlist_user_item"),)

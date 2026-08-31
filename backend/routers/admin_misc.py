@@ -393,7 +393,7 @@ async def get_economy_stats(
     (see its model docstring) — delta > 0 is an earn/grant, delta < 0 is a spend/
     refund-reversal, so day/direction is a straight aggregate over it, no denormalized
     counter needed."""
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     issued_expr = func.sum(case((PointsTransaction.delta > 0, PointsTransaction.delta), else_=0))
     spent_expr = func.sum(case((PointsTransaction.delta < 0, -PointsTransaction.delta), else_=0))
     by_day_rows = (await db.execute(

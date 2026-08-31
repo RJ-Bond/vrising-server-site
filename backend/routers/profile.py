@@ -1,7 +1,6 @@
 import json
 import uuid
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Optional
 
 from pydantic import BaseModel
@@ -32,7 +31,7 @@ from ..models import (
 )
 from ..auth import get_current_user, is_at_least, verify_password
 from ..rate_limit import limiter
-from ..helpers import UPLOAD_DIR, _fmt_dt, _explicit_logouts, optimize_image_bytes, log_audit, _clear_auth_cookie
+from ..helpers import UPLOAD_DIR, _fmt_dt, _explicit_logouts, validate_and_read_image_upload, log_audit, _clear_auth_cookie
 
 router = APIRouter()
 
@@ -47,15 +46,14 @@ async def upload_cover(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(400, "Only image files are allowed")
-    ext = Path(file.filename).suffix.lower() if file.filename else ".jpg"
-    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
-        ext = ".jpg"
-    content = await file.read()
-    if len(content) > 10 * 1024 * 1024:
-        raise HTTPException(400, "File too large (max 10 MB)")
-    content = optimize_image_bytes(content, ext)
+    content, ext = await validate_and_read_image_upload(
+        file,
+        allowed_ext={".jpg", ".jpeg", ".png", ".webp", ".gif"},
+        default_ext=".jpg",
+        max_bytes=10 * 1024 * 1024,
+        type_error_detail="Only image files are allowed",
+        size_error_detail="File too large (max 10 MB)",
+    )
     covers_dir = UPLOAD_DIR / "covers"
     covers_dir.mkdir(parents=True, exist_ok=True)
     fname = f"cover_{current_user.id}_{uuid.uuid4().hex[:10]}{ext}"
@@ -67,11 +65,9 @@ async def upload_cover(
         old_path = covers_dir / old_name
         if old_name.startswith("cover_") and old_path.exists():
             old_path.unlink(missing_ok=True)
-    result = await db.execute(select(User).where(User.id == current_user.id))
-    user = result.scalar_one()
-    user.cover_url = f"/api/uploads/covers/{fname}"
+    current_user.cover_url = f"/api/uploads/covers/{fname}"
     await db.commit()
-    return {"cover_url": user.cover_url}
+    return {"cover_url": current_user.cover_url}
 
 
 # ─── Profile bio ─────────────────────────────────────────────────────────────
@@ -88,11 +84,9 @@ async def update_bio(
     db: AsyncSession = Depends(get_db),
 ):
     bio = (body.bio or "").strip()[:160] or None
-    result = await db.execute(select(User).where(User.id == current_user.id))
-    user = result.scalar_one()
-    user.bio = bio
+    current_user.bio = bio
     await db.commit()
-    return {"bio": user.bio}
+    return {"bio": current_user.bio}
 
 
 # ─── Game nickname ────────────────────────────────────────────────────────────
@@ -176,25 +170,22 @@ async def upload_badge_icon(
 ):
     if not is_at_least(current_user, "moderator"):
         raise HTTPException(status_code=403, detail="Только для администраторов")
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Только изображения")
-    ext = Path(file.filename).suffix.lower() if file.filename else ".png"
-    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:  # no .svg — see /api/admin/upload
-        ext = ".png"
-    content = await file.read()
-    if len(content) > 2 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="Максимальный размер 2 МБ")
-    content = optimize_image_bytes(content, ext)
+    content, ext = await validate_and_read_image_upload(
+        file,
+        allowed_ext={".jpg", ".jpeg", ".png", ".webp", ".gif"},  # no .svg — see /api/admin/upload
+        default_ext=".png",
+        max_bytes=2 * 1024 * 1024,
+        type_error_detail="Только изображения",
+        size_error_detail="Максимальный размер 2 МБ",
+    )
     fname = f"badge_{current_user.id}_{uuid.uuid4().hex[:8]}{ext}"
     (UPLOAD_DIR / fname).write_bytes(content)
     old = (current_user.badge_icon_url or "").rsplit("/", 1)[-1]
     if old.startswith("badge_"):
         (UPLOAD_DIR / old).unlink(missing_ok=True)
-    result = await db.execute(select(User).where(User.id == current_user.id))
-    user = result.scalar_one()
-    user.badge_icon_url = f"/api/uploads/{fname}"
+    current_user.badge_icon_url = f"/api/uploads/{fname}"
     await db.commit()
-    return {"badge_icon_url": user.badge_icon_url}
+    return {"badge_icon_url": current_user.badge_icon_url}
 
 
 @router.delete("/api/profile/badge-icon", status_code=204)
@@ -207,9 +198,7 @@ async def clear_badge_icon(
     old = (current_user.badge_icon_url or "").rsplit("/", 1)[-1]
     if old.startswith("badge_"):
         (UPLOAD_DIR / old).unlink(missing_ok=True)
-    result = await db.execute(select(User).where(User.id == current_user.id))
-    user = result.scalar_one()
-    user.badge_icon_url = None
+    current_user.badge_icon_url = None
     await db.commit()
 
 
@@ -230,11 +219,9 @@ async def set_badge_style(
         raise HTTPException(status_code=403, detail="Только для администраторов")
     if body.style not in _BADGE_STYLES:
         raise HTTPException(status_code=400, detail="Недопустимый стиль")
-    result = await db.execute(select(User).where(User.id == current_user.id))
-    user = result.scalar_one()
-    user.badge_style = body.style
+    current_user.badge_style = body.style
     await db.commit()
-    return {"badge_style": user.badge_style}
+    return {"badge_style": current_user.badge_style}
 
 
 # ─── Personal data export ─────────────────────────────────────────────────────
@@ -463,8 +450,6 @@ async def set_newsletter_opt_in(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(User).where(User.id == current_user.id))
-    user = result.scalar_one()
-    user.newsletter_opt_in = body.newsletter_opt_in
+    current_user.newsletter_opt_in = body.newsletter_opt_in
     await db.commit()
-    return {"newsletter_opt_in": user.newsletter_opt_in}
+    return {"newsletter_opt_in": current_user.newsletter_opt_in}

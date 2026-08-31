@@ -5,7 +5,7 @@
 
 See models.ModerationLogEntry's docstring: it only stores the action types NOT already
 captured by Ban (ban/unban) or Warning (warn)."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -104,7 +104,7 @@ async def test_moderation_log_requires_admin_auth(client, db_session):
 
 async def test_moderation_log_merges_all_three_sources_sorted_desc(client, db_session):
     await _set_plugin_key(db_session)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     # Oldest: a ban
     db_session.add(Ban(
@@ -148,7 +148,7 @@ async def test_moderation_log_merges_all_three_sources_sorted_desc(client, db_se
 
 
 async def test_moderation_log_emits_unban_entry_for_lifted_bans(client, db_session):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add(Ban(
         server_num=1, steam_id="steam-lifted", character_name="Lifted",
         admin_name="AdminA", reason="r", banned_at=now - timedelta(hours=1),
@@ -164,7 +164,7 @@ async def test_moderation_log_emits_unban_entry_for_lifted_bans(client, db_sessi
 
 
 async def test_moderation_log_respects_limit(client, db_session):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for i in range(5):
         db_session.add(Warning(
             server_num=1, steam_id=f"steam-{i}", character_name=f"P{i}",
@@ -178,7 +178,7 @@ async def test_moderation_log_respects_limit(client, db_session):
 
 
 async def test_moderation_log_server_num_filter(client, db_session):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add_all([
         Warning(server_num=1, steam_id="s1", character_name="P1", reason="r", admin_name="A", created_at=now),
         Warning(server_num=2, steam_id="s2", character_name="P2", reason="r", admin_name="A", created_at=now),
@@ -194,7 +194,7 @@ async def test_moderation_log_server_num_filter(client, db_session):
 
 async def test_moderation_log_steam_id_filter_narrows_across_all_three_sources(client, db_session):
     await _set_plugin_key(db_session)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add_all([
         Ban(server_num=1, steam_id="target-steam", character_name="Target",
             admin_name="A", reason="r", banned_at=now - timedelta(minutes=30), unban_at=None),
@@ -227,7 +227,7 @@ async def test_moderation_log_steam_id_filter_narrows_across_all_three_sources(c
 
 
 async def test_moderation_log_steam_id_filter_combines_with_server_num(client, db_session):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add_all([
         Warning(server_num=1, steam_id="dual-steam", character_name="P1", reason="r", admin_name="A", created_at=now),
         Warning(server_num=2, steam_id="dual-steam", character_name="P1", reason="r", admin_name="A", created_at=now),
@@ -246,7 +246,7 @@ async def test_moderation_log_steam_id_filter_combines_with_server_num(client, d
 
 
 async def test_moderation_log_date_range_filter(client, db_session):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add_all([
         Warning(server_num=1, steam_id="s-old", character_name="Old", reason="r", admin_name="A",
                 created_at=now - timedelta(days=10)),
@@ -272,7 +272,7 @@ async def test_moderation_log_date_range_filter(client, db_session):
 
 async def test_moderation_log_q_filter_matches_player_admin_or_details(client, db_session):
     await _set_plugin_key(db_session)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add(Warning(
         server_num=1, steam_id="s-sneaky", character_name="SneakyPlayer",
         reason="ключевые слова", admin_name="ModeratorA", created_at=now,
@@ -298,7 +298,7 @@ async def test_moderation_log_q_filter_matches_player_admin_or_details(client, d
 
 
 async def test_export_moderation_log_respects_q_and_date_filters(client, db_session):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add_all([
         Warning(server_num=1, steam_id="s-keep", character_name="KeepMe", reason="r", admin_name="A", created_at=now),
         Warning(server_num=1, steam_id="s-drop", character_name="DropMe", reason="r", admin_name="A",
@@ -339,7 +339,7 @@ async def test_clear_moderation_log_requires_superadmin_not_just_admin(client, d
 
 async def test_clear_moderation_log_deletes_log_entries_and_resolved_bans_only(client, db_session):
     await _set_plugin_key(db_session)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add_all([
         # Resolved ban — should be deleted.
         Ban(server_num=1, steam_id="s-resolved", character_name="Resolved",

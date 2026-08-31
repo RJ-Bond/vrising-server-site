@@ -9,15 +9,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
-from jose import jwt as jose_jwt
 
 from ..database import get_db
-from ..models import User, News, Comment, PageView, Reaction, RevokedToken, CommentReaction, Notification, Setting, AutoFlagRule, Report
-from ..auth import get_admin_user, get_current_user, is_at_least, SECRET_KEY, ALGORITHM, COOKIE_NAME
+from ..models import User, News, Comment, PageView, Reaction, CommentReaction, Notification, Setting, AutoFlagRule, Report
+from ..auth import get_admin_user, get_current_user, get_optional_user, is_at_least
 from ..rate_limit import limiter
 from ..helpers import _audit, _fmt_dt, _send_notification_email, activity_broadcast, send_push
 from ..schemas import (
@@ -151,10 +150,9 @@ _ALLOWED_EMOJIS = {"fire", "heart", "thumbs_up", "wow"}
 
 @router.get("/api/news/{slug}/reactions")
 async def get_reactions(
-    request: Request,
     slug: str,
     db: AsyncSession = Depends(get_db),
-    authorization: Optional[str] = Header(None),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     news_res = await db.execute(select(News.id).where(News.slug == slug, News.published == True))
     news_id = news_res.scalar_one_or_none()
@@ -167,25 +165,11 @@ async def get_reactions(
     )
     counts = {row[0]: row[1] for row in counts_res.all()}
     user_reactions: list[str] = []
-    # Try Bearer header first, then cookie
-    token: Optional[str] = None
-    if authorization and authorization.startswith("Bearer "):
-        token = authorization[7:]
-    else:
-        token = request.cookies.get(COOKIE_NAME)
-    if token:
-        try:
-            revoked = await db.execute(select(RevokedToken.id).where(RevokedToken.token == token))
-            if revoked.scalar_one_or_none() is None:
-                payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-                uid = int(payload.get("sub", 0))
-                if uid:
-                    ur_res = await db.execute(
-                        select(Reaction.emoji).where(Reaction.news_id == news_id, Reaction.user_id == uid)
-                    )
-                    user_reactions = [r[0] for r in ur_res.all()]
-        except Exception:
-            pass
+    if current_user is not None:
+        ur_res = await db.execute(
+            select(Reaction.emoji).where(Reaction.news_id == news_id, Reaction.user_id == current_user.id)
+        )
+        user_reactions = [r[0] for r in ur_res.all()]
     return {"counts": counts, "user_reactions": user_reactions}
 
 
@@ -483,7 +467,11 @@ async def react_comment(comment_id: int, body: ReactBody, current_user: User = D
 
 
 @router.get("/api/comments/{comment_id}/reactions")
-async def get_comment_reactions(comment_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+async def get_comment_reactions(
+    comment_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user),
+):
     res = await db.execute(
         select(CommentReaction.emoji, func.count(CommentReaction.id))
         .where(CommentReaction.comment_id == comment_id)
@@ -491,23 +479,14 @@ async def get_comment_reactions(comment_id: int, request: Request, db: AsyncSess
     )
     counts = {row[0]: row[1] for row in res.all()}
     user_reaction = None
-    try:
-        token = request.cookies.get(COOKIE_NAME)
-        if token:
-            revoked = await db.execute(select(RevokedToken.id).where(RevokedToken.token == token))
-            if revoked.scalar_one_or_none() is None:
-                payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-                uid = int(payload.get("sub", 0))
-                if uid:
-                    ur = await db.execute(
-                        select(CommentReaction.emoji).where(
-                            CommentReaction.comment_id == comment_id,
-                            CommentReaction.user_id == uid
-                        )
-                    )
-                    user_reaction = ur.scalar_one_or_none()
-    except Exception:
-        pass
+    if current_user is not None:
+        ur = await db.execute(
+            select(CommentReaction.emoji).where(
+                CommentReaction.comment_id == comment_id,
+                CommentReaction.user_id == current_user.id
+            )
+        )
+        user_reaction = ur.scalar_one_or_none()
     return {"counts": counts, "user_reaction": user_reaction}
 
 

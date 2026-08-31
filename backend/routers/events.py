@@ -4,14 +4,13 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, delete
-from jose import jwt as jose_jwt
 
 from ..database import get_db
-from ..models import User, Event, EventParticipant, RevokedToken, Setting
-from ..auth import get_admin_user, get_current_user, SECRET_KEY, ALGORITHM, COOKIE_NAME
+from ..models import User, Event, EventParticipant, Setting
+from ..auth import get_admin_user, get_current_user, get_optional_user
 from ..helpers import _fmt_dt, _audit, activity_broadcast
 
 router = APIRouter()
@@ -41,11 +40,11 @@ class EventUpdate(EventCreate):
 
 @router.get("/api/events")
 async def list_events(
-    request: Request,
     status: str = Query("upcoming"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     filters = []
     if status:
@@ -57,17 +56,7 @@ async def list_events(
         .offset((page - 1) * per_page).limit(per_page)
     )).scalars().all()
 
-    # Resolve current user if authenticated
-    current_user_id: Optional[int] = None
-    try:
-        token = request.cookies.get(COOKIE_NAME)
-        if token:
-            revoked = await db.execute(select(RevokedToken.id).where(RevokedToken.token == token))
-            if revoked.scalar_one_or_none() is None:
-                payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-                current_user_id = int(payload.get("sub", 0)) or None
-    except Exception:
-        pass
+    current_user_id: Optional[int] = current_user.id if current_user else None
 
     # Batch both per-event lookups that used to run once per row (an N+1 for the
     # count, and another N+1 for the viewer's own membership check) into two queries
@@ -142,8 +131,8 @@ async def my_next_event(
 @router.get("/api/events/{event_id}")
 async def get_event(
     event_id: int,
-    request: Request,
     db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user),
 ):
     ev = (await db.execute(select(Event).where(Event.id == event_id))).scalar_one_or_none()
     if ev is None:
@@ -151,16 +140,7 @@ async def get_event(
     cnt = (await db.execute(
         select(func.count(EventParticipant.user_id)).where(EventParticipant.event_id == ev.id)
     )).scalar_one()
-    current_user_id: Optional[int] = None
-    try:
-        token = request.cookies.get(COOKIE_NAME)
-        if token:
-            revoked = await db.execute(select(RevokedToken.id).where(RevokedToken.token == token))
-            if revoked.scalar_one_or_none() is None:
-                payload = jose_jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-                current_user_id = int(payload.get("sub", 0)) or None
-    except Exception:
-        pass
+    current_user_id: Optional[int] = current_user.id if current_user else None
     is_joined = False
     if current_user_id:
         ep = (await db.execute(

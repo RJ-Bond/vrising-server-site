@@ -1,6 +1,7 @@
 import asyncio
 import os
 import struct
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,7 +16,7 @@ from sqlalchemy import select
 from ..database import get_db
 from ..models import User, Setting, News, ShopItem
 from ..auth import get_admin_user, get_superadmin_user, get_current_user
-from ..helpers import UPLOAD_DIR, BACKUP_DIR, log_audit, optimize_image_bytes, find_live_db_path, sqlite_backup_copy
+from ..helpers import UPLOAD_DIR, BACKUP_DIR, log_audit, validate_and_read_image_upload, find_live_db_path, sqlite_backup_copy
 from ..rate_limit import limiter
 
 router = APIRouter()
@@ -39,15 +40,15 @@ async def upload_file(
     # SVG deliberately excluded: it can embed <script>/event handlers, so an admin
     # upload used somewhere other than a plain <img> (e.g. an <object>/<iframe>, or a
     # future markup change) would execute same-origin against every visitor.
-    suffix = Path(file.filename or "").suffix.lower()
-    if suffix not in _ALLOWED_UPLOAD_EXT:
-        raise HTTPException(400, detail="Допустимые форматы: PNG, JPG, GIF, WebP, ICO")
-    if file.content_type and file.content_type.split(";")[0].strip() not in _ALLOWED_UPLOAD_MIME:
-        raise HTTPException(400, detail="Недопустимый MIME-тип файла")
-    content = await file.read()
-    if len(content) > _MAX_UPLOAD_BYTES:
-        raise HTTPException(400, detail="Файл слишком большой (максимум 10 МБ)")
-    content = optimize_image_bytes(content, suffix)
+    content, suffix = await validate_and_read_image_upload(
+        file,
+        allowed_ext=_ALLOWED_UPLOAD_EXT,
+        allowed_mime=_ALLOWED_UPLOAD_MIME,
+        max_bytes=_MAX_UPLOAD_BYTES,
+        ext_error_detail="Допустимые форматы: PNG, JPG, GIF, WebP, ICO",
+        type_error_detail="Недопустимый MIME-тип файла",
+        size_error_detail="Файл слишком большой (максимум 10 МБ)",
+    )
     filename = f"{uuid.uuid4().hex}{suffix}"
     dest = UPLOAD_DIR / filename
     dest.write_bytes(content)
@@ -450,6 +451,21 @@ _USED_BY_SETTING_LABELS = {
 }
 
 
+# Short-TTL cache for the four DB scans _uploads_used_by_lookup below needs — GET
+# /api/admin/uploads and GET /api/admin/media each call it independently, and an admin
+# switching between the file-manager's two tabs (or just refreshing) re-triggers both
+# within seconds of each other. News.content in particular can be large, and the
+# per-filename `filename in content` scan below is already O(files × news rows); this
+# at least removes the DB round trips from that cost when the two views are loaded back
+# to back, without the complexity of a real invalidation scheme — a deliberately simple
+# fix per the audit finding this came from (not a distributed cache; this is a single
+# in-process app). 15s is short enough that a just-uploaded/just-edited reference shows
+# up "soon" without needing an explicit cache-bust anywhere upload/settings/news/shop
+# code paths would otherwise have to remember to call.
+_USED_BY_CACHE_TTL_SECONDS = 15
+_used_by_rows_cache: dict = {"expires_at": 0.0, "rows": None}
+
+
 async def _uploads_used_by_lookup(db: AsyncSession):
     """Builds a `filename -> used_by list` lookup shared by GET /api/admin/uploads and
     GET /api/admin/media (below), so "used by"/unused-file detection doesn't drift
@@ -467,14 +483,24 @@ async def _uploads_used_by_lookup(db: AsyncSession):
     the root UPLOAD_DIR — a full accounting would need its own per-subdirectory query
     shape, not just more rows in this lookup. Treat a file with no `used_by` entries as
     "not found by this check", not as a verified-safe-to-delete guarantee — the file
-    manager UI's unused-file filter is a triage aid, not a deletion authorization."""
-    settings_rows = (await db.execute(
-        select(Setting).where(Setting.key.in_(list(_USED_BY_SETTING_LABELS)))
-    )).scalars().all()
-    settings_map = {s.key: s.value for s in settings_rows}
-    news_rows = (await db.execute(select(News.title, News.slug, News.thumbnail_url, News.content))).all()
-    avatar_rows = (await db.execute(select(User.username, User.avatar_url).where(User.avatar_url.isnot(None)))).all()
-    shop_rows = (await db.execute(select(ShopItem.name, ShopItem.image_url).where(ShopItem.image_url.isnot(None)))).all()
+    manager UI's unused-file filter is a triage aid, not a deletion authorization.
+
+    The underlying row fetch (not the per-filename matching below, which still runs
+    fresh every call) is cached in-process for _USED_BY_CACHE_TTL_SECONDS — see that
+    constant's comment."""
+    now = time.monotonic()
+    if _used_by_rows_cache["rows"] is not None and now < _used_by_rows_cache["expires_at"]:
+        settings_map, news_rows, avatar_rows, shop_rows = _used_by_rows_cache["rows"]
+    else:
+        settings_rows = (await db.execute(
+            select(Setting).where(Setting.key.in_(list(_USED_BY_SETTING_LABELS)))
+        )).scalars().all()
+        settings_map = {s.key: s.value for s in settings_rows}
+        news_rows = (await db.execute(select(News.title, News.slug, News.thumbnail_url, News.content))).all()
+        avatar_rows = (await db.execute(select(User.username, User.avatar_url).where(User.avatar_url.isnot(None)))).all()
+        shop_rows = (await db.execute(select(ShopItem.name, ShopItem.image_url).where(ShopItem.image_url.isnot(None)))).all()
+        _used_by_rows_cache["rows"] = (settings_map, news_rows, avatar_rows, shop_rows)
+        _used_by_rows_cache["expires_at"] = now + _USED_BY_CACHE_TTL_SECONDS
 
     def used_by_for(filename: str) -> list[dict]:
         used_by = []
