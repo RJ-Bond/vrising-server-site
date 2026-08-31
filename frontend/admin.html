@@ -1393,9 +1393,8 @@
               <label>Режим обслуживания</label>
               <div style="display:flex;align-items:center;gap:.75rem;margin-top:.3rem;">
                 <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
-                  <input type="checkbox" id="setting-maintenance_mode_cb"
-                    onchange="document.getElementById('setting-maintenance_mode').value=this.checked?'true':'false'; saveSetting('maintenance_mode');"
-                    style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                  <input type="checkbox" id="setting-maintenance_mode_cb" class="site-checkbox"
+                    onchange="document.getElementById('setting-maintenance_mode').value=this.checked?'true':'false'; saveSetting('maintenance_mode');">
                   Включить
                 </label>
                 <input type="hidden" id="setting-maintenance_mode">
@@ -1555,35 +1554,35 @@
             <label class="s-label">Скрытые пункты меню</label>
             <div style="display:flex;flex-direction:column;gap:.5rem;margin-top:.3rem;">
               <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
-                <input type="checkbox" class="nav-hidden-cb" data-href="/" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                <input type="checkbox" class="nav-hidden-cb site-checkbox" data-href="/" onchange="updateNavHidden()">
                 Главная
               </label>
               <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
-                <input type="checkbox" class="nav-hidden-cb" data-href="/servers.html" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                <input type="checkbox" class="nav-hidden-cb site-checkbox" data-href="/servers.html" onchange="updateNavHidden()">
                 Сервера
               </label>
               <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
-                <input type="checkbox" class="nav-hidden-cb" data-href="/leaderboard.html" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                <input type="checkbox" class="nav-hidden-cb site-checkbox" data-href="/leaderboard.html" onchange="updateNavHidden()">
                 Игроки
               </label>
               <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
-                <input type="checkbox" class="nav-hidden-cb" data-href="/clans.html" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                <input type="checkbox" class="nav-hidden-cb site-checkbox" data-href="/clans.html" onchange="updateNavHidden()">
                 Кланы
               </label>
               <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
-                <input type="checkbox" class="nav-hidden-cb" data-href="/map.html" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                <input type="checkbox" class="nav-hidden-cb site-checkbox" data-href="/map.html" onchange="updateNavHidden()">
                 Карта
               </label>
               <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
-                <input type="checkbox" class="nav-hidden-cb" data-href="/bans.html" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                <input type="checkbox" class="nav-hidden-cb site-checkbox" data-href="/bans.html" onchange="updateNavHidden()">
                 Баны
               </label>
               <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
-                <input type="checkbox" class="nav-hidden-cb" data-href="/shop.html" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                <input type="checkbox" class="nav-hidden-cb site-checkbox" data-href="/shop.html" onchange="updateNavHidden()">
                 Магазин
               </label>
               <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.82rem;color:var(--text);">
-                <input type="checkbox" class="nav-hidden-cb" data-href="/faq.html" onchange="updateNavHidden()" style="width:1.1rem;height:1.1rem;accent-color:#c8002a;cursor:pointer;">
+                <input type="checkbox" class="nav-hidden-cb site-checkbox" data-href="/faq.html" onchange="updateNavHidden()">
                 FAQ
               </label>
               <input type="hidden" id="setting-nav_hidden">
@@ -2136,7 +2135,7 @@
             </div>
             <div class="s-field" style="margin-bottom:0;">
               <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;white-space:nowrap;">
-                <input id="ann-enabled" type="checkbox" checked> Включено
+                <input id="ann-enabled" type="checkbox" checked class="site-checkbox"> Включено
               </label>
             </div>
           </div>
@@ -2385,7 +2384,7 @@
       </div>
       <div class="glass-card rounded-xl overflow-hidden">
         <table>
-          <thead><tr><th><input type="checkbox" id="select-all-comments" onchange="toggleSelectAllComments(this)" style="accent-color:var(--accent)"></th><th>Автор</th><th>Новость</th><th>Комментарий</th><th>Дата</th><th></th></tr></thead>
+          <thead><tr><th><input type="checkbox" id="select-all-comments" class="site-checkbox" onchange="toggleSelectAllComments(this)"></th><th>Автор</th><th>Новость</th><th>Комментарий</th><th>Дата</th><th></th></tr></thead>
           <tbody id="comments-table-body"></tbody>
         </table>
       </div>
@@ -2433,7 +2432,7 @@
         <h1 class="section-title">Файлы</h1>
         <div style="display:flex;align-items:center;gap:.75rem;">
           <label style="display:flex;align-items:center;gap:.35rem;font-size:.78rem;color:var(--muted);cursor:pointer;">
-            <input id="files-filter-unused" type="checkbox" style="width:auto;" onchange="_renderFilesGrid()">
+            <input id="files-filter-unused" type="checkbox" class="site-checkbox" onchange="_renderFilesGrid()">
             Только неиспользуемые
           </label>
           <span id="files-count" style="font-size:.78rem;color:var(--muted);"></span>
@@ -2510,7 +2509,7 @@
       </div>
       <div class="glass-card rounded-xl overflow-hidden">
         <table>
-          <thead><tr><th><input type="checkbox" id="select-all-reports" onchange="toggleSelectAllReports(this)" style="accent-color:var(--accent)"></th><th>ID</th><th>Тип</th><th>ID объекта</th><th>Причина</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
+          <thead><tr><th><input type="checkbox" id="select-all-reports" class="site-checkbox" onchange="toggleSelectAllReports(this)"></th><th>ID</th><th>Тип</th><th>ID объекта</th><th>Причина</th><th>Статус</th><th>Дата</th><th>Действия</th></tr></thead>
           <tbody id="reports-table-body"></tbody>
         </table>
       </div>
@@ -2691,7 +2690,7 @@
         <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
           <input id="media-search" type="text" placeholder="Поиск по имени файла…" class="dark-input" style="width:auto;padding:.4rem .7rem;font-size:.8rem;" oninput="_mediaFilter()">
           <label style="display:flex;align-items:center;gap:.35rem;font-size:.78rem;color:var(--muted);cursor:pointer;">
-            <input id="media-filter-unused" type="checkbox" style="width:auto;" onchange="_mediaFilter()">
+            <input id="media-filter-unused" type="checkbox" class="site-checkbox" onchange="_mediaFilter()">
             Только неиспользуемые
           </label>
           <button onclick="loadMedia()" class="btn-ghost" style="font-size:.78rem;">↻ Обновить</button>
@@ -2786,8 +2785,8 @@
                applyRoleVisibility()'s .auditlog-superadmin-only handling below) since the
                backend itself 403s a non-superadmin tier=superadmin request too — this just
                keeps the control from ever being clickable by someone it would reject anyway. -->
-          <label class="auditlog-superadmin-only" style="display:none;font-size:.78rem;color:var(--muted);cursor:pointer;white-space:nowrap;" title="Показывать только действия уровня супер-админа: смена ролей, бэкапы, RCON, очистка журнала модерации">
-            <input type="checkbox" id="auditlog-superadmin-filter" onchange="loadAuditLogSection(1)">
+          <label class="auditlog-superadmin-only" style="display:none;align-items:center;gap:.4rem;font-size:.78rem;color:var(--muted);cursor:pointer;white-space:nowrap;" title="Показывать только действия уровня супер-админа: смена ролей, бэкапы, RCON, очистка журнала модерации">
+            <input type="checkbox" id="auditlog-superadmin-filter" class="site-checkbox" onchange="loadAuditLogSection(1)">
             Только супер-админ
           </label>
           <label style="display:flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--muted);white-space:nowrap;">С
@@ -3150,7 +3149,7 @@
             </div>
             <div><label>URL изображения (необязательно)</label><input id="si-image" class="dark-input" type="url" placeholder="https://..."></div>
             <div style="display:flex;align-items:center;gap:.5rem;">
-              <input id="si-active" type="checkbox" style="width:auto;">
+              <input id="si-active" type="checkbox" class="site-checkbox">
               <label style="margin:0;">Активен (виден игрокам)</label>
             </div>
           </div>
@@ -3599,7 +3598,10 @@ function applyRoleVisibility() {
     el.style.display = meetsRole('superadmin') ? '' : 'none';
   });
   document.querySelectorAll('.auditlog-superadmin-only').forEach(el => {
-    el.style.display = meetsRole('superadmin') ? '' : 'none';
+    // 'flex' (not '') because this label wraps a .site-checkbox + text — needs
+    // align-items:center to line up with the checkbox, and the bare CSS default
+    // for <label> is display:block (see the .site-checkbox comment near the top).
+    el.style.display = meetsRole('superadmin') ? 'flex' : 'none';
   });
   const pill = document.getElementById('nav-role-pill');
   if (pill) {
@@ -6478,7 +6480,7 @@ async function loadAdminComments(page = 1) {
     } else {
       tbody.innerHTML = d.items.map(c => `
         <tr>
-          <td><input type="checkbox" class="comment-check" data-id="${c.id}" onchange="_onCommentCheck()" style="accent-color:var(--accent)"></td>
+          <td><input type="checkbox" class="comment-check site-checkbox" data-id="${c.id}" onchange="_onCommentCheck()"></td>
           <td style="font-weight:600;white-space:nowrap;">${esc(c.author)}</td>
           <td style="color:var(--muted);font-size:.78rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.news_title)}</td>
           <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(c.content)}</td>
@@ -7619,7 +7621,7 @@ async function loadReports(page = 1) {
   if (!data.items?.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Жалоб нет</td></tr>'; return; }
   tbody.innerHTML = data.items.map(r => `
     <tr>
-      <td>${r.status === 'pending' ? `<input type="checkbox" class="report-check" data-id="${r.id}" onchange="_onReportCheck()" style="accent-color:var(--accent)">` : ''}</td>
+      <td>${r.status === 'pending' ? `<input type="checkbox" class="report-check site-checkbox" data-id="${r.id}" onchange="_onReportCheck()">` : ''}</td>
       <td data-label="ID">${r.id}</td>
       <td data-label="Тип"><span style="font-size:.75rem;background:rgba(150,0,28,0.2);padding:.15rem .4rem;border-radius:.3rem;">${esc(r.target_type)}</span></td>
       <td data-label="ID объекта">${r.target_id}</td>
@@ -7691,7 +7693,7 @@ async function loadAutoFlagRules() {
     tbody.innerHTML = rules.map(rule => `
       <tr>
         <td style="font-weight:600;">${esc(rule.keyword)}</td>
-        <td><input type="checkbox" ${rule.is_active ? 'checked' : ''} onchange="toggleAutoFlagRule(${rule.id}, this.checked)" style="accent-color:var(--accent)"></td>
+        <td><input type="checkbox" class="site-checkbox" ${rule.is_active ? 'checked' : ''} onchange="toggleAutoFlagRule(${rule.id}, this.checked)"></td>
         <td style="color:var(--muted);font-size:.78rem;">${esc(rule.created_by || '—')}</td>
         <td style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${fmtDateTime(rule.created_at)}</td>
         <td><button class="btn-danger" onclick="deleteAutoFlagRule(${rule.id})">Удалить</button></td>
