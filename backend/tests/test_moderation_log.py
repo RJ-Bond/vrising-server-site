@@ -62,8 +62,12 @@ async def test_log_action_rejects_invalid_action(client, db_session):
     assert r.json()["detail"] == "invalid_action"
 
 
-@pytest.mark.parametrize("action", ["kick", "mute", "unmute", "restart_scheduled", "restart_executed"])
-async def test_log_action_accepts_all_five_valid_actions(client, db_session, action):
+@pytest.mark.parametrize("action", [
+    "kick", "mute", "unmute", "restart_scheduled", "restart_executed", "report",
+    "god_on", "god_off", "heal", "item_give", "tp_to", "tp_here", "tp_coords",
+    "vanish_on", "vanish_off",
+])
+async def test_log_action_accepts_all_valid_actions(client, db_session, action):
     await _set_plugin_key(db_session)
     r = await client.post(
         "/api/plugin/log-action",

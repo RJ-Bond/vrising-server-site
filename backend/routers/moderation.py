@@ -257,7 +257,14 @@ async def plugin_ban_lookup(
     return {"found": True, "steam_id": ban.steam_id}
 
 
-_VALID_LOG_ACTIONS = {"kick", "mute", "unmute", "restart_scheduled", "restart_executed", "report"}
+_VALID_LOG_ACTIONS = {
+    "kick", "mute", "unmute", "restart_scheduled", "restart_executed", "report",
+    # Added for the plugin's .god/.heal/.give/.tpto/.tphere/.tpcoords/.vanish commands
+    # (introduced after this endpoint was written) — the plugin was already sending these
+    # and getting a 400 back, silently dropping them from the unified feed.
+    "god_on", "god_off", "heal", "item_give", "tp_to", "tp_here", "tp_coords",
+    "vanish_on", "vanish_off",
+}
 
 
 @router.post("/api/plugin/log-action")

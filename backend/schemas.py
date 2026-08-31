@@ -224,10 +224,10 @@ class AppealResolveIn(BaseModel):
 class PluginLogActionIn(BaseModel):
     """Body for POST /api/plugin/log-action — records the moderation action types NOT
     already tracked by their own dedicated endpoints (ban/unban/warn have theirs). Only
-    the 5 values in {"kick","mute","unmute","restart_scheduled","restart_executed"} are
-    accepted, to avoid double-counting ban/unban/warn once merged into the unified
-    GET /api/admin/moderation-log feed. admin_name is null for system/automatic actions
-    (e.g. an auto-executed restart with no admin present)."""
+    the values in moderation._VALID_LOG_ACTIONS are accepted, to avoid double-counting
+    ban/unban/warn once merged into the unified GET /api/admin/moderation-log feed.
+    admin_name is null for system/automatic actions (e.g. an auto-executed restart with
+    no admin present)."""
     server_num: int = 1
     action: str
     admin_name: Optional[str] = None

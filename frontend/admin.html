@@ -2880,6 +2880,15 @@
             <option value="restart_scheduled">Рестарт запланирован</option>
             <option value="restart_executed">Рестарт выполнен</option>
             <option value="report">Жалоба игрока</option>
+            <option value="god_on">God Mode включён</option>
+            <option value="god_off">God Mode выключен</option>
+            <option value="heal">Лечение</option>
+            <option value="item_give">Выдача предмета</option>
+            <option value="tp_to">Телепорт к игроку</option>
+            <option value="tp_here">Телепорт к себе</option>
+            <option value="tp_coords">Телепорт по координатам</option>
+            <option value="vanish_on">Невидимость включена</option>
+            <option value="vanish_off">Невидимость выключена</option>
           </select>
           <select id="modlog-server-filter" class="dark-input" style="font-size:.78rem;padding:.35rem .6rem;width:auto;" onchange="loadModerationLog()">
             <option value="">Все сервера</option>
@@ -4253,7 +4262,10 @@ async function manualRefreshPluginStatus() {
 // admin panel or website rather than the plugin. Reuses MODLOG_ACTION_LABELS/
 // MODLOG_ACTION_COLORS (top-level consts declared with the moderation-log section further
 // down) instead of a second copy of the same label text.
-const _PLUGIN_LOG_ACTIONS = new Set(['kick', 'mute', 'unmute', 'restart_scheduled', 'restart_executed']);
+const _PLUGIN_LOG_ACTIONS = new Set([
+  'kick', 'mute', 'unmute', 'restart_scheduled', 'restart_executed', 'report',
+  'god_on', 'god_off', 'heal', 'item_give', 'tp_to', 'tp_here', 'tp_coords', 'vanish_on', 'vanish_off',
+]);
 
 async function loadPluginRecentLog() {
   const el = document.getElementById('plugin-recent-log');
@@ -7482,12 +7494,19 @@ const MODLOG_ACTION_LABELS = {
   ban: 'Бан', unban: 'Разбан', warn: 'Предупреждение', kick: 'Кик', mute: 'Мут',
   unmute: 'Снятие мута', restart_scheduled: 'Рестарт запланирован', restart_executed: 'Рестарт выполнен',
   report: 'Жалоба игрока',
+  god_on: 'God Mode включён', god_off: 'God Mode выключен', heal: 'Лечение', item_give: 'Выдача предмета',
+  tp_to: 'Телепорт к игроку', tp_here: 'Телепорт к себе', tp_coords: 'Телепорт по координатам',
+  vanish_on: 'Невидимость включена', vanish_off: 'Невидимость выключена',
 };
 const MODLOG_ACTION_COLORS = {
   ban: 'rgba(220,38,38,.18)', unban: 'rgba(0,150,100,.18)', warn: 'rgba(245,158,11,.18)',
   kick: 'rgba(249,115,22,.18)', mute: 'rgba(100,100,100,.2)', unmute: 'rgba(0,150,100,.15)',
   restart_scheduled: 'rgba(90,130,240,.18)', restart_executed: 'rgba(90,130,240,.28)',
   report: 'rgba(168,85,247,.18)',
+  god_on: 'rgba(201,169,74,.28)', god_off: 'rgba(201,169,74,.15)',
+  heal: 'rgba(34,197,94,.18)', item_give: 'rgba(20,184,166,.18)',
+  tp_to: 'rgba(99,102,241,.18)', tp_here: 'rgba(99,102,241,.28)', tp_coords: 'rgba(99,102,241,.12)',
+  vanish_on: 'rgba(107,114,128,.28)', vanish_off: 'rgba(107,114,128,.15)',
 };
 
 // Reflects _modlogSteamIdFilter (set from the ?steam_id= deep-link param, or cleared via
