@@ -830,11 +830,7 @@ function readingTime(content) {
   return mins + ' мин.';
 }
 
-function fmtDuration(sec) {
-  if (sec < 60) return `${sec}с`;
-  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
-  return h > 0 ? `${h}ч ${m}м` : `${m}м`;
-}
+// fmtDuration — defined in common.js
 
 function renderServerBlock(d, sfx) {
   const pct = d.max_players > 0 ? Math.round(d.players / d.max_players * 100) : 0;
@@ -4075,9 +4071,12 @@ function _notifActionHtml(n) {
 }
 
 async function loadNotifications() {
-  const res = await fetch('/api/notifications', {credentials:'include'});
-  if (!res.ok) return;
-  const d = await res.json();
+  let d;
+  try {
+    const res = await fetch('/api/notifications', {credentials:'include'});
+    if (!res.ok) return;
+    d = await res.json();
+  } catch { return; } // network hiccup during the 60s poll — try again next tick
   const wrap = document.getElementById('notif-bell-wrap');
   const cnt = document.getElementById('notif-count');
   const list = document.getElementById('notif-list');
