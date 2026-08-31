@@ -83,6 +83,16 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/* Trailing-edge debounce — e.g. `const searchDebounced = debounce(() => load(1), 350);`
+   wired to an input's oninput, so a full re-render/re-fetch only fires once typing
+   pauses instead of on every keystroke. Same shape as admin.html's own local
+   debounce(fn, ms) (30+ search/filter inputs there) — was never promoted to
+   common.js until other pages' search inputs needed the same treatment. */
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+
 /* Normalise naive ISO strings from SQLite (no tz suffix) to UTC before parsing */
 function _toDate(iso) {
   if (!iso) return null;

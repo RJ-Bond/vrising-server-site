@@ -165,14 +165,11 @@
 </main>
 
 <script src="/alpine.min.js"></script>
-<script src="/common.js?v=16"></script>
+<script src="/common.js?v=17"></script>
 <script>
 const API = '/api';
 
-// Small local i18n helper for strings this page builds at runtime (badges, countdown,
-// loading/error/empty states, join button) — _applyI18n() in common.js only handles
-// static data-i18n-ru/-en markup, same convention as faq.html's own _t().
-function _t(ru, en) { return localStorage.getItem('_lang') === 'en' ? en : ru; }
+// _t() — now defined in common.js (loaded above).
 
 // The shared toggle in common.js only swaps static data-i18n-ru/-en markup; it has no
 // idea this page also renders event cards dynamically from fetched data, so those need

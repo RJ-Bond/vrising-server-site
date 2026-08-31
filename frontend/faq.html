@@ -221,7 +221,7 @@
     <span class="faq-search-icon">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-search"></use></svg>
     </span>
-    <input id="faq-search" class="faq-search-input" type="text" placeholder="Поиск по вопросам…" oninput="onFaqSearch(this.value)" data-i18n-ph-ru="Поиск по вопросам…" data-i18n-ph-en="Search questions…" />
+    <input id="faq-search" class="faq-search-input" type="text" placeholder="Поиск по вопросам…" aria-label="Поиск по вопросам" oninput="onFaqSearch(this.value)" data-i18n-ph-ru="Поиск по вопросам…" data-i18n-ph-en="Search questions…" data-i18n-aria-ru="Поиск по вопросам" data-i18n-aria-en="Search questions" />
     <button class="faq-search-clear" id="faq-search-clear" onclick="clearFaqSearch()" aria-label="Очистить" data-i18n-aria-ru="Очистить" data-i18n-aria-en="Clear">✕</button>
   </div>
 
@@ -231,31 +231,10 @@
 <script>
 const API = '/api';
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
-// Small local i18n helper for strings this page rewrites at runtime (search "no results") —
-// _applyI18n() in common.js only handles static data-i18n-ru/-en markup. The FAQ questions/
-// answers themselves are admin-authored Russian content and are intentionally NOT
-// machine-translated by this toggle (same policy as the rest of the site).
-function _t(ru, en) { return localStorage.getItem('_lang') === 'en' ? en : ru; }
-
-function applySiteBackground(bg) {
-  bg = (bg || '').trim();
-  if (!bg) return;
-  let layer = document.getElementById('site-bg-photo');
-  if (!layer) {
-    layer = document.createElement('div');
-    layer.id = 'site-bg-photo';
-    layer.className = 'site-bg-photo';
-    document.body.prepend(layer);
-  }
-  layer.style.backgroundImage = [
-    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
-    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
-    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
-    `url('${bg}')`,
-  ].join(',');
-  layer.style.backgroundSize = 'auto,auto,auto,cover';
-  layer.style.backgroundPosition = 'center,center,center,center';
-}
+// _t()/applySiteBackground() — now defined in common.js (loaded below). The FAQ
+// questions/answers themselves are admin-authored Russian content and are
+// intentionally NOT machine-translated by the language toggle (same policy as
+// the rest of the site).
 
 (function() {
   const cached = (() => { try { return JSON.parse(localStorage.getItem('user') || sessionStorage.getItem('user')); } catch { return null; } })();
@@ -506,7 +485,7 @@ _openFaqFromHash();
 
 </script>
 <script src="/alpine.min.js"></script>
-<script src="/common.js?v=16"></script>
+<script src="/common.js?v=17"></script>
 <script>
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('/sw.js').catch(() => {});

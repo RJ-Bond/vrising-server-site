@@ -438,7 +438,7 @@
   <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;margin-bottom:1.25rem;">
     <div class="clan-search-wrap" style="flex:1;min-width:200px;">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input id="clan-search" class="clan-search-input" type="text" placeholder="Поиск по названию клана…" oninput="filterCards()" data-i18n-ph-ru="Поиск по названию клана…" data-i18n-ph-en="Search by clan name…">
+      <input id="clan-search" class="clan-search-input" type="text" placeholder="Поиск по названию клана…" aria-label="Поиск по названию клана" oninput="_clanSearchDebounced()" data-i18n-ph-ru="Поиск по названию клана…" data-i18n-ph-en="Search by clan name…" data-i18n-aria-ru="Поиск по названию клана" data-i18n-aria-en="Search by clan name">
     </div>
     <!-- Sort toggle — reuses the per-server .clan-toggle/.clan-toggle-btn visual pattern.
          Default stays "По участникам" (server-provided order, untouched); "По мощи" sorts
@@ -502,37 +502,14 @@
 <script src="/alpine.min.js"></script>
 <script src="/anime.min.js"></script>
 <script src="/anim.js?v=1"></script>
-<script src="/common.js?v=16"></script>
+<script src="/common.js?v=17"></script>
 <script>
 const API = '/api';
 
-// Small local i18n helper for strings this page rewrites at runtime (toasts) —
-// _applyI18n() in common.js only handles static data-i18n-ru/-en markup.
-function _t(ru, en) { return localStorage.getItem('_lang') === 'en' ? en : ru; }
+// _t()/applySiteBackground() — now defined in common.js (loaded above).
 
 /* ── State ── */
 let _allClans = [];    // full list from API
-
-/* ── Helpers ── */
-function applySiteBackground(bg) {
-  bg = (bg || '').trim();
-  if (!bg) return;
-  let layer = document.getElementById('site-bg-photo');
-  if (!layer) {
-    layer = document.createElement('div');
-    layer.id = 'site-bg-photo';
-    layer.className = 'site-bg-photo';
-    document.body.prepend(layer);
-  }
-  layer.style.backgroundImage = [
-    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
-    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
-    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
-    `url('${bg}')`,
-  ].join(',');
-  layer.style.backgroundSize = 'auto,auto,auto,cover';
-  layer.style.backgroundPosition = 'center,center,center,center';
-}
 
 /* ── Site settings & nav auth ── */
 (async function() {
@@ -645,13 +622,7 @@ function buildCard(clan, idx) {
   `;
 }
 
-/* ── RU pluralization ── */
-function pluralRu(n, one, few, many) {
-  const mod10 = n % 10, mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return one;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
-  return many;
-}
+/* ── RU pluralization — pluralRu() now defined in common.js ── */
 function pluralMembers(n) { return pluralRu(n, '', 'а', 'ов'); }
 
 const ROLE_PLURALS = {
@@ -1199,6 +1170,11 @@ function filterCards() {
   if (q) list = list.filter(c => (c.name || '').toLowerCase().includes(q));
   renderGrid(sortedClans(list));
 }
+// Debounced wrapper for the #clan-search input's oninput — avoids re-filtering/
+// re-rendering the whole grid on every keystroke (see common.js's debounce()).
+// Other callers (setServerFilter/setSort, triggered by button clicks not typing)
+// keep calling filterCards() directly.
+const _clanSearchDebounced = debounce(filterCards, 300);
 
 /* ── Load clans ── */
 async function init() {
