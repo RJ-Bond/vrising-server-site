@@ -470,14 +470,6 @@
     <!-- Drawer close (mobile only) -->
     <button onclick="toggleDrawer()" id="drawer-close" aria-label="Закрыть меню" style="display:none;position:absolute;top:.75rem;right:.75rem;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1;z-index:2;padding:.25rem;">✕</button>
 
-    <!-- Compact-mode toggle (desktop only — see index.css's @media hiding it below
-         the same width the mobile drawer takes over at) — for a returning visitor
-         who doesn't need the full labelled nav every visit. State persists in
-         localStorage; hidden on first-ever visit's default (expanded) state. -->
-    <button onclick="toggleLeftPanelCompact()" id="left-panel-compact-btn" aria-label="Свернуть навигацию" data-tip="Свернуть/развернуть" title="Свернуть/развернуть навигацию" style="position:absolute;top:.75rem;right:.75rem;background:none;border:1px solid rgba(150,0,28,0.25);border-radius:.35rem;width:1.6rem;height:1.6rem;display:flex;align-items:center;justify-content:center;color:var(--muted);cursor:pointer;z-index:2;transition:color .15s,border-color .15s;">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-    </button>
-
     <h2 id="left-panel-title" data-i18n-ru="— Навигация —" data-i18n-en="— Navigation —" style="font-family:'Philosopher',serif;font-size:.75rem;letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:1rem;text-align:center;">— Навигация —</h2>
 
     <!-- User card (shown when logged in) -->

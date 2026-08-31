@@ -361,9 +361,9 @@ function _updatePwaInstallEntryPoint() {
 // Collapses map.html/shop.html/faq.html/events.html/status.html behind an "Ещё"
 // toggle in the left sidebar — same idea as the top nav's own "Ещё ▾" dropdown
 // already used on every secondary page, applied here since this list grew to 11
-// flat links with no grouping. State persists per-browser (same localStorage-flag
-// pattern as toggleLeftPanelCompact() just below) so a visitor who opens it once
-// doesn't have to reopen it on every homepage load.
+// flat links with no grouping. State persists per-browser via a localStorage
+// flag so a visitor who opens it once doesn't have to reopen it on every
+// homepage load.
 function toggleNavMore() {
   const group = document.getElementById('nav-more-group');
   const caret = document.getElementById('nav-more-caret');
@@ -382,21 +382,6 @@ if (localStorage.getItem('_navMoreOpen') === '1') {
   });
 }
 
-function toggleLeftPanelCompact() {
-  const panel = document.getElementById('left-panel');
-  if (!panel) return;
-  const compact = panel.classList.toggle('compact');
-  localStorage.setItem('_leftPanelCompact', compact ? '1' : '0');
-  const btn = document.getElementById('left-panel-compact-btn');
-  if (btn) btn.setAttribute('aria-label', compact ? 'Развернуть навигацию' : 'Свернуть навигацию');
-}
-// Applied before the panel's own entrance animation runs, so a returning visitor
-// with compact mode saved never sees a flash of the full labelled nav first.
-if (localStorage.getItem('_leftPanelCompact') === '1') {
-  document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('left-panel')?.classList.add('compact');
-  });
-}
 
 // ── Language toggle: _applyI18n()/toggleLanguage() now live in common.js (shared
 //    across every page, not just this one) so the '_lang' preference persists across
