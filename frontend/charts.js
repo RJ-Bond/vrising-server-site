@@ -21,6 +21,20 @@
 (function () {
   if (typeof Chart === 'undefined') return;
 
+  // This file is shared across 6 pages (admin.html, index.html, leaderboard.html,
+  // profile.html, servers.html, user.html) that don't all define the same token
+  // names for their primary brand color (admin.html: --accent, public pages via
+  // theme.css: --crimson) — tries each candidate, falls back to today's hardcoded
+  // hex if neither is defined on the host page, so this is a zero-risk addition.
+  function _cssVar(names, fallback) {
+    const style = getComputedStyle(document.documentElement);
+    for (const n of (Array.isArray(names) ? names : [names])) {
+      const v = style.getPropertyValue(n).trim();
+      if (v) return v;
+    }
+    return fallback;
+  }
+
   // Draws dashed vertical lines (server wipes) over the chart, registered
   // once and toggled per-chart via the `wipeAnnotations` plugin option.
   const wipeAnnotationsPlugin = {
@@ -100,7 +114,7 @@
     const minimal = !!opts.minimal;
 
     const datasets = nonEmpty.map((s) => {
-      const color = s.color || '#c8002a';
+      const color = s.color || _cssVar(['--accent', '--crimson'], '#c8002a');
       const rgb = s.rgb || '200,0,42';
       return {
         label: s.label || 'Игроков',
@@ -230,7 +244,7 @@
     const fmtValue = opts.valueFormatter || ((n) => String(n));
 
     const datasets = nonEmpty.map((s) => {
-      const color = s.color || '#c8002a';
+      const color = s.color || _cssVar(['--accent', '--crimson'], '#c8002a');
       const rgb = s.rgb || '200,0,42';
       return {
         label: s.label || '',

@@ -119,6 +119,7 @@
     }
     .dark-input::placeholder { color: var(--muted); }
     .dark-input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(181,0,42,0.2); outline: none; }
+    .dark-input:disabled { opacity: .5; cursor: not-allowed; }
     textarea.dark-input { resize: vertical; }
     .btn-primary {
       background: linear-gradient(135deg, #7a001c, #b5002a);
@@ -135,6 +136,7 @@
       font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .2s;
     }
     .btn-ghost:hover { border-color: rgba(150,0,28,0.6); color: var(--text); }
+    .btn-ghost:disabled { opacity: .5; cursor: not-allowed; border-color: rgba(150,0,28,0.3); color: var(--muted); }
     .server-subtab {
       background: rgba(14,3,24,0.8); border: 1px solid rgba(0,120,220,.3);
       color: var(--muted); border-radius: 9999px; padding: .45rem 1.1rem;
@@ -147,10 +149,11 @@
     }
     .btn-danger {
       background: rgba(100,0,15,0.3); border: 1px solid rgba(180,0,25,0.4);
-      color: #f87171; border-radius: .4rem; padding: .4rem .8rem;
+      color: var(--danger); border-radius: .4rem; padding: .4rem .8rem;
       font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .2s;
     }
     .btn-danger:hover { background: rgba(150,0,20,0.4); }
+    .btn-danger:disabled { opacity: .5; cursor: not-allowed; background: rgba(100,0,15,0.3); }
     /* Custom checkbox matching the site's dark/crimson look instead of the bare
        OS-native checkbox (accent-color alone still renders differently per
        browser/OS and never really reads as "part of" this theme). */
@@ -203,6 +206,7 @@
     tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 rgba(181,0,42,0.7); }
     .pagination-btn { background: rgba(14,3,24,0.8); border: 1px solid rgba(150,0,28,0.3); color: var(--muted); padding: .35rem .75rem; border-radius: .4rem; cursor: pointer; font-size: .8rem; transition: all .2s; }
     .pagination-btn:hover, .pagination-btn.active { border-color: var(--accent); color: var(--text); box-shadow: 0 0 8px var(--accent-glow); }
+    .pagination-btn:disabled { opacity: .4; cursor: not-allowed; border-color: rgba(150,0,28,0.3); color: var(--muted); box-shadow: none; }
     .pagination-ellipsis { color: var(--muted); font-size: .8rem; padding: .35rem .3rem; user-select: none; }
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: rgba(8,0,16,0.5); }
@@ -327,6 +331,10 @@
     /* Settings-card subtitle — was copy-pasted as an inline style on 22 separate
        <p> tags across the settings sections instead of factored into a class. */
     .s-card-sub { font-size:.68rem; color:var(--muted); margin-top:.12rem; font-weight:400; letter-spacing:0; text-transform:none; font-family:'Inter',sans-serif; }
+    /* Timezone-suffix hint next to a datetime label (e.g. "(время сайта)") — was
+       the same inline style repeated on every occurrence alongside this class
+       instead of the class itself carrying the styling. */
+    .site-tz-label { font-weight:400; text-transform:none; letter-spacing:0; font-family:'Inter',sans-serif; }
     /* Bulk-action panel (users/comments/reports selection toolbars) — was the
        same inline style string copy-pasted at all three call sites. */
     .bulk-action-panel { display:none; align-items:center; gap:.75rem; padding:.75rem 1rem; margin-bottom:.75rem; background:rgba(120,0,28,.15); border:1px solid rgba(180,0,42,.3); border-radius:.6rem; }
@@ -349,11 +357,12 @@
     .s-desc { font-size:.7rem; color:var(--muted); margin-top:.35rem; line-height:1.45; }
     .s-save-btn { background:rgba(100,0,20,.3); border:1px solid rgba(150,0,28,.4); color:var(--text); border-radius:.45rem; padding:.55rem .9rem; font-size:.78rem; font-weight:600; cursor:pointer; white-space:nowrap; transition:all .2s; flex-shrink:0; font-family:'Inter',sans-serif; }
     .s-save-btn:hover { background:rgba(140,0,28,.4); border-color:var(--accent); box-shadow:0 0 10px rgba(181,0,42,.2); }
+    .s-save-btn:disabled { opacity:.5; cursor:not-allowed; background:rgba(100,0,20,.3); border-color:rgba(150,0,28,.4); box-shadow:none; }
     .s-clear-btn { background:rgba(30,30,40,.5); border:1px solid rgba(120,120,140,.3); color:var(--muted); border-radius:.4rem; padding:.4rem .8rem; font-size:.76rem; cursor:pointer; white-space:nowrap; transition:all .2s; flex-shrink:0; font-family:'Inter',sans-serif; }
-    .s-clear-btn:hover { border-color:rgba(200,0,40,.5); color:#fca5a5; }
+    .s-clear-btn:hover { border-color:rgba(200,0,40,.5); color:var(--danger); }
     .s-status-badge { padding:.2rem .55rem; border-radius:9999px; font-size:.62rem; font-weight:700; letter-spacing:.06em; }
     .s-status-http { background:rgba(60,60,60,.3); border:1px solid rgba(100,100,100,.35); color:var(--muted); }
-    .s-status-https { background:rgba(0,70,15,.3); border:1px solid rgba(0,160,35,.4); color:#86efac; }
+    .s-status-https { background:rgba(0,70,15,.3); border:1px solid rgba(0,160,35,.4); color:var(--ok); }
     @media(max-width:960px) { .s-row { grid-template-columns:1fr; } }
 
     /* ── Event banner preview (mirrors index.html .event-banner) ── */
@@ -846,12 +855,12 @@
              activity signal, yellow = a pending queue the admin may need to act on. -->
         <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('users')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('users');}" title="Активные за 7 дней" style="border-top:2px solid rgba(34,197,94,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">⚡</div>
-          <div id="dash-new7" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--green);line-height:1;">—</div>
+          <div id="dash-new7" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--ok);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Активны 7 дней</div>
         </div>
         <div class="glass-card rounded-xl p-4 text-center dash-tile" role="button" tabindex="0" onclick="showSection('resets')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showSection('resets');}" title="Перейти к сбросу паролей" style="border-top:2px solid rgba(255,207,92,.3);position:relative;overflow:hidden;">
           <div style="font-size:1.1rem;margin-bottom:.35rem;opacity:.55;">🔑</div>
-          <div id="dash-resets" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--yellow);line-height:1;">—</div>
+          <div id="dash-resets" style="font-size:1.75rem;font-family:'Cinzel',serif;color:var(--warn);line-height:1;">—</div>
           <div style="font-size:.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-top:.35rem;">Сброс паролей</div>
         </div>
       </div>
@@ -868,11 +877,11 @@
         </button>
         <button class="qa-card" onclick="showSection('reports')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-          Жалобы<span id="qa-badge-reports" style="display:none;background:rgba(181,0,42,.35);border:1px solid rgba(220,0,50,.45);color:#fca5a5;font-size:.58rem;font-weight:700;padding:.05rem .35rem;border-radius:9999px;line-height:1.4;"></span>
+          Жалобы<span id="qa-badge-reports" style="display:none;background:rgba(181,0,42,.35);border:1px solid rgba(220,0,50,.45);color:var(--danger);font-size:.58rem;font-weight:700;padding:.05rem .35rem;border-radius:9999px;line-height:1.4;"></span>
         </button>
         <button class="qa-card" onclick="showSection('resets')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6"/><path d="M15.5 7.5l3 3L22 7l-3-3"/></svg>
-          Сброс паролей<span id="qa-badge-resets" style="display:none;background:rgba(181,0,42,.35);border:1px solid rgba(220,0,50,.45);color:#fca5a5;font-size:.58rem;font-weight:700;padding:.05rem .35rem;border-radius:9999px;line-height:1.4;"></span>
+          Сброс паролей<span id="qa-badge-resets" style="display:none;background:rgba(181,0,42,.35);border:1px solid rgba(220,0,50,.45);color:var(--danger);font-size:.58rem;font-weight:700;padding:.05rem .35rem;border-radius:9999px;line-height:1.4;"></span>
         </button>
         <button class="qa-card" onclick="showSection('comments')">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-comment"></use></svg>
@@ -1073,7 +1082,7 @@
             Импорт
             <input type="file" accept=".json,application/json" style="display:none;" onchange="importSettings(this)">
           </label>
-          <div id="settings-saved" style="display:none;align-items:center;gap:.45rem;padding:.4rem .95rem;background:rgba(0,70,15,.25);border:1px solid rgba(0,160,35,.4);color:#86efac;border-radius:9999px;font-size:.78rem;font-weight:600;">
+          <div id="settings-saved" style="display:none;align-items:center;gap:.45rem;padding:.4rem .95rem;background:rgba(0,70,15,.25);border:1px solid rgba(0,160,35,.4);color:var(--ok);border-radius:9999px;font-size:.78rem;font-weight:600;">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
             Сохранено
           </div>
@@ -1136,8 +1145,8 @@
           </div>
           <div class="s-field">
             <label style="display:flex;align-items:center;gap:.4rem;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-              Следующий вайп <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              Следующий вайп <span class="site-tz-label">(время сайта)</span>
             </label>
             <div class="s-field-row" style="gap:.5rem;">
               <select id="setting-wipe_type" class="dark-input" style="flex:0 0 auto;width:auto;">
@@ -1205,7 +1214,7 @@
           <div class="s-field">
             <label style="display:flex;align-items:center;gap:.4rem;">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9955ee" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-              Следующий вайп <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span>
+              Следующий вайп <span class="site-tz-label">(время сайта)</span>
             </label>
             <div class="s-field-row" style="gap:.5rem;">
               <select id="setting-wipe_type2" class="dark-input" style="flex:0 0 auto;width:auto;">
@@ -1502,7 +1511,7 @@
             <div class="s-field-row">
               <input id="setting-discord_webhook_url" type="url" class="dark-input" placeholder="https://discord.com/api/webhooks/...">
               <button class="s-save-btn" onclick="saveSetting('discord_webhook_url')">Сохранить</button>
-              <button onclick="testWebhook(this)" style="padding:.4rem .75rem;background:rgba(0,80,0,.25);border:1px solid rgba(0,160,60,.35);color:#4ade80;border-radius:.45rem;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s;" onmouseover="this.style.background='rgba(0,100,0,.35)'" onmouseout="this.style.background='rgba(0,80,0,.25)'">▶ Тест</button>
+              <button onclick="testWebhook(this)" style="padding:.4rem .75rem;background:rgba(0,80,0,.25);border:1px solid rgba(0,160,60,.35);color:var(--ok);border-radius:.45rem;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s;" onmouseover="this.style.background='rgba(0,100,0,.35)'" onmouseout="this.style.background='rgba(0,80,0,.25)'">▶ Тест</button>
             </div>
             <p class="s-desc" id="webhook-test-result" style="margin-top:.3rem;"></p>
             <p class="s-desc">При публикации новости — автоматически отправит embed в Discord канал</p>
@@ -1511,7 +1520,7 @@
           <div class="s-field">
             <label>Email-дайджест новостей</label>
             <div class="s-field-row">
-              <button onclick="sendNewsletterDigestNow(this)" style="padding:.4rem .75rem;background:rgba(0,80,0,.25);border:1px solid rgba(0,160,60,.35);color:#4ade80;border-radius:.45rem;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s;" onmouseover="this.style.background='rgba(0,100,0,.35)'" onmouseout="this.style.background='rgba(0,80,0,.25)'">▶ Отправить дайджест сейчас</button>
+              <button onclick="sendNewsletterDigestNow(this)" style="padding:.4rem .75rem;background:rgba(0,80,0,.25);border:1px solid rgba(0,160,60,.35);color:var(--ok);border-radius:.45rem;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .2s;" onmouseover="this.style.background='rgba(0,100,0,.35)'" onmouseout="this.style.background='rgba(0,80,0,.25)'">▶ Отправить дайджест сейчас</button>
             </div>
             <p class="s-desc" id="newsletter-digest-result" style="margin-top:.3rem;"></p>
             <p class="s-desc">Обычно уходит еженедельно опубликовавшимся с прошлой рассылки новостям, только подписавшимся в профиле пользователям. Эта кнопка запускает ту же рассылку прямо сейчас.</p>
@@ -1587,7 +1596,7 @@
         <div class="s-card">
           <div class="s-card-head">
             <div class="s-icon" style="background:rgba(120,0,20,.18);border:1px solid rgba(200,0,40,.3);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f87171" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </div>
             <div><h2>Баннер события</h2><p class="s-card-sub">Отображается на главной странице над новостями</p></div>
           </div>
@@ -1636,7 +1645,7 @@
         <div class="s-card s-card-danger">
           <div class="s-card-head">
             <div class="s-icon" style="background:rgba(0,80,30,.18);border:1px solid rgba(0,150,60,.3);">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4ade80" stroke-width="1.8"><use href="/icons.svg#icon-lock"></use></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="1.8"><use href="/icons.svg#icon-lock"></use></svg>
             </div>
             <div style="flex:1;">
               <div style="display:flex;align-items:center;gap:.55rem;">
@@ -1668,11 +1677,11 @@
           <div class="s-field">
             <label>Установка сертификата</label>
             <p class="s-desc" style="margin-bottom:.6rem;">Укажите домен и email выше, затем нажмите кнопку — certbot получит сертификат и nginx переключится на HTTPS автоматически.</p>
-            <button id="ssl-install-btn" onclick="installSsl()" style="display:inline-flex;align-items:center;gap:.45rem;padding:.5rem 1.1rem;background:linear-gradient(135deg,rgba(0,110,50,.35),rgba(0,80,30,.25));border:1px solid rgba(0,180,80,.4);color:#4ade80;border-radius:.55rem;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.03em;" onmouseover="this.style.background='linear-gradient(135deg,rgba(0,130,60,.45),rgba(0,100,40,.35))'" onmouseout="this.style.background='linear-gradient(135deg,rgba(0,110,50,.35),rgba(0,80,30,.25))'">
+            <button id="ssl-install-btn" onclick="installSsl()" style="display:inline-flex;align-items:center;gap:.45rem;padding:.5rem 1.1rem;background:linear-gradient(135deg,rgba(0,110,50,.35),rgba(0,80,30,.25));border:1px solid rgba(0,180,80,.4);color:var(--ok);border-radius:.55rem;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.03em;" onmouseover="this.style.background='linear-gradient(135deg,rgba(0,130,60,.45),rgba(0,100,40,.35))'" onmouseout="this.style.background='linear-gradient(135deg,rgba(0,110,50,.35),rgba(0,80,30,.25))'">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="/icons.svg#icon-lock"></use></svg>
               Установить SSL
             </button>
-            <div id="ssl-log" style="display:none;margin-top:.75rem;background:rgba(0,0,0,.55);border:1px solid rgba(0,150,60,.2);border-radius:.5rem;padding:.65rem .85rem;font-family:'Courier New',monospace;font-size:.72rem;color:#86efac;line-height:1.7;max-height:220px;overflow-y:auto;white-space:pre-wrap;"></div>
+            <div id="ssl-log" style="display:none;margin-top:.75rem;background:rgba(0,0,0,.55);border:1px solid rgba(0,150,60,.2);border-radius:.5rem;padding:.65rem .85rem;font-family:'Courier New',monospace;font-size:.72rem;color:var(--ok);line-height:1.7;max-height:220px;overflow-y:auto;white-space:pre-wrap;"></div>
           </div>
         </div>
 
@@ -1830,7 +1839,7 @@
               <button onclick="execRcon()" class="s-save-btn">▶ Выполнить</button>
             </div>
           </div>
-          <div id="rcon-output" style="display:none;background:rgba(0,0,0,.55);border:1px solid rgba(0,100,200,.2);border-radius:.5rem;padding:.65rem .85rem;font-family:'Courier New',monospace;font-size:.72rem;color:#93c5fd;line-height:1.7;max-height:200px;overflow-y:auto;white-space:pre-wrap;margin-top:.5rem;"></div>
+          <div id="rcon-output" style="display:none;background:rgba(0,0,0,.55);border:1px solid rgba(0,100,200,.2);border-radius:.5rem;padding:.65rem .85rem;font-family:'Courier New',monospace;font-size:.72rem;color:var(--info);line-height:1.7;max-height:200px;overflow-y:auto;white-space:pre-wrap;margin-top:.5rem;"></div>
         </div>
       </div>
 
@@ -1882,7 +1891,7 @@
       <div style="margin-top:1.5rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
           <h2 class="gothic" style="font-size:.8rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">История вайпов</h2>
-          <button onclick="showWipeForm()" style="display:flex;align-items:center;gap:.4rem;padding:.35rem .8rem;background:rgba(0,100,40,.18);border:1px solid rgba(0,160,60,.35);color:#4ade80;border-radius:.45rem;font-size:.75rem;font-weight:600;cursor:pointer;">
+          <button onclick="showWipeForm()" style="display:flex;align-items:center;gap:.4rem;padding:.35rem .8rem;background:rgba(0,100,40,.18);border:1px solid rgba(0,160,60,.35);color:var(--ok);border-radius:.45rem;font-size:.75rem;font-weight:600;cursor:pointer;">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             Добавить
           </button>
@@ -1927,7 +1936,7 @@
            "key=value", see backend/routers/admin_settings.py) down to just one setting key
            at a time, since the full "Журнал действий" (section-auditlog) has no per-key
            filter of its own and mixes every other admin action in with it. -->
-      <div id="settings-history-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
+      <div id="settings-history-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
         <div style="max-width:680px;margin:3rem auto;background:var(--card);border:1px solid var(--border);border-radius:1rem;padding:2rem;box-shadow:0 16px 64px rgba(0,0,0,0.7);">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
             <h3 class="section-title">История изменений настроек</h3>
@@ -2122,7 +2131,7 @@
 
           <div style="display:grid;grid-template-columns:1fr auto;gap:.75rem;align-items:end;">
             <div class="s-field" style="margin-bottom:0;">
-              <label>Истекает (необязательно) <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span></label>
+              <label>Истекает (необязательно) <span class="site-tz-label">(время сайта)</span></label>
               <input id="ann-expires" type="datetime-local" class="dark-input" style="color-scheme:dark;">
             </div>
             <div class="s-field" style="margin-bottom:0;">
@@ -2232,7 +2241,7 @@
 
           <div id="restart-pending-box" style="display:none;margin-bottom:.85rem;background:#0a0a0f;border:1px solid rgba(200,0,42,.35);border-radius:.5rem;padding:.65rem .85rem;">
             <div style="font-size:.7rem;color:var(--muted);margin-bottom:.2rem;">Рестарт запланирован</div>
-            <div id="restart-countdown" style="font-family:'Consolas','Courier New',monospace;font-size:1.3rem;color:#f87171;font-weight:600;">--:--</div>
+            <div id="restart-countdown" style="font-family:'Consolas','Courier New',monospace;font-size:1.3rem;color:var(--danger);font-weight:600;">--:--</div>
           </div>
 
           <div class="s-field" style="margin-bottom:0;">
@@ -2725,7 +2734,7 @@
       <div id="events-pagination" class="flex gap-2 mt-4"></div>
 
       <!-- Event editor modal -->
-      <div id="event-editor-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
+      <div id="event-editor-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
         <div style="max-width:560px;margin:3rem auto;background:var(--card);border:1px solid var(--border);border-radius:1rem;padding:2rem;box-shadow:0 16px 64px rgba(0,0,0,0.7);">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
             <h3 class="section-title" id="event-editor-title">Новое событие</h3>
@@ -2753,8 +2762,8 @@
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
-              <div><label>Начало <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span></label><input id="ev-start" class="dark-input" type="datetime-local" style="color-scheme:dark;"></div>
-              <div><label>Конец (необязательно) <span class="site-tz-label" style="font-weight:400;text-transform:none;letter-spacing:0;font-family:'Inter',sans-serif;">(время сайта)</span></label><input id="ev-end" class="dark-input" type="datetime-local" style="color-scheme:dark;"></div>
+              <div><label>Начало <span class="site-tz-label">(время сайта)</span></label><input id="ev-start" class="dark-input" type="datetime-local" style="color-scheme:dark;"></div>
+              <div><label>Конец (необязательно) <span class="site-tz-label">(время сайта)</span></label><input id="ev-end" class="dark-input" type="datetime-local" style="color-scheme:dark;"></div>
             </div>
             <div><label>Макс. участников (необязательно)</label><input id="ev-max" class="dark-input" type="number" min="1" placeholder="Без ограничений"></div>
             <div><label>URL обложки (необязательно)</label><input id="ev-cover" class="dark-input" type="url" placeholder="https://..."></div>
@@ -2824,7 +2833,7 @@
         <!-- "Needs attention" glance: bans issued in the last 24h among the currently
              loaded page — a cheap client-side count over _modlogCache (item 4 of the
              admin-b task list), not a separate aggregation endpoint. -->
-        <span id="modlog-recent-bans-badge" style="display:none;align-items:center;gap:.35rem;font-size:.72rem;color:#fca5a5;background:rgba(150,0,20,.12);border:1px solid rgba(220,40,60,.3);border-radius:.4rem;padding:.3rem .6rem;"></span>
+        <span id="modlog-recent-bans-badge" style="display:none;align-items:center;gap:.35rem;font-size:.72rem;color:var(--danger);background:rgba(150,0,20,.12);border:1px solid rgba(220,40,60,.3);border-radius:.4rem;padding:.3rem .6rem;"></span>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:.75rem;">
         <input id="modlog-search" type="text" class="dark-input" placeholder="Поиск по игроку, админу, деталям…" style="width:auto;max-width:240px;font-size:.78rem;padding:.35rem .6rem;" oninput="_modlogSearchDebounced()">
@@ -2857,7 +2866,7 @@
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="/icons.svg#icon-download"></use></svg>
             CSV
           </a>
-          <button onclick="clearModerationLog()" class="modlog-superadmin-only" style="display:none;font-size:.78rem;background:rgba(150,0,20,0.18);border:1px solid rgba(220,40,60,0.4);color:#fca5a5;border-radius:.4rem;padding:.35rem .7rem;cursor:pointer;font-family:'Inter',sans-serif;" title="Удаляет кик/мут/рестарт-записи и уже снятые баны — активные баны и предупреждения не трогает">🗑 Очистить журнал</button>
+          <button onclick="clearModerationLog()" class="modlog-superadmin-only" style="display:none;font-size:.78rem;background:rgba(150,0,20,0.18);border:1px solid rgba(220,40,60,0.4);color:var(--danger);border-radius:.4rem;padding:.35rem .7rem;cursor:pointer;font-family:'Inter',sans-serif;" title="Удаляет кик/мут/рестарт-записи и уже снятые баны — активные баны и предупреждения не трогает">🗑 Очистить журнал</button>
         </div>
       </div>
       <div class="glass-card" style="border-radius:.75rem;overflow:hidden;">
@@ -3112,11 +3121,11 @@
       </div>
 
       <!-- Item editor modal -->
-      <div id="shop-item-editor-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
+      <div id="shop-item-editor-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
         <div style="max-width:560px;margin:3rem auto;background:var(--card);border:1px solid var(--border);border-radius:1rem;padding:2rem;box-shadow:0 16px 64px rgba(0,0,0,0.7);">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
             <h3 class="section-title" id="shop-item-editor-title">Новый товар</h3>
-            <button onclick="closeShopItemEditor()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;">✕</button>
+            <button onclick="closeShopItemEditor()" class="modal-close">✕</button>
           </div>
           <div style="display:flex;flex-direction:column;gap:.85rem;">
             <div><label>Название</label><input id="si-name" class="dark-input" type="text" maxlength="128" placeholder="Название товара"></div>
@@ -3311,7 +3320,7 @@ const ROLE_LABELS = { user: 'Игрок', moderator: 'Модератор', admin
 const ROLE_COLORS = {
   user:       { bg: 'rgba(30,30,60,.2)',  border: 'rgba(80,80,150,.3)',  fg: 'var(--muted)' },
   moderator:  { bg: 'rgba(0,90,140,.2)',  border: 'rgba(0,140,210,.4)',  fg: '#7dd3fc' },
-  admin:      { bg: 'rgba(180,0,30,.2)',  border: 'rgba(220,0,40,.4)',   fg: '#f87171' },
+  admin:      { bg: 'rgba(180,0,30,.2)',  border: 'rgba(220,0,40,.4)',   fg: 'var(--danger)' },
   superadmin: { bg: 'rgba(150,0,200,.2)', border: 'rgba(190,0,240,.45)', fg: '#e0a3ff' },
 };
 function roleBadgeStyle(role) {
@@ -4090,8 +4099,8 @@ async function loadSettings() {
   if (mmBadge) {
     mmBadge.textContent = mmVal ? '🔴 Включён' : '🟢 Выключен';
     mmBadge.style.cssText = mmVal
-      ? 'display:inline;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(200,0,42,.2);color:#f87171;border:1px solid rgba(200,0,42,.4);'
-      : 'display:inline;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(0,150,50,.15);color:#86efac;border:1px solid rgba(0,180,60,.3);';
+      ? 'display:inline;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:var(--danger-soft);color:var(--danger);border:1px solid var(--danger-border);'
+      : 'display:inline;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:var(--ok-soft);color:var(--ok);border:1px solid var(--ok-border);';
   }
   if (map['site_logo_url']) previewLogo(map['site_logo_url']);
   if (map['hero_logo_url']) previewHeroLogo(map['hero_logo_url']);
@@ -4195,7 +4204,7 @@ function renderPluginStatusPill() {
   if (!container) return;
   const hb = _pluginHeartbeats.find(h => h.server_num === _pluginActiveServer);
   if (!hb) {
-    container.innerHTML = '<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(200,0,42,.2);color:#f87171;border:1px solid rgba(200,0,42,.4);width:fit-content;">🔴 Не подключён</span>';
+    container.innerHTML = '<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(200,0,42,.2);color:var(--danger);border:1px solid rgba(200,0,42,.4);width:fit-content;">🔴 Не подключён</span>';
     return;
   }
   const now = Date.now();
@@ -4203,13 +4212,13 @@ function renderPluginStatusPill() {
   const secAgo = Math.floor((now - lastSeen) / 1000);
   const stale = !isFinite(secAgo) || secAgo > 120;
   if (stale) {
-    container.innerHTML = `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(200,0,42,.2);color:#f87171;border:1px solid rgba(200,0,42,.4);width:fit-content;">🔴 Не подключён</span>`;
+    container.innerHTML = `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(200,0,42,.2);color:var(--danger);border:1px solid rgba(200,0,42,.4);width:fit-content;">🔴 Не подключён</span>`;
     return;
   }
   const rel = secAgo < 10 ? 'только что' : secAgo < 60 ? `${secAgo} сек.` : secAgo < 3600 ? `${Math.floor(secAgo / 60)} мин.` : `${Math.floor(secAgo / 3600)} ч.`;
   const name = hb.server_name ? esc(hb.server_name) : `Сервер ${hb.server_num}`;
   const ver = hb.plugin_version ? `версия ${esc(hb.plugin_version)}, ` : '';
-  container.innerHTML = `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(0,150,50,.15);color:#86efac;border:1px solid rgba(0,180,60,.3);width:fit-content;">🟢 Подключён — ${name}, ${ver}${hb.player_count} игроков онлайн, обновлено ${rel} назад</span>`;
+  container.innerHTML = `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.65rem;padding:.15rem .55rem;border-radius:9999px;background:rgba(0,150,50,.15);color:var(--ok);border:1px solid rgba(0,180,60,.3);width:fit-content;">🟢 Подключён — ${name}, ${ver}${hb.player_count} игроков онлайн, обновлено ${rel} назад</span>`;
 }
 
 // Manual re-poll button next to the status pill above — loadPluginStatus() is otherwise
@@ -4267,7 +4276,7 @@ async function loadPluginRecentLog() {
         <span style="color:var(--muted);font-size:.68rem;white-space:nowrap;">${when}</span>
       </div>`;
     }).join('');
-  } catch { el.innerHTML = '<div style="font-size:.72rem;color:#f87171;">Ошибка загрузки</div>'; }
+  } catch { el.innerHTML = '<div style="font-size:.72rem;color:var(--danger);">Ошибка загрузки</div>'; }
 }
 
 // ─── Scheduled announcements ───────────────────────────────────────────────
@@ -4329,7 +4338,7 @@ function updateChatPreview(taId, previewId, counterId, placeholders) {
     if (counter) {
       const len = raw.length;
       counter.textContent = `${len} / 200`;
-      counter.style.color = len >= 200 ? '#f87171' : 'var(--muted)';
+      counter.style.color = len >= 200 ? 'var(--danger)' : 'var(--muted)';
     }
   }
 }
@@ -4426,7 +4435,7 @@ async function loadAnnouncements() {
       return `<tr>
         <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(a.text)}">${textShort}</td>
         <td style="font-size:.78rem;">${annIntervalLabel(a.interval_minutes)}</td>
-        <td>${a.enabled ? '<span style="color:#4ade80;">Да</span>' : '<span style="color:var(--muted);">Нет</span>'}</td>
+        <td>${a.enabled ? '<span style="color:var(--ok);">Да</span>' : '<span style="color:var(--muted);">Нет</span>'}</td>
         <td style="font-size:.75rem;color:var(--muted);">${expires}</td>
         <td style="font-size:.75rem;color:var(--muted);">${relativeTimeFromIso(a.last_sent_at, 'ещё не отправлялось')}</td>
         <td>
@@ -4438,7 +4447,7 @@ async function loadAnnouncements() {
         </td>
       </tr>`;
     }).join('');
-  } catch { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+  } catch { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--danger);">Ошибка загрузки</td></tr>'; }
 }
 
 function _resetAnnouncementForm() {
@@ -4489,7 +4498,7 @@ function cancelEditAnnouncement() {
 
 async function saveAnnouncement() {
   const msg = document.getElementById('ann-save-msg');
-  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = 'inline'; };
+  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? 'var(--ok)' : 'var(--danger)'; msg.style.display = 'inline'; };
   const text = document.getElementById('ann-text').value.trim();
   if (!text) return show('Введите текст объявления', false);
 
@@ -4526,7 +4535,7 @@ async function saveAnnouncement() {
 
 async function testSendAnnouncement() {
   const msg = document.getElementById('ann-save-msg');
-  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = 'inline'; };
+  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? 'var(--ok)' : 'var(--danger)'; msg.style.display = 'inline'; };
   const text = document.getElementById('ann-text').value.trim();
   if (!text) return show('Введите текст объявления', false);
 
@@ -4808,7 +4817,7 @@ async function loadLinkedAccounts() {
         <td style="font-size:.75rem;color:var(--muted);">${relativeTimeFromIso(u.created_at)}</td>
         <td><button onclick="unlinkSteamAccount(${u.id},'${esc(u.username)}')" class="btn-danger" style="font-size:.7rem;padding:.28rem .6rem;">Отвязать</button></td>
       </tr>`).join('');
-  } catch { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+  } catch { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--danger);">Ошибка загрузки</td></tr>'; }
 }
 
 function unlinkSteamAccount(id, username) {
@@ -4872,7 +4881,7 @@ function renderMaintenanceStatuses(updates) {
     return `<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem;background:rgba(14,5,22,0.7);border:1px solid rgba(110,0,150,0.2);border-radius:.4rem;font-size:.75rem;">
       <span style="color:var(--muted);flex-shrink:0;font-size:.65rem;">${t}</span>
       <span style="flex:1;color:var(--text);">${esc(u.text)}</span>
-      <button onclick="deleteMaintenanceStatus(${i})" style="background:none;border:none;color:#f87171;cursor:pointer;font-size:.8rem;flex-shrink:0;padding:.1rem .3rem;" title="Удалить">✕</button>
+      <button onclick="deleteMaintenanceStatus(${i})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:.8rem;flex-shrink:0;padding:.1rem .3rem;" title="Удалить">✕</button>
     </div>`;
   }).join('');
 }
@@ -4976,9 +4985,9 @@ async function uploadLogoFile(input) {
     document.getElementById('setting-site_logo_url').value = data.url;
     previewLogo(data.url);
     await saveSetting('site_logo_url');
-    statusEl.textContent = '✔ Загружено и сохранено'; statusEl.style.color = '#86efac';
+    statusEl.textContent = '✔ Загружено и сохранено'; statusEl.style.color = 'var(--ok)';
     setTimeout(() => { statusEl.textContent = ''; }, 3000);
-  } catch (err) { statusEl.textContent = '✘ ' + err.message; statusEl.style.color = '#fca5a5'; }
+  } catch (err) { statusEl.textContent = '✘ ' + err.message; statusEl.style.color = 'var(--danger)'; }
   input.value = '';
 }
 
@@ -5011,9 +5020,9 @@ async function uploadFaviconFile(input) {
     document.getElementById('setting-favicon_url').value = data.url;
     previewFavicon(data.url);
     await saveSetting('favicon_url');
-    statusEl.textContent = '✔ Загружено и сохранено'; statusEl.style.color = '#86efac';
+    statusEl.textContent = '✔ Загружено и сохранено'; statusEl.style.color = 'var(--ok)';
     setTimeout(() => { statusEl.textContent = ''; }, 3000);
-  } catch (err) { statusEl.textContent = '✘ ' + err.message; statusEl.style.color = '#fca5a5'; }
+  } catch (err) { statusEl.textContent = '✘ ' + err.message; statusEl.style.color = 'var(--danger)'; }
   input.value = '';
 }
 
@@ -5039,9 +5048,9 @@ async function uploadHeroLogoFile(input) {
     document.getElementById('setting-hero_logo_url').value = data.url;
     previewHeroLogo(data.url);
     await saveSetting('hero_logo_url');
-    statusEl.textContent = '✔ Загружено и сохранено'; statusEl.style.color = '#86efac';
+    statusEl.textContent = '✔ Загружено и сохранено'; statusEl.style.color = 'var(--ok)';
     setTimeout(() => { statusEl.textContent = ''; }, 3000);
-  } catch (err) { statusEl.textContent = '✘ ' + err.message; statusEl.style.color = '#fca5a5'; }
+  } catch (err) { statusEl.textContent = '✘ ' + err.message; statusEl.style.color = 'var(--danger)'; }
   input.value = '';
 }
 
@@ -5058,9 +5067,9 @@ async function uploadBgFile(input) {
     if (!res.ok) throw new Error(data.detail || 'Ошибка загрузки');
     document.getElementById('setting-bg_image_url').value = data.url;
     await saveSetting('bg_image_url');
-    statusEl.textContent = '✔ Загружено и сохранено'; statusEl.style.color = '#86efac';
+    statusEl.textContent = '✔ Загружено и сохранено'; statusEl.style.color = 'var(--ok)';
     setTimeout(() => { statusEl.textContent = ''; }, 3000);
-  } catch (err) { statusEl.textContent = '✘ ' + err.message; statusEl.style.color = '#fca5a5'; }
+  } catch (err) { statusEl.textContent = '✘ ' + err.message; statusEl.style.color = 'var(--danger)'; }
   input.value = '';
 }
 
@@ -5203,7 +5212,7 @@ async function loadAdminClans() {
     _allClans = await fetch(`${API}/clans`).then(r => r.json());
     _renderClansTable();
   } catch {
-    el.innerHTML = '<p class="p-6" style="color:#fca5a5;font-size:.85rem;">Ошибка загрузки.</p>';
+    el.innerHTML = '<p class="p-6" style="color:var(--danger);font-size:.85rem;">Ошибка загрузки.</p>';
   }
 }
 
@@ -5346,8 +5355,8 @@ function openUserQuickView(id) {
   document.getElementById('userqv-email').textContent = fmtEmail(u.email);
   const isOnline = _onlinePlayers.has(u.username.toLowerCase());
   document.getElementById('userqv-status').innerHTML = u.is_active
-    ? (isOnline ? '<span style="color:#86efac;">Онлайн</span>' : '<span style="color:#86efac;">Активен</span>')
-    : '<span style="color:#f87171;">Заблокирован</span>';
+    ? (isOnline ? '<span style="color:var(--ok);">Онлайн</span>' : '<span style="color:var(--ok);">Активен</span>')
+    : '<span style="color:var(--danger);">Заблокирован</span>';
   const info = _statusInfo(u.last_active_at);
   document.getElementById('userqv-lastactive').innerHTML = `<span style="color:${info.color};">${esc(info.label)}</span>`;
   document.getElementById('userqv-created').textContent = fmtDate(u.created_at);
@@ -5388,7 +5397,7 @@ async function loadUserQvModHistory(u) {
       </div>`;
     }).join('') + `<a href="/admin.html?tab=moderation-log&steam_id=${encodeURIComponent(u.steam_id)}" target="_blank" rel="noopener" style="display:block;margin-top:.5rem;font-size:.72rem;color:var(--gold);text-decoration:none;">Открыть полный журнал →</a>`;
   } catch {
-    el.innerHTML = `<p style="font-size:.75rem;color:#fca5a5;">Ошибка загрузки.</p>`;
+    el.innerHTML = `<p style="font-size:.75rem;color:var(--danger);">Ошибка загрузки.</p>`;
   }
 }
 
@@ -5423,7 +5432,7 @@ async function loadUserQvNickHistory(u) {
       </div>`;
     }).join('');
   } catch {
-    el.innerHTML = `<p style="font-size:.75rem;color:#fca5a5;">Ошибка загрузки.</p>`;
+    el.innerHTML = `<p style="font-size:.75rem;color:var(--danger);">Ошибка загрузки.</p>`;
   }
 }
 function closeUserQv() {
@@ -5548,11 +5557,11 @@ function renderUsersTable() {
             : roleBadgeStatic;
 
           const onlineDot = isOnline
-            ? `<span style="display:inline-flex;align-items:center;gap:.3rem;background:rgba(0,70,15,.25);border:1px solid rgba(0,160,35,.4);color:#86efac;font-size:.62rem;font-weight:700;padding:.1rem .42rem;border-radius:9999px;"><span style="width:.4rem;height:.4rem;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;display:inline-block;"></span>Онлайн</span>`
+            ? `<span style="display:inline-flex;align-items:center;gap:.3rem;background:rgba(0,70,15,.25);border:1px solid rgba(0,160,35,.4);color:var(--ok);font-size:.62rem;font-weight:700;padding:.1rem .42rem;border-radius:9999px;"><span style="width:.4rem;height:.4rem;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok);display:inline-block;"></span>Онлайн</span>`
             : '';
           const activeBadge = u.is_active
-            ? `<span style="background:rgba(0,60,10,.2);border:1px solid rgba(0,130,30,.3);color:#86efac;font-size:.62rem;font-weight:700;padding:.1rem .42rem;border-radius:9999px;">Актив</span>`
-            : `<span style="background:rgba(100,0,10,.2);border:1px solid rgba(180,0,25,.35);color:#f87171;font-size:.62rem;font-weight:700;padding:.1rem .42rem;border-radius:9999px;">Заблок</span>`;
+            ? `<span style="background:rgba(0,60,10,.2);border:1px solid rgba(0,130,30,.3);color:var(--ok);font-size:.62rem;font-weight:700;padding:.1rem .42rem;border-radius:9999px;">Актив</span>`
+            : `<span style="background:rgba(100,0,10,.2);border:1px solid rgba(180,0,25,.35);color:var(--danger);font-size:.62rem;font-weight:700;padding:.1rem .42rem;border-radius:9999px;">Заблок</span>`;
           const lastActiveInfo = _statusInfo(u.last_active_at);
           const lastActiveHtml = `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;color:${lastActiveInfo.color};white-space:nowrap;"><span style="width:.4rem;height:.4rem;border-radius:50%;background:${lastActiveInfo.dot};box-shadow:${lastActiveInfo.glow};flex-shrink:0;"></span>${esc(lastActiveInfo.label)}</span>`;
 
@@ -5808,14 +5817,14 @@ async function checkForUpdate() {
     if (!d.available) {
       banner.style.background = 'rgba(150,100,0,.1)';
       banner.style.border = '1px solid rgba(200,130,0,.3)';
-      banner.style.color = '#fcd34d';
+      banner.style.color = 'var(--warn)';
       banner.textContent = `⚠ Не удалось проверить обновления (текущая версия: ${d.current_version || '—'})`;
       return;
     }
     if (d.up_to_date) {
       banner.style.background = 'rgba(0,120,60,.1)';
       banner.style.border = '1px solid rgba(0,180,90,.3)';
-      banner.style.color = '#86efac';
+      banner.style.color = 'var(--ok)';
       banner.textContent = `✅ У вас последняя версия (${esc(d.current_version)})`;
       return;
     }
@@ -5851,13 +5860,13 @@ async function testWebhook(btn) {
     const rawText = await r.text();
     try { d = JSON.parse(rawText); } catch { d = null; }
     if (r.ok) {
-      if (res) { res.style.color = '#4ade80'; res.textContent = '✅ Тестовое сообщение отправлено в Discord'; }
+      if (res) { res.style.color = 'var(--ok)'; res.textContent = '✅ Тестовое сообщение отправлено в Discord'; }
     } else {
       const detail = (d && (typeof d.detail === 'string' ? d.detail : JSON.stringify(d.detail))) || rawText || `HTTP ${r.status}`;
-      if (res) { res.style.color = '#f87171'; res.textContent = `❌ [${r.status}] ${detail}`; }
+      if (res) { res.style.color = 'var(--danger)'; res.textContent = `❌ [${r.status}] ${detail}`; }
     }
   } catch (e) {
-    if (res) { res.style.color = '#f87171'; res.textContent = '❌ Ошибка соединения: ' + e.message; }
+    if (res) { res.style.color = 'var(--danger)'; res.textContent = '❌ Ошибка соединения: ' + e.message; }
   } finally {
     btn.textContent = orig; btn.disabled = false;
   }
@@ -5875,13 +5884,13 @@ async function sendNewsletterDigestNow(btn) {
     const r = await fetch(`${API}/admin/newsletter/send-now`, { method: 'POST', credentials: 'include' });
     const d = await r.json().catch(() => null);
     if (r.ok && d) {
-      res && (res.style.color = '#4ade80', res.textContent = `✅ Отправлено писем: ${d.sent} из ${d.recipients} подписчиков (новостей в дайджесте: ${d.items})`);
+      res && (res.style.color = 'var(--ok)', res.textContent = `✅ Отправлено писем: ${d.sent} из ${d.recipients} подписчиков (новостей в дайджесте: ${d.items})`);
     } else {
       const detail = (d && (typeof d.detail === 'string' ? d.detail : JSON.stringify(d.detail))) || `HTTP ${r.status}`;
-      res && (res.style.color = '#f87171', res.textContent = `❌ ${detail}`);
+      res && (res.style.color = 'var(--danger)', res.textContent = `❌ ${detail}`);
     }
   } catch (e) {
-    res && (res.style.color = '#f87171', res.textContent = '❌ Ошибка соединения: ' + e.message);
+    res && (res.style.color = 'var(--danger)', res.textContent = '❌ Ошибка соединения: ' + e.message);
   } finally {
     btn.textContent = orig; btn.disabled = false;
   }
@@ -5952,12 +5961,12 @@ async function execRcon() {
       body: JSON.stringify({server: srv, command: cmd})
     });
     const d = await res.json();
-    if (!res.ok) { out.textContent = '❌ ' + apiErrorText(d, 'Ошибка'); out.style.color='#fca5a5'; return; }
+    if (!res.ok) { out.textContent = '❌ ' + apiErrorText(d, 'Ошибка'); out.style.color='var(--danger)'; return; }
     out.style.color = '#93c5fd';
     out.textContent = '> ' + cmd + '\n' + (d.output || '(пустой ответ)');
   } catch(e) {
     out.textContent = '❌ Ошибка соединения';
-    out.style.color = '#fca5a5';
+    out.style.color = 'var(--danger)';
   }
 }
 
@@ -5979,7 +5988,7 @@ function renderRulesEditor() {
         style="flex:1;background:rgba(14,5,18,.6);border:1px solid rgba(110,0,150,.25);border-radius:.4rem;padding:.35rem .65rem;color:var(--text);font-size:.78rem;outline:none;">
       <button onclick="deleteRule(${i})" title="Удалить"
         style="width:1.9rem;height:1.9rem;display:flex;align-items:center;justify-content:center;background:rgba(120,0,20,.18);border:1px solid rgba(200,0,40,.25);border-radius:.4rem;color:var(--muted);cursor:pointer;flex-shrink:0;transition:all .2s;"
-        onmouseover="this.style.color='#f87171';this.style.borderColor='rgba(200,0,40,.5)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='rgba(200,0,40,.25)'">
+        onmouseover="this.style.color='var(--danger)';this.style.borderColor='rgba(200,0,40,.5)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='rgba(200,0,40,.25)'">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>`).join('');
@@ -6171,7 +6180,7 @@ let _dashStatusSSE = null;
 
 function _dashServerCard(data, name, accent) {
   if (!data) return `<div class="glass-card rounded-xl p-4" style="color:var(--muted);font-size:.8rem;">Нет данных</div>`;
-  const dot = data.online ? '#4ade80' : '#f87171';
+  const dot = data.online ? 'var(--ok)' : 'var(--danger)';
   const label = data.online ? 'Онлайн' : 'Оффлайн';
   return `<div class="glass-card rounded-xl p-4">
     <div class="flex items-center justify-between mb-2">
@@ -6461,7 +6470,7 @@ async function loadAdminComments(page = 1) {
     let url = `${API}/admin/comments?page=${page}&per_page=20&q=${q}`;
     if (newsSlug) url += `&news_slug=${newsSlug}`;
     const res = await fetch(url, { credentials: 'include', headers: authH() });
-    if (!res.ok) { handleAuth(res); tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; return; }
+    if (!res.ok) { handleAuth(res); tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--danger);">Ошибка загрузки</td></tr>'; return; }
     const d = await res.json();
     document.getElementById('comments-total').textContent = `Всего: ${d.total}`;
     if (!d.items.length) {
@@ -6479,7 +6488,7 @@ async function loadAdminComments(page = 1) {
     }
     const pages = Math.ceil(d.total / 20) || 1;
     renderPagination('comments-pagination', page, pages, loadAdminComments);
-  } catch { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+  } catch { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--danger);">Ошибка загрузки</td></tr>'; }
 }
 
 function toggleSelectAllComments(cb) {
@@ -6553,7 +6562,7 @@ async function loadAdminPlayers(page = 1) {
     // PUBLIC leaderboard.html's endpoint, returning a bare list — adding a
     // {items,total} wrapper here would be a breaking change for that page).
     const res = await fetch(`${API}/leaderboard?server=${server}&period=${period}&q=${q}&page=${page}&per_page=${_PLAYERS_PER_PAGE + 1}`);
-    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; return; }
+    if (!res.ok) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--danger);">Ошибка загрузки</td></tr>'; return; }
     const fetched = await res.json();
     const hasMore = fetched.length > _PLAYERS_PER_PAGE;
     const items = hasMore ? fetched.slice(0, _PLAYERS_PER_PAGE) : fetched;
@@ -6573,7 +6582,7 @@ async function loadAdminPlayers(page = 1) {
       </tr>`).join('');
     const pf = document.getElementById('players-count-footer');
     if (pf) { pf.style.display = 'block'; pf.textContent = `Страница ${page}${hasMore ? '' : ' (последняя)'}`; }
-  } catch { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+  } catch { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--danger);">Ошибка загрузки</td></tr>'; }
 }
 
 // ─── File manager ─────────────────────────────────────────────────────────
@@ -6584,10 +6593,10 @@ async function loadAdminFiles() {
   if (grid0) grid0.innerHTML = `<p style="color:var(--muted);font-size:.82rem;">Загрузка…</p>`;
   try {
     const res = await fetch(`${API}/admin/uploads`, { credentials: 'include', headers: authH() });
-    if (!res.ok) { handleAuth(res); if (grid0) grid0.innerHTML = `<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки.</p>`; return; }
+    if (!res.ok) { handleAuth(res); if (grid0) grid0.innerHTML = `<p style="color:var(--danger);font-size:.82rem;">Ошибка загрузки.</p>`; return; }
     _allFiles = await res.json();
     _renderFilesGrid();
-  } catch { if (grid0) grid0.innerHTML = `<p style="color:#f87171;font-size:.82rem;">Ошибка загрузки.</p>`; }
+  } catch { if (grid0) grid0.innerHTML = `<p style="color:var(--danger);font-size:.82rem;">Ошибка загрузки.</p>`; }
 }
 
 // used_by comes from GET /api/admin/uploads' cross-reference against Settings/News/
@@ -6615,7 +6624,7 @@ function _renderFilesGrid() {
   grid.innerHTML = files.map(f => {
     const used = f.used_by && f.used_by.length;
     const badge = used
-      ? `<span title="${esc(f.used_by.map(u => u.label).join(', '))}" style="position:absolute;top:.35rem;left:.35rem;z-index:1;background:rgba(0,70,15,.75);border:1px solid rgba(0,160,35,.5);color:#86efac;font-size:.58rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;">используется</span>`
+      ? `<span title="${esc(f.used_by.map(u => u.label).join(', '))}" style="position:absolute;top:.35rem;left:.35rem;z-index:1;background:rgba(0,70,15,.75);border:1px solid rgba(0,160,35,.5);color:var(--ok);font-size:.58rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;">используется</span>`
       : `<span title="Не найдено ни в одном из проверяемых мест сайта" style="position:absolute;top:.35rem;left:.35rem;z-index:1;background:rgba(90,70,0,.6);border:1px solid rgba(200,160,0,.4);color:#fde68a;font-size:.58rem;font-weight:700;padding:.12rem .45rem;border-radius:9999px;">не используется</span>`;
     return `
       <div class="glass-card rounded-xl overflow-hidden" style="display:flex;flex-direction:column;position:relative;">
@@ -6630,7 +6639,7 @@ function _renderFilesGrid() {
           <p style="font-size:.62rem;color:var(--muted);">${fmtSize(f.size)}</p>
           <div style="display:flex;gap:.35rem;margin-top:.2rem;">
             <button onclick="navigator.clipboard.writeText(window.location.origin+'${esc(f.url)}');this.textContent='✔';setTimeout(()=>this.textContent='Скопировать',1500)" style="flex:1;background:none;border:1px solid rgba(110,0,150,.25);color:var(--muted);border-radius:.35rem;padding:.25rem .4rem;font-size:.6rem;cursor:pointer;">Скопировать</button>
-            <button onclick="deleteUploadedFile('${esc(f.filename)}')" style="background:none;border:1px solid rgba(200,0,30,.25);color:rgba(248,113,113,.7);border-radius:.35rem;padding:.25rem .5rem;font-size:.7rem;cursor:pointer;" onmouseover="this.style.color='#f87171'" onmouseout="this.style.color='rgba(248,113,113,.7)'">✕</button>
+            <button onclick="deleteUploadedFile('${esc(f.filename)}')" style="background:none;border:1px solid rgba(200,0,30,.25);color:rgba(248,113,113,.7);border-radius:.35rem;padding:.25rem .5rem;font-size:.7rem;cursor:pointer;" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='rgba(248,113,113,.7)'">✕</button>
           </div>
         </div>
       </div>`;
@@ -6915,12 +6924,12 @@ async function loadSettingsHistory() {
         <span style="color:var(--text);word-break:break-word;flex:1;">${esc(val)}</span>
       </div>`;
     }).join('');
-  } catch { body.innerHTML = '<p style="color:#f87171;font-size:.8rem;">Ошибка загрузки.</p>'; }
+  } catch { body.innerHTML = '<p style="color:var(--danger);font-size:.8rem;">Ошибка загрузки.</p>'; }
 }
 
 // ─── Wipe history ─────────────────────────────────────────────────────────
 const WIPE_LABELS = { full: 'Полный', map: 'Карта', progress: 'Прогресс' };
-const WIPE_COLORS = { full: '#f87171', map: '#fbbf24', progress: '#34d399' };
+const WIPE_COLORS = { full: 'var(--danger)', map: '#fbbf24', progress: '#34d399' };
 
 function showWipeForm() {
   const f = document.getElementById('wipe-form');
@@ -6944,7 +6953,7 @@ async function loadWipeHistory() {
       const label = WIPE_LABELS[w.wipe_type] || w.wipe_type;
       const color = WIPE_COLORS[w.wipe_type] || '#d4c4e0';
       const srv = w.server_num === 2 ? srvName2 : srvName;
-      const srvColor = w.server_num === 2 ? '#9955ee' : '#4ade80';
+      const srvColor = w.server_num === 2 ? '#9955ee' : 'var(--ok)';
       const isPast = dt < new Date();
       return `<div style="display:flex;align-items:center;gap:.6rem;padding:.5rem .75rem;background:rgba(14,5,18,0.5);border:1px solid rgba(110,0,20,.18);border-radius:.5rem;opacity:${isPast ? '.75' : '1'};">
         <span style="color:${srvColor};font-size:.65rem;font-weight:700;min-width:58px;">${srv}</span>
@@ -7034,7 +7043,7 @@ async function loadPasswordResets() {
               <td style="font-weight:600;">${esc(r.username)}</td>
               <td style="color:var(--muted);font-size:.8rem;">${esc(r.email)}</td>
               <td style="color:var(--muted);font-size:.78rem;white-space:nowrap;">${created}</td>
-              <td style="font-size:.78rem;white-space:nowrap;${expired ? 'color:#f87171;' : 'color:#86efac;'}">${expires}${expired ? ' (истёк)' : ''}</td>
+              <td style="font-size:.78rem;white-space:nowrap;${expired ? 'color:var(--danger);' : 'color:var(--ok);'}">${expires}${expired ? ' (истёк)' : ''}</td>
               <td>
                 ${expired
                   ? `<span style="color:var(--muted);font-size:.75rem;">истёк</span>`
@@ -7052,7 +7061,7 @@ async function loadPasswordResets() {
         </tbody>
       </table>`;
   } catch (err) {
-    el.innerHTML = `<p class="p-6" style="color:#fca5a5;font-size:.85rem;">Ошибка загрузки: ${esc(err.message)}</p>`;
+    el.innerHTML = `<p class="p-6" style="color:var(--danger);font-size:.85rem;">Ошибка загрузки: ${esc(err.message)}</p>`;
   }
 }
 
@@ -7296,7 +7305,7 @@ async function loadMedia() {
     _mediaPage = 1;
     _renderMediaGrid();
   } catch {
-    grid.innerHTML = '<div style="color:#f87171;text-align:center;padding:2rem;grid-column:1/-1;">Ошибка загрузки</div>';
+    grid.innerHTML = '<div style="color:var(--danger);text-align:center;padding:2rem;grid-column:1/-1;">Ошибка загрузки</div>';
   }
 }
 
@@ -7335,7 +7344,7 @@ function _renderMediaGrid() {
     // (covers/badges/DM attachments aren't checked), see that function's docstring.
     const used = f.used_by && f.used_by.length;
     const usageBadge = used
-      ? `<span title="${esc(f.used_by.map(u => u.label).join(', '))}" style="position:absolute;top:.3rem;left:.3rem;z-index:1;background:rgba(0,70,15,.75);border:1px solid rgba(0,160,35,.5);color:#86efac;font-size:.55rem;font-weight:700;padding:.1rem .4rem;border-radius:9999px;">используется</span>`
+      ? `<span title="${esc(f.used_by.map(u => u.label).join(', '))}" style="position:absolute;top:.3rem;left:.3rem;z-index:1;background:rgba(0,70,15,.75);border:1px solid rgba(0,160,35,.5);color:var(--ok);font-size:.55rem;font-weight:700;padding:.1rem .4rem;border-radius:9999px;">используется</span>`
       : `<span title="Не найдено ни в одном из проверяемых мест сайта" style="position:absolute;top:.3rem;left:.3rem;z-index:1;background:rgba(90,70,0,.6);border:1px solid rgba(200,160,0,.4);color:#fde68a;font-size:.55rem;font-weight:700;padding:.1rem .4rem;border-radius:9999px;">не используется</span>`;
     return `<div class="media-thumb" style="position:relative;">
       ${usageBadge}
@@ -7439,7 +7448,7 @@ async function loadAuditLogSection(page) {
     const pages = Math.ceil(total / 50);
     renderPagination('auditlog-pagination', _auditSectionPage, pages, loadAuditLogSection);
   } catch {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);">Ошибка загрузки</td></tr>';
   }
 }
 
@@ -7540,7 +7549,7 @@ async function loadModerationLog() {
     renderModerationLog();
     _renderModlogRecentBansBadge();
   } catch {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);">Ошибка загрузки</td></tr>';
   }
 }
 
@@ -7606,7 +7615,7 @@ async function loadReports(page = 1) {
   let data;
   try {
     data = await fetch(`${API}/admin/reports?${params}`, { credentials: 'include', headers: authH() }).then(r => r.json());
-  } catch { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; return; }
+  } catch { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--danger);">Ошибка загрузки</td></tr>'; return; }
   if (!data.items?.length) { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted);">Жалоб нет</td></tr>'; return; }
   tbody.innerHTML = data.items.map(r => `
     <tr>
@@ -7687,7 +7696,7 @@ async function loadAutoFlagRules() {
         <td style="color:var(--muted);font-size:.72rem;white-space:nowrap;">${fmtDateTime(rule.created_at)}</td>
         <td><button class="btn-danger" onclick="deleteAutoFlagRule(${rule.id})">Удалить</button></td>
       </tr>`).join('');
-  } catch { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+  } catch { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);">Ошибка загрузки</td></tr>'; }
 }
 async function addAutoFlagRule() {
   const input = document.getElementById('auto-flag-new-keyword');
@@ -7727,7 +7736,7 @@ async function deleteAutoFlagRule(id) {
 let _editingEventId = null;
 const EVENT_TYPE_LABELS = {pvp:'PvP',pve:'PvE',social:'Социальное',other:'Другое'};
 const EVENT_STATUS_LABELS = {upcoming:'Предстоящее',active:'Активное',ended:'Завершено',cancelled:'Отменено'};
-const EVENT_STATUS_COLORS = {upcoming:'#c9a04a',active:'#4ade80',ended:'var(--muted)',cancelled:'#f87171'};
+const EVENT_STATUS_COLORS = {upcoming:'var(--gold)',active:'var(--ok)',ended:'var(--muted)',cancelled:'var(--danger)'};
 
 let _eventsPage = 1;
 async function loadEvents(page = 1) {
@@ -7767,7 +7776,7 @@ async function loadEvents(page = 1) {
         </td>
       </tr>`;
     }).join('');
-  } catch { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+  } catch { tbody.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--danger);">Ошибка загрузки</td></tr>'; }
 }
 
 async function openEventEditor(id) {
@@ -7803,7 +7812,7 @@ function closeEventEditor() {
 
 async function saveEvent() {
   const msg = document.getElementById('ev-save-msg');
-  const show = (t, ok) => { msg.textContent=t; msg.style.color=ok?'#4ade80':'#f87171'; msg.style.display='inline'; };
+  const show = (t, ok) => { msg.textContent=t; msg.style.color=ok?'var(--ok)':'var(--danger)'; msg.style.display='inline'; };
   const body = {
     title: document.getElementById('ev-title').value.trim(),
     description: document.getElementById('ev-desc').value.trim()||null,
@@ -7862,7 +7871,7 @@ function _renderShopItemsTable() {
       <td style="font-size:.78rem;color:var(--gold);">${it.cost}</td>
       <td style="font-size:.78rem;">${it.stock == null ? '∞' : it.stock}</td>
       <td style="font-size:.78rem;">${it.weekly_limit_per_user == null ? '—' : it.weekly_limit_per_user}</td>
-      <td>${it.is_active ? '<span style="color:#4ade80;font-size:.75rem;">Да</span>' : '<span style="color:var(--muted);font-size:.75rem;">Нет</span>'}</td>
+      <td>${it.is_active ? '<span style="color:var(--ok);font-size:.75rem;">Да</span>' : '<span style="color:var(--muted);font-size:.75rem;">Нет</span>'}</td>
       <td>
         <div style="display:flex;gap:.35rem;">
           <button onclick="openShopItemEditor(${it.id})" class="btn-ghost" style="font-size:.7rem;padding:.28rem .6rem;">Изменить</button>
@@ -7929,7 +7938,7 @@ async function loadShopCatalog() {
     const items = await fetch(`${API}/admin/shop/items`, {credentials:'include', headers:authH()}).then(r => { if (!r.ok) { handleAuth(r); throw new Error(); } return r.json(); });
     _shopItems = items;
     _renderShopItemsTable();
-  } catch { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+  } catch { tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--danger);">Ошибка загрузки</td></tr>'; }
 
   loadEconomyConfig();
   loadGrantUserList();
@@ -7987,7 +7996,7 @@ async function loadPointsAnomalies() {
   try {
     const d = await fetch(`${API}/admin/points/anomalies`, {credentials:'include', headers:authH()}).then(r => { if (!r.ok) { handleAuth(r); throw new Error(); } return r.json(); });
     if (!d.anomaly_count) {
-      body.innerHTML = `<div style="color:#4ade80;">✓ Подозрительной активности за последние ${d.window_days} дн. не обнаружено.</div>`;
+      body.innerHTML = `<div style="color:var(--ok);">✓ Подозрительной активности за последние ${d.window_days} дн. не обнаружено.</div>`;
       return;
     }
     const section = (title, rows, renderRow) => !rows.length ? '' : `
@@ -8063,7 +8072,7 @@ function closeShopItemEditor() {
 
 async function saveShopItem() {
   const msg = document.getElementById('si-save-msg');
-  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = 'inline'; };
+  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? 'var(--ok)' : 'var(--danger)'; msg.style.display = 'inline'; };
   const stockVal = document.getElementById('si-stock').value;
   const weeklyLimitVal = document.getElementById('si-weekly-limit').value;
   const body = {
@@ -8102,7 +8111,7 @@ async function deleteShopItem(id) {
 
 async function grantPoints() {
   const msg = document.getElementById('grant-msg');
-  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = 'inline'; };
+  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? 'var(--ok)' : 'var(--danger)'; msg.style.display = 'inline'; };
   const username = document.getElementById('grant-username').value.trim();
   const userId = (window.__ADMIN_USERS_BY_NAME || {})[username];
   const delta = parseInt(document.getElementById('grant-delta').value);
@@ -8127,7 +8136,7 @@ async function grantPoints() {
 async function grantPointsBulk() {
   const msg = document.getElementById('grant-bulk-msg');
   const resultsBox = document.getElementById('grant-bulk-results');
-  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? '#4ade80' : '#f87171'; msg.style.display = 'inline'; };
+  const show = (t, ok) => { msg.textContent = t; msg.style.color = ok ? 'var(--ok)' : 'var(--danger)'; msg.style.display = 'inline'; };
   const raw = document.getElementById('grant-bulk-identifiers').value;
   const identifiers = raw.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
   const delta = parseInt(document.getElementById('grant-bulk-delta').value);
@@ -8148,7 +8157,7 @@ async function grantPointsBulk() {
     resultsBox.style.display = 'block';
     resultsBox.innerHTML = (d.results || []).map(res => `
       <div style="display:flex;justify-content:space-between;gap:.5rem;padding:.2rem 0;border-bottom:1px solid rgba(255,255,255,.05);">
-        <span style="color:${res.success ? '#4ade80' : '#f87171'};">${res.success ? '✓' : '✗'} ${esc(res.identifier)}</span>
+        <span style="color:${res.success ? 'var(--ok)' : 'var(--danger)'};">${res.success ? '✓' : '✗'} ${esc(res.identifier)}</span>
         <span style="color:var(--muted);">${res.success ? `баланс ${res.balance_after}` : esc(res.error || 'ошибка')}</span>
       </div>
     `).join('');
@@ -8159,7 +8168,7 @@ async function grantPointsBulk() {
 // ─── Points economy: redemption queue (admin) ──────────────────────────────
 let _shopQueuePage = 1;
 const SHOP_REDEMPTION_STATUS_LABELS = { pending: 'Ожидает', fulfilled: 'Выдано', cancelled: 'Отменено' };
-const SHOP_REDEMPTION_STATUS_COLORS = { pending: '#facc15', fulfilled: '#4ade80', cancelled: 'var(--muted)' };
+const SHOP_REDEMPTION_STATUS_COLORS = { pending: 'var(--warn)', fulfilled: 'var(--ok)', cancelled: 'var(--muted)' };
 
 // Weekly-redemption-limit indicator for the queue table — surfaces GET /api/admin/
 // shop/redemptions' weekly_used/weekly_limit_per_user (see ShopRedemptionOut's
@@ -8168,7 +8177,7 @@ const SHOP_REDEMPTION_STATUS_COLORS = { pending: '#facc15', fulfilled: '#4ade80'
 function _weeklyLimitBadge(used, limit) {
   const atLimit = used >= limit;
   const near = !atLimit && used === limit - 1;
-  const color = atLimit ? '#f87171' : near ? '#facc15' : 'var(--muted)';
+  const color = atLimit ? 'var(--danger)' : near ? 'var(--warn)' : 'var(--muted)';
   const bg = atLimit ? 'rgba(200,0,30,.15)' : near ? 'rgba(250,204,21,.12)' : 'rgba(255,255,255,.06)';
   return `<div style="margin-top:.25rem;"><span title="Использовано ${used} из ${limit} за последние 7 дней" style="font-size:.6rem;font-weight:700;padding:.08rem .4rem;border-radius:9999px;background:${bg};color:${color};white-space:nowrap;">${used}/${limit} в нед.</span></div>`;
 }
@@ -8191,7 +8200,7 @@ async function loadShopQueue(page) {
       const color = SHOP_REDEMPTION_STATUS_COLORS[r.status] || 'var(--muted)';
       const actions = r.status === 'pending'
         ? `<div style="display:flex;gap:.35rem;">
-             <button onclick="fulfillRedemption(${r.id})" class="btn-ghost" style="font-size:.7rem;padding:.28rem .6rem;color:#4ade80;">Выдать</button>
+             <button onclick="fulfillRedemption(${r.id})" class="btn-ghost" style="font-size:.7rem;padding:.28rem .6rem;color:var(--ok);">Выдать</button>
              <button onclick="cancelRedemption(${r.id})" class="btn-danger" style="font-size:.7rem;padding:.28rem .6rem;">Отменить</button>
            </div>`
         : `<span style="font-size:.72rem;color:var(--muted);">${esc(r.resolved_by || '')}</span>`;
@@ -8211,7 +8220,7 @@ async function loadShopQueue(page) {
     const total = d.total || 0;
     const pages = Math.ceil(total / (d.per_page || 50));
     renderPagination('shop-queue-pagination', _shopQueuePage, pages, loadShopQueue);
-  } catch { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; }
+  } catch { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--danger);">Ошибка загрузки</td></tr>'; }
 }
 
 async function fulfillRedemption(id) {
@@ -8363,7 +8372,7 @@ async function loadBackupsDiskUsage() {
   try {
     const d = await fetch(`${API}/admin/backups/disk-usage`, { credentials: 'include', headers: authH() }).then(r => { if (!r.ok) { handleAuth(r); throw new Error(); } return r.json(); });
     const usedPct = d.disk_total ? Math.min(100, (d.disk_used / d.disk_total) * 100) : 0;
-    const barColor = usedPct >= 90 ? '#f87171' : usedPct >= 75 ? '#facc15' : '#4ade80';
+    const barColor = usedPct >= 90 ? 'var(--danger)' : usedPct >= 75 ? 'var(--warn)' : 'var(--ok)';
     el.style.display = '';
     el.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.5rem;">
@@ -8391,8 +8400,8 @@ async function loadBackups() {
       <td>${esc(b.filename)}</td>
       <td>${(b.size/1024).toFixed(1)} KB</td>
       <td>${fmtDateTime(b.created_at)}</td>
-      <td><a href="${API}/admin/backups/${encodeURIComponent(b.filename)}" style="font-size:.78rem;color:#93c5fd;text-decoration:underline;">⬇ Скачать</a></td>
-      <td>${canDelete ? `<button onclick="deleteBackup('${esc(b.filename)}')" class="btn-ghost" style="font-size:.78rem;color:#f87171;">🗑 Удалить</button>` : ''}</td>
+      <td><a href="${API}/admin/backups/${encodeURIComponent(b.filename)}" style="font-size:.78rem;color:var(--info);text-decoration:underline;">⬇ Скачать</a></td>
+      <td>${canDelete ? `<button onclick="deleteBackup('${esc(b.filename)}')" class="btn-danger" style="font-size:.78rem;">🗑 Удалить</button>` : ''}</td>
     </tr>`).join('');
 }
 function deleteBackup(filename) {
@@ -8426,12 +8435,13 @@ function adminToast(message, type = 'success') {
   const container = document.getElementById('admin-toast-container');
   if (!container) return;
   const isSuccess = type === 'success';
-  const borderColor = isSuccess ? 'rgba(0,160,35,0.5)' : 'rgba(200,0,30,0.5)';
-  const stripColor  = isSuccess ? '#4ade80' : '#f87171';
+  const borderColor = isSuccess ? 'var(--ok-border)' : 'var(--danger-border)';
+  const stripColor  = isSuccess ? 'var(--ok)' : 'var(--danger)';
+  const bgColor     = isSuccess ? 'var(--ok-soft)' : 'var(--danger-soft)';
   const icon        = isSuccess ? '✓' : '✕';
   const el = document.createElement('div');
-  el.style.cssText = `display:flex;align-items:center;gap:.6rem;background:rgba(8,0,16,0.97);border:1px solid ${borderColor};border-left:3px solid ${stripColor};color:#e2d8f0;padding:.6rem .9rem .6rem .7rem;border-radius:.55rem;font-size:.8rem;font-weight:500;box-shadow:0 4px 24px rgba(0,0,0,0.6);max-width:280px;opacity:0;transform:translateX(1.5rem);transition:opacity .22s,transform .22s cubic-bezier(.32,.72,0,1);pointer-events:none;`;
-  el.innerHTML = `<span style="width:20px;height:20px;border-radius:50%;background:${isSuccess?'rgba(0,100,20,0.4)':'rgba(120,0,15,0.4)'};border:1px solid ${stripColor};display:flex;align-items:center;justify-content:center;font-size:.68rem;color:${stripColor};font-weight:700;flex-shrink:0;">${icon}</span><span>${message}</span>`;
+  el.style.cssText = `display:flex;align-items:center;gap:.6rem;background:rgba(8,0,16,0.97);border:1px solid ${borderColor};border-left:3px solid ${stripColor};color:var(--text);padding:.6rem .9rem .6rem .7rem;border-radius:.55rem;font-size:.8rem;font-weight:500;box-shadow:0 4px 24px rgba(0,0,0,0.6);max-width:280px;opacity:0;transform:translateX(1.5rem);transition:opacity .22s,transform .22s cubic-bezier(.32,.72,0,1);pointer-events:none;`;
+  el.innerHTML = `<span style="width:20px;height:20px;border-radius:50%;background:${bgColor};border:1px solid ${stripColor};display:flex;align-items:center;justify-content:center;font-size:.68rem;color:${stripColor};font-weight:700;flex-shrink:0;">${icon}</span><span>${message}</span>`;
   container.appendChild(el);
   requestAnimationFrame(() => { el.style.opacity='1'; el.style.transform='translateX(0)'; });
   setTimeout(() => {
@@ -8476,7 +8486,7 @@ async function loadErrors(page = 1) {
   let data;
   try {
     data = await fetch(`${API}/admin/errors?${params}`, { credentials: 'include', headers: authH() }).then(r => r.json());
-  } catch { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#f87171;">Ошибка загрузки</td></tr>'; return; }
+  } catch { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);">Ошибка загрузки</td></tr>'; return; }
   document.getElementById('errors-total').textContent = `Всего: ${data.total}`;
   if (!data.items?.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Ошибок нет</td></tr>'; return; }
   tbody.innerHTML = data.items.map(e => `
@@ -8484,7 +8494,7 @@ async function loadErrors(page = 1) {
       <td style="white-space:nowrap;font-size:.75rem;">${fmtDateTime(e.created_at)}</td>
       <td><span style="font-size:.7rem;background:rgba(100,100,200,.2);padding:.1rem .35rem;border-radius:.25rem;">${esc(e.method)}</span></td>
       <td style="font-size:.78rem;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(e.path)}</td>
-      <td><span style="font-size:.75rem;color:${e.status_code>=500?'#fca5a5':'#fcd34d'};">${e.status_code}</span></td>
+      <td><span style="font-size:.75rem;color:${e.status_code>=500?'var(--danger)':'var(--warn)'};">${e.status_code}</span></td>
       <td style="font-size:.72rem;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(e.error||'')}</td>
     </tr>`).join('');
   const pages = Math.ceil(data.total / 50);
