@@ -39,6 +39,13 @@
       /* Border-radius scale — was 9 distinct ad hoc values for equivalent-weight
          components; new/updated components should snap to one of these three. */
       --r-sm: .4rem; --r-md: .55rem; --r-lg: .75rem;
+      /* Elevated-surface background — act-btn tooltip, ban/templates/userqv/
+         broadcast modal cards, preview-modal, quicknav and the Quill picker/
+         tooltip each independently declared a near-black rgba() within a few
+         RGB units of this same value with no shared source. Picked close to
+         the middle of that cluster; new elevated overlay surfaces should use
+         this instead of inventing another one-off near-black. */
+      --surface-elevated: rgba(12,2,22,0.97);
     }
     * { box-sizing: border-box; }
     body {
@@ -284,7 +291,7 @@
     .ql-toolbar .ql-picker-label { color: var(--muted) !important; }
     .ql-toolbar .ql-picker-label:hover, .ql-toolbar .ql-picker-label.ql-active { color: var(--text) !important; }
     .ql-toolbar .ql-picker-options {
-      background: rgba(12,2,22,0.98) !important;
+      background: var(--surface-elevated) !important;
       border: 1px solid rgba(150,0,28,0.4) !important;
       border-radius: .5rem; box-shadow: 0 8px 24px rgba(0,0,0,0.6);
     }
@@ -306,7 +313,7 @@
     .ql-editor iframe.ql-video { width: 100%; aspect-ratio: 16/9; height: auto; border-radius: .5rem; margin: .5rem 0; border: none; }
     .ql-editor ul, .ql-editor ol { padding-left: 1.5rem; }
     .ql-tooltip {
-      background: rgba(12,2,22,0.98) !important; border: 1px solid rgba(150,0,28,0.4) !important;
+      background: var(--surface-elevated) !important; border: 1px solid rgba(150,0,28,0.4) !important;
       color: var(--text) !important; box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important;
       border-radius: .5rem !important;
     }
@@ -356,6 +363,14 @@
        three call sites. Default max-width matches the two editor modals; override
        inline where a modal needs a different one (settings-history uses 680px). */
     .modal-box { max-width:560px; margin:3rem auto; background:var(--card); border:1px solid var(--border); border-radius:1rem; padding:2rem; box-shadow:0 16px 64px rgba(0,0,0,0.7); }
+    /* Round color-swatch buttons (announcement text color + connect/disconnect
+       message templates, ~15 buttons total) — each carries its own inline
+       background-color (that's what shows the actual swatch color, kept as-is),
+       but had zero hover/focus styling. This class layers the interactive
+       states on top without touching that inline background. */
+    .color-swatch-btn { transition: transform .15s, box-shadow .15s, border-color .15s; }
+    .color-swatch-btn:hover { transform: scale(1.18); box-shadow: 0 0 8px rgba(0,0,0,.5); border-color: rgba(255,255,255,.7) !important; }
+    .color-swatch-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
     .s-field { margin-bottom:1.1rem; }
     .s-field:last-child { margin-bottom:0; }
     .s-field-row { display:flex; gap:.5rem; margin-top:.3rem; }
@@ -420,7 +435,7 @@
     .act-btn::before {
       content:attr(data-tip); position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%);
       white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .15s;
-      background:rgba(6,0,12,.97); border:1px solid rgba(150,0,28,.4);
+      background:var(--surface-elevated); border:1px solid rgba(150,0,28,.4);
       color:#c8c5d4; font-size:.6rem; font-weight:500; letter-spacing:.03em;
       padding:.2rem .5rem; border-radius:.3rem; z-index:200;
       box-shadow:0 4px 14px rgba(0,0,0,.55); font-family:'Inter',sans-serif;
@@ -719,7 +734,7 @@
 
 <!-- Quick nav (Ctrl+K) -->
 <div id="quicknav-overlay" role="dialog" aria-modal="true" aria-label="Быстрый переход по разделам" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.6);align-items:flex-start;justify-content:center;padding-top:10vh;" onclick="if(event.target===this)closeQuickNav()">
-  <div style="background:rgba(14,3,24,.98);border:1px solid rgba(150,0,28,.4);border-radius:.75rem;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;">
+  <div style="background:var(--surface-elevated);border:1px solid rgba(150,0,28,.4);border-radius:.75rem;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;">
     <input id="quicknav-input" type="text" placeholder="Перейти в раздел…" aria-label="Поиск раздела" oninput="_quickNavFilter()" onkeydown="_quickNavKeydown(event)" style="width:100%;box-sizing:border-box;background:none;border:none;border-bottom:1px solid rgba(150,0,28,.3);padding:.9rem 1.1rem;color:var(--text);font-size:.9rem;outline:none;">
     <div id="quicknav-results" style="max-height:50vh;overflow-y:auto;"></div>
   </div>
@@ -921,7 +936,7 @@
 
       <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:1rem;align-items:stretch;">
         <div class="glass-card rounded-xl p-4">
-          <h2 class="gothic mb-4" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Последние комментарии</h2>
+          <h2 class="gothic mb-3" style="font-size:.72rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Последние комментарии</h2>
           <div id="dash-recent-comments"></div>
         </div>
         <!-- Mini "you just did X" action log — session-local, client-side only (see
@@ -1981,10 +1996,10 @@
             <div class="s-field-row">
               <input id="setting-plugin_api_key" type="password" class="dark-input" placeholder="общий секрет с плагином">
               <button type="button" class="s-save-btn" title="Показать/скрыть" onclick="toggleApiKeyVisibility(this)" style="flex:0 0 auto;width:2.1rem;padding:0;display:flex;align-items:center;justify-content:center;">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-eye"></use></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-eye"></use></svg>
               </button>
               <button type="button" class="s-save-btn" title="Скопировать" onclick="copyApiKey(this)" style="flex:0 0 auto;width:2.1rem;padding:0;display:flex;align-items:center;justify-content:center;">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 9h-9a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2z"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 9h-9a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2z"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               </button>
               <button class="s-save-btn" onclick="saveSetting('plugin_api_key')">Сохранить</button>
             </div>
@@ -2099,11 +2114,11 @@
           <div class="s-field">
             <label>Текст объявления</label>
             <div style="display:flex;gap:.4rem;align-items:center;margin-bottom:.4rem;">
-              <button type="button" onclick="wrapAnnSelectionWithColor('#FFFF00')" title="Жёлтый" style="width:20px;height:20px;border-radius:50%;background:#FFFF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
-              <button type="button" onclick="wrapAnnSelectionWithColor('#00FF00')" title="Зелёный" style="width:20px;height:20px;border-radius:50%;background:#00FF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
-              <button type="button" onclick="wrapAnnSelectionWithColor('#FF3355')" title="Красный" style="width:20px;height:20px;border-radius:50%;background:#FF3355;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
-              <button type="button" onclick="wrapAnnSelectionWithColor('#60A5FA')" title="Синий" style="width:20px;height:20px;border-radius:50%;background:#60A5FA;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
-              <button type="button" onclick="wrapAnnSelectionWithColor('#FFFFFF')" title="Белый" style="width:20px;height:20px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapAnnSelectionWithColor('#FFFF00')" title="Жёлтый" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#FFFF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapAnnSelectionWithColor('#00FF00')" title="Зелёный" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#00FF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapAnnSelectionWithColor('#FF3355')" title="Красный" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#FF3355;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapAnnSelectionWithColor('#60A5FA')" title="Синий" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#60A5FA;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapAnnSelectionWithColor('#FFFFFF')" title="Белый" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
               <span style="font-size:.68rem;color:var(--muted);">— выделите текст и нажмите на цвет</span>
             </div>
             <textarea id="ann-text" class="dark-input" rows="2" maxlength="200" oninput="updateAnnPreview()" placeholder="На сервере разрешены грабежи сундуков… важно"></textarea>
@@ -2163,9 +2178,7 @@
             <thead><tr>
               <th>Текст</th><th>Повтор</th><th>Вкл.</th><th>Истекает</th><th>Отправлено</th><th>Действия</th>
             </tr></thead>
-            <tbody id="announcements-tbody">
-              <tr><td colspan="6" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
-            </tbody>
+            <tbody id="announcements-tbody"></tbody>
           </table>
         </div>
       </div>
@@ -2190,11 +2203,11 @@
             <label>Сообщение о подключении</label>
             <div id="tmpl-connect-preview" style="background:#0a0a0f;border:1px solid rgba(255,255,255,.08);border-radius:.5rem;padding:.65rem .85rem;font-family:'Consolas','Courier New',monospace;font-size:.82rem;color:#d4d4d8;min-height:1.4em;white-space:pre-wrap;word-break:break-word;line-height:1.5;margin-bottom:.5rem;"><span style="color:var(--muted);">Предпросмотр появится здесь…</span></div>
             <div style="display:flex;gap:.4rem;align-items:center;margin-bottom:.4rem;">
-              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#FFFF00')" title="Жёлтый" style="width:20px;height:20px;border-radius:50%;background:#FFFF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
-              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#00FF00')" title="Зелёный" style="width:20px;height:20px;border-radius:50%;background:#00FF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
-              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#FF3355')" title="Красный" style="width:20px;height:20px;border-radius:50%;background:#FF3355;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
-              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#60A5FA')" title="Синий" style="width:20px;height:20px;border-radius:50%;background:#60A5FA;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
-              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#FFFFFF')" title="Белый" style="width:20px;height:20px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#FFFF00')" title="Жёлтый" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#FFFF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#00FF00')" title="Зелёный" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#00FF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#FF3355')" title="Красный" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#FF3355;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#60A5FA')" title="Синий" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#60A5FA;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('connect','#FFFFFF')" title="Белый" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
               <span style="font-size:.68rem;color:var(--muted);">— выделите текст и нажмите на цвет</span>
             </div>
             <textarea id="tmpl-connect" class="dark-input" rows="2" maxlength="200" oninput="updateTmplPreview('connect')" placeholder="{name} присоединился к игре"></textarea>
@@ -2211,11 +2224,11 @@
             <label>Сообщение об отключении</label>
             <div id="tmpl-disconnect-preview" style="background:#0a0a0f;border:1px solid rgba(255,255,255,.08);border-radius:.5rem;padding:.65rem .85rem;font-family:'Consolas','Courier New',monospace;font-size:.82rem;color:#d4d4d8;min-height:1.4em;white-space:pre-wrap;word-break:break-word;line-height:1.5;margin-bottom:.5rem;"><span style="color:var(--muted);">Предпросмотр появится здесь…</span></div>
             <div style="display:flex;gap:.4rem;align-items:center;margin-bottom:.4rem;">
-              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#FFFF00')" title="Жёлтый" style="width:20px;height:20px;border-radius:50%;background:#FFFF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
-              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#00FF00')" title="Зелёный" style="width:20px;height:20px;border-radius:50%;background:#00FF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
-              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#FF3355')" title="Красный" style="width:20px;height:20px;border-radius:50%;background:#FF3355;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
-              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#60A5FA')" title="Синий" style="width:20px;height:20px;border-radius:50%;background:#60A5FA;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
-              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#FFFFFF')" title="Белый" style="width:20px;height:20px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#FFFF00')" title="Жёлтый" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#FFFF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#00FF00')" title="Зелёный" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#00FF00;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#FF3355')" title="Красный" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#FF3355;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#60A5FA')" title="Синий" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#60A5FA;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
+              <button type="button" onclick="wrapTmplSelectionWithColor('disconnect','#FFFFFF')" title="Белый" class="color-swatch-btn" style="width:20px;height:20px;border-radius:50%;background:#FFFFFF;border:1px solid rgba(255,255,255,.25);cursor:pointer;padding:0;"></button>
               <span style="font-size:.68rem;color:var(--muted);">— выделите текст и нажмите на цвет</span>
             </div>
             <textarea id="tmpl-disconnect" class="dark-input" rows="2" maxlength="200" oninput="updateTmplPreview('disconnect')" placeholder="{name} покинул сервер"></textarea>
@@ -2284,9 +2297,7 @@
             <thead><tr>
               <th>Игрок</th><th>SteamID</th><th>Привязан</th><th>Действия</th>
             </tr></thead>
-            <tbody id="linked-accounts-tbody">
-              <tr><td colspan="4" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>
-            </tbody>
+            <tbody id="linked-accounts-tbody"></tbody>
           </table>
         </div>
       </div>
@@ -2514,8 +2525,12 @@
       </div>
       <div id="reports-bulk-panel" class="bulk-action-panel">
         <span id="reports-bulk-count" style="font-size:.82rem;color:var(--text);"></span>
-        <button onclick="bulkReviewReports('reviewed')" style="font-size:.78rem;background:rgba(0,150,100,.2);border:1px solid rgba(0,200,130,.3);border-radius:.4rem;padding:.4rem .8rem;color:#6ee7b7;cursor:pointer;">✓ Отметить рассмотренными</button>
-        <button onclick="bulkReviewReports('dismissed')" style="font-size:.78rem;background:rgba(100,100,100,.15);border:1px solid rgba(150,150,150,.2);border-radius:.4rem;padding:.4rem .8rem;color:var(--muted);cursor:pointer;">✗ Отклонить</button>
+        <!-- Colors routed through the shared semantic tokens, same approach as
+             the Users bulk-panel above (--ok-soft/--ok-border/--ok); the neutral
+             "dismiss" action matches the existing .badge-draft neutral-gray pair
+             since there's no dedicated neutral semantic token yet. -->
+        <button onclick="bulkReviewReports('reviewed')" style="font-size:.78rem;background:var(--ok-soft);border:1px solid var(--ok-border);border-radius:.4rem;padding:.4rem .8rem;color:var(--ok);cursor:pointer;">✓ Отметить рассмотренными</button>
+        <button onclick="bulkReviewReports('dismissed')" style="font-size:.78rem;background:rgba(60,60,60,.3);border:1px solid rgba(100,100,100,.4);border-radius:.4rem;padding:.4rem .8rem;color:var(--muted);cursor:pointer;">✗ Отклонить</button>
         <button onclick="clearReportsBulk()" class="btn-ghost" style="font-size:.78rem;">Отменить выбор</button>
       </div>
       <div class="glass-card rounded-xl overflow-hidden">
@@ -2541,7 +2556,7 @@
         <p style="padding:.6rem 1rem 0;font-size:.72rem;color:var(--muted);">Новый комментарий, содержащий активное ключевое слово (без учёта регистра), не блокируется — вместо этого на него автоматически создаётся жалоба в очереди выше.</p>
         <table>
           <thead><tr><th>Ключевое слово</th><th>Активно</th><th>Добавил</th><th>Дата</th><th></th></tr></thead>
-          <tbody id="auto-flag-rules-body"><tr><td colspan="5" style="text-align:center;color:var(--muted);">Загрузка…</td></tr></tbody>
+          <tbody id="auto-flag-rules-body"></tbody>
         </table>
       </div>
     </div>
@@ -5183,7 +5198,7 @@ function showBanModal(username, onBan) {
     modal.id = 'ban-modal';
     modal.innerHTML = `
       <div style="position:absolute;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(5px);" id="ban-modal-backdrop"></div>
-      <div style="position:relative;background:rgba(14,5,22,.97);border:1px solid rgba(180,0,35,.4);border-radius:1rem;padding:2rem;max-width:400px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,.7),0 0 32px rgba(180,0,35,.15);text-align:center;">
+      <div style="position:relative;background:var(--surface-elevated);border:1px solid rgba(180,0,35,.4);border-radius:1rem;padding:2rem;max-width:400px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,.7),0 0 32px rgba(180,0,35,.15);text-align:center;">
         <div style="font-size:1.8rem;margin-bottom:.6rem;">⛔</div>
         <h3 style="font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;margin-bottom:.4rem;" id="ban-modal-title">Забанить игрока</h3>
         <p style="font-size:.8rem;color:var(--muted);margin-bottom:1rem;" id="ban-modal-sub"></p>
@@ -7278,7 +7293,7 @@ async function openTemplates() {
   modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;';
   modal.innerHTML = `
     <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(5px);" onclick="closeTemplates()"></div>
-    <div style="position:relative;background:rgba(14,5,22,.97);border:1px solid rgba(180,0,35,.4);border-radius:1rem;padding:1.5rem;max-width:560px;width:100%;box-shadow:0 8px 48px rgba(0,0,0,.7);">
+    <div style="position:relative;background:var(--surface-elevated);border:1px solid rgba(180,0,35,.4);border-radius:1rem;padding:1.5rem;max-width:560px;width:100%;box-shadow:0 8px 48px rgba(0,0,0,.7);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
         <h3 style="font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;">Шаблоны новостей</h3>
         <button onclick="closeTemplates()" class="modal-close" aria-label="Закрыть">✕</button>
@@ -7709,7 +7724,7 @@ async function reviewReport(id, status) {
 async function loadAutoFlagRules() {
   const tbody = document.getElementById('auto-flag-rules-body');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Загрузка…</td></tr>';
+  tableShowSkeleton('auto-flag-rules-body', 5);
   try {
     const rules = await fetch(`${API}/admin/auto-flag-rules`, { credentials: 'include', headers: authH() }).then(r => r.json());
     if (!rules.length) { tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);">Правил пока нет</td></tr>'; return; }
@@ -8550,7 +8565,7 @@ async function loadErrors(page = 1) {
 <!-- Preview modal -->
 <div id="preview-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:flex-start;justify-content:center;overflow-y:auto;padding:2rem 1rem;">
   <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(5px);" onclick="closePreview()"></div>
-  <div style="position:relative;background:rgba(10,2,20,.97);border:1px solid rgba(180,0,35,.35);border-radius:1rem;max-width:760px;width:100%;box-shadow:0 8px 48px rgba(0,0,0,.8);margin:auto;">
+  <div style="position:relative;background:var(--surface-elevated);border:1px solid rgba(180,0,35,.35);border-radius:1rem;max-width:760px;width:100%;box-shadow:0 8px 48px rgba(0,0,0,.8);margin:auto;">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid rgba(150,0,28,.2);">
       <span style="font-family:'Cinzel',serif;font-size:.75rem;letter-spacing:.12em;color:var(--gold);text-transform:uppercase;">Превью новости</span>
       <button onclick="closePreview()" class="modal-close" aria-label="Закрыть">✕</button>
@@ -8567,7 +8582,7 @@ async function loadErrors(page = 1) {
 <!-- User quick-view modal -->
 <div id="userqv-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;">
   <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(5px);" onclick="closeUserQv()"></div>
-  <div style="position:relative;background:rgba(14,5,22,0.97);border:1px solid rgba(180,0,35,0.4);border-radius:1rem;padding:1.75rem;max-width:400px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.7),0 0 32px rgba(180,0,35,0.15);">
+  <div style="position:relative;background:var(--surface-elevated);border:1px solid rgba(180,0,35,0.4);border-radius:1rem;padding:1.75rem;max-width:400px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.7),0 0 32px rgba(180,0,35,0.15);">
     <button onclick="closeUserQv()" aria-label="Закрыть" class="modal-close" style="position:absolute;top:.85rem;right:.85rem;">✕</button>
     <div style="display:flex;align-items:center;gap:.85rem;margin-bottom:1.1rem;">
       <div id="userqv-avatar"></div>
@@ -8610,7 +8625,7 @@ async function loadErrors(page = 1) {
 <!-- Broadcast modal -->
 <div id="broadcast-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;">
   <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(5px);" onclick="closeBroadcastModal()"></div>
-  <div style="position:relative;background:rgba(14,5,22,0.97);border:1px solid rgba(180,0,35,0.4);border-radius:1rem;padding:1.75rem;max-width:420px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.7),0 0 32px rgba(180,0,35,0.15);">
+  <div style="position:relative;background:var(--surface-elevated);border:1px solid rgba(180,0,35,0.4);border-radius:1rem;padding:1.75rem;max-width:420px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.7),0 0 32px rgba(180,0,35,0.15);">
     <button onclick="closeBroadcastModal()" aria-label="Закрыть" class="modal-close" style="position:absolute;top:.85rem;right:.85rem;">✕</button>
     <h3 style="font-family:'Cinzel',serif;font-size:.95rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;margin-bottom:1.1rem;">📢 Массовая рассылка</h3>
     <div class="s-field">
