@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from typing import Optional
-from fastapi import Depends, HTTPException, Request, Response
+from fastapi import Depends, HTTPException, Request, Response, UploadFile
 from PIL import Image
 from pywebpush import webpush, WebPushException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -165,6 +165,61 @@ def optimize_image_bytes(content: bytes, suffix: str) -> bytes:
     # Re-encoding a tiny/already-optimal source (e.g. a small PNG icon) can come out
     # slightly larger than the original — only use the result if it actually helped.
     return optimized if len(optimized) < len(content) else content
+
+
+async def validate_and_read_image_upload(
+    file: UploadFile,
+    *,
+    allowed_ext: set[str],
+    max_bytes: int,
+    size_error_detail: str,
+    type_error_detail: str,
+    allowed_mime: Optional[set[str]] = None,
+    default_ext: Optional[str] = None,
+    ext_error_detail: Optional[str] = None,
+) -> tuple[bytes, str]:
+    """Shared content-type/extension/size validation + optimize_image_bytes() step for
+    the three raster-upload endpoints that used to hand-roll this identically: admin
+    generic upload (backend/routers/admin_system.py upload_file), profile cover, and
+    profile badge icon (backend/routers/profile.py). max_bytes is intentionally a
+    per-caller parameter, not hard-coded here — the three endpoints have genuinely
+    different limits (10MB/10MB/2MB) and that difference is meant to stay.
+
+    Two switches preserve each endpoint's pre-refactor strictness rather than silently
+    unifying it:
+      - allowed_mime: admin upload checks Content-Type against an explicit whitelist
+        (only when the client actually sent one at all — a missing header there isn't
+        an error). Left None (the default), the check instead requires a Content-Type
+        that starts with "image/" — the looser rule the two profile endpoints used.
+      - default_ext: profile cover/badge silently fall back to this extension when the
+        filename's own suffix isn't in allowed_ext, rather than rejecting the upload.
+        Left None (the default — admin upload's behavior), an unrecognized extension
+        is a 400 with ext_error_detail (admin upload's own, distinct-from-MIME message)
+        instead.
+
+    Returns (optimized_bytes, resolved_extension); callers still own building the
+    destination filename/path and any old-file cleanup, since those differ per
+    endpoint (no shared "current file" concept for the admin upload).
+    """
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in allowed_ext:
+        if default_ext is None:
+            raise HTTPException(status_code=400, detail=ext_error_detail or type_error_detail)
+        ext = default_ext
+
+    if allowed_mime is not None:
+        if file.content_type and file.content_type.split(";")[0].strip() not in allowed_mime:
+            raise HTTPException(status_code=400, detail=type_error_detail)
+    else:
+        if not file.content_type or not file.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail=type_error_detail)
+
+    content = await file.read()
+    if len(content) > max_bytes:
+        raise HTTPException(status_code=400, detail=size_error_detail)
+    content = optimize_image_bytes(content, ext)
+    return content, ext
+
 
 _totp_pending: dict[int, str] = {}
 
@@ -423,8 +478,19 @@ async def _award_points(db: AsyncSession, user: User, delta: int, reason: str, d
     user.points_balance += delta
     db.add(PointsTransaction(
         user_id=user.id, delta=delta, balance_after=user.points_balance,
-        reason=reason, detail=(detail or "")[:256], created_at=datetime.utcnow(),
+        reason=reason, detail=(detail or "")[:256], created_at=datetime.now(timezone.utc),
     ))
+
+
+def _to_int(v, default):
+    """Best-effort int parse for a Setting value, falling back to `default` on anything
+    that isn't a valid int (missing row, empty string, non-numeric admin input, etc).
+    Shared by _get_points_config/_get_nickname_change_config below — both read small
+    numeric-with-fallback Settings the same way."""
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return default
 
 
 async def _get_points_config(db: AsyncSession) -> dict:
@@ -435,12 +501,6 @@ async def _get_points_config(db: AsyncSession) -> dict:
         ["points_per_minute_playtime", "points_streak_bonus", "points_streak_min_days"]
     )))
     vals = {s.key: s.value for s in res.scalars().all()}
-
-    def _to_int(v, default):
-        try:
-            return int(v)
-        except (TypeError, ValueError):
-            return default
 
     return {
         "per_minute": _to_int(vals.get("points_per_minute_playtime"), 1),
@@ -458,12 +518,6 @@ async def _get_nickname_change_config(db: AsyncSession) -> dict:
         ["nickname_change_cost", "nickname_change_cooldown_days"]
     )))
     vals = {s.key: s.value for s in res.scalars().all()}
-
-    def _to_int(v, default):
-        try:
-            return int(v)
-        except (TypeError, ValueError):
-            return default
 
     return {
         "cost": _to_int(vals.get("nickname_change_cost"), 100),
@@ -890,7 +944,7 @@ async def _site_timezone(db: AsyncSession) -> ZoneInfo:
 async def _schedule_restart(db: AsyncSession, server_num: int, minutes: int) -> datetime:
     if minutes < 1:
         raise HTTPException(status_code=400, detail="invalid_minutes")
-    restart_at = datetime.utcnow() + timedelta(minutes=minutes)
+    restart_at = datetime.now(timezone.utc) + timedelta(minutes=minutes)
     result = await db.execute(select(ScheduledRestart).where(ScheduledRestart.server_num == server_num))
     row = result.scalar_one_or_none()
     if row is None:
@@ -939,7 +993,7 @@ def _force_unban(ban: Ban) -> None:
     poll consumes this row (within ~60s). Shared by POST /api/admin/bans/{id}/unban and
     the ban-appeal auto-lift in POST /api/admin/appeals/{id}/resolve (approve=true), so
     both "Разбанить" paths behave identically."""
-    ban.unban_at = datetime.utcnow()
+    ban.unban_at = datetime.now(timezone.utc)
 
 
 # ─── Clans (game-synced, read-only) ───────────────────────────────────────────

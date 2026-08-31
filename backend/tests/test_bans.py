@@ -119,7 +119,7 @@ async def test_plugin_unban_marks_active_ban_resolved(client, db_session):
     await _set_plugin_key(db_session)
     db_session.add(Ban(
         server_num=1, steam_id="steam-unban-1", character_name="C1",
-        admin_name="Admin1", reason="r1", banned_at=datetime.utcnow(), unban_at=None,
+        admin_name="Admin1", reason="r1", banned_at=datetime.now(timezone.utc), unban_at=None,
     ))
     await db_session.commit()
 
@@ -145,7 +145,7 @@ async def test_plugin_unban_clears_ban_issued_on_different_server(client, db_ses
     await _set_plugin_key(db_session)
     db_session.add(Ban(
         server_num=1, steam_id="steam-unban-cross", character_name="C1",
-        admin_name="Admin1", reason="r1", banned_at=datetime.utcnow(), unban_at=None,
+        admin_name="Admin1", reason="r1", banned_at=datetime.now(timezone.utc), unban_at=None,
     ))
     await db_session.commit()
 
@@ -163,7 +163,7 @@ async def test_plugin_unban_clears_ban_issued_on_different_server(client, db_ses
 
 async def test_due_unbans_returns_only_expired_bans_and_consumes_them(client, db_session):
     await _set_plugin_key(db_session)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add_all([
         Ban(server_num=1, steam_id="expired-1", character_name="Expired One",
             admin_name="A", reason="r", banned_at=now - timedelta(hours=2), unban_at=now - timedelta(minutes=5)),
@@ -194,7 +194,7 @@ async def test_due_unbans_empty_array_never_errors(client, db_session):
 
 async def test_due_unbans_scoped_per_server(client, db_session):
     await _set_plugin_key(db_session)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add_all([
         Ban(server_num=1, steam_id="s1-expired", character_name="S1",
             admin_name="A", reason="r", banned_at=now - timedelta(hours=2), unban_at=now - timedelta(minutes=1)),
@@ -223,10 +223,10 @@ async def test_ban_status_false_for_unbanned_steam_id(client, db_session):
 
 async def test_ban_status_true_with_full_details_for_active_ban(client, db_session):
     await _set_plugin_key(db_session)
-    future = datetime.utcnow() + timedelta(days=1)
+    future = datetime.now(timezone.utc) + timedelta(days=1)
     db_session.add(Ban(
         server_num=1, steam_id="status-active-1", character_name="Target",
-        admin_name="Overseer", reason="cheating", banned_at=datetime.utcnow(), unban_at=future,
+        admin_name="Overseer", reason="cheating", banned_at=datetime.now(timezone.utc), unban_at=future,
     ))
     await db_session.commit()
 
@@ -246,8 +246,8 @@ async def test_ban_status_false_for_already_unbanned(client, db_session):
     await _set_plugin_key(db_session)
     db_session.add(Ban(
         server_num=1, steam_id="status-lifted-1", character_name="Target",
-        admin_name="A", reason="r", banned_at=datetime.utcnow(), unban_at=None,
-        unbanned_at=datetime.utcnow(),
+        admin_name="A", reason="r", banned_at=datetime.now(timezone.utc), unban_at=None,
+        unbanned_at=datetime.now(timezone.utc),
     ))
     await db_session.commit()
 
@@ -266,7 +266,7 @@ async def test_ban_status_cross_server(client, db_session):
     await _set_plugin_key(db_session)
     db_session.add(Ban(
         server_num=2, steam_id="status-other-server", character_name="Target",
-        admin_name="A", reason="r", banned_at=datetime.utcnow(), unban_at=None,
+        admin_name="A", reason="r", banned_at=datetime.now(timezone.utc), unban_at=None,
     ))
     await db_session.commit()
 
@@ -284,7 +284,7 @@ async def test_ban_lookup_found_case_insensitive(client, db_session):
     await _set_plugin_key(db_session)
     db_session.add(Ban(
         server_num=1, steam_id="lookup-steam-1", character_name="WhiteLegioN",
-        admin_name="A", reason="r", banned_at=datetime.utcnow(), unban_at=None,
+        admin_name="A", reason="r", banned_at=datetime.now(timezone.utc), unban_at=None,
     ))
     await db_session.commit()
 
@@ -308,8 +308,8 @@ async def test_ban_lookup_ignores_already_unbanned(client, db_session):
     await _set_plugin_key(db_session)
     db_session.add(Ban(
         server_num=1, steam_id="lookup-lifted", character_name="LiftedPlayer",
-        admin_name="A", reason="r", banned_at=datetime.utcnow(), unban_at=None,
-        unbanned_at=datetime.utcnow(),
+        admin_name="A", reason="r", banned_at=datetime.now(timezone.utc), unban_at=None,
+        unbanned_at=datetime.now(timezone.utc),
     ))
     await db_session.commit()
 
@@ -322,7 +322,7 @@ async def test_ban_lookup_ignores_already_unbanned(client, db_session):
 
 async def test_ban_lookup_multiple_matches_returns_most_recent(client, db_session):
     await _set_plugin_key(db_session)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add_all([
         Ban(server_num=1, steam_id="lookup-older", character_name="DupeName",
             admin_name="A", reason="r", banned_at=now - timedelta(days=1), unban_at=None),
@@ -352,7 +352,7 @@ async def test_admin_bans_requires_admin_auth(client, db_session):
 
 
 async def test_admin_bans_excludes_already_resolved(client, db_session):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add_all([
         Ban(server_num=1, steam_id="active-1", character_name="Active",
             admin_name="A", reason="r", banned_at=now, unban_at=None),
@@ -371,7 +371,7 @@ async def test_admin_bans_excludes_already_resolved(client, db_session):
 
 
 async def test_admin_bans_status_resolved_returns_only_lifted(client, db_session):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add_all([
         Ban(server_num=1, steam_id="active-2", character_name="Active",
             admin_name="A", reason="r", banned_at=now, unban_at=None),
@@ -390,7 +390,7 @@ async def test_admin_bans_status_resolved_returns_only_lifted(client, db_session
 
 
 async def test_admin_bans_status_all_returns_both(client, db_session):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add_all([
         Ban(server_num=1, steam_id="active-3", character_name="Active",
             admin_name="A", reason="r", banned_at=now, unban_at=None),
@@ -409,7 +409,7 @@ async def test_admin_bans_status_all_returns_both(client, db_session):
 async def test_admin_bans_active_includes_null_unbanned_at_field(client, db_session):
     db_session.add(Ban(
         server_num=1, steam_id="active-4", character_name="Active",
-        admin_name="A", reason="r", banned_at=datetime.utcnow(), unban_at=None,
+        admin_name="A", reason="r", banned_at=datetime.now(timezone.utc), unban_at=None,
     ))
     await db_session.commit()
 
@@ -419,7 +419,7 @@ async def test_admin_bans_active_includes_null_unbanned_at_field(client, db_sess
 
 
 async def test_admin_bans_pagination_pages_dont_overlap_and_total_is_correct(client, db_session):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add_all([
         Ban(server_num=1, steam_id=f"page-steam-{i}", character_name=f"P{i}",
             admin_name="A", reason="r", banned_at=now - timedelta(minutes=i), unban_at=None)
@@ -457,8 +457,8 @@ async def test_admin_unban_sets_unban_at_to_now(client, db_session):
     admin = await _make_admin(db_session)
     ban = Ban(
         server_num=1, steam_id="admin-unban-1", character_name="Target",
-        admin_name="A", reason="r", banned_at=datetime.utcnow(),
-        unban_at=datetime.utcnow() + timedelta(days=3),
+        admin_name="A", reason="r", banned_at=datetime.now(timezone.utc),
+        unban_at=datetime.now(timezone.utc) + timedelta(days=3),
     )
     db_session.add(ban)
     await db_session.commit()
@@ -483,7 +483,7 @@ async def test_admin_unban_404_for_nonexistent_ban(client, db_session):
 
 async def test_admin_unban_404_for_already_resolved_ban(client, db_session):
     admin = await _make_admin(db_session)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     ban = Ban(
         server_num=1, steam_id="already-resolved", character_name="Target",
         admin_name="A", reason="r", banned_at=now, unban_at=None, unbanned_at=now,
@@ -503,8 +503,8 @@ async def test_admin_unban_makes_it_due_on_next_plugin_poll(client, db_session):
     admin = await _make_admin(db_session)
     ban = Ban(
         server_num=1, steam_id="force-unban-1", character_name="ForceUnbanned",
-        admin_name="A", reason="r", banned_at=datetime.utcnow(),
-        unban_at=datetime.utcnow() + timedelta(days=10),
+        admin_name="A", reason="r", banned_at=datetime.now(timezone.utc),
+        unban_at=datetime.now(timezone.utc) + timedelta(days=10),
     )
     db_session.add(ban)
     await db_session.commit()

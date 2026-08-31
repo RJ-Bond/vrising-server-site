@@ -168,7 +168,7 @@ async def test_audit_log_search_by_query(client, db_session):
 
 async def test_audit_log_date_range_filter(client, db_session):
     admin = await _make_user(db_session, "AuditAdmin4", role="admin")
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add(AuditLog(admin_username=admin.username, action="old.action", detail="old", created_at=now - timedelta(days=10)))
     db_session.add(AuditLog(admin_username=admin.username, action="recent.action", detail="recent", created_at=now - timedelta(hours=1)))
     await db_session.commit()
@@ -362,7 +362,7 @@ async def test_export_audit_log_returns_csv(client, db_session):
 
 async def test_export_audit_log_respects_action_and_date_filters(client, db_session):
     admin = await _make_user(db_session, "ExportAdmin3", role="admin")
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     db_session.add(AuditLog(admin_username=admin.username, action="event.create", detail="in range", created_at=now - timedelta(hours=1)))
     db_session.add(AuditLog(admin_username=admin.username, action="event.create", detail="too old", created_at=now - timedelta(days=30)))
     db_session.add(AuditLog(admin_username=admin.username, action="wipe.create", detail="wrong action", created_at=now - timedelta(hours=1)))

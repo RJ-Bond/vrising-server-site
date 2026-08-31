@@ -3,7 +3,7 @@
 endpoint's own docstring for what each of the three checks (large_single_sessions,
 impossible_daily_rate, burst_activity) means and why "same Steam ID / IP across many
 accounts" isn't attempted (schema doesn't support it)."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -61,7 +61,7 @@ async def test_anomalies_flags_large_single_session(client, db_session):
     720-minute _ANOMALY_LARGE_SESSION_MINUTES threshold."""
     admin = await _make_user(db_session, "AnomAdmin2", role="admin")
     player = await _make_user(db_session, "HugeSessionPlayer")
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     await _make_tx(db_session, player, "playtime", now - timedelta(hours=1), delta=800)
 
     r = await client.get("/api/admin/points/anomalies", headers=_bearer(admin))
@@ -82,7 +82,7 @@ async def test_anomalies_flags_impossible_daily_rate_without_any_single_outlier(
     miss."""
     admin = await _make_user(db_session, "AnomAdmin3", role="admin")
     player = await _make_user(db_session, "SplitSessionPlayer")
-    day = datetime.utcnow().replace(hour=10, minute=0, second=0, microsecond=0)
+    day = datetime.now(timezone.utc).replace(hour=10, minute=0, second=0, microsecond=0)
     await _make_tx(db_session, player, "playtime", day, delta=500)
     await _make_tx(db_session, player, "playtime", day + timedelta(hours=2), delta=500)
     await _make_tx(db_session, player, "playtime", day + timedelta(hours=4), delta=500)
@@ -104,7 +104,7 @@ async def test_anomalies_flags_burst_activity(client, db_session):
     per-session/daily point totals (each delta here is tiny)."""
     admin = await _make_user(db_session, "AnomAdmin4", role="admin")
     player = await _make_user(db_session, "ReconnectSpamPlayer")
-    hour = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+    hour = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
     for i in range(8):
         await _make_tx(db_session, player, "playtime", hour + timedelta(minutes=i), delta=1)
 
@@ -123,7 +123,7 @@ async def test_anomalies_respects_days_window(client, db_session):
     """A large single-session award outside the lookback window must not be flagged."""
     admin = await _make_user(db_session, "AnomAdmin5", role="admin")
     player = await _make_user(db_session, "OldOutlierPlayer")
-    await _make_tx(db_session, player, "playtime", datetime.utcnow() - timedelta(days=20), delta=900)
+    await _make_tx(db_session, player, "playtime", datetime.now(timezone.utc) - timedelta(days=20), delta=900)
 
     r = await client.get("/api/admin/points/anomalies?days=7", headers=_bearer(admin))
     assert r.status_code == 200
@@ -141,7 +141,7 @@ async def test_anomalies_rate_checks_disabled_when_per_minute_is_zero(client, db
     player = await _make_user(db_session, "ZeroRatePlayer")
     db_session.add(Setting(key="points_per_minute_playtime", value="0"))
     await db_session.commit()
-    hour = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+    hour = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
     for i in range(9):
         await _make_tx(db_session, player, "playtime", hour + timedelta(minutes=i), delta=0)
 

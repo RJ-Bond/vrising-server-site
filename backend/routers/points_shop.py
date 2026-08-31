@@ -2,7 +2,7 @@ import asyncio
 import csv
 import io
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
@@ -154,7 +154,7 @@ async def list_shop_redemptions_admin(
         )).all()
         limits_by_item = {iid: lim for iid, lim in limit_rows if lim is not None}
         if limits_by_item:
-            cutoff = datetime.utcnow() - timedelta(days=7)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=7)
             count_rows = (await db.execute(
                 select(ShopRedemption.user_id, ShopRedemption.shop_item_id, func.count(ShopRedemption.id))
                 .where(
@@ -186,7 +186,7 @@ async def fulfill_shop_redemption(
     if r.status != "pending":
         raise HTTPException(409, "Redemption is not pending")
     r.status = "fulfilled"
-    r.resolved_at = datetime.utcnow()
+    r.resolved_at = datetime.now(timezone.utc)
     r.resolved_by = current_user.username
     if body.admin_note:
         r.admin_note = body.admin_note
@@ -232,7 +232,7 @@ async def cancel_shop_redemption(
     if user is not None:
         await _award_points(db, user, r.cost_snapshot, "refund", f"cancelled redemption #{r.id}: {r.item_name_snapshot}")
     r.status = "cancelled"
-    r.resolved_at = datetime.utcnow()
+    r.resolved_at = datetime.now(timezone.utc)
     r.resolved_by = current_user.username
     if body.admin_note:
         r.admin_note = body.admin_note
@@ -414,7 +414,7 @@ async def points_anomalies(
     that would need a real schema change + migration, out of scope here."""
     points_cfg = await _get_points_config(db)
     per_minute = points_cfg["per_minute"]
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     large_sessions: list[dict] = []
     impossible_daily_rate: list[dict] = []
@@ -507,8 +507,8 @@ async def points_diagnostics(
     when PlayerRecord.steam_id doesn't match any User.steam_id, which looks identical
     to "the mechanism is broken" from the admin's side unless linked-vs-unlinked is
     surfaced explicitly."""
-    cutoff = datetime.utcnow() - timedelta(days=14)
-    week_cutoff = datetime.utcnow() - timedelta(days=7)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=14)
+    week_cutoff = datetime.now(timezone.utc) - timedelta(days=7)
 
     active_total = (await db.execute(
         select(func.count(func.distinct(PlayerRecord.steam_id)))
@@ -580,7 +580,7 @@ async def _shop_items_with_user_state(db: AsyncSession, items: list[ShopItem], u
     limited_ids = [i.id for i in items if i.weekly_limit_per_user is not None]
     counts: dict[int, int] = {}
     if limited_ids:
-        cutoff = datetime.utcnow() - timedelta(days=7)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=7)
         rows = (await db.execute(
             select(ShopRedemption.shop_item_id, func.count(ShopRedemption.id))
             .where(
@@ -701,7 +701,7 @@ async def redeem_shop_item(
         raise HTTPException(404, "Item not found")
 
     async def _recent_redemption_count() -> int:
-        cutoff = datetime.utcnow() - timedelta(days=7)
+        cutoff = datetime.now(timezone.utc) - timedelta(days=7)
         return (await db.execute(
             select(func.count(ShopRedemption.id)).where(
                 ShopRedemption.user_id == current_user.id,
@@ -876,7 +876,7 @@ async def my_points_earn_rate(
     affordability estimate next to wishlisted items the user can't yet afford (see
     profile.html). Deliberately simple, per the feature's own scope — no smoothing, no
     separate earn-vs-spend split; the frontend labels the result as an estimate."""
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
     total = (await db.execute(
         select(func.coalesce(func.sum(PointsTransaction.delta), 0))
         .where(PointsTransaction.user_id == current_user.id, PointsTransaction.created_at >= cutoff)

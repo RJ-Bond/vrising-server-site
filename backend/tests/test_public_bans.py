@@ -10,7 +10,7 @@ to match what's actually wanted for this page, so the endpoint (and these tests)
 to a full list, same row shape as GET /api/admin/bans's active view minus
 steam_id/unbanned_at/id-only-for-admin-unban concerns — id is still included since
 bans.html reuses it for the admin-only "Разбанить" button on this same public table."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -23,7 +23,7 @@ pytestmark = pytest.mark.asyncio
 async def _make_ban(db_session, **kwargs):
     defaults = dict(
         server_num=1, steam_id="76561198000000001", character_name="Griefer",
-        admin_name="AdminOne", reason="test reason", banned_at=datetime.utcnow(),
+        admin_name="AdminOne", reason="test reason", banned_at=datetime.now(timezone.utc),
         unban_at=None, unbanned_at=None,
     )
     defaults.update(kwargs)
@@ -54,7 +54,7 @@ async def test_no_bans_returns_empty_list(client):
 async def test_returns_only_active_bans_not_lifted_ones(client, db_session):
     await _make_ban(db_session, steam_id="1", character_name="Active1")
     await _make_ban(db_session, steam_id="2", character_name="Active2")
-    await _make_ban(db_session, steam_id="3", character_name="Lifted", unbanned_at=datetime.utcnow())
+    await _make_ban(db_session, steam_id="3", character_name="Lifted", unbanned_at=datetime.now(timezone.utc))
 
     r = await client.get("/api/bans")
     assert r.status_code == 200
@@ -127,7 +127,7 @@ async def test_permanent_ban_has_null_unban_at(client, db_session):
 
 
 async def test_temp_ban_unban_at_is_iso_z(client, db_session):
-    future = datetime.utcnow() + timedelta(hours=2)
+    future = datetime.now(timezone.utc) + timedelta(hours=2)
     await _make_ban(db_session, steam_id="1", unban_at=future)
     r = await client.get("/api/bans")
     unban_at = r.json()["bans"][0]["unban_at"]
@@ -136,7 +136,7 @@ async def test_temp_ban_unban_at_is_iso_z(client, db_session):
 
 
 async def test_most_recent_first(client, db_session):
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     await _make_ban(db_session, steam_id="older", character_name="Older", banned_at=now - timedelta(hours=1))
     await _make_ban(db_session, steam_id="newer", character_name="Newer", banned_at=now)
     r = await client.get("/api/bans")

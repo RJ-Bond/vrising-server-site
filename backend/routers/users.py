@@ -228,18 +228,19 @@ async def get_public_profile(username: str, db: AsyncSession = Depends(get_db)):
     if user is None:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
     lookup_name = user.game_nickname or username
-    total_result = await db.execute(
-        select(func.sum(PlayerRecord.total_seconds)).where(PlayerRecord.player_name == lookup_name)
+    # One aggregate query for the three SUM/MAX-over-all-rows values instead of three
+    # separate round trips — they all scan the same PlayerRecord.player_name == lookup_name
+    # rows, so a single grouped SELECT computes all three at once.
+    aggregates_result = await db.execute(
+        select(
+            func.sum(PlayerRecord.total_seconds),
+            func.max(PlayerRecord.last_seen),
+            func.sum(PlayerRecord.session_count),
+        ).where(PlayerRecord.player_name == lookup_name)
     )
-    total_seconds = total_result.scalar_one() or 0
-    last_seen_result = await db.execute(
-        select(func.max(PlayerRecord.last_seen)).where(PlayerRecord.player_name == lookup_name)
-    )
-    last_seen = last_seen_result.scalar_one()
-    session_count_result = await db.execute(
-        select(func.sum(PlayerRecord.session_count)).where(PlayerRecord.player_name == lookup_name)
-    )
-    session_count = int(session_count_result.scalar_one() or 0)
+    total_seconds, last_seen, session_count = aggregates_result.one()
+    total_seconds = total_seconds or 0
+    session_count = int(session_count or 0)
     # last_duration/server_num both come off the single most-recently-touched
     # PlayerRecord row (max last_seen, possibly on a different server_num than the
     # aggregate total_seconds/session_count above, which SUM across every server) — the

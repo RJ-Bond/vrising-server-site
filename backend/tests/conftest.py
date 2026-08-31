@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker  # no
 from backend.models import Base  # noqa: E402
 from backend.rate_limit import limiter  # noqa: E402
 from backend.helpers import _failed_totp_attempts, _failed_login_attempts  # noqa: E402
+from backend.routers.admin_system import _used_by_rows_cache  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -64,6 +65,24 @@ def _reset_login_bruteforce_state():
     _failed_login_attempts.clear()
     yield
     _failed_login_attempts.clear()
+
+
+@pytest.fixture(autouse=True)
+def _reset_used_by_rows_cache():
+    """_used_by_rows_cache (backend/routers/admin_system.py, backing
+    _uploads_used_by_lookup's short-TTL cache of the Settings/News/User/ShopItem rows
+    used for the file-manager's "used by" cross-reference) is a process-global dict,
+    same hazard as _reset_rate_limiter/_reset_totp_bruteforce_state/
+    _reset_login_bruteforce_state above: each test gets its own fresh DB, but without
+    this reset a test that populates the cache can leave rows from its own
+    (torn-down) DB sitting there for up to _USED_BY_CACHE_TTL_SECONDS, which a
+    later test in the same run — well within that window at normal suite speed —
+    would then see instead of its own fresh rows."""
+    _used_by_rows_cache["rows"] = None
+    _used_by_rows_cache["expires_at"] = 0.0
+    yield
+    _used_by_rows_cache["rows"] = None
+    _used_by_rows_cache["expires_at"] = 0.0
 
 
 @pytest_asyncio.fixture

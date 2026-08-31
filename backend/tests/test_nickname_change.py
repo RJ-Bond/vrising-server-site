@@ -3,7 +3,7 @@ chat command. The endpoint is the sole authority on validation/cost/cooldown/poi
 always returns 200 with {"ok": bool, ...} (never an HTTP error status for a business-rule
 rejection) so the plugin can relay "message" straight to chat. See the "Nickname change
 (plugin, spends points)" section in backend/routers/plugin_integration.py."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy import select
@@ -183,7 +183,7 @@ async def test_change_allowed_again_after_cooldown_window_passes(client, db_sess
 
     db_session.add(PointsTransaction(
         user_id=user.id, delta=-100, balance_after=900, reason="nickname_change",
-        detail="Old -> Older", created_at=datetime.utcnow() - timedelta(days=8),
+        detail="Old -> Older", created_at=datetime.now(timezone.utc) - timedelta(days=8),
     ))
     user.points_balance = 900
     await db_session.commit()

@@ -52,7 +52,7 @@ async def plugin_warn(
         character_name=body.character_name,
         reason=body.reason,
         admin_name=body.admin_name,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     ))
     await db.commit()
     count_result = await db.execute(select(func.count()).where(Warning.steam_id == body.steam_id))
@@ -128,7 +128,7 @@ async def plugin_ban(
         character_name=body.character_name,
         admin_name=body.admin_name,
         reason=body.reason,
-        banned_at=datetime.utcnow(),
+        banned_at=datetime.now(timezone.utc),
         unban_at=unban_at,
     ))
     await db.commit()
@@ -158,7 +158,7 @@ async def plugin_unban(
     )
     active = result.scalars().all()
     if active:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         for b in active:
             b.unbanned_at = now
         await db.commit()
@@ -180,7 +180,7 @@ async def plugin_due_unbans(
     Same "returning due items also consumes them" pattern as GET /api/plugin/announcements
     above: each due row is stamped unbanned_at immediately, since the plugin is trusted to
     actually execute the unban on receipt. Never returns permanent bans (unban_at NULL)."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     result = await db.execute(
         select(Ban).where(
             Ban.server_num == server_num,
@@ -284,7 +284,7 @@ async def plugin_log_action(
         target_name=body.target_name,
         target_steam_id=body.target_steam_id,
         details=body.details,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     ))
     await db.commit()
     return {"success": True}
@@ -417,7 +417,7 @@ async def submit_ban_appeal(request: Request, body: BanAppealCreate, db: AsyncSe
         character_name=ban.character_name or body.character_name,
         message=body.message,
         status="pending",
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     ))
     await db.commit()
     return {"success": True}
@@ -498,7 +498,7 @@ async def resolve_ban_appeal(
     appeal.status = "approved" if body.approve else "rejected"
     appeal.admin_response = body.admin_response
     appeal.admin_name = current_user.username
-    appeal.resolved_at = datetime.utcnow()
+    appeal.resolved_at = datetime.now(timezone.utc)
 
     if body.approve and appeal.ban_id is not None:
         ban_result = await db.execute(select(Ban).where(Ban.id == appeal.ban_id, Ban.unbanned_at.is_(None)))
