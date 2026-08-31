@@ -215,19 +215,6 @@
         </a>
       </div>
       <div id="home-pitch" style="display:none;position:relative;z-index:1;font-size:.8rem;color:var(--muted);max-width:520px;text-align:center;margin-top:.15rem;line-height:1.5;"></div>
-      <!-- Uptime trust badge — sourced from GET /api/monitor/stats' uptime_7d (server 1),
-           the longest uptime window that endpoint already computes; ServerSnapshot rows
-           are pruned to 8 days (see backend/main.py's _save_snapshot()), so a genuine
-           30-day figure isn't available without extending that retention window —
-           reusing the existing 7-day figure (labeled honestly as "7 дней") instead of
-           fabricating/mislabeling a 30-day number the data can't actually back.
-           Populated by loadStats() in index.js. -->
-      <div id="hero-uptime-badge" style="display:none;position:relative;z-index:1;margin-top:.55rem;">
-        <span style="display:inline-flex;align-items:center;gap:.4rem;font-size:.72rem;font-weight:600;letter-spacing:.02em;background:rgba(10,2,18,0.55);border:1px solid rgba(150,0,28,0.35);border-radius:9999px;padding:.28rem .9rem;backdrop-filter:blur(6px);color:var(--text);">
-          <span aria-hidden="true">🛡️</span>
-          <span id="hero-uptime-badge-text"></span>
-        </span>
-      </div>
     </div>
   </div>
 

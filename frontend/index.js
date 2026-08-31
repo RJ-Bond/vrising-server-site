@@ -1023,17 +1023,6 @@ async function loadStats() {
       gauge1.style.background = s.uptime_24h >= 95 ? '#4ade80' : s.uptime_24h >= 80 ? '#fbbf24' : '#f87171';
     }
 
-    // Hero uptime trust badge — uses uptime_7d (server 1), the longest window
-    // this endpoint already computes. See the HTML comment on #hero-uptime-badge
-    // for why this isn't a 30-day figure.
-    const heroUpBadge = document.getElementById('hero-uptime-badge');
-    const heroUpText  = document.getElementById('hero-uptime-badge-text');
-    if (heroUpBadge && heroUpText && s.uptime_7d !== null) {
-      const uc7 = s.uptime_7d >= 95 ? '#86efac' : s.uptime_7d >= 80 ? '#fbbf24' : '#f87171';
-      heroUpText.innerHTML = `<span style="color:${uc7};font-weight:700;">${s.uptime_7d}%</span> аптайм за 7 дней`;
-      heroUpBadge.style.display = '';
-    }
-
     // colour uptime
     [['stat-uptime24', s.uptime_24h], ['stat-uptime7d', s.uptime_7d]].forEach(([id, v]) => {
       const el = document.getElementById(id);
