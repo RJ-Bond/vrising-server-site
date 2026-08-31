@@ -658,9 +658,16 @@
     }
 
     /* ── Section fade-in animation ── */
+    /* Opacity-only: a `transform` here (even a completed to:translateY(0), since
+       animation-fill-mode:both keeps applying it forever) makes this element a
+       new containing block for any `position:fixed` descendant — found because
+       event-editor-modal/shop-item-editor-modal/settings-history-modal (all
+       nested inside a section-* div, unlike the other 5 modals which are
+       appended directly to the document body) were rendering positioned within
+       this section's box instead of as true full-viewport overlays. */
     @keyframes section-in {
-      from { opacity:0; transform:translateY(10px); }
-      to   { opacity:1; transform:translateY(0); }
+      from { opacity:0; }
+      to   { opacity:1; }
     }
     [id^="section-"] { animation: section-in .28s ease both; }
 
