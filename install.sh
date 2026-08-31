@@ -136,12 +136,17 @@ start_containers() {
   docker compose -f "$INSTALL_DIR/docker-compose.yml" --env-file "$INSTALL_DIR/.env" restart nginx
 
   log "Ожидание запуска API (до 60 сек)..."
+  API_UP=0
   for i in $(seq 1 30); do
     if curl -sf http://localhost/api/monitor/status &>/dev/null; then
+      API_UP=1
       break
     fi
     sleep 2
   done
+  if [[ "$API_UP" -ne 1 ]]; then
+    warn "API не ответил на /api/monitor/status за 60 сек — сайт может быть ещё не готов. Проверьте: docker compose -f ${INSTALL_DIR}/docker-compose.yml logs web"
+  fi
 
   # The `web` container already runs migrations itself on every boot, before it starts
   # accepting requests (backend/main.py's lifespan() -> backend/db_migrate.py, which

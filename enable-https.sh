@@ -84,22 +84,37 @@ if grep -q '"443:443"' "$COMPOSE_FILE" 2>/dev/null; then
   warn "Порт 443 уже настроен в docker-compose.yml"
 else
   python3 - <<PYEOF
-import re, sys
+import sys
 
 with open('$COMPOSE_FILE', 'r') as f:
-    content = f.read()
+    original = f.read()
+
+content = original
 
 # Add 443 port after 80
+before_port = content
 content = content.replace(
     '      - "80:80"',
     '      - "80:80"\n      - "443:443"'
 )
+if content == before_port:
+    print("ERROR: строка '      - \\"80:80\\"' не найдена в docker-compose.yml — "
+          "порт 443 НЕ добавлен. Формат файла отличается от ожидаемого, правьте вручную.",
+          file=sys.stderr)
+    sys.exit(1)
 
 # Add letsencrypt volume after frontend volume
+before_volume = content
 content = content.replace(
     '      - ./frontend:/usr/share/nginx/html:ro',
     '      - ./frontend:/usr/share/nginx/html:ro\n      - /etc/letsencrypt:/etc/letsencrypt:ro'
 )
+if content == before_volume:
+    print("ERROR: строка '      - ./frontend:/usr/share/nginx/html:ro' не найдена в "
+          "docker-compose.yml — volume для сертификатов НЕ добавлен. Формат файла "
+          "отличается от ожидаемого, правьте вручную.",
+          file=sys.stderr)
+    sys.exit(1)
 
 with open('$COMPOSE_FILE', 'w') as f:
     f.write(content)

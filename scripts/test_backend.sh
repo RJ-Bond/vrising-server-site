@@ -9,4 +9,4 @@ cd "$(dirname "$0")/.."
 # test suite imports backend.main transitively via conftest.py's fixtures.
 export UPLOAD_DIR="$(mktemp -d)/uploads"
 export BACKUP_DIR="$(mktemp -d)/backups"
-uv run --python 3.12 --with-requirements requirements-dev.txt pytest backend/tests "$@"
+uv run --python 3.12 --with-requirements requirements-dev.txt pytest backend/tests --cov=backend --cov-report=term-missing "$@"
