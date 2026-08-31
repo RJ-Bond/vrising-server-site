@@ -97,6 +97,65 @@ function getUser() {
 /* Any staff tier (moderator/admin/superadmin) — used for maintenance-mode bypass etc. */
 const STAFF_ROLES = ['moderator', 'admin', 'superadmin'];
 
+/* Language toggle text helper — reads the same '_lang' key toggleLanguage()
+   (below) uses for data-i18n-ru/en markup. Was independently copy-pasted as an
+   identical one-liner in 9+ pages instead of living here alongside the rest of
+   the i18n mechanism it depends on. */
+function _t(ru, en) { return localStorage.getItem('_lang') === 'en' ? en : ru; }
+
+/* Custom site background photo (Settings → bg_image_url). A real position:fixed
+   element, not background-attachment:fixed on body — that CSS property is
+   unreliable on Android/mobile Chrome (cover ends up sized against the wrong
+   box, cropping the photo to a sliver). Sets position/inset/z-index/pointer-
+   events inline (matching theme.css's .site-bg-photo class exactly) rather than
+   relying on that class, so this works identically on pages that don't load
+   theme.css (e.g. admin.html) as ones that do — was duplicated across 13 files
+   with two slightly-different gradient-overlay tunings; this uses the one most
+   of them already agreed on. */
+function applySiteBackground(bg) {
+  bg = (bg || '').trim();
+  if (!bg) return;
+  let layer = document.getElementById('site-bg-photo');
+  if (!layer) {
+    layer = document.createElement('div');
+    layer.id = 'site-bg-photo';
+    layer.className = 'site-bg-photo';
+    Object.assign(layer.style, { position: 'fixed', inset: '0', zIndex: '-1', pointerEvents: 'none', backgroundRepeat: 'no-repeat' });
+    document.body.prepend(layer);
+  }
+  layer.style.backgroundImage = [
+    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
+    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
+    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
+    `url('${bg}')`,
+  ].join(',');
+  layer.style.backgroundSize = 'auto,auto,auto,cover';
+  layer.style.backgroundPosition = 'center,center,center,center';
+}
+
+/* Russian pluralization — e.g. pluralRu(5, 'день', 'дня', 'дней') -> 'дней'.
+   Was duplicated identically between leaderboard.html and clans.html, the
+   latter's own comment admitting as much ("same shape as clans.html's local
+   copy — not in common.js"). */
+function pluralRu(n, one, few, many) {
+  const mod10 = n % 10, mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
+  return many;
+}
+
+/* Seconds -> "1ч 20м" / "45м" / "30с" — was duplicated between index.js and
+   servers.html. */
+function fmtDuration(sec) {
+  sec = Math.max(0, Math.floor(sec || 0));
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) return `${h}ч ${m}м`;
+  if (m > 0) return `${m}м`;
+  return `${s}с`;
+}
+
 /* Gradient avatar background from username hash */
 function nameGradient(name) {
   let h = 0;
