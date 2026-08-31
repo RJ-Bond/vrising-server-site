@@ -725,7 +725,7 @@
     </div>
     <div class="flex items-center gap-3">
       <button onclick="openQuickNav()" class="btn-ghost" title="Быстрый переход по разделам (Ctrl+K)" aria-label="Быстрый переход по разделам" style="display:flex;align-items:center;gap:.4rem;font-size:.75rem;">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><use href="/icons.svg#icon-search"></use></svg>
         <span style="opacity:.6;font-family:monospace;">Ctrl+K</span>
       </button>
       <span id="nav-username" class="text-sm" style="color:var(--muted);"></span>
@@ -797,7 +797,7 @@
       <div class="sidebar-group" data-group-id="moderation">
       <div class="sidebar-group-label"><span>🛡️ Модерация</span></div>
       <button id="btn-reports"   onclick="showSection('reports')"   class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> <span class="sidebar-btn-label">Жалобы</span></span><span id="badge-reports" class="sidebar-badge" style="display:none;"></span></button>
-      <button id="btn-modlog"    onclick="showSection('modlog')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg> <span class="sidebar-btn-label">Журнал модерации</span></span></button>
+      <button id="btn-modlog"    onclick="showSection('modlog')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><use href="/icons.svg#icon-shield"></use><path d="M9 12l2 2 4-4"/></svg> <span class="sidebar-btn-label">Журнал модерации</span></span></button>
       <a href="/bans.html" class="sidebar-btn" style="text-decoration:none;display:flex;"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg> <span class="sidebar-btn-label">Баны и апелляции</span></span><span id="badge-appeals" class="sidebar-badge" style="display:none;"></span></a>
 
       </div>
@@ -814,7 +814,7 @@
       <div class="sidebar-group-label"><span>⚙️ Система</span></div>
       <button id="btn-log"       onclick="showSection('log')"       class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg> <span class="sidebar-btn-label">Лог</span></span></button>
       <button id="btn-auditlog"  onclick="showSection('auditlog')"  class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> <span class="sidebar-btn-label">Журнал действий</span></span></button>
-      <button id="btn-errors"    onclick="showSection('errors')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> <span class="sidebar-btn-label">Ошибки</span></span></button>
+      <button id="btn-errors"    onclick="showSection('errors')"    class="sidebar-btn"><span style="display:flex;align-items:center;gap:.5rem;flex:1;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.75;"><use href="/icons.svg#icon-alert-circle"></use></svg> <span class="sidebar-btn-label">Ошибки</span></span></button>
 
       </div>
     </div>
@@ -3312,31 +3312,8 @@ async function logout() {
   window.location.href = '/login.html';
 }
 
-function applySiteBackground(bg) {
-  bg = (bg || '').trim();
-  if (!bg) return;
-  // A real position:fixed element, not background-attachment:fixed on body —
-  // that CSS property is unreliable on Android/mobile Chrome (cover ends up
-  // sized against the wrong box, leaving the photo cropped to a sliver stuck
-  // off to one side instead of filling the screen). admin.html doesn't load
-  // theme.css (no .site-bg-photo class here), so the fixed/z-index styling
-  // is set inline instead.
-  let layer = document.getElementById('site-bg-photo');
-  if (!layer) {
-    layer = document.createElement('div');
-    layer.id = 'site-bg-photo';
-    Object.assign(layer.style, { position: 'fixed', inset: '0', zIndex: '-1', pointerEvents: 'none', backgroundRepeat: 'no-repeat' });
-    document.body.prepend(layer);
-  }
-  layer.style.backgroundImage = [
-    'radial-gradient(ellipse at 20% 60%, rgba(80,0,120,0.16) 0%, transparent 55%)',
-    'radial-gradient(ellipse at 80% 20%, rgba(150,0,28,0.12) 0%, transparent 50%)',
-    'linear-gradient(rgba(8,0,16,0.78), rgba(8,0,16,0.78))',
-    `url('${bg}')`,
-  ].join(',');
-  layer.style.backgroundSize = 'auto,auto,auto,cover';
-  layer.style.backgroundPosition = 'center,center,center,center';
-}
+// applySiteBackground — defined in common.js (handles the no-theme.css inline
+// positioning case admin.html needs too; see that function's doc comment).
 
 // ── Role hierarchy (mirrors backend/auth.py's ROLE_LEVELS) ──────────────────
 const ROLE_LEVELS = { user: 0, moderator: 1, admin: 2, superadmin: 3 };
@@ -4876,8 +4853,8 @@ function renderMaintenanceHistory(history) {
   if (!el) return;
   if (!history.length) { el.innerHTML = '<div style="font-size:.72rem;color:var(--muted);">История пуста</div>'; return; }
   el.innerHTML = history.map(ep => {
-    const start = ep.start ? new Date(ep.start).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
-    const end   = ep.end   ? new Date(ep.end).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : '⏳ Активно';
+    const start = ep.start ? new Date(ep.start).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:window.__TZ || 'Europe/Moscow'}) : '—';
+    const end   = ep.end   ? new Date(ep.end).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',timeZone:window.__TZ || 'Europe/Moscow'}) : '⏳ Активно';
     const dur   = ep.duration != null ? (ep.duration < 3600 ? `${Math.round(ep.duration/60)} мин` : `${(ep.duration/3600).toFixed(1)} ч`) : '—';
     return `<div style="display:grid;grid-template-columns:1fr 1fr auto;gap:.5rem;padding:.4rem .6rem;background:rgba(14,5,22,0.6);border:1px solid rgba(110,0,150,0.18);border-radius:.4rem;font-size:.72rem;align-items:center;">
       <span style="color:var(--muted);">▶ ${start}</span>
@@ -5257,7 +5234,7 @@ function _renderClansTable() {
       <thead><tr><th>Название</th><th>Девиз</th><th>Сервер</th><th>Участников</th><th>Обновлено</th></tr></thead>
       <tbody>
         ${clans.map(c => {
-          const updated = c.updated_at ? new Date(c.updated_at + (c.updated_at.endsWith('Z') ? '' : 'Z')).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' }) : '—';
+          const updated = c.updated_at ? fmtDateTime(c.updated_at) : '—';
           // member_preview (up to 4, leaders/officers first) rides along on GET
           // /api/clans already — no extra request needed to show who's in the clan.
           // Only members with a linked site account (username set — see .register/
@@ -5643,7 +5620,7 @@ function exportUsersCsv() {
   }
   if (!users.length) { showToast('Нет пользователей для экспорта', 'error'); return; }
   const rows = [['ID','Имя','Email','Роль','Статус','Зарегистрирован']];
-  users.forEach(u => rows.push([u.id, u.username, fmtEmail(u.email), u.role, u.is_active ? 'Активен' : 'Заблокирован', u.created_at ? new Date(u.created_at).toLocaleDateString('ru-RU') : '']));
+  users.forEach(u => rows.push([u.id, u.username, fmtEmail(u.email), u.role, u.is_active ? 'Активен' : 'Заблокирован', u.created_at ? fmtDate(u.created_at) : '']));
   const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
   const a = document.createElement('a');
   a.href = URL.createObjectURL(new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8'}));
@@ -6311,7 +6288,7 @@ async function loadDashRecentUsers() {
     el.innerHTML = recent.map(u => `
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;padding:.3rem 0;">
         <a href="/user.html?u=${encodeURIComponent(u.username)}" target="_blank" rel="noopener" style="font-size:.78rem;font-weight:600;color:var(--text);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:color .15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text)'">${esc(u.username)}</a>
-        <span style="font-size:.68rem;color:var(--muted);white-space:nowrap;">${new Date(u.created_at).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow',day:'2-digit',month:'2-digit',year:'2-digit'})}</span>
+        <span style="font-size:.68rem;color:var(--muted);white-space:nowrap;">${new Date(u.created_at).toLocaleDateString('ru-RU',{timeZone:window.__TZ || 'Europe/Moscow',day:'2-digit',month:'2-digit',year:'2-digit'})}</span>
       </div>`).join('');
   } catch { renderEmptyState(el, 'Ошибка загрузки.', '⚠'); }
 }
@@ -7355,7 +7332,7 @@ function _renderMediaGrid() {
     // .media-thumb on load failure (the info footer, and now the used_by badge below
     // too, since both are siblings of the <img> inside that same container).
     const thumb = isImg
-      ? `<img class="media-thumb-img" src="${esc(f.url)}" loading="lazy" onerror="this.outerHTML='<div class=\\'media-thumb-img media-no-img\\'>📄</div>'">`
+      ? `<img class="media-thumb-img" src="${esc(f.url)}" alt="${esc(f.filename)}" loading="lazy" onerror="this.outerHTML='<div class=\\'media-thumb-img media-no-img\\'>📄</div>'">`
       : `<div class="media-thumb-img media-no-img">📄</div>`;
     // used_by — same cross-reference GET /api/admin/uploads already surfaces on the
     // Файлы tab (see _uploads_used_by_lookup in admin_system.py); not exhaustive
@@ -7447,7 +7424,7 @@ async function loadAuditLogSection(page) {
       'settings.update':'Изменены настройки',
     };
     tbody.innerHTML = items.map(item => {
-      const dt = new Date(item.created_at).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' });
+      const dt = new Date(item.created_at).toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit', timeZone: window.__TZ || 'Europe/Moscow' });
       const label = actionLabels[item.action] || item.action;
       const adminName = item.admin_username || item.admin || '?';
       const targetType = item.target_type || '';

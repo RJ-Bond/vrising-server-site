@@ -334,12 +334,9 @@
 const API = '/api';
 let _shopBalance = 0;
 let _shopItemsCache = [];
-// Small local i18n helper for strings this page rewrites at runtime (item-card
-// buttons, toasts, empty/error states from JS templates) — _applyI18n() in
-// common.js only handles static data-i18n-ru/-en markup. Shop item names/
-// descriptions themselves are admin-authored content and are intentionally NOT
-// machine-translated by this toggle (same policy as the rest of the site).
-function _t(ru, en) { return localStorage.getItem('_lang') === 'en' ? en : ru; }
+// _t — defined in common.js. Shop item names/descriptions themselves are
+// admin-authored content and are intentionally NOT machine-translated by
+// this toggle (same policy as the rest of the site).
 
 /* ── Auth gate — this page has no value for anonymous visitors (balance/redeem are
    account-bound), so unlike bans.html/profile.html's "upgrade in place" pattern, a
@@ -410,26 +407,7 @@ async function toggleShopPointsHistory() {
   }
 }
 
-/* ── Site settings ── */
-function applySiteBackground(bg) {
-  bg = (bg || '').trim();
-  if (!bg) return;
-  let layer = document.getElementById('site-bg-photo');
-  if (!layer) {
-    layer = document.createElement('div');
-    layer.id = 'site-bg-photo';
-    layer.className = 'site-bg-photo';
-    document.body.prepend(layer);
-  }
-  layer.style.backgroundImage = [
-    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
-    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
-    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
-    `url('${bg}')`,
-  ].join(',');
-  layer.style.backgroundSize = 'auto,auto,auto,cover';
-  layer.style.backgroundPosition = 'center,center,center,center';
-}
+/* ── Site settings — applySiteBackground defined in common.js ── */
 (async function() {
   try {
     const d = await (window.getSettings?.() ?? fetch(`${API}/settings/public`).then(r => r.json()));

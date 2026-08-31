@@ -927,25 +927,7 @@
 <script>
 const API = '/api';
 
-function applySiteBackground(bg) {
-  bg = (bg || '').trim();
-  if (!bg) return;
-  let layer = document.getElementById('site-bg-photo');
-  if (!layer) {
-    layer = document.createElement('div');
-    layer.id = 'site-bg-photo';
-    layer.className = 'site-bg-photo';
-    document.body.prepend(layer);
-  }
-  layer.style.backgroundImage = [
-    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
-    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
-    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
-    `url('${bg}')`,
-  ].join(',');
-  layer.style.backgroundSize = 'auto,auto,auto,cover';
-  layer.style.backgroundPosition = 'center,center,center,center';
-}
+// applySiteBackground — defined in common.js
 
 const RANKS = [
   { label:'⚰ Смертный',    min:0,      max:18000,  color:'#9488a8', next:'Охотник' },
@@ -955,12 +937,7 @@ const RANKS = [
 ];
 
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
-// getUser, _dateOpts, fmtDate, fmtDateTime, showConfirm — defined in common.js
-// Small local i18n helper for strings this page rewrites at runtime — same
-// pattern/comment as shop.html's own _t(), added here so the shared confirm
-// modal's title/button labels stay translated now that they're no longer
-// static markup with data-i18n-ru/-en (see showProfileConfirm() below).
-function _t(ru, en) { return localStorage.getItem('_lang') === 'en' ? en : ru; }
+// getUser, _dateOpts, fmtDate, fmtDateTime, showConfirm, _t — defined in common.js
 async function doLogout() {
   await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
   localStorage.removeItem('user'); sessionStorage.removeItem('user');
@@ -1436,7 +1413,7 @@ async function loadCurrentSession() {
   if (!body) return;
   const fmtDt = (iso) => {
     if (!iso) return '—';
-    try { return new Date(iso).toLocaleString(_t('ru-RU', 'en-US')); } catch { return iso; }
+    try { return new Date(iso).toLocaleString(_t('ru-RU', 'en-US'), { timeZone: window.__TZ || 'Europe/Moscow' }); } catch { return iso; }
   };
   try {
     const res = await fetch(`${API}/auth/current-session`, { credentials: 'include' });
@@ -1507,7 +1484,7 @@ async function loadLoginHistory(reset) {
       return;
     }
     const rows = (d.items || []).map(item => {
-      const dt = new Date(item.created_at).toLocaleString(_t('ru-RU', 'en-US'));
+      const dt = new Date(item.created_at).toLocaleString(_t('ru-RU', 'en-US'), { timeZone: window.__TZ || 'Europe/Moscow' });
       const ok = item.success;
       const failureLabel = _t(
         (_LOGIN_FAILURE_LABELS[item.failure_reason] || [])[0] || item.failure_reason || 'Ошибка',
@@ -1714,8 +1691,7 @@ async function loadProfile() {
         const lastVal = document.getElementById('stat-tile-last-val');
         if (playtimeVal) playtimeVal.innerHTML = (pubData.total_seconds > 0 ? esc(fmtSec(pubData.total_seconds)) : '—') + (pubData.verified && pubData.total_seconds > 0 ? '<span class="pub-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>' : '');
         if (lastVal && pubData.last_seen) {
-          const d = new Date(pubData.last_seen);
-          lastVal.textContent = d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
+          lastVal.textContent = fmtDate(pubData.last_seen);
         }
         tiles.style.display = 'flex';
       }
@@ -1787,8 +1763,7 @@ async function loadProfile() {
           document.getElementById('gs-playtime').innerHTML = (h > 0 ? `${h}ч ${m}м` : `${m}м`) + (pubData.verified ? '<span class="pub-verified" data-tip="Точное время — подтверждено игровым плагином">✔</span>' : '');
           const lastEl = document.getElementById('gs-last');
           if (pubData.last_seen) {
-            const d = new Date(pubData.last_seen);
-            lastEl.textContent = d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' });
+            lastEl.textContent = fmtDate(pubData.last_seen);
           }
         }
       }
@@ -2597,9 +2572,12 @@ loadProfile();
 // ── Notification bell ──────────────────────────────────────────────────────
 let _notifOpen = false;
 async function loadNotifications() {
-  const res = await fetch('/api/notifications', {credentials:'include'});
-  if (!res.ok) return;
-  const d = await res.json();
+  let d;
+  try {
+    const res = await fetch('/api/notifications', {credentials:'include'});
+    if (!res.ok) return;
+    d = await res.json();
+  } catch { return; } // network hiccup during the 60s poll — try again next tick
   const wrap = document.getElementById('notif-bell-wrap');
   const cnt = document.getElementById('notif-count');
   const list = document.getElementById('notif-list');
