@@ -6460,10 +6460,6 @@ function renderPagination(containerId, page, totalPages, onPageClick) {
 // ─── Comments moderation ──────────────────────────────────────────────────
 let _commentsPage = 1;
 
-function debounce(fn, ms) {
-  let t;
-  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
-}
 const _commentsSearchDebounced = debounce(() => loadAdminComments(1), 350);
 
 async function loadAdminComments(page = 1) {

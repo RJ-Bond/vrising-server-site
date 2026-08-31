@@ -31,12 +31,13 @@ const commonJsDeclaredGlobals = {
   toggleLanguage: 'readonly',
   isPushSubscribed: 'readonly',
   subscribeToPush: 'readonly',
-  // Added when common.js gained these 4 shared helpers (dedup pass, 2026-08):
-  // _t, applySiteBackground, pluralRu, fmtDuration.
+  // Added when common.js gained these shared helpers (dedup pass, 2026-08):
+  // _t, applySiteBackground, pluralRu, fmtDuration, debounce.
   _t: 'readonly',
   applySiteBackground: 'readonly',
   pluralRu: 'readonly',
   fmtDuration: 'readonly',
+  debounce: 'readonly',
 };
 
 // These are only ever created via `window.foo = function(){...}` (property
