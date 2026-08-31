@@ -260,6 +260,10 @@ VRISING_SERVER_IP=127.0.0.1
 VRISING_SERVER_PORT=27016
 ANTHROPIC_API_KEY=
 ENV
+# Contains SECRET_KEY (JWT signing) and, once filled in, ANTHROPIC_API_KEY — cat > left
+# this at the umask default (commonly world-readable), exposing both to any other local
+# account on the box. Owner read/write only.
+chmod 600 "$INSTALL_DIR/.env"
 ok ".env создан."
 warn "Добавьте ANTHROPIC_API_KEY в $INSTALL_DIR/.env для активации чата 'Управляющий замком'."
 

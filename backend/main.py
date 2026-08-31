@@ -60,6 +60,8 @@ from .rate_limit import limiter
 from .helpers import (
     BACKUP_DIR,
     copy_backup_offsite,
+    find_live_db_path,
+    sqlite_backup_copy,
     _visitor_data,
     _explicit_logouts,
     _write_maintenance_flag,
@@ -392,7 +394,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -403,8 +405,30 @@ from starlette.middleware.base import BaseHTTPMiddleware  # noqa: E402 — same 
 
 class PageViewMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
-        response = await call_next(request)
         path = request.url.path
+        try:
+            response = await call_next(request)
+        except Exception as e:
+            # An unhandled exception in a route handler propagates straight past
+            # this middleware to Starlette's own ServerErrorMiddleware (which wraps
+            # this one), which is what actually turns it into a generic 500
+            # response — by then the real exception is gone. This is the case that
+            # matters most for the admin "Error log" page (previously every row's
+            # `error` column was always NULL, since only an explicit
+            # HTTPException(500, ...) from a route ever reached the response-based
+            # branch below). Caught here, logged, then re-raised so
+            # ServerErrorMiddleware still produces the response exactly as before.
+            if path.startswith("/api/"):
+                try:
+                    async with AsyncSession(engine, expire_on_commit=False) as db:
+                        db.add(ErrorLog(
+                            path=path, method=request.method, status_code=500,
+                            error=f"{type(e).__name__}: {e}"[:2000],
+                        ))
+                        await db.commit()
+                except Exception:
+                    pass
+            raise
         if (
             request.method == "GET"
             and not path.startswith("/api/")
@@ -421,10 +445,18 @@ class PageViewMiddleware(BaseHTTPMiddleware):
                 pass
         if response.status_code >= 500 and path.startswith("/api/"):
             try:
+                # Covers a route that explicitly raised/returned a 500 without an
+                # exception propagating (e.g. `raise HTTPException(500, "...")`) —
+                # rarer than the except-branch case above, but the response body
+                # (FastAPI's {"detail": "..."} JSON) is readable here if present.
+                body_text = None
+                body = getattr(response, "body", None)
+                if body:
+                    body_text = body[:2000].decode("utf-8", "replace")
                 async with AsyncSession(engine, expire_on_commit=False) as db:
                     db.add(ErrorLog(
                         path=path, method=request.method,
-                        status_code=response.status_code, error=None,
+                        status_code=response.status_code, error=body_text,
                     ))
                     await db.commit()
             except Exception:
@@ -1662,13 +1694,11 @@ async def _auto_backup_task():
             next_midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
             await asyncio.sleep((next_midnight - now).total_seconds())
             BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-            db_candidates = [Path("backend/vrising.db"), Path("vrising.db"), Path("/app/backend/vrising.db"), Path("/data/vrising.db")]
-            src = next((p for p in db_candidates if p.exists()), None)
+            src = find_live_db_path()
             if src:
-                import shutil
                 ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
                 dst = BACKUP_DIR / f"vrising_{ts}.db"
-                shutil.copy2(str(src), str(dst))
+                await asyncio.to_thread(sqlite_backup_copy, src, dst)
                 logger.info("Auto backup created: %s", dst)
                 # copy_backup_offsite shells out to rsync (if present) / does blocking
                 # file I/O via shutil — offload to a thread so a slow/unmounted remote

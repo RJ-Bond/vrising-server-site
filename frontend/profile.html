@@ -1340,7 +1340,8 @@ async function changePassword() {
   };
   if (!old||!newPw||!confirm) return show('Заполните все поля', false);
   if (newPw !== confirm)       return show('Пароли не совпадают', false);
-  if (newPw.length < 6)        return show('Минимум 6 символов', false);
+  if (newPw.length < 8 || !/[a-zA-Zа-яА-ЯёЁ]/.test(newPw) || !/\d/.test(newPw))
+    return show('Минимум 8 символов, буква и цифра', false);
   try {
     const res = await fetch(`${API}/auth/change-password`, {
       method:'POST',

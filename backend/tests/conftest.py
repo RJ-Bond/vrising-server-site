@@ -20,7 +20,7 @@ import pytest_asyncio  # noqa: E402
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker  # noqa: E402
 from backend.models import Base  # noqa: E402
 from backend.rate_limit import limiter  # noqa: E402
-from backend.helpers import _failed_totp_attempts  # noqa: E402
+from backend.helpers import _failed_totp_attempts, _failed_login_attempts  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -52,6 +52,18 @@ def _reset_totp_bruteforce_state():
     _failed_totp_attempts.clear()
     yield
     _failed_totp_attempts.clear()
+
+
+@pytest.fixture(autouse=True)
+def _reset_login_bruteforce_state():
+    """Same hazard as _reset_totp_bruteforce_state above, for the newer
+    _failed_login_attempts dict (backing _login_attempts_exceeded/
+    _record_failed_login/_reset_failed_login) — process-global, keyed by
+    username this time rather than user_id, but the same "leaks across tests
+    that happen to reuse a name/id" risk applies."""
+    _failed_login_attempts.clear()
+    yield
+    _failed_login_attempts.clear()
 
 
 @pytest_asyncio.fixture

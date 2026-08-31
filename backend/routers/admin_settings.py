@@ -217,13 +217,34 @@ ALLOWED_SETTING_KEYS = {
     "daily_tips",
 }
 
+# RCON/plugin-key/webhook values are credentials for infrastructure the role
+# hierarchy otherwise reserves for superadmin (see auth.py's ROLE_LEVELS comment:
+# "superadmin = role management, backups, deploy/SSL, RCON"). A plain admin
+# could previously read these straight off this endpoint and connect to RCON
+# directly, bypassing the superadmin-only gate on POST /api/admin/rcon entirely
+# — masked below for anyone under superadmin. PUT/import can still blindly set a
+# new value (normal "write-only secret" UX), this only restricts reading the
+# current one back out.
+SECRET_SETTING_KEYS = {"rcon_password", "rcon2_password", "plugin_api_key", "discord_webhook_url"}
+
+
 @router.get("/api/admin/settings", response_model=list[SettingOut])
 async def get_settings(
     db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_admin_user),
+    current_user: User = Depends(get_admin_user),
 ):
     result = await db.execute(select(Setting))
-    return [SettingOut.model_validate(s) for s in result.scalars().all()]
+    settings = result.scalars().all()
+    if is_at_least(current_user, "superadmin"):
+        return [SettingOut.model_validate(s) for s in settings]
+    out = []
+    for s in settings:
+        if s.key in SECRET_SETTING_KEYS and s.value:
+            masked = "••••••••" if s.key != "discord_webhook_url" else ""
+            out.append(SettingOut(key=s.key, value=masked, updated_at=s.updated_at))
+        else:
+            out.append(SettingOut.model_validate(s))
+    return out
 
 
 @router.put("/api/admin/settings/{key}", response_model=SettingOut)
@@ -258,9 +279,15 @@ async def update_setting(
 @router.post("/api/admin/settings/import")
 async def import_settings(
     body: dict,
-    _: User = Depends(get_admin_user),
+    admin: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # Was writing any client-supplied key straight to the table with no
+    # allow-list check and no audit entry — the one write path in this file
+    # that didn't match update_setting()'s enforced controls.
+    unknown = [k for k in body if k not in ALLOWED_SETTING_KEYS]
+    if unknown:
+        raise HTTPException(400, f"Unknown setting key(s): {', '.join(unknown)}")
     count = 0
     for key, value in body.items():
         r = await db.execute(select(Setting).where(Setting.key == key))
@@ -271,5 +298,6 @@ async def import_settings(
         else:
             db.add(Setting(key=key, value=str(value)))
         count += 1
+    await _audit(db, admin.id, "settings.import", detail=f"{count} keys: {', '.join(sorted(body.keys()))[:200]}")
     await db.commit()
     return {"imported": count}

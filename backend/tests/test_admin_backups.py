@@ -104,3 +104,43 @@ async def test_disk_usage_reports_totals_and_backup_size(client, db_session, bac
     assert body["backups_total_bytes"] == 3000
     assert body["disk_total"] >= body["disk_used"] >= 0
     assert body["disk_free"] >= 0
+
+
+# ─── POST /api/admin/backups/create — now uses sqlite3's online backup API
+# (helpers.sqlite_backup_copy) instead of a raw shutil.copy2 of the .db file, which
+# isn't safe against a WAL-mode database (recently-committed data can be sitting in a
+# separate -wal file a plain file copy would miss). Verifies the produced backup is
+# actually a valid, readable SQLite database with the source's data in it. ───────────
+
+@pytest.fixture
+def live_db(tmp_path, monkeypatch):
+    """A real (tiny) SQLite database standing in for the live app DB, wired into
+    admin_system.find_live_db_path() the same way `backup_dir` above wires in
+    BACKUP_DIR — module-level name, patched for this test only."""
+    import sqlite3
+    import backend.routers.admin_system as admin_system
+    db_path = tmp_path / "live_vrising.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute("CREATE TABLE sanity_check (id INTEGER PRIMARY KEY, value TEXT)")
+    conn.execute("INSERT INTO sanity_check (value) VALUES ('hello')")
+    conn.commit()
+    conn.close()
+    monkeypatch.setattr(admin_system, "find_live_db_path", lambda: db_path)
+    return db_path
+
+
+async def test_create_backup_now_produces_a_valid_readable_sqlite_file(client, db_session, backup_dir, live_db):
+    import sqlite3
+    superadmin = await _make_user(db_session, "backup_creator", role="superadmin")
+    r = await client.post("/api/admin/backups/create", headers=_bearer(superadmin))
+    assert r.status_code == 201, r.text
+    filename = r.json()["filename"]
+
+    dst = backup_dir / filename
+    assert dst.exists()
+    conn = sqlite3.connect(str(dst))
+    try:
+        rows = conn.execute("SELECT value FROM sanity_check").fetchall()
+    finally:
+        conn.close()
+    assert rows == [("hello",)]

@@ -18,6 +18,19 @@ class _TagStripper(HTMLParser):
         return ''.join(self._fed)
 
 
+def _check_password_complexity(v: str) -> str:
+    """Shared by every schema that accepts a new password (registration, in-game
+    .register, change-password, forgot-password reset). Length + basic letter+digit
+    coverage — deliberately not mandating special characters or uppercase, a
+    UX-hostile pattern with weak security payoff. Previously only registration
+    enforced this; change/reset password accepted any 6-char string, so the
+    account-recovery path could land on a weaker credential than signup allowed."""
+    v = v.strip()
+    if len(v) < 8 or not re.search(r"[a-zA-Zа-яА-ЯёЁ]", v) or not re.search(r"\d", v):
+        raise ValueError("Пароль: минимум 8 символов, должен содержать хотя бы одну букву и одну цифру")
+    return v
+
+
 def strip_html_tags(value: str) -> str:
     """Defense-in-depth for plain-text fields (comments, DMs): today the frontend
     always escapes/sanitizes before rendering these, so this isn't exploitable via
@@ -47,19 +60,7 @@ class UserRegister(BaseModel):
     @field_validator("password")
     @classmethod
     def password_complexity(cls, v: str) -> str:
-        # Same length + composition bar as PluginRegister.password_complexity below
-        # (in-game `.register`) — length plus basic letter+digit coverage is the
-        # pragmatic modern guidance; deliberately not mandating special characters or
-        # uppercase, which is a UX-hostile pattern with weak security payoff.
-        if (
-            len(v) < 8
-            or not re.search(r"[a-zA-Zа-яА-ЯёЁ]", v)
-            or not re.search(r"\d", v)
-        ):
-            raise ValueError(
-                "Пароль: минимум 8 символов, должен содержать хотя бы одну букву и одну цифру"
-            )
-        return v
+        return _check_password_complexity(v)
 
 
 class UserLogin(BaseModel):
@@ -645,9 +646,7 @@ class ChangePasswordBody(BaseModel):
     @field_validator("new_password")
     @classmethod
     def pw_min_length(cls, v: str) -> str:
-        if len(v.strip()) < 6:
-            raise ValueError("Минимум 6 символов")
-        return v.strip()
+        return _check_password_complexity(v)
 
 
 class ChangeEmailBody(BaseModel):
@@ -676,9 +675,7 @@ class ResetPasswordBody(BaseModel):
     @field_validator("new_password")
     @classmethod
     def pw_length(cls, v: str) -> str:
-        if len(v) < 6:
-            raise ValueError("Минимум 6 символов")
-        return v
+        return _check_password_complexity(v)
 
 
 class SetupComplete(BaseModel):
@@ -697,9 +694,7 @@ class SetupComplete(BaseModel):
     @field_validator("password")
     @classmethod
     def password_length(cls, v: str) -> str:
-        if len(v) < 6:
-            raise ValueError("Password must be at least 6 characters")
-        return v
+        return _check_password_complexity(v)
 
 
 class PluginSessionReport(BaseModel):

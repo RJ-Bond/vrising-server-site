@@ -3,6 +3,7 @@ router modules (backend/routers/*.py) can import them without importing main.py 
 (which would be circular once main.py imports the routers). Pure relocation — no logic
 changes; see the "Split backend/main.py into routers" plan for the rationale."""
 import asyncio
+import hmac
 import json
 import logging
 import os
@@ -54,6 +55,41 @@ BACKUP_DIR = Path(os.getenv("BACKUP_DIR", "/data/backups"))
 # plain NFS/SMB share bind-mounted into the `web` container). See README.md's "Резервные
 # копии" section for how to actually wire one up.
 BACKUP_REMOTE_PATH = os.getenv("BACKUP_REMOTE_PATH", "").strip()
+
+
+# Every real deployment's DATABASE_URL points at /data/vrising.db (backend/database.py's
+# own default), but the other three paths are kept as fallbacks for however a given
+# checkout/container ended up laid out. download_backup() used to only check the first
+# three (missing /data/vrising.db, so "download live DB now" 404'd on a default-config
+# deployment even though create_backup_now() — which did include it — worked); both now
+# share this one list instead of drifting again.
+_LIVE_DB_CANDIDATES = [Path("backend/vrising.db"), Path("vrising.db"), Path("/app/backend/vrising.db"), Path("/data/vrising.db")]
+
+
+def find_live_db_path() -> Optional[Path]:
+    return next((p for p in _LIVE_DB_CANDIDATES if p.exists()), None)
+
+
+def sqlite_backup_copy(src: Path, dst: Path) -> None:
+    """Consistent-snapshot backup of a live SQLite database, safe to run against a
+    WAL-mode DB that's actively being written to (backend/database.py enables
+    `PRAGMA journal_mode=WAL`). A plain `shutil.copy2()` of just the `.db` file — what
+    this replaced — can miss recently-committed data that's still sitting in the
+    separate `-wal` file, or copy the `.db` file mid-write and produce a corrupt
+    snapshot; sqlite3's built-in online backup API (`Connection.backup()`) is the
+    documented-safe way to do this instead. Synchronous (stdlib `sqlite3`, not
+    `aiosqlite`) — callers running this from an async context should wrap it in
+    `asyncio.to_thread()` so it doesn't block the event loop."""
+    import sqlite3
+    src_conn = sqlite3.connect(str(src))
+    try:
+        dst_conn = sqlite3.connect(str(dst))
+        try:
+            src_conn.backup(dst_conn)
+        finally:
+            dst_conn.close()
+    finally:
+        src_conn.close()
 
 
 def copy_backup_offsite(src: Path) -> bool:
@@ -159,6 +195,38 @@ def _record_failed_totp(user_id: int) -> None:
 
 def _reset_failed_totp(user_id: int) -> None:
     _failed_totp_attempts.pop(user_id, None)
+
+
+# Same pattern, for plain password guessing — POST /api/auth/login's own
+# @limiter.limit("10/minute") is per-IP only, so a distributed/low-and-slow
+# credential-stuffing attack rotating source IPs against ONE account stays
+# under that threshold. Keyed by the attempted username (lowercased) rather
+# than user_id since a guess against a nonexistent username must still count,
+# or the limiter itself becomes a username-enumeration oracle.
+_failed_login_attempts: dict[str, list[float]] = {}
+_LOGIN_ATTEMPT_WINDOW = 300  # 5 minutes
+# Below the endpoint's own @limiter.limit("10/minute") on purpose — that global
+# per-IP quota already catches a single-IP attacker at 10/minute, so this only
+# needs to be meaningfully stricter to matter for the distributed/rotating-IP
+# case this guard actually targets. Matches the existing per-account TOTP
+# guard's own limit for consistency (_TOTP_ATTEMPT_LIMIT above).
+_LOGIN_ATTEMPT_LIMIT = 5
+
+
+def _login_attempts_exceeded(username: str) -> bool:
+    now = time.time()
+    key = username.strip().lower()
+    attempts = [ts for ts in _failed_login_attempts.get(key, []) if now - ts < _LOGIN_ATTEMPT_WINDOW]
+    _failed_login_attempts[key] = attempts
+    return len(attempts) >= _LOGIN_ATTEMPT_LIMIT
+
+
+def _record_failed_login(username: str) -> None:
+    _failed_login_attempts.setdefault(username.strip().lower(), []).append(time.time())
+
+
+def _reset_failed_login(username: str) -> None:
+    _failed_login_attempts.pop(username.strip().lower(), None)
 
 
 # ─── 2FA recovery codes ────────────────────────────────────────────────────────
@@ -785,14 +853,17 @@ async def _require_plugin_key(request: Request, db: AsyncSession = Depends(get_d
     if per_server is not None:
         # A per-server key is configured — it alone is valid for this server_num, no
         # fallback to the global key (opting into an isolated key should mean isolated).
-        if provided != per_server.api_key:
+        # compare_digest, not != — this is a shared secret every game-server-facing
+        # endpoint gates on, and plain string comparison short-circuits on the first
+        # mismatched byte (a theoretical timing side-channel).
+        if not hmac.compare_digest(provided, per_server.api_key):
             raise HTTPException(status_code=401, detail="Invalid or missing plugin key")
         return
 
     result = await db.execute(select(Setting).where(Setting.key == "plugin_api_key"))
     setting = result.scalar_one_or_none()
     expected = (setting.value if setting else "") or ""
-    if not expected or provided != expected:
+    if not expected or not hmac.compare_digest(provided, expected):
         raise HTTPException(status_code=401, detail="Invalid or missing plugin key")
 
 

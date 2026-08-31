@@ -41,6 +41,9 @@ from ..helpers import (
     _totp_attempts_exceeded,
     _record_failed_totp,
     _reset_failed_totp,
+    _login_attempts_exceeded,
+    _record_failed_login,
+    _reset_failed_login,
     _issue_recovery_codes,
     _consume_recovery_code,
 )
@@ -172,9 +175,22 @@ async def _maybe_notify_new_device(db: AsyncSession, user: User, ip_address: str
 async def login(request: Request, body: UserLogin, response: Response, db: AsyncSession = Depends(get_db)):
     client_ip = request.client.host if request.client else "unknown"
     user_agent = request.headers.get("user-agent", "")
+    # Per-account guard on top of this endpoint's per-IP @limiter.limit above — that
+    # quota resets per source IP, so a distributed/low-and-slow attack rotating IPs
+    # against one username stays under it indefinitely. Keyed by the attempted
+    # username itself (not user_id) so a guess against a nonexistent account still
+    # counts, same reasoning as the existing per-account TOTP limiter below.
+    if _login_attempts_exceeded(body.username):
+        logger.warning("Failed login for username=%r from ip=%s (login attempts exceeded)", body.username, client_ip)
+        await _record_login_attempt(
+            db, user_id=None, username_attempted=body.username,
+            success=False, failure_reason="login_rate_limited", ip_address=client_ip, user_agent=user_agent,
+        )
+        raise HTTPException(status_code=401, detail="Слишком много неверных попыток входа, попробуйте позже")
     result = await db.execute(select(User).where(User.username == body.username))
     user = result.scalar_one_or_none()
     if user is None or not verify_password(body.password, user.hashed_password):
+        _record_failed_login(body.username)
         logger.warning("Failed login for username=%r from ip=%s (invalid credentials)", body.username, client_ip)
         await _record_login_attempt(
             db, user_id=user.id if user else None, username_attempted=body.username,
@@ -226,6 +242,7 @@ async def login(request: Request, body: UserLogin, response: Response, db: Async
             await db.commit()
             logger.info("Login for username=%r used a 2FA recovery code (ip=%s)", body.username, client_ip)
         _reset_failed_totp(user.id)
+    _reset_failed_login(user.username)
     token = create_access_token_for_user(user)
     _set_auth_cookie(response, token, user.role)
     # Must run before _record_login_attempt below — it needs to see prior successful

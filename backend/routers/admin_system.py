@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, UploadFile, File
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -15,7 +15,8 @@ from sqlalchemy import select
 from ..database import get_db
 from ..models import User, Setting, News, ShopItem
 from ..auth import get_admin_user, get_superadmin_user, get_current_user
-from ..helpers import UPLOAD_DIR, BACKUP_DIR, log_audit, optimize_image_bytes
+from ..helpers import UPLOAD_DIR, BACKUP_DIR, log_audit, optimize_image_bytes, find_live_db_path, sqlite_backup_copy
+from ..rate_limit import limiter
 
 router = APIRouter()
 
@@ -579,15 +580,15 @@ async def delete_media(filename: str, _: User = Depends(get_admin_user)):
 
 @router.get("/api/admin/backup")
 async def download_backup(current_user: User = Depends(get_superadmin_user), db: AsyncSession = Depends(get_db)):
-    for candidate in [Path("backend/vrising.db"), Path("vrising.db"), Path("/app/backend/vrising.db")]:
-        if candidate.exists():
-            await log_audit(db, current_user, "backup.download", candidate.name)
-            await db.commit()
-            return FileResponse(
-                path=str(candidate),
-                media_type="application/octet-stream",
-                filename=f"vrising_backup_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.db"
-            )
+    candidate = find_live_db_path()
+    if candidate:
+        await log_audit(db, current_user, "backup.download", candidate.name)
+        await db.commit()
+        return FileResponse(
+            path=str(candidate),
+            media_type="application/octet-stream",
+            filename=f"vrising_backup_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.db"
+        )
     raise HTTPException(404, "Database file not found")
 
 
@@ -629,7 +630,8 @@ class RconBody(BaseModel):
 
 
 @router.post("/api/admin/rcon")
-async def admin_rcon(body: RconBody, current_user: User = Depends(get_superadmin_user), db: AsyncSession = Depends(get_db)):
+@limiter.limit("15/minute")
+async def admin_rcon(request: Request, body: RconBody, current_user: User = Depends(get_superadmin_user), db: AsyncSession = Depends(get_db)):
     if not body.command.strip():
         raise HTTPException(400, "Empty command")
     res = await db.execute(select(Setting).where(Setting.key.in_(["server_ip","rcon_port","rcon_password","server2_ip","rcon2_port","rcon2_password"])))
@@ -704,14 +706,12 @@ async def download_named_backup(filename: str, current_user: User = Depends(get_
 @router.post("/api/admin/backups/create", status_code=201)
 async def create_backup_now(current_user: User = Depends(get_superadmin_user), db: AsyncSession = Depends(get_db)):
     BACKUP_DIR.mkdir(parents=True, exist_ok=True)
-    db_candidates = [Path("backend/vrising.db"), Path("vrising.db"), Path("/app/backend/vrising.db"), Path("/data/vrising.db")]
-    src = next((p for p in db_candidates if p.exists()), None)
+    src = find_live_db_path()
     if not src:
         raise HTTPException(404, "Database file not found")
-    import shutil
     ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
     dst = BACKUP_DIR / f"vrising_{ts}.db"
-    shutil.copy2(str(src), str(dst))
+    await asyncio.to_thread(sqlite_backup_copy, src, dst)
     await log_audit(db, current_user, "backup.create", dst.name)
     await db.commit()
     return {"filename": dst.name, "size": dst.stat().st_size}
