@@ -351,6 +351,11 @@
        toggling this.style.background instead of a CSS :hover rule. */
     .template-item { transition:background .15s; }
     .template-item:hover { background:rgba(150,0,28,.1); }
+    /* Token-styled modal content box (settings-history/event-editor/shop-item-editor)
+       — was an identical ~180-char inline style string copy-pasted at each of the
+       three call sites. Default max-width matches the two editor modals; override
+       inline where a modal needs a different one (settings-history uses 680px). */
+    .modal-box { max-width:560px; margin:3rem auto; background:var(--card); border:1px solid var(--border); border-radius:1rem; padding:2rem; box-shadow:0 16px 64px rgba(0,0,0,0.7); }
     .s-field { margin-bottom:1.1rem; }
     .s-field:last-child { margin-bottom:0; }
     .s-field-row { display:flex; gap:.5rem; margin-top:.3rem; }
@@ -1936,8 +1941,8 @@
            "key=value", see backend/routers/admin_settings.py) down to just one setting key
            at a time, since the full "Журнал действий" (section-auditlog) has no per-key
            filter of its own and mixes every other admin action in with it. -->
-      <div id="settings-history-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
-        <div style="max-width:680px;margin:3rem auto;background:var(--card);border:1px solid var(--border);border-radius:1rem;padding:2rem;box-shadow:0 16px 64px rgba(0,0,0,0.7);">
+      <div id="settings-history-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.75);backdrop-filter:blur(5px);overflow-y:auto;">
+        <div class="modal-box" style="max-width:680px;">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
             <h3 class="section-title">История изменений настроек</h3>
             <button onclick="closeSettingsHistory()" class="modal-close" aria-label="Закрыть">✕</button>
@@ -2734,8 +2739,8 @@
       <div id="events-pagination" class="flex gap-2 mt-4"></div>
 
       <!-- Event editor modal -->
-      <div id="event-editor-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
-        <div style="max-width:560px;margin:3rem auto;background:var(--card);border:1px solid var(--border);border-radius:1rem;padding:2rem;box-shadow:0 16px 64px rgba(0,0,0,0.7);">
+      <div id="event-editor-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.75);backdrop-filter:blur(5px);overflow-y:auto;">
+        <div class="modal-box">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
             <h3 class="section-title" id="event-editor-title">Новое событие</h3>
             <button onclick="closeEventEditor()" class="modal-close" aria-label="Закрыть">✕</button>
@@ -3121,8 +3126,8 @@
       </div>
 
       <!-- Item editor modal -->
-      <div id="shop-item-editor-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);overflow-y:auto;">
-        <div style="max-width:560px;margin:3rem auto;background:var(--card);border:1px solid var(--border);border-radius:1rem;padding:2rem;box-shadow:0 16px 64px rgba(0,0,0,0.7);">
+      <div id="shop-item-editor-modal" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.75);backdrop-filter:blur(5px);overflow-y:auto;">
+        <div class="modal-box">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;">
             <h3 class="section-title" id="shop-item-editor-title">Новый товар</h3>
             <button onclick="closeShopItemEditor()" class="modal-close">✕</button>
@@ -5160,7 +5165,7 @@ function showBanModal(username, onBan) {
     modal = document.createElement('div');
     modal.id = 'ban-modal';
     modal.innerHTML = `
-      <div style="position:absolute;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);" id="ban-modal-backdrop"></div>
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(5px);" id="ban-modal-backdrop"></div>
       <div style="position:relative;background:rgba(14,5,22,.97);border:1px solid rgba(180,0,35,.4);border-radius:1rem;padding:2rem;max-width:400px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,.7),0 0 32px rgba(180,0,35,.15);text-align:center;">
         <div style="font-size:1.8rem;margin-bottom:.6rem;">⛔</div>
         <h3 style="font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;margin-bottom:.4rem;" id="ban-modal-title">Забанить игрока</h3>
@@ -7252,7 +7257,7 @@ async function openTemplates() {
   modal.className = 'templates-overlay';
   modal.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto;';
   modal.innerHTML = `
-    <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);" onclick="closeTemplates()"></div>
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(5px);" onclick="closeTemplates()"></div>
     <div style="position:relative;background:rgba(14,5,22,.97);border:1px solid rgba(180,0,35,.4);border-radius:1rem;padding:1.5rem;max-width:560px;width:100%;box-shadow:0 8px 48px rgba(0,0,0,.7);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
         <h3 style="font-family:'Cinzel',serif;font-size:.9rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;">Шаблоны новостей</h3>
@@ -8524,7 +8529,7 @@ async function loadErrors(page = 1) {
 
 <!-- User quick-view modal -->
 <div id="userqv-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;opacity:0;transition:opacity .15s;">
-  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);" onclick="closeUserQv()"></div>
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(5px);" onclick="closeUserQv()"></div>
   <div style="position:relative;background:rgba(14,5,22,0.97);border:1px solid rgba(180,0,35,0.4);border-radius:1rem;padding:1.75rem;max-width:400px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.7),0 0 32px rgba(180,0,35,0.15);">
     <button onclick="closeUserQv()" aria-label="Закрыть" class="modal-close" style="position:absolute;top:.85rem;right:.85rem;">✕</button>
     <div style="display:flex;align-items:center;gap:.85rem;margin-bottom:1.1rem;">
@@ -8567,7 +8572,7 @@ async function loadErrors(page = 1) {
 
 <!-- Broadcast modal -->
 <div id="broadcast-modal" style="display:none;position:fixed;inset:0;z-index:9998;align-items:center;justify-content:center;">
-  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);" onclick="closeBroadcastModal()"></div>
+  <div style="position:absolute;inset:0;background:rgba(0,0,0,0.65);backdrop-filter:blur(5px);" onclick="closeBroadcastModal()"></div>
   <div style="position:relative;background:rgba(14,5,22,0.97);border:1px solid rgba(180,0,35,0.4);border-radius:1rem;padding:1.75rem;max-width:420px;width:90%;box-shadow:0 8px 48px rgba(0,0,0,0.7),0 0 32px rgba(180,0,35,0.15);">
     <button onclick="closeBroadcastModal()" aria-label="Закрыть" class="modal-close" style="position:absolute;top:.85rem;right:.85rem;">✕</button>
     <h3 style="font-family:'Cinzel',serif;font-size:.95rem;font-weight:700;color:#d4c4e0;letter-spacing:.06em;margin-bottom:1.1rem;">📢 Массовая рассылка</h3>
