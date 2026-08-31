@@ -11,6 +11,8 @@ tailwindcss.exe
 src/
 .shots/
 .pytest_cache/
+.coverage
+htmlcov/
 frontend/.preview_frame.html
 frontend/.preview_admin_frame.html
 frontend/.admin_mock*

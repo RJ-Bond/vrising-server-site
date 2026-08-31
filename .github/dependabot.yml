@@ -4,10 +4,32 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Cap concurrent open PRs from this ecosystem so a backlog of ungrouped/major
+    # bumps can't pile up unbounded (there was no limit before, i.e. unbounded).
+    open-pull-requests-limit: 10
     groups:
-      python-deps:
+      # Safe-ish, usually non-breaking bumps stay grouped into one PR.
+      python-minor-patch:
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
+      # Majors are the ones actually likely to break something (API/behavior
+      # changes) — kept in their own group so one incompatible major bump
+      # can't block/hold up the minor+patch PR above. `patterns: "*"` + this
+      # group's own `update-types: [major]` means every dependency's major
+      # bumps land together here, separate from its minor/patch bumps in the
+      # group above; Dependabot only lets one version-update rule match a
+      # given dependency+update-type pair, so there's no overlap between the
+      # two groups. (Per GitHub's dependabot.yml docs: a `groups` entry can
+      # filter by `update-types`, and multiple groups may share the same
+      # `patterns` as long as their `update-types` don't overlap.)
+      python-major:
+        patterns:
+          - "*"
+        update-types:
+          - "major"
 
   - package-ecosystem: "docker"
     directory: "/"
