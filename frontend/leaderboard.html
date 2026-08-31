@@ -567,10 +567,10 @@
     <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.6rem;">
       <div style="position:relative;flex:1;">
         <svg style="position:absolute;left:.75rem;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted);opacity:.6;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><use href="/icons.svg#icon-search"></use></svg>
-        <input id="lb-search" type="text" placeholder="Поиск игрока…" oninput="filterLeaderboard()"
+        <input id="lb-search" type="text" placeholder="Поиск игрока…" aria-label="Поиск игрока" oninput="_lbSearchDebounced()"
           style="width:100%;background:rgba(14,5,22,0.85);border:1px solid rgba(110,0,150,0.22);border-radius:.65rem;padding:.62rem 1rem .62rem 2.5rem;color:var(--text);font-size:.88rem;outline:none;transition:border-color .2s;font-family:'Inter',sans-serif;"
           onfocus="this.style.borderColor='rgba(200,0,42,0.45)'" onblur="this.style.borderColor='rgba(110,0,150,0.22)'"
-          data-i18n-ph-ru="Поиск игрока…" data-i18n-ph-en="Search players…">
+          data-i18n-ph-ru="Поиск игрока…" data-i18n-ph-en="Search players…" data-i18n-aria-ru="Поиск игрока" data-i18n-aria-en="Search player">
       </div>
       <button class="lb-find-me-btn" id="lb-find-me" onclick="findMe()"
               style="display:none;" data-tip="Перейти к своей строке" data-i18n-ru="📍 Найти себя" data-i18n-en="📍 Find me">📍 Найти себя</button>
@@ -612,7 +612,7 @@
 <script src="/chart.min.js"></script>
 <script src="/charts.js?v=2"></script>
 <script src="/alpine.min.js"></script>
-<script src="/common.js?v=16"></script>
+<script src="/common.js?v=17"></script>
 <script>
 const API = '/api';
 const PER_PAGE = 25;
@@ -636,18 +636,7 @@ let _myClanId = null;
 let _expandedPlayer = null;
 
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
-// getUser, esc, nameGradient — defined in common.js
-// Small local i18n helper for strings this page rewrites at runtime (page label, metric
-// toggle, server-name fallback) — _applyI18n() in common.js only handles static
-// data-i18n-ru/-en markup, not text a script reassigns afterwards.
-function _t(ru, en) { return localStorage.getItem('_lang') === 'en' ? en : ru; }
-/* ── RU pluralization (same shape as clans.html's local copy — not in common.js) ── */
-function pluralRu(n, one, few, many) {
-  const mod10 = n % 10, mod100 = n % 100;
-  if (mod10 === 1 && mod100 !== 11) return one;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) return few;
-  return many;
-}
+// getUser, esc, nameGradient, _t, pluralRu — defined in common.js
 
 /* ③ Fetch progress bar */
 function showFetchBar() {
@@ -923,25 +912,7 @@ function closeCompareModal() {
   document.removeEventListener('keydown', _compareModalEscHandler);
 }
 
-function applySiteBackground(bg) {
-  bg = (bg || '').trim();
-  if (!bg) return;
-  let layer = document.getElementById('site-bg-photo');
-  if (!layer) {
-    layer = document.createElement('div');
-    layer.id = 'site-bg-photo';
-    layer.className = 'site-bg-photo';
-    document.body.prepend(layer);
-  }
-  layer.style.backgroundImage = [
-    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
-    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
-    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
-    `url('${bg}')`,
-  ].join(',');
-  layer.style.backgroundSize = 'auto,auto,auto,cover';
-  layer.style.backgroundPosition = 'center,center,center,center';
-}
+// applySiteBackground() — now defined in common.js.
 
 (function() {
   const cached = getUser();
@@ -1173,6 +1144,9 @@ function applyFilters() {
 function filterLeaderboard() {
   applyFilters();
 }
+// Debounced wrapper for the #lb-search input's oninput — avoids re-filtering/
+// re-rendering the whole rows list on every keystroke (see common.js's debounce()).
+const _lbSearchDebounced = debounce(filterLeaderboard, 300);
 
 function renderPodium(top3) {
   const section = document.getElementById('lb-podium');
@@ -1626,7 +1600,7 @@ async function openPlayerModal(playerName, serverNum, playerRank) {
         </div>
         <div style="background:rgba(14,5,22,.5);border:1px solid rgba(120,0,28,.2);border-radius:.5rem;padding:.55rem .7rem;grid-column:span 2;">
           <div style="font-size:.55rem;color:#9488a8;text-transform:uppercase;letter-spacing:.07em;margin-bottom:.2rem;">Последний вход</div>
-          <div style="font-size:.82rem;color:#e2d8f0;">${data.last_seen ? new Date(data.last_seen).toLocaleString('ru-RU', {timeZone: window.__TZ||'Europe/Moscow'}) : '—'}</div>
+          <div style="font-size:.82rem;color:#e2d8f0;">${data.last_seen ? fmtDateTime(data.last_seen) : '—'}</div>
         </div>
       </div>
       <div style="margin-top:1rem;">

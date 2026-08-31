@@ -300,7 +300,7 @@
     <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin:.9rem 0 1rem;">
       <div style="position:relative;flex:1 1 240px;max-width:340px;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:.85rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;"><use href="/icons.svg#icon-search"></use></svg>
-        <input id="active-bans-search" class="search-input" type="text" placeholder="Поиск по нику..." style="padding-left:2.4rem;" oninput="renderActiveBans()" data-i18n-ph-ru="Поиск по нику..." data-i18n-ph-en="Search by nickname..." />
+        <input id="active-bans-search" class="search-input" type="text" placeholder="Поиск по нику..." aria-label="Поиск по нику" style="padding-left:2.4rem;" oninput="_activeBansSearchDebounced()" data-i18n-ph-ru="Поиск по нику..." data-i18n-ph-en="Search by nickname..." data-i18n-aria-ru="Поиск по нику" data-i18n-aria-en="Search by nickname" />
       </div>
       <select id="active-bans-server-filter" class="search-input" style="flex:0 1 220px;" onchange="renderActiveBans()">
         <option value="" data-i18n-ru="Все сервера" data-i18n-en="All servers">Все сервера</option>
@@ -409,7 +409,7 @@
 </main>
 
 <script src="/alpine.min.js"></script>
-<script src="/common.js?v=16"></script>
+<script src="/common.js?v=17"></script>
 <script>
 const API = '/api';
 
@@ -469,26 +469,7 @@ function roleLevel(role) { return ROLE_LEVELS[role] ?? 0; }
   });
 })();
 
-/* ── Site settings ── */
-function applySiteBackground(bg) {
-  bg = (bg || '').trim();
-  if (!bg) return;
-  let layer = document.getElementById('site-bg-photo');
-  if (!layer) {
-    layer = document.createElement('div');
-    layer.id = 'site-bg-photo';
-    layer.className = 'site-bg-photo';
-    document.body.prepend(layer);
-  }
-  layer.style.backgroundImage = [
-    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
-    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
-    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
-    `url('${bg}')`,
-  ].join(',');
-  layer.style.backgroundSize = 'auto,auto,auto,cover';
-  layer.style.backgroundPosition = 'center,center,center,center';
-}
+/* ── Site settings — applySiteBackground() defined in common.js ── */
 (async function() {
   try {
     const d = await (window.getSettings?.() ?? fetch(`${API}/settings/public`).then(r => r.json()));
@@ -667,6 +648,12 @@ function renderActiveBans() {
   tbody.innerHTML = filtered.map(activeBanRowHtml).join('');
   tickActiveBanCountdowns();
 }
+// Debounced wrapper for the #active-bans-search input's oninput — avoids
+// re-filtering/re-rendering the whole table on every keystroke (see common.js's
+// debounce()). The server-filter <select>'s onchange keeps calling
+// renderActiveBans() directly (a discrete action, not a keystroke stream), as do
+// loadActiveBans()/unbanActiveBan() after they refresh _activeBansCache.
+const _activeBansSearchDebounced = debounce(renderActiveBans, 300);
 
 async function loadActiveBans() {
   const errorEl = document.getElementById('active-bans-error');

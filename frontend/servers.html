@@ -503,42 +503,17 @@
 <script src="/chart.min.js"></script>
 <script src="/charts.js?v=2"></script>
 <script src="/alpine.min.js"></script>
-<script src="/common.js?v=16"></script>
+<script src="/common.js?v=17"></script>
 <script>
 const API = '/api';
 function getToken() { return localStorage.getItem('token') || sessionStorage.getItem('token'); }
-// esc — defined in common.js
-function fmtDuration(sec) {
-  if (sec < 60) return `${sec}с`;
-  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
-  return h > 0 ? `${h}ч ${m}м` : `${m}м`;
-}
+// esc, fmtDuration, applySiteBackground — defined in common.js
 
 function _timeAgoShort(ts) {
   const diff = (Date.now() - ts) / 1000;
   if (diff < 60) return 'только что';
   if (diff < 3600) return `${Math.floor(diff / 60)}м назад`;
   return `${Math.floor(diff / 3600)}ч назад`;
-}
-
-function applySiteBackground(bg) {
-  bg = (bg || '').trim();
-  if (!bg) return;
-  let layer = document.getElementById('site-bg-photo');
-  if (!layer) {
-    layer = document.createElement('div');
-    layer.id = 'site-bg-photo';
-    layer.className = 'site-bg-photo';
-    document.body.prepend(layer);
-  }
-  layer.style.backgroundImage = [
-    'radial-gradient(ellipse at 15% 50%, rgba(80,0,130,0.14) 0%, transparent 55%)',
-    'radial-gradient(ellipse at 85% 20%, rgba(150,0,28,0.10) 0%, transparent 50%)',
-    'linear-gradient(rgba(8,0,14,0.72), rgba(8,0,14,0.72))',
-    `url('${bg}')`,
-  ].join(',');
-  layer.style.backgroundSize = 'auto,auto,auto,cover';
-  layer.style.backgroundPosition = 'center,center,center,center';
 }
 
 (function() {
@@ -892,7 +867,7 @@ function srvCardSkeleton(num) {
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap;">
         <div class="srv-section-title" style="margin-bottom:0;">Игроки онлайн</div>
         <div style="display:flex;align-items:center;gap:.35rem;">
-          <input id="srv-search-${num}" type="text" placeholder="Поиск…" oninput="filterPlayers(${num})"
+          <input id="srv-search-${num}" type="text" placeholder="Поиск…" aria-label="Поиск игроков онлайн" oninput="debouncedFilterPlayers(${num})"
             style="background:rgba(8,0,14,0.6);border:1px solid rgba(110,0,150,0.25);border-radius:.4rem;padding:.3rem .6rem;color:var(--text);font-size:.72rem;width:110px;outline:none;transition:border-color .2s;"
             onfocus="this.style.borderColor='rgba(160,0,200,0.5)'" onblur="this.style.borderColor='rgba(110,0,150,0.25)'">
           <button onclick="setSortPlayers(${num},'time',this)" data-sort="time"
@@ -1122,6 +1097,18 @@ function filterPlayers(num) {
       <span class="srv-player-time">${fmtDuration(p.duration)}</span>
     </div>`;
   }).join('');
+}
+// Debounced wrapper for each #srv-search-N input's oninput — avoids re-filtering/
+// re-rendering the player list on every keystroke (see common.js's debounce()).
+// One debounced function per server num (kept in a map, built lazily) rather than
+// a single shared one — two servers' search boxes are independent inputs, and a
+// single shared debounce() closure would let typing in one server's box reset/
+// swallow the pending filter for the other server's box, since debounce() only
+// tracks one timer per function instance.
+const _filterPlayersDebounced = {};
+function debouncedFilterPlayers(num) {
+  if (!_filterPlayersDebounced[num]) _filterPlayersDebounced[num] = debounce(() => filterPlayers(num), 300);
+  _filterPlayersDebounced[num]();
 }
 
 function _localHour(date) {
